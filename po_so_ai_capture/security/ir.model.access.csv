@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_capture_user,capture clerk,model_po_capture,group_capture_user,1,1,1,1
+access_capture_line_user,capture line clerk,model_po_capture_line,group_capture_user,1,1,1,1
+access_sku_alias_user,sku alias clerk,model_po_capture_sku_alias,group_capture_user,1,1,1,1
+access_capture_sale_user,capture read salesman,model_po_capture,sales_team.group_sale_salesman,1,0,0,0

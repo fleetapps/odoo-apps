@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_pocapture" model="ir.ui.view">
+        <field name="name">res.config.settings.form.pocapture</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="PO Capture" name="po_so_ai_capture">
+                    <block title="LLM Provider (your own key)">
+                        <setting string="Provider">
+                            <field name="po_capture_provider"/>
+                        </setting>
+                        <setting string="API Key">
+                            <field name="po_capture_api_key" password="True"/>
+                        </setting>
+                        <setting string="Model Override">
+                            <field name="po_capture_model"/>
+                        </setting>
+                        <setting string="Review Threshold">
+                            <field name="po_capture_review_threshold"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- orders@<alias-domain> -> po.capture records via the mail gateway. -->
+    <record id="alias_po_capture" model="mail.alias">
+        <field name="alias_name">orders</field>
+        <field name="alias_model_id" ref="model_po_capture"/>
+        <field name="alias_contact">everyone</field>
+    </record>
+</odoo>
