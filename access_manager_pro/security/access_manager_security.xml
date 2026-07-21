@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Security reference:
+         https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html -->
+    <record id="module_category_access_manager" model="ir.module.category">
+        <field name="name">Access Manager Pro</field>
+    </record>
+    <record id="group_access_manager_admin" model="res.groups">
+        <field name="name">Access Manager: Administrator</field>
+        <field name="category_id" ref="module_category_access_manager"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

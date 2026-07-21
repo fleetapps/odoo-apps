@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mcp_api_key_view_list" model="ir.ui.view">
+        <field name="name">mcp.api.key.list</field>
+        <field name="model">mcp.api.key</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="scope_id"/>
+                <field name="key_preview"/>
+                <field name="expiry"/>
+                <field name="last_used"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_scope_view_form" model="ir.ui.view">
+        <field name="name">mcp.scope.form</field>
+        <field name="model">mcp.scope</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="read_only"/>
+                        <field name="require_approval"/>
+                        <field name="rate_limit_per_hour"/>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom">
+                            <field name="model_id"/>
+                            <field name="can_read"/>
+                            <field name="can_create"/>
+                            <field name="can_write"/>
+                            <field name="can_unlink"/>
+                            <field name="field_blacklist"/>
+                            <field name="record_domain"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_audit_view_list" model="ir.ui.view">
+        <field name="name">mcp.audit.log.list</field>
+        <field name="model">mcp.audit.log</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="status == 'error'">
+                <field name="create_date"/>
+                <field name="user_id"/>
+                <field name="tool"/>
+                <field name="status" widget="badge"/>
+                <field name="duration_ms"/>
+                <field name="tokens_est" sum="Total tokens"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_approval_view_kanban" model="ir.ui.view">
+        <field name="name">mcp.approval.kanban</field>
+        <field name="model">mcp.approval.request</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state">
+                <templates>
+                    <t t-name="card">
+                        <div class="p-2">
+                            <strong><field name="model_name"/></strong>
+                            <div><field name="operation"/> #<field name="record_id"/></div>
+                            <field name="values_json"/>
+                            <button name="action_approve" type="object"
+                                    class="btn btn-primary btn-sm">Approve</button>
+                            <button name="action_reject" type="object"
+                                    class="btn btn-secondary btn-sm">Reject</button>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="mcp_key_action" model="ir.actions.act_window">
+        <field name="name">API Keys</field>
+        <field name="res_model">mcp.api.key</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="mcp_scope_action" model="ir.actions.act_window">
+        <field name="name">Scopes</field>
+        <field name="res_model">mcp.scope</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="mcp_audit_action" model="ir.actions.act_window">
+        <field name="name">Audit Log</field>
+        <field name="res_model">mcp.audit.log</field>
+        <field name="view_mode">list,graph,pivot</field>
+    </record>
+    <record id="mcp_approval_action" model="ir.actions.act_window">
+        <field name="name">Approvals</field>
+        <field name="res_model">mcp.approval.request</field>
+        <field name="view_mode">kanban,list</field>
+    </record>
+
+    <menuitem id="menu_mcp_root" name="MCP Governance"
+              groups="mcp_governance_suite.group_mcp_admin,mcp_governance_suite.group_mcp_approver"
+              sequence="80"/>
+    <menuitem id="menu_mcp_keys" name="API Keys" parent="menu_mcp_root"
+              action="mcp_key_action" groups="mcp_governance_suite.group_mcp_admin"/>
+    <menuitem id="menu_mcp_scopes" name="Scopes" parent="menu_mcp_root"
+              action="mcp_scope_action" groups="mcp_governance_suite.group_mcp_admin"/>
+    <menuitem id="menu_mcp_approvals" name="Approvals" parent="menu_mcp_root"
+              action="mcp_approval_action"/>
+    <menuitem id="menu_mcp_audit" name="Audit Log" parent="menu_mcp_root"
+              action="mcp_audit_action" groups="mcp_governance_suite.group_mcp_admin"/>
+</odoo>

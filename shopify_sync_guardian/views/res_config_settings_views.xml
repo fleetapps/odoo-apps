@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_guardian" model="ir.ui.view">
+        <field name="name">res.config.settings.form.guardian</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="Sync Guardian" name="shopify_sync_guardian">
+                    <block title="Alerting">
+                        <setting string="Slack Webhook">
+                            <field name="guardian_slack_webhook"/>
+                        </setting>
+                        <setting string="Alert Emails">
+                            <field name="guardian_alert_emails"/>
+                        </setting>
+                        <setting string="Max Auto-Retries">
+                            <field name="guardian_max_retries"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

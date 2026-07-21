@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_mcp" model="ir.module.category">
+        <field name="name">MCP Governance</field>
+    </record>
+    <record id="group_mcp_admin" model="res.groups">
+        <field name="name">MCP: Administrator</field>
+        <field name="category_id" ref="module_category_mcp"/>
+    </record>
+    <record id="group_mcp_approver" model="res.groups">
+        <field name="name">MCP: Approver</field>
+        <field name="category_id" ref="module_category_mcp"/>
+    </record>
+</odoo>

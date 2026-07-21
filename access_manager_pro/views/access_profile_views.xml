@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- <list> is the list-view root element in Odoo 19:
+         https://www.odoo.com/documentation/19.0/developer/tutorials/server_framework_101/06_basicviews.html -->
+    <record id="access_profile_view_list" model="ir.ui.view">
+        <field name="name">access.manager.profile.list</field>
+        <field name="model">access.manager.profile</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="user_ids" widget="many2many_tags"/>
+                <field name="group_ids" widget="many2many_tags"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="access_profile_view_form" model="ir.ui.view">
+        <field name="name">access.manager.profile.form</field>
+        <field name="model">access.manager.profile</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="user_ids" widget="many2many_tags"/>
+                            <field name="group_ids" widget="many2many_tags"/>
+                            <field name="company_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Menus">
+                            <field name="hidden_menu_ids"/>
+                        </page>
+                        <page string="Fields">
+                            <field name="field_rule_ids">
+                                <list editable="bottom">
+                                    <field name="model_id"/>
+                                    <field name="field_id"/>
+                                    <field name="mode"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Buttons &amp; Tabs">
+                            <field name="element_rule_ids">
+                                <list editable="bottom">
+                                    <field name="model_id"/>
+                                    <field name="element_type"/>
+                                    <field name="selector"/>
+                                    <field name="mode"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Model Switches">
+                            <field name="model_rule_ids">
+                                <list editable="bottom">
+                                    <field name="model_id"/>
+                                    <field name="hide_create"/>
+                                    <field name="hide_edit"/>
+                                    <field name="hide_delete"/>
+                                    <field name="hide_duplicate"/>
+                                    <field name="block_export"/>
+                                    <field name="hide_chatter"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="access_profile_action" model="ir.actions.act_window">
+        <field name="name">Access Profiles</field>
+        <field name="res_model">access.manager.profile</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_access_manager_root" name="Access Manager"
+              groups="access_manager_pro.group_access_manager_admin" sequence="90"/>
+    <menuitem id="menu_access_profiles" name="Profiles"
+              parent="menu_access_manager_root" action="access_profile_action"/>
+</odoo>

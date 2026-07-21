@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Scheduled actions are ir.cron records (Automation docs). -->
+    <record id="cron_guardian_scan" model="ir.cron">
+        <field name="name">Sync Guardian: scan for failures</field>
+        <field name="model_id" ref="model_guardian_issue"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_scan()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_guardian_retry" model="ir.cron">
+        <field name="name">Sync Guardian: auto-retry</field>
+        <field name="model_id" ref="model_guardian_issue"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_auto_retry()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>
