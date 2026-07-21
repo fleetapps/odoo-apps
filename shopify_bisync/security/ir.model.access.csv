@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_instance_admin,instance admin,model_shopify_bisync_instance,group_connector_admin,1,1,1,1
+access_instance_user,instance user,model_shopify_bisync_instance,group_connector_user,1,0,0,0
+access_binding_admin,binding admin,model_shopify_bisync_binding,group_connector_admin,1,1,1,1
+access_binding_user,binding user,model_shopify_bisync_binding,group_connector_user,1,0,0,0
+access_job_admin,job admin,model_shopify_bisync_job,group_connector_admin,1,1,1,1
+access_job_user,job user,model_shopify_bisync_job,group_connector_user,1,0,0,0

@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_winstance_admin,instance admin,model_woo_bisync_instance,group_connector_admin,1,1,1,1
+access_winstance_user,instance user,model_woo_bisync_instance,group_connector_user,1,0,0,0
+access_wbinding_admin,binding admin,model_woo_bisync_binding,group_connector_admin,1,1,1,1
+access_wbinding_user,binding user,model_woo_bisync_binding,group_connector_user,1,0,0,0
+access_wjob_admin,job admin,model_woo_bisync_job,group_connector_admin,1,1,1,1
+access_wjob_user,job user,model_woo_bisync_job,group_connector_user,1,0,0,0

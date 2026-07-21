@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="provider_view_form" model="ir.ui.view">
+        <field name="name">fleet.tracking.provider.form</field>
+        <field name="model">fleet.tracking.provider</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_test_connection" type="object"
+                            string="Test Connection" class="btn-primary"/>
+                    <button name="action_discover_devices" type="object"
+                            string="Discover Devices"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="platform"/>
+                            <field name="base_url"/>
+                            <field name="poll_minutes"/>
+                        </group>
+                        <group>
+                            <field name="account"/>
+                            <field name="api_token" password="True"/>
+                            <field name="api_secret" password="True"/>
+                            <field name="last_poll"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="tracker_view_list" model="ir.ui.view">
+        <field name="name">fleet.vehicle.tracker.list</field>
+        <field name="model">fleet.vehicle.tracker</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="provider_id"/>
+                <field name="external_id"/>
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="last_seen"/>
+                <field name="last_speed_kph"/>
+                <field name="speed_limit_kph"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="position_view_list" model="ir.ui.view">
+        <field name="name">fleet.vehicle.position.list</field>
+        <field name="model">fleet.vehicle.position</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="position_time"/>
+                <field name="vehicle_id"/>
+                <field name="latitude"/>
+                <field name="longitude"/>
+                <field name="speed_kph"/>
+                <field name="ignition"/>
+            </list>
+        </field>
+    </record>
+    <!-- TODO(build): map_view (Enterprise) when available, else OWL+Leaflet
+         client action in web.assets_backend for the live map. -->
+
+    <record id="provider_action" model="ir.actions.act_window">
+        <field name="name">Tracking Providers</field>
+        <field name="res_model">fleet.tracking.provider</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="tracker_action" model="ir.actions.act_window">
+        <field name="name">Devices</field>
+        <field name="res_model">fleet.vehicle.tracker</field>
+        <field name="view_mode">list</field>
+    </record>
+    <record id="position_action" model="ir.actions.act_window">
+        <field name="name">Positions</field>
+        <field name="res_model">fleet.vehicle.position</field>
+        <field name="view_mode">list,graph,pivot</field>
+    </record>
+    <record id="geofence_action" model="ir.actions.act_window">
+        <field name="name">Geofences</field>
+        <field name="res_model">fleet.tracking.geofence</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_tracking_root" name="GPS Tracking"
+              parent="fleet.menu_root" sequence="50"/>
+    <menuitem id="menu_providers" name="Providers" parent="menu_tracking_root"
+              action="provider_action" groups="fleet.fleet_group_manager"/>
+    <menuitem id="menu_trackers" name="Devices" parent="menu_tracking_root"
+              action="tracker_action"/>
+    <menuitem id="menu_positions" name="Positions" parent="menu_tracking_root"
+              action="position_action"/>
+    <menuitem id="menu_geofences" name="Geofences" parent="menu_tracking_root"
+              action="geofence_action" groups="fleet.fleet_group_manager"/>
+</odoo>

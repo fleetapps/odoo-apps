@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_woo_bisync" model="ir.module.category">
+        <field name="name">WooCommerce Two-Way Sync</field>
+    </record>
+    <record id="group_connector_user" model="res.groups">
+        <field name="name">Woo Sync: User</field>
+        <field name="category_id" ref="module_category_woo_bisync"/>
+    </record>
+    <record id="group_connector_admin" model="res.groups">
+        <field name="name">Woo Sync: Administrator</field>
+        <field name="category_id" ref="module_category_woo_bisync"/>
+        <field name="implied_ids" eval="[(4, ref('group_connector_user'))]"/>
+    </record>
+</odoo>

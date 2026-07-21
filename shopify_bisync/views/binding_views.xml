@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="binding_view_list" model="ir.ui.view">
+        <field name="name">shopify.bisync.binding.list</field>
+        <field name="model">shopify.bisync.binding</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="instance_id"/>
+                <field name="res_model"/>
+                <field name="res_id"/>
+                <field name="external_id"/>
+                <field name="external_updated_at"/>
+                <field name="odoo_write_date"/>
+            </list>
+        </field>
+    </record>
+    <record id="binding_action" model="ir.actions.act_window">
+        <field name="name">Bindings</field>
+        <field name="res_model">shopify.bisync.binding</field>
+        <field name="view_mode">list</field>
+    </record>
+    <menuitem id="menu_bindings" name="Bindings" parent="menu_root"
+              action="binding_action"/>
+</odoo>

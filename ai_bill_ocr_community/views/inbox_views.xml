@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inbox_view_list" model="ir.ui.view">
+        <field name="name">ai.bill.inbox.list</field>
+        <field name="model">ai.bill.inbox</field>
+        <field name="arch" type="xml">
+            <list decoration-warning="state == 'review'"
+                  decoration-danger="state == 'failed'"
+                  decoration-success="state == 'done'">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="vendor_name"/>
+                <field name="partner_id"/>
+                <field name="amount_total"/>
+                <field name="overall_confidence" widget="percentage"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="inbox_view_form" model="ir.ui.view">
+        <field name="name">ai.bill.inbox.form</field>
+        <field name="model">ai.bill.inbox</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="with_delay_or_direct_extract" type="object"
+                            string="Extract Now" invisible="state == 'done'"/>
+                    <button name="action_create_bill" type="object"
+                            string="Create Draft Bill" class="btn-primary"
+                            invisible="state not in ('ready','review')"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Document">
+                            <field name="attachment_id"/>
+                            <field name="source"/>
+                            <field name="overall_confidence" widget="percentage"/>
+                            <field name="move_id"/>
+                        </group>
+                        <group string="Vendor">
+                            <field name="vendor_name"/>
+                            <field name="vendor_vat"/>
+                            <field name="partner_id"/>
+                            <field name="partner_confidence" widget="percentage"/>
+                        </group>
+                        <group string="Bill">
+                            <field name="invoice_ref"/>
+                            <field name="invoice_date"/>
+                            <field name="due_date"/>
+                        </group>
+                        <group string="Amounts">
+                            <field name="currency_id"/>
+                            <field name="amount_untaxed"/>
+                            <field name="amount_tax"/>
+                            <field name="amount_total"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom">
+                            <field name="description"/>
+                            <field name="quantity"/>
+                            <field name="price_unit"/>
+                            <field name="product_id"/>
+                            <field name="confidence" widget="percentage"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="inbox_action" model="ir.actions.act_window">
+        <field name="name">AI Bill Inbox</field>
+        <field name="res_model">ai.bill.inbox</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_ai_bill_root" name="AI Bill OCR"
+              parent="account.menu_finance" sequence="16"
+              action="inbox_action" groups="account.group_account_invoice"/>
+</odoo>
