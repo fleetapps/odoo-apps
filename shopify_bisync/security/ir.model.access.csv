@@ -12,3 +12,11 @@ access_carrier_map_user,carrier map user,model_shopify_bisync_carrier_map,group_
 access_mismatch_admin,mismatch admin,model_shopify_bisync_mismatch,group_connector_admin,1,1,1,1
 access_mismatch_user,mismatch user,model_shopify_bisync_mismatch,group_connector_user,1,1,0,0
 access_backfill_admin,backfill wizard admin,model_shopify_bisync_backfill,group_connector_admin,1,1,1,1
+access_publication_admin,publication admin,model_shopify_bisync_publication,group_connector_admin,1,1,1,1
+access_publication_user,publication user,model_shopify_bisync_publication,group_connector_user,1,0,0,0
+access_payout_admin,payout admin,model_shopify_bisync_payout,group_connector_admin,1,1,1,1
+access_payout_user,payout user,model_shopify_bisync_payout,group_connector_user,1,1,0,0
+access_payout_txn_admin,payout txn admin,model_shopify_bisync_payout_transaction,group_connector_admin,1,1,1,1
+access_payout_txn_user,payout txn user,model_shopify_bisync_payout_transaction,group_connector_user,1,1,0,0
+access_sale_report_user,sale report user,model_shopify_bisync_sale_report,group_connector_user,1,0,0,0
+access_sale_report_sale,sale report sales,model_shopify_bisync_sale_report,sales_team.group_sale_salesman,1,0,0,0

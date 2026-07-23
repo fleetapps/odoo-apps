@@ -21,6 +21,7 @@
         "sale_management",
         "stock",
         "delivery",
+        "account",
     ],
     "external_dependencies": {"python": ["requests"]},
     "data": [
@@ -35,6 +36,8 @@
         "views/backfill_views.xml",
         "views/sale_order_views.xml",
         "views/product_views.xml",
+        "views/payout_views.xml",
+        "views/dashboard_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

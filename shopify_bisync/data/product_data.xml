@@ -41,6 +41,24 @@
             <field name="purchase_ok" eval="False"/>
         </record>
 
+        <record id="product_tip" model="product.product">
+            <field name="name">Shopify Tip</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-TIP</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <record id="product_duties" model="product.product">
+            <field name="name">Shopify Duties</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-DUTIES</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
         <record id="carrier_shopify_fallback" model="delivery.carrier">
             <field name="name">Shopify Shipping (fallback)</field>
             <field name="delivery_type">fixed</field>

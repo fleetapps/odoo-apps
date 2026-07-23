@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-23 17:27+0000\n"
-"PO-Revision-Date: 2026-07-23 17:27+0000\n"
+"POT-Creation-Date: 2026-07-23 18:27+0000\n"
+"PO-Revision-Date: 2026-07-23 18:27+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,13 +16,18 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: shopify_bisync
-#: models/order_sync.py:441
-#: models/order_sync.py:446
+#: models/dashboard.py:39
+msgid "# Orders"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:528
+#: models/order_sync.py:533
 msgid "%(product)s: qty %(old)s → %(new)s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:63
+#: models/sync_job.py:70
 msgid "'Failed' is the quarantine state: the job exhausted its attempts and needs a human (Retry button)."
 msgstr ""
 
@@ -32,54 +37,74 @@ msgid "'Orders From' must be before 'Orders To'."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:61
+#: models/refund_sync.py:78
 msgid "A Shopify refund arrived but %s has no posted invoice yet."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:139
+#: models/instance.py:141
 msgid "Active"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:177
+#: models/instance.py:179
 msgid "Adjustment Product"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:161
+#: models/instance.py:163
 msgid "Always import as quotation"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:95
+#: models/instance.py:97
 msgid "App's API secret used to verify webhook HMAC signatures."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:130
+#: models/instance.py:132
 msgid "Applied when the same record changed on both sides between syncs. Every resolution is logged on the record's chatter."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:194
+#: models/instance.py:233
+msgid "Ask Shopify to restock items when pushing a cancellation."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:196
 msgid "Ask Shopify to send its shipping-confirmation email when a fulfillment is pushed from Odoo."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:381
+#: models/mapping.py:53
+msgid "Auto-publish"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:269
+msgid "Auto-register Payout Payments"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:465
 msgid "Automatic confirmation failed - order left as quotation."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:399
+#: models/order_sync.py:486
 msgid "Automatic invoicing/payment failed - confirm manually."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/sync_job.py:61
 #: views/backfill_views.xml:56
 msgid "Backfill"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:255
+msgid "Belt-and-suspenders: a cron pulls orders updated since the last run, so a missed webhook never means a missed order."
 msgstr ""
 
 #. module: shopify_bisync
@@ -88,19 +113,50 @@ msgid "Bindings"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:490
+#: models/sync_job.py:61
+msgid "Cancel → Shopify"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_export_sync.py:83
+msgid "Cancellation pushed to Shopify."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:32
+msgid "Cancelled"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_export_sync.py:78
+msgid "Cancelled from Odoo."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:577
 msgid "Cancelled from Shopify (%s)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:201
-#: views/instance_views.xml:98
+#: models/instance.py:277
+#: views/instance_views.xml:148
 msgid "Carriers"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:177
+#: models/instance.py:179
 msgid "Carries tax / rounding adjustment lines in 'Shopify amounts win' mode so totals match to the cent."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:28
+#: views/dashboard_views.xml:42
+msgid "Category"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:265
+msgid "Clearing journal payout payments are registered against."
 msgstr ""
 
 #. module: shopify_bisync
@@ -109,47 +165,57 @@ msgid "Close"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:143
+#: models/sale_order.py:28
+msgid "Comma-separated Shopify fulfillment ids already reflected in Odoo (idempotency for fulfillment-status import)."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:145
 msgid "Compare-at Price"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:77
+#: models/sync_job.py:84
 msgid "Concurrency guard: jobs sharing a key are processed strictly in id order, never within the same batch."
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:153
+#: views/instance_views.xml:204
 msgid "Configuration"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:161
+#: models/instance.py:163
 msgid "Confirm + invoice + register payment"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:161
+#: models/instance.py:163
 msgid "Confirm when paid / partially paid"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:58
+#: views/dashboard_views.xml:37
+msgid "Confirmed"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:60
 msgid "Conflicts &amp; Exports"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:353
+#: models/instance.py:436
 msgid "Connected to %(shop)s (plan: %(plan)s)."
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:34
+#: views/instance_views.xml:36
 msgid "Connection"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:109
+#: models/instance.py:111
 msgid "Connector Admin"
 msgstr ""
 
@@ -164,12 +230,18 @@ msgid "Counted"
 msgstr ""
 
 #. module: shopify_bisync
+#: views/dashboard_views.xml:44
+msgid "Country"
+msgstr ""
+
+#. module: shopify_bisync
 #: models/mismatch.py:22
 msgid "Currency: no pricelist"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/dashboard.py:25
+#: models/sync_job.py:61
 msgid "Customer"
 msgstr ""
 
@@ -180,39 +252,49 @@ msgid "Customers"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:101
+#: views/dashboard_views.xml:67
+msgid "Dashboard"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:103
 msgid "Default warehouse for orders and the stock source when no location mapping line matches."
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:52
+#: views/instance_views.xml:54
 msgid "Directions"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:183
+#: models/instance.py:185
 msgid "Discount Product"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:143
+#: models/instance.py:236
+msgid "Do not push refunds to Shopify"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:145
 msgid "Do not send"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:63
+#: models/sync_job.py:70
 #: views/sync_job_views.xml:81
 msgid "Done"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:139
+#: models/instance.py:141
 #: wizards/backfill.py:53
 msgid "Draft"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:78
+#: models/refund_sync.py:97
 msgid "Draft credit note %(move)s created from Shopify refund %(rid)s - review and post it."
 msgstr ""
 
@@ -222,27 +304,37 @@ msgid "Dry-run Counts"
 msgstr ""
 
 #. module: shopify_bisync
+#: models/order_sync.py:290
+msgid "Duties"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:207
+msgid "Duties Product"
+msgstr ""
+
+#. module: shopify_bisync
 #: views/sync_job_views.xml:58
 msgid "Error"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:74
+#: models/sync_job.py:81
 msgid "Exponential backoff: the cron skips the job until this time."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:54
+#: models/sync_job.py:59
 msgid "Export"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:18
+#: views/instance_views.xml:20
 msgid "Export Prices"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:136
+#: models/instance.py:138
 msgid "Export products to Shopify as soon as they are created in Odoo (otherwise only already-bound products are kept in sync)."
 msgstr ""
 
@@ -262,7 +354,7 @@ msgid "External id already bound."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:63
+#: models/sync_job.py:70
 msgid "Failed"
 msgstr ""
 
@@ -272,12 +364,12 @@ msgid "Failed (quarantine)"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:187
+#: models/instance.py:189
 msgid "Fallback Carrier"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:77
+#: views/instance_views.xml:89
 msgid "Fallbacks"
 msgstr ""
 
@@ -287,13 +379,23 @@ msgid "Fetch Locations"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:69
+#: views/instance_views.xml:18
+msgid "Fetch Sales Channels"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:79
 msgid "Financial"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/sync_job.py:61
 msgid "Fulfillment"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/fulfillment_sync.py:185
+msgid "Fulfillment %(fid)s references Shopify order %(oid)s not imported in Odoo."
 msgstr ""
 
 #. module: shopify_bisync
@@ -303,9 +405,16 @@ msgstr ""
 
 #. module: shopify_bisync
 #: views/binding_views.xml:38
+#: views/dashboard_views.xml:39
 #: views/mismatch_views.xml:34
+#: views/payout_views.xml:84
 #: views/sync_job_views.xml:88
 msgid "Group By"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/payout_views.xml:82
+msgid "Has Unmatched"
 msgstr ""
 
 #. module: shopify_bisync
@@ -319,8 +428,33 @@ msgid "Hash of the last exported payload (all fields + image hash); identical ha
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:54
+#: models/sync_job.py:59
 msgid "Import"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:199
+msgid "Import Fulfillment Status"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:261
+msgid "Import Payouts"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:261
+msgid "Import Shopify Payments payout reports and match their transactions to Odoo invoices. Requires Shopify Payments."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/payout.py:74
+msgid "Imported"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sale_order.py:28
+msgid "Imported Shopify Fulfillments"
 msgstr ""
 
 #. module: shopify_bisync
@@ -329,12 +463,22 @@ msgid "Imports"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:149
+#: models/instance.py:211
+msgid "In 'Odoo computes' mode, also add each Shopify tax line (e.g. the Colorado Retail Delivery Fee) as its own named, tax-free line for exact destination-tax parity."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:211
+msgid "Itemize Shopify Taxes"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sync_job.py:156
 msgid "Job %(kind)s/%(direction)s failed %(n)s times. Last error: %(error)s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:166
+#: models/instance.py:168
 msgid "Journal used to register payments in 'Confirm + invoice' mode."
 msgstr ""
 
@@ -355,14 +499,45 @@ msgid "Leave empty to exclude this Shopify location from stock sync."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:199
-#: views/instance_views.xml:88
+#: models/instance.py:275
+#: views/instance_views.xml:138
 msgid "Locations"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:68
+#: models/sync_job.py:75
 msgid "Lower runs first. Webhooks 10-15, stock sweep 20, price 30, backfill pages 45, backfill items 50."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:245
+msgid "Manual only"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:219
+msgid "Map Product Type ↔ Category"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:216
+msgid "Map Shopify product tags <-> Odoo product tags."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:219
+msgid "Map the Shopify product type <-> the Odoo product category."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sync_job.py:61
+msgid "Mark Paid"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:224
+#: views/sale_order_views.xml:23
+msgid "Mark Paid in Shopify"
 msgstr ""
 
 #. module: shopify_bisync
@@ -371,8 +546,18 @@ msgid "Mark resolved"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/mapping.py:48
+#: models/order_export_sync.py:66
+msgid "Marked as paid on Shopify."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/mapping.py:69
 msgid "Matched case-insensitively against the shipping line's code, then its title."
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:67
+msgid "Metadata"
 msgstr ""
 
 #. module: shopify_bisync
@@ -386,57 +571,62 @@ msgid "Model"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:130
+#: models/instance.py:132
 msgid "Most recent edit wins"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:31
+#: views/instance_views.xml:33
 msgid "My Shopify Store"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:139
+#: models/payout.py:63
+msgid "Net amount deposited by Shopify."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:141
 msgid "New Product Status"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/fulfillment_sync.py:111
+#: models/fulfillment_sync.py:126
 msgid "No open fulfillment order line matched picking %(picking)s of %(order)s (already fulfilled on Shopify?)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:255
+#: models/order_sync.py:339
 msgid "No pricelist in currency %(code)s for %(ref)s; company default used - totals will differ."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:170
+#: models/order_sync.py:186
 msgid "No product matched line '%(title)s' (sku=%(sku)s, variant=%(variant)s) of %(ref)s; fallback product used."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/product_sync.py:282
+#: models/product_sync.py:326
 msgid "Odoo"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:41
+#: views/instance_views.xml:43
 msgid "Odoo Mapping"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:150
+#: models/instance.py:152
 msgid "Odoo computes taxes (fiscal positions)"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:150
+#: models/instance.py:152
 msgid "Odoo mode: lines carry Odoo taxes, Shopify tax lines are kept as a note. Shopify mode: lines carry no tax and adjustment lines force the order total to match Shopify to the cent."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:130
+#: models/instance.py:132
 msgid "Odoo wins"
 msgstr ""
 
@@ -446,18 +636,28 @@ msgid "Odoo write_date at last sync - conflict detection input."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:116
-#: models/instance.py:120
-#: models/instance.py:124
+#: models/instance.py:118
+#: models/instance.py:122
+#: models/instance.py:126
 msgid "Odoo → Shopify"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:116
-#: models/instance.py:120
-#: models/instance.py:124
-#: models/instance.py:127
+#: views/instance_views.xml:101
+msgid "Odoo → Shopify Order Updates"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:118
+#: models/instance.py:122
+#: models/instance.py:126
+#: models/instance.py:129
 msgid "Off"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:269
+msgid "On payout import, automatically register payment on matched, open invoices (otherwise use the manual button)."
 msgstr ""
 
 #. module: shopify_bisync
@@ -466,33 +666,49 @@ msgid "Open"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:151
+#: views/product_views.xml:22
+#: views/sale_order_views.xml:20
+msgid "Open in Shopify"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:202
 msgid "Operations"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:143
+#: models/instance.py:145
 msgid "Optional mapping: when the pricelist price is below the product sales price, send the sales price as compare-at."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/sync_job.py:61
 msgid "Order"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:486
+#: models/order_sync.py:573
 msgid "Order %s was cancelled on Shopify but stock already moved. Handle the return / credit manually."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:161
+#: models/instance.py:163
 msgid "Order Confirmation"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:67
+#: models/dashboard.py:24
+msgid "Order Date"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:77
 msgid "Order Import"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/dashboard_views.xml:46
+msgid "Order Month"
 msgstr ""
 
 #. module: shopify_bisync
@@ -506,7 +722,7 @@ msgid "Order edit on delivered line"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:466
+#: models/order_sync.py:553
 msgid "Order edit touches delivered/locked lines on %(order)s: %(changes)s"
 msgstr ""
 
@@ -532,7 +748,7 @@ msgid "Orders To"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/fulfillment_sync.py:123
+#: models/fulfillment_sync.py:137
 #: models/mismatch.py:22
 msgid "Other"
 msgstr ""
@@ -543,33 +759,50 @@ msgid "Payload"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:63
+#: models/sync_job.py:61
+msgid "Payout"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:265
+msgid "Payout Journal"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:125
+#: views/payout_views.xml:100
+msgid "Payouts"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sync_job.py:70
 #: views/sync_job_views.xml:77
 msgid "Pending"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:157
+#: models/instance.py:159
 msgid "Per-line discount %"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/fulfillment_sync.py:81
+#: models/fulfillment_sync.py:96
 msgid "Picking %(picking)s has no moves linked to Shopify line items - fulfillment not exported."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/sync_job.py:61
 msgid "Price"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:105
+#: models/instance.py:107
 msgid "Prices exported to Shopify are computed from this pricelist (fallback: product sales price)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/dashboard.py:30
+#: models/sync_job.py:61
 msgid "Product"
 msgstr ""
 
@@ -580,8 +813,40 @@ msgid "Products"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/fulfillment_sync.py:130
+#: models/sync_job.py:61
+#: views/product_views.xml:25
+msgid "Publish"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:245
+msgid "Publish exported products to mapped channels"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:245
+#: views/instance_views.xml:113
+msgid "Publishing"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:228
+msgid "Push Cancellations"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:236
+msgid "Push Refunds"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/fulfillment_sync.py:147
 msgid "Pushed to Shopify as fulfillment %(fid)s (tracking: %(track)s)."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:35
+msgid "Qty Ordered"
 msgstr ""
 
 #. module: shopify_bisync
@@ -590,8 +855,23 @@ msgid "Queued"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:109
+#: models/dashboard.py:32
+msgid "Quotation"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:32
+msgid "Quotation Sent"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:111
 msgid "Receives escalation activities: quarantined jobs, risky orders, edits on delivered orders."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/payout.py:74
+msgid "Reconciled"
 msgstr ""
 
 #. module: shopify_bisync
@@ -600,23 +880,48 @@ msgid "Record already bound to this store."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/instance.py:236
+msgid "Record refund in Shopify (no gateway money movement)"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:199
+msgid "Reflect Shopify fulfillments in Odoo: confirm the order and validate the matching delivery so Odoo shows it shipped."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sync_job.py:61
 msgid "Refund"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:53
+#: models/refund_sync.py:70
 msgid "Refund %(rid)s for %(order)s: no posted invoice to credit. Create the invoice, then retry the job."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:36
+#: models/refund_sync.py:53
 msgid "Refund %(rid)s references Shopify order %(oid)s which is not imported."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:133
+#: models/refund_sync.py:152
 msgid "Refund adjustment"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/refund_sync.py:189
+msgid "Refund from Odoo"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/refund_sync.py:202
+msgid "Refund recorded on Shopify (%s)."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sync_job.py:61
+msgid "Refund → Shopify"
 msgstr ""
 
 #. module: shopify_bisync
@@ -625,18 +930,28 @@ msgid "Refund: no posted invoice"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:104
+#: models/refund_sync.py:123
 msgid "Refunded item"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:131
+#: models/refund_sync.py:150
 msgid "Refunded shipping"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/payout_views.xml:32
+msgid "Register Payments"
 msgstr ""
 
 #. module: shopify_bisync
 #: views/instance_views.xml:14
 msgid "Register Webhooks"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:233
+msgid "Restock on Cancel"
 msgstr ""
 
 #. module: shopify_bisync
@@ -646,8 +961,33 @@ msgid "Retry now"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:143
+#: views/dashboard_views.xml:69
+msgid "Sales Analysis"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:251
+msgid "Sales Channels"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:32
+msgid "Sales Order"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:145
 msgid "Sales price as compare-at"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/instance_views.xml:71
+msgid "Scheduled Import"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:255
+msgid "Scheduled Order Pull"
 msgstr ""
 
 #. module: shopify_bisync
@@ -656,48 +996,53 @@ msgid "Scope"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:327
+#: models/payout.py:95
+msgid "Set a Payout Journal (or Payment Journal) on store %s before registering payout payments."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:411
 msgid "Shipping"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:213
+#: models/instance.py:290
 msgid "Shop URL must be the bare myshopify domain, e.g. mystore.myshopify.com (no scheme, no path)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/product_sync.py:282
+#: models/product_sync.py:326
 #: views/product_views.xml:16
 msgid "Shopify"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:340
+#: models/instance.py:423
 msgid "Shopify %(mutation)s rejected: %(msg)s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:214
+#: models/order_sync.py:230
 msgid "Shopify %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/mapping.py:48
+#: models/mapping.py:69
 msgid "Shopify Code / Title"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:232
+#: models/order_sync.py:248
 msgid "Shopify Discount"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:301
+#: models/instance.py:378
 msgid "Shopify GraphQL HTTP %(code)s: %(body)s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:315
+#: models/instance.py:392
 msgid "Shopify GraphQL error: %(msg)s"
 msgstr ""
 
@@ -707,7 +1052,7 @@ msgid "Shopify Guest"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:202
+#: models/order_sync.py:218
 msgid "Shopify Guest %s"
 msgstr ""
 
@@ -717,87 +1062,108 @@ msgid "Shopify InventoryItem id (variant bindings only)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sale_order.py:26
+#: models/sale_order.py:94
 msgid "Shopify Line ID"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sale_order.py:18
+#: models/sale_order.py:32
+msgid "Shopify Link"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sale_order.py:25
 msgid "Shopify Order ID"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/sale_order_views.xml:29
+#: views/sale_order_views.xml:38
 msgid "Shopify Orders"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:271
+#: models/instance.py:348
 msgid "Shopify REST %(code)s on %(endpoint)s: %(body)s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:343
+#: models/account_move.py:21
+msgid "Shopify Refund ID"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:427
 msgid "Shopify Rounding"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sale_order.py:15
+#: views/dashboard_views.xml:10
+#: views/dashboard_views.xml:21
+msgid "Shopify Sales"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/sale_order.py:22
 msgid "Shopify Store"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:148
+#: views/instance_views.xml:199
 msgid "Shopify Sync"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:337
+#: models/order_sync.py:421
 msgid "Shopify Taxes"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:150
+#: models/instance.py:152
 msgid "Shopify amounts win (exact totals)"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:485
+#: models/order_sync.py:572
 msgid "Shopify cancelled a shipped order"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:473
+#: models/order_sync.py:560
 msgid "Shopify changed lines that are already delivered or locked: %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:472
+#: models/order_sync.py:559
 msgid "Shopify edit needs review"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:366
+#: models/order_sync.py:450
 msgid "Shopify flagged this order for cancellation"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:364
+#: models/instance.py:447
 msgid "Shopify only delivers webhooks to HTTPS endpoints. Set web.base.url to your public https URL first."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:460
+#: models/order_sync.py:547
 msgid "Shopify order edit applied: %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:322
+#: models/payout.py:125
+msgid "Shopify order id."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:399
 msgid "Shopify rate limit: GraphQL retries exhausted."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:276
+#: models/instance.py:353
 msgid "Shopify rate limit: REST retries exhausted."
 msgstr ""
 
@@ -807,54 +1173,54 @@ msgid "Shopify reference (order number, SKU, refund id)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:41
+#: models/refund_sync.py:58
 msgid "Shopify refund %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:60
+#: models/refund_sync.py:77
 msgid "Shopify refund waiting for an invoice"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/refund_sync.py:121
+#: models/refund_sync.py:140
 msgid "Shopify refunded taxes"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:367
+#: models/order_sync.py:451
 msgid "Shopify risk recommendation is 'cancel'. Review before shipping."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:139
+#: models/instance.py:141
 msgid "Shopify status given to products first exported from Odoo."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/product_sync.py:278
+#: models/product_sync.py:322
 msgid "Shopify sync conflict on %(fields)s: kept %(side)s version (policy: %(policy)s, store: %(store)s)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:148
+#: models/sync_job.py:155
 msgid "Shopify sync job #%s quarantined"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:349
+#: models/order_sync.py:433
 msgid "Shopify tax lines (reference): %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:130
+#: models/instance.py:132
 msgid "Shopify wins"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:116
-#: models/instance.py:120
-#: models/instance.py:127
+#: models/instance.py:118
+#: models/instance.py:122
+#: models/instance.py:129
 msgid "Shopify → Odoo"
 msgstr ""
 
@@ -864,12 +1230,12 @@ msgid "Shopify's updated_at at last sync - conflict detection input."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:157
+#: models/instance.py:159
 msgid "Single negative discount line"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:63
+#: models/sync_job.py:70
 msgid "Skipped"
 msgstr ""
 
@@ -879,42 +1245,55 @@ msgid "Start Backfill"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:106
+#: views/instance_views.xml:156
+#: views/payout_views.xml:87
 #: views/sync_job_views.xml:89
 msgid "Status"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/sync_job.py:56
+#: models/sync_job.py:61
 msgid "Stock"
 msgstr ""
 
 #. module: shopify_bisync
 #: views/binding_views.xml:41
+#: views/dashboard_views.xml:40
 #: views/mismatch_views.xml:37
+#: views/payout_views.xml:85
 #: views/sync_job_views.xml:93
 msgid "Store"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:155
+#: views/instance_views.xml:206
 msgid "Stores"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:26
+#: views/instance_views.xml:28
 #: views/sync_job_views.xml:118
 msgid "Sync Jobs"
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:50
+#: views/instance_views.xml:52
 msgid "Sync Policies"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:216
+msgid "Sync Product Tags"
 msgstr ""
 
 #. module: shopify_bisync
 #: models/mapping.py:33
 msgid "Sync Stock"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:312
+msgid "Tax"
 msgstr ""
 
 #. module: shopify_bisync
@@ -928,28 +1307,83 @@ msgid "This Shopify location is already mapped."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:84
+#: models/mapping.py:42
+msgid "This Shopify sales channel is already listed."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:86
 msgid "This Shopify store is already connected for this company."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:116
-#: models/instance.py:120
+#: models/sale_order.py:46
+msgid "This order is not linked to a Shopify order."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/payout.py:50
+msgid "This payout is already imported."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/product_sync.py:684
+msgid "This product is not linked to Shopify yet."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/payout.py:109
+msgid "This transaction is already imported."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:286
+msgid "Tip"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:203
+msgid "Tip Product"
+msgstr ""
+
+#. module: shopify_bisync
+#: views/payout_views.xml:80
+msgid "To Reconcile"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:36
+msgid "Total"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:118
+#: models/instance.py:122
 msgid "Two-way"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:170
+#: models/instance.py:172
 msgid "Unmatched Line Product"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:187
+#: views/product_views.xml:27
+msgid "Unpublish"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/dashboard.py:37
+msgid "Untaxed Total"
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:189
 msgid "Used when no carrier mapping line matches the Shopify shipping line code."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:170
+#: models/instance.py:172
 msgid "Used when no product resolves for an order line (binding → SKU → barcode all failed). The line is never dropped; a mismatch log entry is created instead."
 msgstr ""
 
@@ -959,42 +1393,67 @@ msgid "Variants"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:376
+#: models/instance.py:459
 msgid "Webhooks verified/registered (%s topics)."
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:287
+#: models/instance.py:228
+msgid "When a Shopify-origin order is cancelled in Odoo, cancel it on Shopify too (orderCancel). Off by default - cancelling on Shopify can refund/restock."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:236
+msgid "When a credit note is posted in Odoo for a Shopify order, optionally record a matching refund on Shopify. Gateway money movement is intentionally left to the merchant in Shopify."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:224
+msgid "When an imported order's invoice is fully paid in Odoo, mark the Shopify order as paid (orderMarkAsPaid)."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/mapping.py:53
+msgid "When the store's publishing policy is automatic, exported products are published to this channel."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/instance.py:245
+msgid "Whether exporting a product also publishes it to the sales channels mapped below."
+msgstr ""
+
+#. module: shopify_bisync
+#: models/order_sync.py:371
 msgid "[UNMATCHED] %(title)s (SKU %(sku)s)"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:433
+#: models/order_sync.py:520
 msgid "added line %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/instance.py:90
+#: models/instance.py:92
 msgid "myshopify domain, e.g. mystore.myshopify.com (no scheme)."
 msgstr ""
 
 #. module: shopify_bisync
-#: views/instance_views.xml:37
+#: views/instance_views.xml:39
 msgid "mystore.myshopify.com"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:435
+#: models/order_sync.py:522
 msgid "new line %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:457
+#: models/order_sync.py:544
 msgid "removal of %s"
 msgstr ""
 
 #. module: shopify_bisync
-#: models/order_sync.py:453
+#: models/order_sync.py:540
 msgid "removed %s"
 msgstr ""
 

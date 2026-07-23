@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Graph + pivot on the SQL analysis view. -->
+        <record id="sale_report_view_graph" model="ir.ui.view">
+            <field name="name">shopify.bisync.sale.report.graph</field>
+            <field name="model">shopify.bisync.sale.report</field>
+            <field name="arch" type="xml">
+                <graph string="Shopify Sales" sample="1">
+                    <field name="date" interval="month"/>
+                    <field name="price_total" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="sale_report_view_pivot" model="ir.ui.view">
+            <field name="name">shopify.bisync.sale.report.pivot</field>
+            <field name="model">shopify.bisync.sale.report</field>
+            <field name="arch" type="xml">
+                <pivot string="Shopify Sales" sample="1">
+                    <field name="instance_id" type="row"/>
+                    <field name="price_total" type="measure"/>
+                    <field name="order_count" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="sale_report_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.sale.report.search</field>
+            <field name="model">shopify.bisync.sale.report</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="instance_id"/>
+                    <field name="product_tmpl_id"/>
+                    <field name="country_id"/>
+                    <filter name="filter_confirmed" string="Confirmed"
+                            domain="[('state', 'not in', ('draft', 'sent', 'cancel'))]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_category" string="Category"
+                                context="{'group_by': 'categ_id'}"/>
+                        <filter name="group_country" string="Country"
+                                context="{'group_by': 'country_id'}"/>
+                        <filter name="group_date" string="Order Month"
+                                context="{'group_by': 'date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="sale_report_action" model="ir.actions.act_window">
+            <field name="name">Sales Analysis</field>
+            <field name="res_model">shopify.bisync.sale.report</field>
+            <field name="view_mode">graph,pivot</field>
+            <field name="context">{'search_default_filter_confirmed': 1,
+                                   'search_default_group_instance': 1}</field>
+        </record>
+
+        <!-- OWL dashboard client action. -->
+        <record id="dashboard_action" model="ir.actions.client">
+            <field name="name">Shopify Dashboard</field>
+            <field name="tag">shopify_bisync_dashboard</field>
+        </record>
+
+        <menuitem id="menu_dashboard" name="Dashboard" parent="menu_root"
+                  action="dashboard_action" sequence="1"/>
+        <menuitem id="menu_sale_report" name="Sales Analysis"
+                  parent="menu_operations" action="sale_report_action"
+                  sequence="50"/>
+
+    </data>
+</odoo>

@@ -20,6 +20,13 @@ version bump.
 | 12 | Odoo 19 view syntax | `<list>` roots, direct `invisible="expr"`, `<chatter/>` tag, `optional=` columns | <https://www.odoo.com/documentation/19.0/developer/reference/user_interface/view_architectures.html> | 2026-07-23 |
 | 13 | Testing framework | `TransactionCase`/`HttpCase` + `unittest.mock` at the API-client boundary (no live HTTP in tests) | <https://www.odoo.com/documentation/19.0/developer/reference/backend/testing.html> | 2026-07-23 |
 | 14 | Module hooks | `pre_init_hook(env)` / `uninstall_hook(env)` / `post_load()` signatures | <https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html> | 2026-07-23 |
+| 15 | Mark order paid | `orderMarkAsPaid(input: OrderMarkAsPaidInput)`; benign userErrors (already paid) treated as non-fatal | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderMarkAsPaid> | 2026-07-23 |
+| 16 | Cancel order | `orderCancel(orderId, reason, refund, restock, notifyCustomer, staffNote)` -> `orderCancelUserErrors` (note: not `userErrors`) | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderCancel> | 2026-07-23 |
+| 17 | Refund push | `refundCreate(input: RefundInput)` with `refundLineItems` (`lineItemId`, `quantity`, `restockType`) + `shipping`; no `transactions` -> records refund without gateway money movement | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/refundCreate> | 2026-07-23 |
+| 18 | Fulfillment import | `fulfillments/create` + `fulfillments/update` webhook topics; payload `line_items[].id` = order line item id (matches our stored line id) | <https://shopify.dev/docs/api/webhooks?reference=graphql> | 2026-07-23 |
+| 19 | Publishing | `publishablePublish` / `publishableUnpublish(id, input: [PublicationInput])`; channels via `publications` query | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/publishablePublish> | 2026-07-23 |
+| 20 | Payouts | REST `GET /shopify_payments/payouts.json` + `GET /shopify_payments/balance/transactions.json?payout_id=` (cursor-paginated); 404 when the store has no Shopify Payments | <https://shopify.dev/docs/api/admin-rest/latest/resources/payouts> | 2026-07-23 |
+| 21 | Product tags/type | GraphQL product `tags` (list) + `productType`; productSet input `tags` + `productType` | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/productSet> | 2026-07-23 |
 
 ## Items to re-verify on a live dev store before listing submission
 
@@ -31,3 +38,12 @@ version bump.
 - Odoo 17/18 backports: `is_storable` (19/18) vs `detailed_type` (17),
   `tax_ids` vs `tax_id` on sale.order.line (renamed in 18), stock context
   key `warehouse` vs `warehouse_id` (both are passed).
+- Auto **mark-as-paid** fires from an `account.move.write` hook on
+  `payment_state`. Confirm on a live DB that the reconciliation path writes
+  `payment_state` through the public `write` in the target version; if not,
+  the manual *Mark Paid in Shopify* button and the payout auto-register path
+  are the deterministic fallbacks (both already wired).
+- `orderCancel` / `refundCreate` field shapes (`OrderCancelReason` enum,
+  `RefundLineItemRestockType`) against the pinned version's GraphQL schema.
+- Fulfillment-import backorder handling uses `stock.backorder.confirmation`;
+  confirm the wizard context keys on the target version.

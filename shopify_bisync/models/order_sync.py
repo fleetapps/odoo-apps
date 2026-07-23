@@ -107,7 +107,23 @@ class OrderSync(models.AbstractModel):
             Binding.create({
                 "instance_id": instance.id, "res_model": "res.partner",
                 "res_id": partner.id, "external_id": str(customer["id"])})
+        self._apply_partner_tags(partner, customer)
         return partner
+
+    @api.model
+    def _apply_partner_tags(self, partner, customer):
+        """Map Shopify customer tags onto res.partner categories (link, never
+        remove tags an Odoo user added)."""
+        names = self._split_tags(customer.get("tags"))
+        if not names:
+            return
+        Category = self.env["res.partner.category"]
+        commands = []
+        for name in names:
+            category = (Category.search([("name", "=ilike", name)], limit=1)
+                        or Category.create({"name": name}))
+            commands.append(fields.Command.link(category.id))
+        partner.category_id = commands
 
     @api.model
     def _update_customer(self, instance, customer):
@@ -232,12 +248,80 @@ class OrderSync(models.AbstractModel):
                 so, instance.discount_product_id, _("Shopify Discount"),
                 -separate_discount_total, shopify_mode)
         self._add_shipping(instance, so, o, shopify_mode)
+        self._add_tips_and_duties(instance, so, o, shopify_mode)
         if shopify_mode:
             self._reconcile_totals(instance, so, o)
+        else:
+            self._itemize_taxes(instance, so, o)
         self._post_tax_note(so, o)
+        self._apply_order_tags(so, o)
         self._flag_risk(instance, so, o)
         self._apply_financial_gating(instance, so, o)
+        self._apply_embedded_fulfillments(instance, so, o)
         return so
+
+    # ------------------------------------------------------ tags / tips ------
+    @staticmethod
+    def _split_tags(value):
+        """Shopify tags are a single comma-separated string."""
+        return [t.strip() for t in (value or "").split(",") if t.strip()]
+
+    @api.model
+    def _apply_order_tags(self, so, o):
+        names = self._split_tags(o.get("tags"))
+        if not names:
+            return
+        Tag = self.env["crm.tag"]
+        commands = []
+        for name in names:
+            tag = (Tag.search([("name", "=ilike", name)], limit=1)
+                   or Tag.create({"name": name}))
+            commands.append(fields.Command.link(tag.id))
+        so.tag_ids = commands
+
+    @api.model
+    def _add_tips_and_duties(self, instance, so, o, shopify_mode):
+        tip = float(o.get("total_tip_received") or 0)
+        if tip and instance.tip_product_id:
+            self._add_extra_line(so, instance.tip_product_id, _("Tip"),
+                                 tip, shopify_mode)
+        duties = self._order_duties(o)
+        if duties and instance.duties_product_id:
+            self._add_extra_line(so, instance.duties_product_id, _("Duties"),
+                                 duties, shopify_mode)
+
+    @staticmethod
+    def _order_duties(o):
+        dset = (o.get("current_total_duties_set")
+                or o.get("total_duties_set") or {})
+        money = (dset.get("shop_money") or {}) if isinstance(dset, dict) else {}
+        return float(money.get("amount") or 0)
+
+    @api.model
+    def _itemize_taxes(self, instance, so, o):
+        """'Odoo computes' + itemize on: add each Shopify tax line as its own
+        tax-free line (destination fees like the Colorado Retail Delivery Fee
+        that Odoo fiscal positions do not model)."""
+        if not instance.itemize_taxes:
+            return
+        for tax_line in o.get("tax_lines") or []:
+            amount = float(tax_line.get("price") or 0)
+            if amount:
+                line = self._add_extra_line(
+                    so, instance.adjustment_product_id,
+                    tax_line.get("title") or _("Tax"), amount,
+                    shopify_mode=False)
+                line.tax_ids = [fields.Command.clear()]
+
+    @api.model
+    def _apply_embedded_fulfillments(self, instance, so, o):
+        """Reflect fulfillments carried on the order payload (already-shipped
+        orders imported via create webhook or backfill)."""
+        if not instance.import_fulfillment_status:
+            return
+        engine = self.env["shopify.bisync.fulfillment.sync"]
+        for fulfillment in o.get("fulfillments") or []:
+            engine._apply_fulfillment(instance, so, fulfillment)
 
     @api.model
     def _match_pricelist(self, instance, o, ref):
@@ -388,8 +472,11 @@ class OrderSync(models.AbstractModel):
             invoices = so._create_invoices()
             invoices.action_post()
             if instance.payment_journal_id:
+                # skip_paid_push: this payment came FROM Shopify (already
+                # paid there); do not push a mark-as-paid straight back.
                 self.env["account.payment.register"].with_context(
                     active_model="account.move", active_ids=invoices.ids,
+                    shopify_bisync_skip_paid_push=True,
                 ).create({
                     "journal_id": instance.payment_journal_id.id,
                 }).action_create_payments()

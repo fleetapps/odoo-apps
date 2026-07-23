@@ -28,6 +28,8 @@ TOPIC_KIND = {
     "orders/create": ("order", 10),
     "orders/updated": ("order", 10),
     "orders/cancelled": ("order", 10),
+    "fulfillments/create": ("fulfillment", 11),
+    "fulfillments/update": ("fulfillment", 11),
     "products/create": ("product", 15),
     "products/update": ("product", 15),
     "inventory_levels/update": ("stock", 15),
@@ -69,6 +71,8 @@ class ShopifyWebhook(http.Controller):
         """Same Shopify object -> same key so its jobs never interleave."""
         if kind == "stock":
             return f"stock:item:{payload.get('inventory_item_id')}"
-        if kind == "refund":
+        if kind in ("refund", "fulfillment"):
+            # order-scoped: fulfillments/refunds must not interleave with the
+            # order's other jobs.
             return f"order:{payload.get('order_id')}"
         return f"{kind}:{payload.get('id')}"

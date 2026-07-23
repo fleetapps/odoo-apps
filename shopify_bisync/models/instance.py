@@ -42,6 +42,8 @@ WEBHOOK_TOPICS = (
     "orders/create",
     "orders/updated",
     "orders/cancelled",
+    "fulfillments/create",
+    "fulfillments/update",
     "products/create",
     "products/update",
     "inventory_levels/update",
@@ -194,6 +196,80 @@ class ShopifyInstance(models.Model):
     notify_customer_on_fulfillment = fields.Boolean(
         help="Ask Shopify to send its shipping-confirmation email when a "
              "fulfillment is pushed from Odoo.")
+    import_fulfillment_status = fields.Boolean(
+        default=True, string="Import Fulfillment Status",
+        help="Reflect Shopify fulfillments in Odoo: confirm the order and "
+             "validate the matching delivery so Odoo shows it shipped.")
+    tip_product_id = fields.Many2one(
+        "product.product", check_company=True, string="Tip Product",
+        default=lambda self: self.env.ref(
+            "shopify_bisync.product_tip", raise_if_not_found=False))
+    duties_product_id = fields.Many2one(
+        "product.product", check_company=True, string="Duties Product",
+        default=lambda self: self.env.ref(
+            "shopify_bisync.product_duties", raise_if_not_found=False))
+    itemize_taxes = fields.Boolean(
+        string="Itemize Shopify Taxes",
+        help="In 'Odoo computes' mode, also add each Shopify tax line "
+             "(e.g. the Colorado Retail Delivery Fee) as its own named, "
+             "tax-free line for exact destination-tax parity.")
+    sync_product_tags = fields.Boolean(
+        default=True, string="Sync Product Tags",
+        help="Map Shopify product tags <-> Odoo product tags.")
+    sync_product_category = fields.Boolean(
+        default=True, string="Map Product Type ↔ Category",
+        help="Map the Shopify product type <-> the Odoo product category.")
+
+    # -------------------------------------- Odoo -> Shopify order updates ---
+    push_paid_status = fields.Boolean(
+        string="Mark Paid in Shopify",
+        help="When an imported order's invoice is fully paid in Odoo, mark "
+             "the Shopify order as paid (orderMarkAsPaid).")
+    push_cancellations = fields.Boolean(
+        string="Push Cancellations",
+        help="When a Shopify-origin order is cancelled in Odoo, cancel it on "
+             "Shopify too (orderCancel). Off by default - cancelling on "
+             "Shopify can refund/restock.")
+    cancel_restock = fields.Boolean(
+        default=True, string="Restock on Cancel",
+        help="Ask Shopify to restock items when pushing a cancellation.")
+    refund_export_policy = fields.Selection(
+        [("off", "Do not push refunds to Shopify"),
+         ("record", "Record refund in Shopify (no gateway money movement)")],
+        default="off", required=True, string="Push Refunds",
+        help="When a credit note is posted in Odoo for a Shopify order, "
+             "optionally record a matching refund on Shopify. Gateway money "
+             "movement is intentionally left to the merchant in Shopify.")
+
+    # ------------------------------------------------ publishing / channels -
+    publish_policy = fields.Selection(
+        [("manual", "Manual only"),
+         ("auto", "Publish exported products to mapped channels")],
+        default="manual", required=True, string="Publishing",
+        help="Whether exporting a product also publishes it to the sales "
+             "channels mapped below.")
+    publication_ids = fields.One2many(
+        "shopify.bisync.publication", "instance_id", string="Sales Channels")
+
+    # --------------------------------------------------- scheduled import ---
+    scheduled_import_orders = fields.Boolean(
+        string="Scheduled Order Pull",
+        help="Belt-and-suspenders: a cron pulls orders updated since the last "
+             "run, so a missed webhook never means a missed order.")
+
+    # -------------------------------------------------- payouts (Shopify Pay)
+    import_payouts = fields.Boolean(
+        string="Import Payouts",
+        help="Import Shopify Payments payout reports and match their "
+             "transactions to Odoo invoices. Requires Shopify Payments.")
+    payout_journal_id = fields.Many2one(
+        "account.journal", check_company=True, string="Payout Journal",
+        domain="[('type', 'in', ('bank', 'cash'))]",
+        help="Clearing journal payout payments are registered against.")
+    payout_auto_reconcile = fields.Boolean(
+        string="Auto-register Payout Payments",
+        help="On payout import, automatically register payment on matched, "
+             "open invoices (otherwise use the manual button).")
 
     # ------------------------------------------------------------ mappings --
     location_map_ids = fields.One2many(
@@ -203,6 +279,7 @@ class ShopifyInstance(models.Model):
 
     last_import_orders = fields.Datetime(readonly=True)
     last_export_stock = fields.Datetime(readonly=True)
+    last_import_payouts = fields.Datetime(readonly=True)
     job_count = fields.Integer(compute="_compute_job_count")
 
     # ------------------------------------------------------------------ ORM -
@@ -333,9 +410,15 @@ class ShopifyInstance(models.Model):
 
     @staticmethod
     def check_user_errors(payload, mutation):
-        """Raise on the ``userErrors`` array every mutation payload carries."""
-        errors = (payload or {}).get("userErrors") or (
-            (payload or {}).get("mediaUserErrors") or [])
+        """Raise on the userErrors array every mutation payload carries.
+
+        Shopify names the array inconsistently (``userErrors``,
+        ``mediaUserErrors``, ``orderCancelUserErrors``, ...), so collect any
+        key ending in ``UserErrors``/``userErrors``."""
+        errors = []
+        for key, value in (payload or {}).items():
+            if key == "userErrors" or key.endswith("UserErrors"):
+                errors += value or []
         if errors:
             raise UserError(_(
                 "Shopify %(mutation)s rejected: %(msg)s", mutation=mutation,
@@ -395,6 +478,25 @@ class ShopifyInstance(models.Model):
                     })
         return True
 
+    def action_fetch_publications(self):
+        """Pull Shopify sales channels (publications) into the mapping table."""
+        Publication = self.env["shopify.bisync.publication"]
+        query = ("query { publications(first: 50) { nodes { id name } } }")
+        for instance in self:
+            nodes = ((instance.graphql(query).get("publications") or {})
+                     .get("nodes") or [])
+            for node in nodes:
+                pub_id = instance.gid_to_id(node["id"])
+                if not Publication.search_count([
+                        ("instance_id", "=", instance.id),
+                        ("shopify_publication_id", "=", pub_id)]):
+                    Publication.create({
+                        "instance_id": instance.id,
+                        "shopify_publication_id": pub_id,
+                        "name": node.get("name", ""),
+                    })
+        return True
+
     def action_export_prices(self):
         """Queue a price export for every bound product of this store."""
         Job = self.env["shopify.bisync.job"]
@@ -406,6 +508,13 @@ class ShopifyInstance(models.Model):
                 Job.enqueue(instance, "out", "price", {"res_id": binding.res_id},
                             priority=30, lock_key=f"price:{binding.res_id}")
         return True
+
+    # -------------------------------------------------------- admin deep-link
+    def admin_url(self, resource, external_id):
+        """Classic admin URL (redirects to admin.shopify.com). resource e.g.
+        'orders' / 'products'."""
+        self.ensure_one()
+        return f"https://{self.shop_url}/admin/{resource}/{external_id}"
 
     def action_open_jobs(self):
         self.ensure_one()
@@ -426,6 +535,32 @@ class ShopifyInstance(models.Model):
             except UserError as exc:
                 _logger.warning("shopify_bisync: webhook heal failed for %s: %s",
                                 instance.name, exc)
+
+    @api.model
+    def cron_pull_orders(self):
+        """Belt-and-suspenders scheduled import: pull orders updated since the
+        last successful pull and enqueue them (webhooks stay primary; this
+        only backstops missed deliveries). REST orders read is allowed."""
+        Job = self.env["shopify.bisync.job"]
+        for instance in self.search([("sync_orders", "=", "import"),
+                                    ("scheduled_import_orders", "=", True)]):
+            params = {"status": "any", "limit": 100,
+                      "updated_at_min": (
+                          instance.last_import_orders
+                          or fields.Datetime.now() - relativedelta(days=1)
+                      ).isoformat() + "Z"}
+            try:
+                orders = instance.api_call(
+                    "GET", "orders.json", params=params).get("orders", [])
+            except UserError as exc:
+                _logger.warning("shopify_bisync: scheduled pull failed for %s: %s",
+                                instance.name, exc)
+                continue
+            for order in orders:
+                order["_topic"] = "orders/updated"  # create-or-update semantics
+                Job.enqueue(instance, "in", "order", order, priority=18,
+                            lock_key=f"order:{order.get('id')}")
+            instance.last_import_orders = fields.Datetime.now()
 
     def unregister_webhooks(self):
         """Best-effort webhook cleanup (uninstall hook / instance archive)."""

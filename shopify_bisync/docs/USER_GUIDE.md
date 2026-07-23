@@ -27,13 +27,14 @@ Odoo 19 · License OPL-1 · Support: developers@fleet.ke
 
 | Entity | Direction | Notes |
 |---|---|---|
-| Products | configurable, default two-way | Options/variants mirrored both ways; images (main image), status active/draft/archived ↔ Odoo active, SKU, barcode, weight, HS code (when the field exists). New-from-Odoo products get the *New Product Status* (draft by default). |
+| Products | configurable, default two-way | Options/variants mirrored both ways; images (main image), status active/draft/archived ↔ Odoo active, SKU, barcode, weight, HS code (when the field exists), **tags** (↔ product tags) and **product type** (↔ product category). New-from-Odoo products get the *New Product Status* (draft by default). Optional **publishing** to mapped sales channels. |
 | Prices | export | Computed from the store's pricelist (fallback: sales price). Optional compare-at: sales price is sent as compare-at when the pricelist price is lower. |
 | Inventory | export (two-way optional) | Source is **free quantity** per mapped warehouse, pushed absolutely via GraphQL. Two-way mode applies Shopify levels as inventory adjustments. |
-| Customers | import | Deduplicated by email; billing/shipping become child addresses; country/state resolved by ISO code. Marketing consent is never synced. |
-| Orders | import | See §3. |
-| Fulfillments | export | Validating an outgoing delivery pushes a fulfillment (FulfillmentOrders API) with tracking ref + carrier. Two pickings → two fulfillments. |
-| Refunds | import | Each Shopify refund becomes a **draft** credit note linked to the order's posted invoice. Nothing is ever auto-posted. |
+| Customers | import | Deduplicated by email; billing/shipping become child addresses; country/state resolved by ISO code; **tags** → partner categories. Marketing consent is never synced. |
+| Orders | import (+ status push) | See §3. Order **tags**, **tips** and **duties** are imported as their own lines. Paid status and cancellations can be pushed back (§4a). |
+| Fulfillments | two-way | Export: validating an outgoing delivery pushes a fulfillment (FulfillmentOrders API) with tracking number + URL + carrier; two pickings → two fulfillments. Import: a Shopify fulfillment confirms the order and validates the matching delivery so Odoo shows it shipped. |
+| Refunds | two-way | Import: each Shopify refund becomes a **draft** credit note linked to the order's posted invoice (never auto-posted). Export (opt-in): posting an Odoo credit note records a matching refund on Shopify — no gateway money movement. |
+| Payouts | import | Shopify Payments payouts + their transactions, auto-matched to Odoo invoices, with optional payment registration (§6a). |
 
 ## 3. Order import policies (per store)
 
@@ -65,6 +66,30 @@ creates a review activity — the connector never silently mutates shipped
 orders. Cancellations cancel the Odoo order while nothing has shipped;
 otherwise an activity asks a human to handle the return.
 
+## 4a. Odoo → Shopify order updates (all opt-in per store)
+
+These change money or inventory on Shopify, so each is a switch on the *Order
+Import* tab, off by default, and loop-guarded (an event imported *from*
+Shopify never bounces back):
+
+- **Mark Paid in Shopify** — when a Shopify order's invoice is fully paid in
+  Odoo, `orderMarkAsPaid` runs. There is also a manual *Mark Paid in Shopify*
+  button on the order.
+- **Push Cancellations** — cancelling a Shopify-origin order in Odoo runs
+  `orderCancel` (with optional restock).
+- **Push Refunds** — posting a credit note for a Shopify order records a
+  matching refund on Shopify (`refundCreate`, line items + shipping). Gateway
+  money movement is deliberately left to the merchant in Shopify.
+
+Every order also gets an **Open in Shopify** button (quick-jump deep link);
+products get **Open in Shopify**, **Publish** and **Unpublish** buttons.
+
+## 4b. Scheduled import (belt-and-suspenders)
+
+Webhooks are the primary path, but enabling *Scheduled Order Pull* on a store
+runs a cron that pulls orders updated since the last run, so a missed webhook
+never means a missed order.
+
 ## 5. The conflict engine
 
 Every binding stores two fingerprints: Shopify's `updated_at` and Odoo's
@@ -92,6 +117,23 @@ images included) and produce **zero** API calls.
 - **Sunset watch**: the pinned Shopify API version is checked at every
   server start and daily; a log warning appears two quarters before
   sunset.
+
+## 6a. Payout reconciliation (Shopify Payments)
+
+Enable *Import Payouts* on a store (requires Shopify Payments) and pick a
+**Payout Journal**. A cron imports each payout and its transactions and
+auto-matches every order transaction to its Odoo sale order and posted
+invoice by Shopify order id. On a payout, **Register Payments** registers
+payment for the matched, still-open invoices against the payout journal (or
+enable *Auto-register* to do it on import). Stores without Shopify Payments
+simply see no payouts — the import degrades quietly.
+
+## 6b. Sales dashboard & analysis
+
+*Shopify Sync → Dashboard* is an OWL dashboard with revenue / order / average
+KPIs and top products, categories, countries and per-store comparison.
+*Operations → Sales Analysis* gives the same data as graph + pivot for
+slicing. Both read a live SQL view, so they need no refresh cron.
 
 ## 7. Uninstall
 

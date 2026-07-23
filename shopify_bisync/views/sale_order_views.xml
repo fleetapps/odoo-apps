@@ -15,6 +15,15 @@
                     <field name="shopify_bisync_order_id"
                            invisible="not shopify_bisync_order_id"/>
                 </xpath>
+                <xpath expr="//header" position="inside">
+                    <button name="action_shopify_open" type="object"
+                            string="Open in Shopify" icon="fa-external-link"
+                            invisible="not shopify_bisync_order_id"/>
+                    <button name="action_shopify_mark_paid" type="object"
+                            string="Mark Paid in Shopify"
+                            invisible="not shopify_bisync_order_id
+                                       or state not in ('sale', 'done')"/>
+                </xpath>
             </field>
         </record>
 

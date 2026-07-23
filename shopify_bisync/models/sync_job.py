@@ -32,11 +32,16 @@ BACKOFF_BASE_MINUTES = 1
 HANDLERS = {
     "product": "shopify.bisync.product.sync",
     "price": "shopify.bisync.product.sync",
+    "publish": "shopify.bisync.product.sync",
     "stock": "shopify.bisync.stock.sync",
     "order": "shopify.bisync.order.sync",
     "customer": "shopify.bisync.order.sync",
     "fulfillment": "shopify.bisync.fulfillment.sync",
     "refund": "shopify.bisync.refund.sync",
+    "refund_out": "shopify.bisync.refund.sync",
+    "paid": "shopify.bisync.order.export.sync",
+    "cancel": "shopify.bisync.order.export.sync",
+    "payout": "shopify.bisync.payout.sync",
     "backfill": "shopify.bisync.backfill.sync",
 }
 
@@ -55,8 +60,10 @@ class SyncJob(models.Model):
         [("in", "Import"), ("out", "Export")], required=True, index=True)
     kind = fields.Selection(
         [("product", "Product"), ("stock", "Stock"), ("price", "Price"),
-         ("order", "Order"), ("customer", "Customer"),
+         ("publish", "Publish"), ("order", "Order"), ("customer", "Customer"),
          ("fulfillment", "Fulfillment"), ("refund", "Refund"),
+         ("refund_out", "Refund → Shopify"), ("paid", "Mark Paid"),
+         ("cancel", "Cancel → Shopify"), ("payout", "Payout"),
          ("backfill", "Backfill")],
         required=True, index=True)
     payload_json = fields.Text()

@@ -16,6 +16,17 @@
                                string="Shopify"/>
                     </button>
                 </xpath>
+                <xpath expr="//div[@name='button_box']" position="before">
+                    <header>
+                        <button name="action_shopify_open" type="object"
+                                string="Open in Shopify" icon="fa-external-link"
+                                invisible="shopify_binding_count == 0"/>
+                        <button name="action_shopify_publish" type="object"
+                                string="Publish" invisible="shopify_binding_count == 0"/>
+                        <button name="action_shopify_unpublish" type="object"
+                                string="Unpublish" invisible="shopify_binding_count == 0"/>
+                    </header>
+                </xpath>
             </field>
         </record>
 

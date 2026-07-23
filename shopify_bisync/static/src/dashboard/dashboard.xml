@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="shopify_bisync.Dashboard">
+        <div class="o_shopify_dashboard p-3">
+            <t t-if="state.loading">
+                <div class="text-center text-muted p-5">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                    <p class="mt-2">Loading Shopify analytics…</p>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="d-flex align-items-center mb-3">
+                    <h2 class="mb-0 flex-grow-1">Shopify Sales</h2>
+                    <button class="btn btn-primary" t-on-click="openOrders">
+                        <i class="fa fa-list me-1"/> All Shopify Orders
+                    </button>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="text-muted small text-uppercase">Revenue</div>
+                            <div class="fs-3 fw-bold" t-out="format(state.data.revenue)"/>
+                        </div></div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="text-muted small text-uppercase">Orders</div>
+                            <div class="fs-3 fw-bold" t-out="state.data.orders"/>
+                        </div></div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="text-muted small text-uppercase">Avg. Order</div>
+                            <div class="fs-3 fw-bold" t-out="format(state.data.avg_order)"/>
+                        </div></div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100"><div class="card-body">
+                            <div class="text-muted small text-uppercase">Stores</div>
+                            <div class="fs-3 fw-bold" t-out="state.data.by_instance.length"/>
+                        </div></div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <t t-foreach="panels" t-as="panel" t-key="panel.title">
+                        <div class="col-12 col-lg-6">
+                            <div class="card h-100"><div class="card-body">
+                                <h5 t-out="panel.title"/>
+                                <t t-if="!panel.rows.length">
+                                    <p class="text-muted mb-0">No data yet.</p>
+                                </t>
+                                <t t-foreach="panel.rows" t-as="row" t-key="row_index">
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between small">
+                                            <span t-out="row.name"/>
+                                            <span class="fw-bold" t-out="format(row.total)"/>
+                                        </div>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-success"
+                                                 t-att-style="'width: ' + barWidth(row.total, panel.rows)"/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </div></div>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
 # Part of Shopify Connector - Two-Way Sync. License OPL-1.
-"""Refund import (spec A1): ``refunds/create`` webhook -> DRAFT credit note.
+"""Refunds, both directions (spec A1 + bi-directional).
 
-The credit note mirrors the Shopify refund exactly (refunded quantities and
-amounts, shipping adjustments), references the SO's posted invoice via
-``reversed_entry_id`` and is NEVER auto-posted - accounting reviews and
-posts it.
+IMPORT (``refunds/create`` webhook) -> DRAFT credit note mirroring the Shopify
+refund exactly (refunded quantities and amounts, shipping adjustments),
+referencing the SO's posted invoice via ``reversed_entry_id``, NEVER
+auto-posted - accounting reviews and posts it. Imported credit notes carry
+``shopify_bisync_refund_id`` so posting them never bounces back to Shopify.
+
+EXPORT (``refund_out``) -> when a credit note is posted in Odoo for a Shopify
+order and the store enabled it, record a matching refund on Shopify
+(``refundCreate``). Gateway money movement is intentionally NOT triggered -
+that stays a merchant decision in Shopify.
 """
 import json
 import logging
@@ -14,15 +20,26 @@ from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+REFUND_CREATE = """
+mutation refundCreate($input: RefundInput!) {
+  refundCreate(input: $input) {
+    refund { id }
+    userErrors { field message }
+  }
+}"""
+
 
 class RefundSync(models.AbstractModel):
     _name = "shopify.bisync.refund.sync"
-    _description = "Refund Import Engine"
+    _description = "Refund Sync Engine"
 
     @api.model
     def process_job(self, job):
         payload = json.loads(job.payload_json or "{}")
-        self._import_refund(job.instance_id, payload)
+        if job.kind == "refund_out":
+            self._export_refund(job.instance_id, payload)
+        else:
+            self._import_refund(job.instance_id, payload)
 
     @api.model
     def _import_refund(self, instance, refund):
@@ -73,6 +90,8 @@ class RefundSync(models.AbstractModel):
             "ref": ref,
             "reversed_entry_id": invoice.id,
             "invoice_date": fields.Date.today(),
+            # Mark it Shopify-originated so posting it never bounces back.
+            "shopify_bisync_refund_id": str(refund.get("id") or ""),
             "invoice_line_ids": line_vals,
         })  # stays DRAFT by design - never auto-post
         so.message_post(body=_(
@@ -136,3 +155,48 @@ class RefundSync(models.AbstractModel):
                 vals["tax_ids"] = [fields.Command.clear()]
             commands.append(fields.Command.create(vals))
         return commands
+
+    # -------------------------------------------------------------- export --
+    @api.model
+    def _export_refund(self, instance, payload):
+        """Record a matching refund on Shopify from a posted Odoo credit note
+        (line items + shipping). No gateway transaction is created - money
+        movement stays a merchant decision in Shopify."""
+        if instance.refund_export_policy == "off":
+            return
+        move = self.env["account.move"].browse(
+            payload.get("move_id", 0)).exists()
+        if (not move or move.move_type != "out_refund"
+                or move.shopify_bisync_refund_id):
+            return  # gone, wrong type, or already Shopify-originated
+        so = move._shopify_sale_orders()[:1]
+        if not so or not so.shopify_bisync_order_id:
+            return
+        refund_line_items, shipping_amount = [], 0.0
+        for line in move.invoice_line_ids:
+            sale_line = line.sale_line_ids[:1]
+            shopify_line_id = sale_line.shopify_bisync_line_id
+            if shopify_line_id and line.quantity:
+                refund_line_items.append({
+                    "lineItemId": instance.gid("LineItem", shopify_line_id),
+                    "quantity": int(line.quantity),
+                    "restockType": "NO_RESTOCK",
+                })
+            elif line.product_id == instance.adjustment_product_id:
+                shipping_amount += line.price_subtotal
+        refund_input = {
+            "orderId": instance.gid("Order", so.shopify_bisync_order_id),
+            "note": move.ref or move.name or _("Refund from Odoo"),
+            "notify": False,
+            "refundLineItems": refund_line_items,
+        }
+        if shipping_amount > 0:
+            refund_input["shipping"] = {"amount": f"{shipping_amount:.2f}"}
+        if not refund_line_items and shipping_amount <= 0:
+            return  # nothing Shopify can act on
+        data = instance.graphql(REFUND_CREATE, {"input": refund_input})
+        result = data.get("refundCreate") or {}
+        instance.check_user_errors(result, "refundCreate")
+        refund_id = instance.gid_to_id((result.get("refund") or {}).get("id", ""))
+        move.shopify_bisync_refund_id = refund_id
+        move.message_post(body=_("Refund recorded on Shopify (%s).", refund_id))

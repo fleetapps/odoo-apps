@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="payout_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.list</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <list decoration-success="state == 'reconciled'"
+                      decoration-warning="unmatched_count &gt; 0">
+                    <field name="date"/>
+                    <field name="shopify_payout_id"/>
+                    <field name="instance_id"/>
+                    <field name="status"/>
+                    <field name="amount"/>
+                    <field name="fee_total" optional="show"/>
+                    <field name="matched_count"/>
+                    <field name="unmatched_count"/>
+                    <field name="state" widget="badge"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="payout_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.form</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_register_payments" type="object"
+                                string="Register Payments" class="btn-primary"
+                                invisible="matched_count == 0"/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="shopify_payout_id" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="date"/>
+                                <field name="status"/>
+                                <field name="currency_id"/>
+                            </group>
+                            <group>
+                                <field name="amount"/>
+                                <field name="charge_total"/>
+                                <field name="refund_total"/>
+                                <field name="fee_total"/>
+                                <field name="adjustment_total"/>
+                            </group>
+                        </group>
+                        <field name="transaction_ids">
+                            <list>
+                                <field name="transaction_type"/>
+                                <field name="source_order_id"/>
+                                <field name="sale_order_id"/>
+                                <field name="invoice_id"/>
+                                <field name="amount"/>
+                                <field name="fee"/>
+                                <field name="net"/>
+                                <field name="matched" widget="boolean_toggle"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="payout_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.search</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="shopify_payout_id"/>
+                    <field name="instance_id"/>
+                    <filter name="filter_unreconciled" string="To Reconcile"
+                            domain="[('state', '=', 'imported')]"/>
+                    <filter name="filter_has_unmatched" string="Has Unmatched"
+                            domain="[('unmatched_count', '&gt;', 0)]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_state" string="Status"
+                                context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="payout_action" model="ir.actions.act_window">
+            <field name="name">Payouts</field>
+            <field name="res_model">shopify.bisync.payout</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <menuitem id="menu_payouts" name="Payouts" parent="menu_operations"
+                  action="payout_action" sequence="40"/>
+
+    </data>
+</odoo>

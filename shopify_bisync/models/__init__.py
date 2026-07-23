@@ -6,6 +6,10 @@ from . import mismatch
 from . import product_sync
 from . import stock_sync
 from . import sale_order
+from . import account_move
 from . import order_sync
+from . import order_export_sync
 from . import fulfillment_sync
 from . import refund_sync
+from . import payout
+from . import dashboard

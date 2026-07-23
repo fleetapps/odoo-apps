@@ -35,6 +35,27 @@ class ShopifyLocationMap(models.Model):
         help="Export/import quantities for this location.")
 
 
+class ShopifyPublication(models.Model):
+    _name = "shopify.bisync.publication"
+    _description = "Shopify Sales Channel (Publication)"
+
+    _uniq_publication = models.Constraint(
+        "UNIQUE(instance_id, shopify_publication_id)",
+        "This Shopify sales channel is already listed.")
+
+    instance_id = fields.Many2one(
+        "shopify.bisync.instance", required=True, ondelete="cascade",
+        index=True)
+    company_id = fields.Many2one(
+        related="instance_id.company_id", store=True, index=True)
+    shopify_publication_id = fields.Char(required=True)
+    name = fields.Char(required=True)
+    publish = fields.Boolean(
+        default=True, string="Auto-publish",
+        help="When the store's publishing policy is automatic, exported "
+             "products are published to this channel.")
+
+
 class ShopifyCarrierMap(models.Model):
     _name = "shopify.bisync.carrier.map"
     _description = "Shopify Carrier Mapping"

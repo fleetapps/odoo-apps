@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 import requests
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import html2plaintext
 
 _logger = logging.getLogger(__name__)
@@ -70,6 +71,20 @@ mutation productCreateMedia($productId: ID!, $media: [CreateMediaInput!]!) {
   }
 }"""
 
+PUBLISHABLE_PUBLISH = """
+mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+  publishablePublish(id: $id, input: $input) {
+    userErrors { field message }
+  }
+}"""
+
+PUBLISHABLE_UNPUBLISH = """
+mutation publishableUnpublish($id: ID!, $input: [PublicationInput!]!) {
+  publishableUnpublish(id: $id, input: $input) {
+    userErrors { field message }
+  }
+}"""
+
 #: One page of the product backfill (A4) - normalized through _gql_to_dict().
 PRODUCTS_PAGE = """
 query products($first: Int!, $after: String) {
@@ -77,6 +92,7 @@ query products($first: Int!, $after: String) {
     pageInfo { hasNextPage endCursor }
     nodes {
       id legacyResourceId title descriptionHtml status updatedAt
+      tags productType
       options { name position values }
       media(first: 1) { nodes { ... on MediaImage { image { url } } } }
       variants(first: 250) {
@@ -106,7 +122,8 @@ class ProductSync(models.AbstractModel):
 
     #: template fields whose change means "this product must be re-exported".
     WATCHED_FIELDS = ("name", "description_sale", "default_code", "barcode",
-                      "active", "weight", "hs_code", "attribute_line_ids")
+                      "active", "weight", "hs_code", "attribute_line_ids",
+                      "product_tag_ids", "categ_id")
     #: variant fields with the same effect.
     WATCHED_VARIANT_FIELDS = ("default_code", "barcode", "weight")
 
@@ -115,6 +132,8 @@ class ProductSync(models.AbstractModel):
         payload = json.loads(job.payload_json or "{}")
         if job.kind == "price":
             self._export_prices(job.instance_id, payload)
+        elif job.kind == "publish":
+            self._publish_product(job.instance_id, payload)
         elif job.direction == "in":
             self._import_product(job.instance_id, payload)
         else:
@@ -150,6 +169,8 @@ class ProductSync(models.AbstractModel):
             "body_html": node.get("descriptionHtml"),
             "status": (node.get("status") or "active").lower(),
             "updated_at": node.get("updatedAt"),
+            "tags": ", ".join(node.get("tags") or []),
+            "product_type": node.get("productType") or "",
             "options": node.get("options") or [],
             "images": images,
             "variants": variants,
@@ -246,6 +267,16 @@ class ProductSync(models.AbstractModel):
             "description_sale": html2plaintext(sp.get("body_html") or "") or False,
             "active": (sp.get("status") or "active") != "archived",
         }
+        if instance.sync_product_tags and "tags" in sp:
+            vals["product_tag_ids"] = self._tag_commands(
+                "product.tag", sp.get("tags"))
+        if instance.sync_product_category and sp.get("product_type"):
+            category = self.env["product.category"].search(
+                [("name", "=ilike", sp["product_type"])], limit=1)
+            if not category:
+                category = self.env["product.category"].create(
+                    {"name": sp["product_type"]})
+            vals["categ_id"] = category.id
         if self._is_default_variant_only(sp) and sp.get("variants"):
             variant = sp["variants"][0]
             vals.update({
@@ -254,6 +285,19 @@ class ProductSync(models.AbstractModel):
                 "weight": self._variant_weight_kg(variant),
             })
         return vals
+
+    @api.model
+    def _tag_commands(self, model, tags_value):
+        """Comma-separated Shopify tag string -> Command.set of tag records
+        (get-or-create by name), for product.tag / res.partner.category."""
+        names = [t.strip() for t in (tags_value or "").split(",") if t.strip()]
+        Tag = self.env[model]
+        ids = []
+        for name in names:
+            tag = (Tag.search([("name", "=ilike", name)], limit=1)
+                   or Tag.create({"name": name}))
+            ids.append(tag.id)
+        return [fields.Command.set(ids)]
 
     @api.model
     def _resolve_conflict(self, instance, binding, tmpl, ext_updated, vals):
@@ -406,6 +450,10 @@ class ProductSync(models.AbstractModel):
                 for position, line in enumerate(option_lines)],
             "variants": [],
         }
+        if instance.sync_product_tags:
+            payload["tags"] = sorted(tmpl.product_tag_ids.mapped("name"))
+        if instance.sync_product_category and tmpl.categ_id:
+            payload["productType"] = tmpl.categ_id.name
         for variant in tmpl.product_variant_ids:
             price = (instance.pricelist_id._get_product_price(variant, 1.0)
                      if instance.pricelist_id else variant.lst_price)
@@ -483,6 +531,34 @@ class ProductSync(models.AbstractModel):
                 parse_shopify_dt(product_node.get("updatedAt"))
                 or fields.Datetime.now(),
         })
+        if instance.publish_policy == "auto":
+            self.env["shopify.bisync.job"].enqueue(
+                instance, "out", "publish",
+                {"res_id": tmpl.id, "action": "publish"},
+                priority=26, lock_key=f"publish:{tmpl.id}")
+
+    # ------------------------------------------------------------- publish --
+    @api.model
+    def _publish_product(self, instance, payload):
+        """Publish/unpublish an exported product to the store's mapped sales
+        channels (publications)."""
+        tmpl = self.env["product.template"].browse(
+            payload.get("res_id", 0)).exists()
+        binding = self.env["shopify.bisync.binding"].get(
+            self.env, instance, "product.template", record=tmpl)
+        publications = instance.publication_ids.filtered("publish")
+        if not tmpl or not binding or not publications:
+            return
+        unpublish = payload.get("action") == "unpublish"
+        inputs = [{"publicationId": instance.gid(
+            "Publication", pub.shopify_publication_id)}
+            for pub in publications]
+        data = instance.graphql(
+            PUBLISHABLE_UNPUBLISH if unpublish else PUBLISHABLE_PUBLISH,
+            {"id": instance.gid("Product", binding.external_id),
+             "input": inputs})
+        key = "publishableUnpublish" if unpublish else "publishablePublish"
+        instance.check_user_errors(data.get(key) or {}, key)
 
     @api.model
     def _bind_exported_variants(self, instance, tmpl, product_node):
@@ -597,6 +673,36 @@ class ProductTemplate(models.Model):
         action["domain"] = [("res_model", "=", "product.template"),
                             ("res_id", "=", self.id)]
         return action
+
+    def action_shopify_open(self):
+        """Quick-jump: open the first bound product in the Shopify admin."""
+        self.ensure_one()
+        binding = self.env["shopify.bisync.binding"].search([
+            ("res_model", "=", "product.template"),
+            ("res_id", "=", self.id)], limit=1)
+        if not binding:
+            raise UserError(_("This product is not linked to Shopify yet."))
+        return {"type": "ir.actions.act_url", "target": "new",
+                "url": binding.instance_id.admin_url(
+                    "products", binding.external_id)}
+
+    def _action_shopify_publish(self, action):
+        Job = self.env["shopify.bisync.job"]
+        Binding = self.env["shopify.bisync.binding"]
+        for tmpl in self:
+            for binding in Binding.search([
+                    ("res_model", "=", "product.template"),
+                    ("res_id", "=", tmpl.id)]):
+                Job.enqueue(binding.instance_id, "out", "publish",
+                            {"res_id": tmpl.id, "action": action},
+                            priority=26, lock_key=f"publish:{tmpl.id}")
+        return True
+
+    def action_shopify_publish(self):
+        return self._action_shopify_publish("publish")
+
+    def action_shopify_unpublish(self):
+        return self._action_shopify_publish("unpublish")
 
     def _shopify_enqueue_export(self, price_only=False):
         if self.env.context.get(SKIP_TRIGGER):

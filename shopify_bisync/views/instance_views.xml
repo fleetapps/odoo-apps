@@ -14,6 +14,8 @@
                                 string="Register Webhooks"/>
                         <button name="action_fetch_locations" type="object"
                                 string="Fetch Locations"/>
+                        <button name="action_fetch_publications" type="object"
+                                string="Fetch Sales Channels"/>
                         <button name="action_export_prices" type="object"
                                 string="Export Prices"
                                 invisible="sync_prices != 'export'"/>
@@ -62,6 +64,14 @@
                                         <field name="compare_at_policy"/>
                                         <field name="notify_customer_on_fulfillment"/>
                                     </group>
+                                    <group string="Metadata">
+                                        <field name="sync_product_tags"/>
+                                        <field name="sync_product_category"/>
+                                    </group>
+                                    <group string="Scheduled Import">
+                                        <field name="scheduled_import_orders"/>
+                                        <field name="import_fulfillment_status"/>
+                                    </group>
                                 </group>
                             </page>
                             <page string="Order Import" name="orders">
@@ -72,6 +82,8 @@
                                                invisible="confirm_policy != 'confirm_invoice'"
                                                required="confirm_policy == 'confirm_invoice'"/>
                                         <field name="tax_policy"/>
+                                        <field name="itemize_taxes"
+                                               invisible="tax_policy != 'odoo'"/>
                                         <field name="discount_policy"/>
                                     </group>
                                     <group string="Fallbacks">
@@ -81,7 +93,45 @@
                                         <field name="discount_product_id"
                                                invisible="discount_policy != 'separate'"
                                                required="discount_policy == 'separate'"/>
+                                        <field name="tip_product_id"/>
+                                        <field name="duties_product_id"/>
                                         <field name="fallback_carrier_id"/>
+                                    </group>
+                                </group>
+                                <group string="Odoo → Shopify Order Updates">
+                                    <group>
+                                        <field name="push_paid_status"/>
+                                        <field name="push_cancellations"/>
+                                        <field name="cancel_restock"
+                                               invisible="not push_cancellations"/>
+                                    </group>
+                                    <group>
+                                        <field name="refund_export_policy"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Publishing" name="publishing">
+                                <group>
+                                    <field name="publish_policy"/>
+                                </group>
+                                <field name="publication_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_publication_id" readonly="1"/>
+                                        <field name="name"/>
+                                        <field name="publish" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Payouts" name="payouts">
+                                <group>
+                                    <group>
+                                        <field name="import_payouts"/>
+                                        <field name="payout_auto_reconcile"
+                                               invisible="not import_payouts"/>
+                                    </group>
+                                    <group>
+                                        <field name="payout_journal_id"
+                                               invisible="not import_payouts"/>
                                     </group>
                                 </group>
                             </page>
@@ -107,6 +157,7 @@
                                 <group>
                                     <field name="last_import_orders"/>
                                     <field name="last_export_stock"/>
+                                    <field name="last_import_payouts"/>
                                 </group>
                             </page>
                         </notebook>

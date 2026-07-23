@@ -5,3 +5,7 @@ from . import test_product_sync
 from . import test_job_queue
 from . import test_backfill
 from . import test_refund_fulfillment
+from . import test_bidirectional
+from . import test_metadata
+from . import test_payout
+from . import test_dashboard
