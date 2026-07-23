@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="360" font-family="Arial, Helvetica, sans-serif">
+  <rect width="900" height="360" fill="#f4f6f8"/>
+  <rect x="0" y="0" width="900" height="48" fill="#2b3d4f"/>
+  <text x="20" y="30" fill="#fff" font-size="16" font-weight="bold">Product — Trail Runner Tee (bound to 2 stores)</text>
+  <rect x="16" y="64" width="868" height="280" rx="6" fill="#fff" stroke="#d8dde3"/>
+  <text x="32" y="100" font-size="15" font-weight="bold" fill="#2b3d4f">Chatter</text>
+  <g transform="translate(32,116)">
+    <rect width="820" height="64" rx="6" fill="#fdf6ec" stroke="#f0dcb8"/>
+    <circle cx="26" cy="32" r="14" fill="#95bf47"/>
+    <text x="20" y="37" fill="#fff" font-size="13" font-weight="bold">S</text>
+    <text x="52" y="26" font-size="13" fill="#2b3d4f" font-weight="bold">Shopify Sync — today 10:32</text>
+    <text x="52" y="46" font-size="13" fill="#556270">Shopify sync conflict on name, description_sale: kept Shopify version (policy: newest_wins, store: My Store).</text>
+  </g>
+  <g transform="translate(32,192)">
+    <rect width="820" height="64" rx="6" fill="#eef7ee" stroke="#cde6cd"/>
+    <circle cx="26" cy="32" r="14" fill="#5e8e3e"/>
+    <text x="20" y="37" fill="#fff" font-size="13" font-weight="bold">S</text>
+    <text x="52" y="26" font-size="13" fill="#2b3d4f" font-weight="bold">Shopify Sync — today 09:58</text>
+    <text x="52" y="46" font-size="13" fill="#556270">Draft credit note RINV/2026/0042 created from Shopify refund 8842 — review and post it.</text>
+  </g>
+  <g transform="translate(32,268)">
+    <rect width="820" height="56" rx="6" fill="#f2f4f7" stroke="#dde3ea"/>
+    <text x="16" y="24" font-size="13" fill="#2b3d4f" font-weight="bold">Every decision is auditable</text>
+    <text x="16" y="44" font-size="12" fill="#556270">Conflict resolutions, refunds, cancellations and blocked edits all land in the record's chatter — no silent mutations, ever.</text>
+  </g>
+</svg>

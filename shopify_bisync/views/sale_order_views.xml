@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Exact-XPath inheritance (spec: no lazy XPathing): anchor on the
+             stable client_order_ref field of sale.view_order_form. -->
+        <record id="view_order_form_inherit_shopify_bisync" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.shopify.bisync</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='client_order_ref']" position="after">
+                    <field name="shopify_bisync_instance_id"
+                           invisible="not shopify_bisync_instance_id"/>
+                    <field name="shopify_bisync_order_id"
+                           invisible="not shopify_bisync_order_id"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_order_filter_inherit_shopify_bisync" model="ir.ui.view">
+            <field name="name">sale.order.search.inherit.shopify.bisync</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='my_sale_orders_filter']"
+                       position="after">
+                    <separator/>
+                    <filter name="filter_shopify_orders" string="Shopify Orders"
+                            domain="[('shopify_bisync_instance_id', '!=', False)]"/>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

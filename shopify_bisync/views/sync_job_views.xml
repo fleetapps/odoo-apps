@@ -1,25 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="job_view_list" model="ir.ui.view">
-        <field name="name">shopify.bisync.job.list</field>
-        <field name="model">shopify.bisync.job</field>
-        <field name="arch" type="xml">
-            <list decoration-danger="state == 'failed'">
-                <field name="create_date"/>
-                <field name="instance_id"/>
-                <field name="direction"/>
-                <field name="kind"/>
-                <field name="state" widget="badge"/>
-                <field name="attempt"/>
-                <field name="error"/>
-            </list>
-        </field>
-    </record>
-    <record id="job_action" model="ir.actions.act_window">
-        <field name="name">Sync Jobs</field>
-        <field name="res_model">shopify.bisync.job</field>
-        <field name="view_mode">list,graph,pivot</field>
-    </record>
-    <menuitem id="menu_jobs" name="Sync Jobs" parent="menu_root"
-              action="job_action"/>
+    <data>
+
+        <record id="job_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.job.list</field>
+            <field name="model">shopify.bisync.job</field>
+            <field name="arch" type="xml">
+                <list decoration-danger="state == 'failed'"
+                      decoration-muted="state in ('done', 'skipped')">
+                    <header>
+                        <button name="action_retry" type="object"
+                                string="Retry now"/>
+                    </header>
+                    <field name="create_date"/>
+                    <field name="instance_id"/>
+                    <field name="direction"/>
+                    <field name="kind"/>
+                    <field name="priority" optional="hide"/>
+                    <field name="lock_key" optional="hide"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-danger="state == 'failed'"
+                           decoration-warning="state == 'pending'"/>
+                    <field name="attempt"/>
+                    <field name="next_attempt_at" optional="show"/>
+                    <field name="error"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="job_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.job.form</field>
+            <field name="model">shopify.bisync.job</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_retry" type="object"
+                                string="Retry now" class="btn-primary"
+                                invisible="state in ('pending', 'done')"/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="direction"/>
+                                <field name="kind"/>
+                                <field name="priority"/>
+                                <field name="lock_key"/>
+                            </group>
+                            <group>
+                                <field name="attempt"/>
+                                <field name="next_attempt_at"/>
+                                <field name="create_date"/>
+                            </group>
+                        </group>
+                        <group string="Error" invisible="not error">
+                            <field name="error" nolabel="1"/>
+                        </group>
+                        <group string="Payload">
+                            <field name="payload_json" nolabel="1" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="job_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.job.search</field>
+            <field name="model">shopify.bisync.job</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="instance_id"/>
+                    <field name="lock_key"/>
+                    <field name="error"/>
+                    <filter name="filter_pending" string="Pending"
+                            domain="[('state', '=', 'pending')]"/>
+                    <filter name="filter_failed" string="Failed (quarantine)"
+                            domain="[('state', '=', 'failed')]"/>
+                    <filter name="filter_done" string="Done"
+                            domain="[('state', '=', 'done')]"/>
+                    <separator/>
+                    <filter name="filter_import" string="Imports"
+                            domain="[('direction', '=', 'in')]"/>
+                    <filter name="filter_export" string="Exports"
+                            domain="[('direction', '=', 'out')]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_state" string="Status"
+                                context="{'group_by': 'state'}"/>
+                        <filter name="group_kind" string="Kind"
+                                context="{'group_by': 'kind'}"/>
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="job_action" model="ir.actions.act_window">
+            <field name="name">Sync Jobs</field>
+            <field name="res_model">shopify.bisync.job</field>
+            <field name="view_mode">list,form,graph,pivot</field>
+            <field name="context">{'search_default_filter_pending': 1,
+                                   'search_default_filter_failed': 1}</field>
+        </record>
+
+        <record id="action_requeue_all_failed" model="ir.actions.server">
+            <field name="name">Requeue all failed</field>
+            <field name="model_id" ref="model_shopify_bisync_job"/>
+            <field name="binding_model_id" ref="model_shopify_bisync_job"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">model.requeue_all_failed()</field>
+            <field name="groups_id" eval="[(4, ref('shopify_bisync.group_connector_user'))]"/>
+        </record>
+
+        <menuitem id="menu_jobs" name="Sync Jobs" parent="menu_operations"
+                  action="job_action" sequence="10"/>
+
+    </data>
 </odoo>

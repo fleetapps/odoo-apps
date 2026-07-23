@@ -1,66 +1,159 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="instance_view_form" model="ir.ui.view">
-        <field name="name">shopify.bisync.instance.form</field>
-        <field name="model">shopify.bisync.instance</field>
-        <field name="arch" type="xml">
-            <form>
-                <header>
-                    <button name="action_test_connection" type="object"
-                            string="Test Connection" class="btn-primary"/>
-                    <button name="action_register_webhooks" type="object"
-                            string="Register Webhooks"/>
-                </header>
-                <sheet>
-                    <group>
-                        <group string="Store">
-                            <field name="name"/>
-                            <field name="shop_url"/>
-                            <field name="access_token" password="True"/>
-                            <field name="webhook_secret" password="True"/>
-                        </group>
-                        <group string="Odoo Mapping">
-                            <field name="company_id"/>
-                            <field name="warehouse_id"/>
-                            <field name="pricelist_id"/>
-                        </group>
-                    </group>
-                    <group string="Two-Way Sync Policy">
+    <data>
+
+        <record id="instance_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.instance.form</field>
+            <field name="model">shopify.bisync.instance</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_test_connection" type="object"
+                                string="Test Connection" class="btn-primary"/>
+                        <button name="action_register_webhooks" type="object"
+                                string="Register Webhooks"/>
+                        <button name="action_fetch_locations" type="object"
+                                string="Fetch Locations"/>
+                        <button name="action_export_prices" type="object"
+                                string="Export Prices"
+                                invisible="sync_prices != 'export'"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_jobs" type="object"
+                                    class="oe_stat_button" icon="fa-refresh">
+                                <field name="job_count" widget="statinfo"
+                                       string="Sync Jobs"/>
+                            </button>
+                        </div>
+                        <widget name="shopify_bisync_health"/>
+                        <div class="oe_title">
+                            <h1><field name="name" placeholder="My Shopify Store"/></h1>
+                        </div>
                         <group>
-                            <field name="sync_products"/>
-                            <field name="sync_stock"/>
-                            <field name="sync_prices"/>
+                            <group string="Connection">
+                                <field name="active" widget="boolean_toggle"/>
+                                <field name="shop_url"
+                                       placeholder="mystore.myshopify.com"/>
+                                <field name="access_token" password="True"/>
+                                <field name="webhook_secret" password="True"/>
+                            </group>
+                            <group string="Odoo Mapping">
+                                <field name="company_id"
+                                       groups="base.group_multi_company"/>
+                                <field name="warehouse_id"/>
+                                <field name="pricelist_id"/>
+                                <field name="admin_user_id"/>
+                            </group>
                         </group>
-                        <group>
-                            <field name="sync_orders"/>
-                            <field name="conflict_policy"/>
-                        </group>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-    <record id="instance_view_list" model="ir.ui.view">
-        <field name="name">shopify.bisync.instance.list</field>
-        <field name="model">shopify.bisync.instance</field>
-        <field name="arch" type="xml">
-            <list>
-                <field name="name"/>
-                <field name="shop_url"/>
-                <field name="sync_products"/>
-                <field name="sync_stock"/>
-                <field name="sync_orders"/>
-                <field name="active" widget="boolean_toggle"/>
-            </list>
-        </field>
-    </record>
-    <record id="instance_action" model="ir.actions.act_window">
-        <field name="name">Shopify Stores</field>
-        <field name="res_model">shopify.bisync.instance</field>
-        <field name="view_mode">list,form</field>
-    </record>
-    <menuitem id="menu_root" name="Shopify Sync" sequence="66"
-              groups="shopify_bisync.group_connector_user"/>
-    <menuitem id="menu_instances" name="Stores" parent="menu_root"
-              action="instance_action"/>
+                        <notebook>
+                            <page string="Sync Policies" name="policies">
+                                <group>
+                                    <group string="Directions">
+                                        <field name="sync_products"/>
+                                        <field name="sync_stock"/>
+                                        <field name="sync_prices"/>
+                                        <field name="sync_orders"/>
+                                    </group>
+                                    <group string="Conflicts &amp; Exports">
+                                        <field name="conflict_policy"/>
+                                        <field name="auto_export_new_products"/>
+                                        <field name="export_status_default"/>
+                                        <field name="compare_at_policy"/>
+                                        <field name="notify_customer_on_fulfillment"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Order Import" name="orders">
+                                <group>
+                                    <group string="Financial">
+                                        <field name="confirm_policy"/>
+                                        <field name="payment_journal_id"
+                                               invisible="confirm_policy != 'confirm_invoice'"
+                                               required="confirm_policy == 'confirm_invoice'"/>
+                                        <field name="tax_policy"/>
+                                        <field name="discount_policy"/>
+                                    </group>
+                                    <group string="Fallbacks">
+                                        <field name="fallback_product_id"/>
+                                        <field name="adjustment_product_id"
+                                               required="tax_policy == 'shopify'"/>
+                                        <field name="discount_product_id"
+                                               invisible="discount_policy != 'separate'"
+                                               required="discount_policy == 'separate'"/>
+                                        <field name="fallback_carrier_id"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Locations" name="locations">
+                                <field name="location_map_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_location_id" readonly="1"/>
+                                        <field name="shopify_location_name"/>
+                                        <field name="warehouse_id"/>
+                                        <field name="stock_sync" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Carriers" name="carriers">
+                                <field name="carrier_map_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_code"/>
+                                        <field name="carrier_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Status" name="status">
+                                <group>
+                                    <field name="last_import_orders"/>
+                                    <field name="last_export_stock"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="instance_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.instance.list</field>
+            <field name="model">shopify.bisync.instance</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="name"/>
+                    <field name="shop_url"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="sync_products"/>
+                    <field name="sync_stock"/>
+                    <field name="sync_orders"/>
+                    <field name="conflict_policy" optional="show"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="instance_action" model="ir.actions.act_window">
+            <field name="name">Shopify Stores</field>
+            <field name="res_model">shopify.bisync.instance</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Connect your first Shopify store</p>
+                <p>Create a custom app in Shopify admin (Settings → Apps), grant
+                   Admin API scopes for products, inventory, orders, customers and
+                   fulfillments, then paste the access token here.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_root" name="Shopify Sync" sequence="66"
+                  web_icon="shopify_bisync,static/description/icon.png"
+                  groups="shopify_bisync.group_connector_user"/>
+        <menuitem id="menu_operations" name="Operations" parent="menu_root"
+                  sequence="10"/>
+        <menuitem id="menu_configuration" name="Configuration" parent="menu_root"
+                  sequence="90" groups="shopify_bisync.group_connector_admin"/>
+        <menuitem id="menu_instances" name="Stores" parent="menu_configuration"
+                  action="instance_action" sequence="10"/>
+
+    </data>
 </odoo>

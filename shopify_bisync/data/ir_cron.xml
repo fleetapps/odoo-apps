@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="cron_process_jobs" model="ir.cron">
-        <field name="name">Shopify Sync: process job queue</field>
-        <field name="model_id" ref="model_shopify_bisync_job"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_process()</field>
-        <field name="interval_number">2</field>
-        <field name="interval_type">minutes</field>
-        <field name="active">True</field>
-    </record>
-    <record id="cron_stock_sweep" model="ir.cron">
-        <field name="name">Shopify Sync: stock sweep</field>
-        <field name="model_id" ref="model_shopify_bisync_stock_sync"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_export_stock()</field>
-        <field name="interval_number">1</field>
-        <field name="interval_type">hours</field>
-        <field name="active">True</field>
-    </record>
+    <data>
+
+        <record id="cron_process_jobs" model="ir.cron">
+            <field name="name">Shopify Sync: process job queue</field>
+            <field name="model_id" ref="model_shopify_bisync_job"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_process()</field>
+            <field name="interval_number">2</field>
+            <field name="interval_type">minutes</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="cron_stock_sweep" model="ir.cron">
+            <field name="name">Shopify Sync: stock sweep (safety net)</field>
+            <field name="model_id" ref="model_shopify_bisync_stock_sync"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_export_stock()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- Shopify deletes webhook subscriptions after ~48h of failed
+             deliveries; this cron re-registers anything missing. -->
+        <record id="cron_heal_webhooks" model="ir.cron">
+            <field name="name">Shopify Sync: self-heal webhooks</field>
+            <field name="model_id" ref="model_shopify_bisync_instance"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_heal_webhooks()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active" eval="True"/>
+        </record>
+
+    </data>
 </odoo>

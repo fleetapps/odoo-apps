@@ -1,0 +1,92 @@
+<section style="max-width:960px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#2b3d4f;">
+
+    <div style="background:linear-gradient(135deg,#95bf47 0%,#5e8e3e 100%);border-radius:12px;padding:48px 32px;text-align:center;color:#fff;">
+        <h1 style="margin:0 0 12px;font-size:34px;">Shopify Connector — Two-Way Sync</h1>
+        <p style="margin:0;font-size:18px;opacity:.95;">
+            Products, stock, prices, customers, orders, fulfillments &amp; refunds.<br/>
+            Webhook-driven inbound. Queued, rate-limit-safe outbound. A conflict
+            engine that shows its work.
+        </p>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin:32px 0;">
+        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
+            <h3 style="margin:0 0 8px;">⚡ Real-time, both ways</h3>
+            <p style="margin:0;font-size:14px;color:#556270;">Webhooks push changes into a
+            durable job queue in milliseconds; Odoo edits flow back through the
+            GraphQL Admin API (<code>productSet</code>,
+            <code>inventorySetQuantities</code>) — the API Shopify commits to.</p>
+        </div>
+        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
+            <h3 style="margin:0 0 8px;">⚖️ Explicit conflict policy</h3>
+            <p style="margin:0;font-size:14px;color:#556270;">Same record edited on both
+            sides between syncs? You choose: Odoo wins, Shopify wins, or newest
+            wins — and every resolution is logged on the record's chatter.</p>
+        </div>
+        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
+            <h3 style="margin:0 0 8px;">🛡️ Nothing lost, ever</h3>
+            <p style="margin:0;font-size:14px;color:#556270;">Unmatched order lines land on
+            a fallback product with a mismatch log — never dropped. Failed jobs
+            back off, quarantine after 4 attempts and ping your admin.</p>
+        </div>
+    </div>
+
+    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">What syncs, in which direction</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0 32px;">
+        <tr style="background:#2b3d4f;color:#fff;">
+            <th style="padding:10px;text-align:left;">Entity</th>
+            <th style="padding:10px;text-align:left;">Direction</th>
+            <th style="padding:10px;text-align:left;">Highlights</th>
+        </tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Products</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Two-way</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Multi-variant options both ways, images, status (active/draft/archived), SKU, barcode, weight, HS code</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Prices</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Pricelist per store, optional compare-at mapping</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Inventory</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export (two-way optional)</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Multi-location: Shopify locations ↔ Odoo warehouses mapping table, free qty as source</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Customers</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Import</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Email dedup, address hierarchy, country/state resolution. Marketing consent never leaves Shopify.</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Orders</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Import</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Tax policy (Odoo computes / Shopify totals to the cent), discounts, carrier mapping, auto-confirm &amp; invoice gating, fraud flagging, order-edit diffing, safe cancellations</td></tr>
+        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Fulfillments</b></td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export</td>
+            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Modern FulfillmentOrders API, partial shipments per picking, tracking number + carrier</td></tr>
+        <tr><td style="padding:10px;"><b>Refunds</b></td>
+            <td style="padding:10px;">Import</td>
+            <td style="padding:10px;">Draft credit note mirroring the refund — accounting reviews, nothing auto-posts</td></tr>
+    </table>
+
+    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">Screenshots</h2>
+    <img src="screenshot_store.svg" alt="Store configuration with sync policies and location mapping" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
+    <img src="screenshot_jobs.svg" alt="Durable job queue with retry and quarantine" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
+    <img src="screenshot_conflict.svg" alt="Conflict resolutions audited in the chatter" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
+
+    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">Built for operators</h2>
+    <ul style="font-size:14px;color:#556270;line-height:1.8;">
+        <li><b>Initial import wizard</b> — dry-run counts first, then a resumable, cursor-paginated backfill that survives worker restarts. 10,000-SKU catalogs welcome.</li>
+        <li><b>Self-healing webhooks</b> — Shopify silently deletes failing subscriptions; a daily cron re-registers anything missing.</li>
+        <li><b>Rate-limit aware</b> — REST leaky-bucket backoff and GraphQL cost tracking on every call. A 429 storm delays syncs; it never loses them.</li>
+        <li><b>Multi-store &amp; multi-company</b> — independent bindings per store, record rules per company.</li>
+        <li><b>No phone-home, no CDN</b> — everything runs inside your Odoo. Your token stays in your database, visible to connector admins only.</li>
+    </ul>
+
+    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">FAQ</h2>
+    <p style="font-size:14px;"><b>Which Shopify plan do I need?</b><br/>
+    Any plan that allows custom apps (all current plans do). You create a custom app, grant Admin API scopes, paste the token — 5 minutes.</p>
+    <p style="font-size:14px;"><b>What happens when the same product is edited in both systems?</b><br/>
+    Your chosen conflict policy decides, and the decision is written to the product's chatter: "Conflict on name, price: kept Shopify version."</p>
+    <p style="font-size:14px;"><b>Will imported order totals match Shopify?</b><br/>
+    In "Shopify amounts win" mode, to the cent — tax and rounding adjustment lines guarantee it. In "Odoo computes" mode your fiscal positions rule and Shopify's tax lines are archived in a note.</p>
+    <p style="font-size:14px;"><b>Does it modify delivered orders when Shopify edits them?</b><br/>
+    Never silently. Un-delivered quantity changes are applied; anything touching delivered lines creates a review activity for a human.</p>
+
+    <div style="background:#2b3d4f;color:#fff;border-radius:12px;padding:24px 32px;margin-top:32px;text-align:center;">
+        <p style="margin:0;font-size:15px;">Support: <b>developers@fleet.ke</b> · Odoo 19 · License OPL-1</p>
+    </div>
+
+</section>

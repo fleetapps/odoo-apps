@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="shopify_bisync.SyncHealth">
+        <div class="o_shopify_bisync_health d-flex align-items-center gap-2 mb-2"
+             role="status">
+            <t t-if="!resId">
+                <span class="text-muted fst-italic">
+                    Save the store to see its sync health.
+                </span>
+            </t>
+            <t t-else="">
+                <t t-if="!state.loaded">
+                    <span class="text-muted">Loading sync health…</span>
+                </t>
+                <t t-else="">
+                    <span class="fw-bold me-1">Queue:</span>
+                    <t t-foreach="meta" t-as="entry" t-key="entry.key">
+                        <button type="button"
+                                class="btn btn-sm border-0 badge"
+                                t-att-class="entry.css"
+                                t-att-title="entry.label"
+                                t-on-click="() => this.openJobs(entry.key)">
+                            <t t-out="state.counts[entry.key] || 0"/>
+                            <t t-out="' ' + entry.label"/>
+                        </button>
+                    </t>
+                    <button type="button"
+                            class="btn btn-sm btn-link p-0 ms-1"
+                            title="Refresh"
+                            t-on-click="refresh">
+                        <i class="fa fa-refresh" role="img"
+                           aria-label="Refresh"/>
+                    </button>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

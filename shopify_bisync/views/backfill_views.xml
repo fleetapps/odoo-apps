@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="backfill_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.backfill.form</field>
+            <field name="model">shopify.bisync.backfill</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <group string="Scope">
+                            <field name="instance_id"/>
+                            <field name="do_products"/>
+                            <field name="do_customers"/>
+                            <field name="do_orders"/>
+                        </group>
+                        <group string="Order Window"
+                               invisible="not do_orders">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                    </group>
+                    <group string="Dry-run Counts"
+                           invisible="state == 'draft'">
+                        <field name="count_products" invisible="not do_products"/>
+                        <field name="count_orders" invisible="not do_orders"/>
+                        <field name="count_customers" invisible="not do_customers"/>
+                    </group>
+                    <div class="alert alert-info" role="status"
+                         invisible="state != 'counted'">
+                        Counts above are a dry run: nothing is queued yet.
+                        Records are imported in pages of 100 through the job
+                        queue; live webhooks always take priority. A worker
+                        restart resumes from the last completed page.
+                    </div>
+                    <field name="state" invisible="1"/>
+                    <footer>
+                        <button name="action_count" type="object"
+                                string="Count (dry run)" class="btn-secondary"/>
+                        <button name="action_start" type="object"
+                                string="Start Backfill" class="btn-primary"
+                                invisible="state == 'queued'"/>
+                        <button string="Close" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="backfill_action" model="ir.actions.act_window">
+            <field name="name">Backfill / Initial Import</field>
+            <field name="res_model">shopify.bisync.backfill</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_backfill" name="Backfill" parent="menu_root"
+                  action="backfill_action" sequence="50"
+                  groups="shopify_bisync.group_connector_admin"/>
+
+    </data>
+</odoo>

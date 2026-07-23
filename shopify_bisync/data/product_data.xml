@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Service products backing the order-import policies. Kept out of
+             stock flows on purpose (type=service): they carry money, not
+             goods. -->
+        <record id="product_unmatched" model="product.product">
+            <field name="name">Shopify Unmatched Item</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-UNMATCHED</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <record id="product_adjustment" model="product.product">
+            <field name="name">Shopify Adjustment</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-ADJUST</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <record id="product_discount" model="product.product">
+            <field name="name">Shopify Discount</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-DISCOUNT</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <record id="product_shipping" model="product.product">
+            <field name="name">Shopify Shipping</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="default_code">SHOPIFY-SHIP</field>
+            <field name="list_price">0.0</field>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+
+        <record id="carrier_shopify_fallback" model="delivery.carrier">
+            <field name="name">Shopify Shipping (fallback)</field>
+            <field name="delivery_type">fixed</field>
+            <field name="fixed_price">0.0</field>
+            <field name="product_id" ref="product_shipping"/>
+        </record>
+
+    </data>
+</odoo>

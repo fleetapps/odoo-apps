@@ -1,46 +1,166 @@
 # -*- coding: utf-8 -*-
-"""Stock & price export. Debounced: quants changes enqueue at most one job
-per product per cron window (checksum short-circuit handles the rest)."""
+# Part of Shopify Connector - Two-Way Sync. License OPL-1.
+"""Inventory sync (spec A1).
+
+Export (default): ``free_qty`` per mapped warehouse -> GraphQL
+``inventorySetQuantities`` (absolute "available" quantities,
+``ignoreCompareQuantity``). One job per variant; the multi-location mapping
+table (``shopify.bisync.location.map``) decides which Shopify location gets
+which warehouse's quantity.
+
+Import (optional two-way): ``inventory_levels/update`` webhook -> inventory
+adjustment on the mapped warehouse's stock location (quant ``inventory_mode``
++ ``action_apply_inventory``). Echo-safe: an inbound level equal to the
+current free qty is a no-op.
+
+Real-time trigger: ``stock.move._action_done`` enqueues one job per bound
+product (debounced by the queue's pending-duplicate check); the hourly sweep
+cron remains the safety net underneath.
+"""
 import json
-from odoo import api, models
+import logging
+
+from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
+
+INVENTORY_SET = """
+mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
+  inventorySetQuantities(input: $input) {
+    inventoryAdjustmentGroup { createdAt }
+    userErrors { field message }
+  }
+}"""
 
 
 class StockSync(models.AbstractModel):
     _name = "shopify.bisync.stock.sync"
-    _description = "Stock/Price Sync Engine"
+    _description = "Stock Sync Engine"
 
     @api.model
     def process_job(self, job):
         payload = json.loads(job.payload_json or "{}")
-        instance = job.instance_id
-        product = self.env["product.product"].browse(payload["res_id"]).exists()
-        if not product:
+        if job.direction == "in":
+            self._import_level(job.instance_id, payload)
+        else:
+            self._export_product_stock(job.instance_id, payload)
+
+    # -------------------------------------------------------------- export --
+    @api.model
+    def _stock_locations(self, instance):
+        """Mapping rows that take part in stock sync; falls back to a virtual
+        row on the instance warehouse when the user mapped nothing (yet the
+        binding knows no Shopify location id then -> rows must be fetched)."""
+        return instance.location_map_ids.filtered(
+            lambda m: m.stock_sync and m.warehouse_id)
+
+    @api.model
+    def _export_product_stock(self, instance, payload):
+        if instance.sync_stock not in ("export", "both"):
             return
-        qty = product.with_context(
-            warehouse_id=instance.warehouse_id.id).free_qty
-        # inventory_levels/set.json requires inventory_item_id + location_id:
-        # cache both on the binding at first export. VERIFY-ON-BUILD against
-        # current Inventory API (GraphQL inventorySetQuantities is the new path).
+        product = self.env["product.product"].browse(
+            payload["res_id"]).exists()
+        binding = self.env["shopify.bisync.binding"].get(
+            self.env, instance, "product.product", record=product)
+        if not product or not binding or not binding.inventory_item_id:
+            return
+        quantities = []
+        for row in self._stock_locations(instance):
+            # 'warehouse_id' is the Odoo 19 context key; 'warehouse' kept so
+            # the same code backports to 17/18 unchanged.
+            qty = product.with_context(
+                warehouse_id=row.warehouse_id.id,
+                warehouse=row.warehouse_id.id).free_qty
+            quantities.append({
+                "inventoryItemId": instance.gid(
+                    "InventoryItem", binding.inventory_item_id),
+                "locationId": instance.gid(
+                    "Location", row.shopify_location_id),
+                "quantity": int(qty),
+            })
+        if not quantities:
+            _logger.info(
+                "shopify_bisync: no synced location mapping on %s - stock of "
+                "%s not exported. Fetch & map locations on the store form.",
+                instance.name, product.display_name)
+            return
+        data = instance.graphql(INVENTORY_SET, {"input": {
+            "name": "available",
+            "reason": "correction",
+            "ignoreCompareQuantity": True,
+            "quantities": quantities,
+        }})
+        instance.check_user_errors(
+            data.get("inventorySetQuantities") or {}, "inventorySetQuantities")
+        instance.last_export_stock = fields.Datetime.now()
+
+    # -------------------------------------------------------------- import --
+    @api.model
+    def _import_level(self, instance, payload):
+        """inventory_levels/update webhook: {inventory_item_id, location_id,
+        available}. Two-way stock only; applied as an inventory adjustment."""
+        if instance.sync_stock not in ("import", "both"):
+            return
         binding = self.env["shopify.bisync.binding"].search([
             ("instance_id", "=", instance.id),
             ("res_model", "=", "product.product"),
-            ("res_id", "=", product.id)], limit=1)
-        if not binding:
+            ("inventory_item_id", "=", str(payload.get("inventory_item_id")))],
+            limit=1)
+        row = instance.location_map_ids.filtered(
+            lambda m: m.stock_sync and m.warehouse_id
+            and m.shopify_location_id == str(payload.get("location_id")))[:1]
+        product = binding and binding.resolve()
+        if not product or not row or payload.get("available") is None:
             return
-        instance.api_call("POST", "inventory_levels/set.json", {
-            "location_id": payload.get("location_id"),
-            "inventory_item_id": binding.external_id,
-            "available": int(qty),
-        })
+        available = float(payload["available"])
+        location = row.warehouse_id.lot_stock_id
+        current = product.with_context(
+            warehouse_id=row.warehouse_id.id,
+            warehouse=row.warehouse_id.id).free_qty
+        if abs(current - available) < 1e-6:
+            return  # echo of our own export: no-op
+        Quant = self.env["stock.quant"].with_context(inventory_mode=True)
+        quant = Quant.search([("product_id", "=", product.id),
+                              ("location_id", "=", location.id)], limit=1)
+        if not quant:
+            quant = Quant.create({"product_id": product.id,
+                                  "location_id": location.id})
+        # Adjust so the warehouse's free qty lands on Shopify's number even
+        # when stock is spread over child locations.
+        quant.inventory_quantity = quant.quantity + (available - current)
+        quant.action_apply_inventory()
 
+    # ---------------------------------------------------------------- crons -
     @api.model
     def cron_export_stock(self):
-        """Periodic sweep as the safety net under real-time triggers."""
+        """Hourly sweep: safety net under the real-time move trigger."""
         Job = self.env["shopify.bisync.job"]
         for instance in self.env["shopify.bisync.instance"].search(
                 [("sync_stock", "in", ("export", "both"))]):
             bindings = self.env["shopify.bisync.binding"].search(
                 [("instance_id", "=", instance.id),
-                 ("res_model", "=", "product.product")], limit=500)
-            for b in bindings:
-                Job.enqueue(instance, "out", "stock", {"res_id": b.res_id}, priority=20)
+                 ("res_model", "=", "product.product"),
+                 ("inventory_item_id", "!=", False)])
+            for binding in bindings:
+                Job.enqueue(instance, "out", "stock",
+                            {"res_id": binding.res_id}, priority=20,
+                            lock_key=f"stock:{binding.res_id}")
+
+
+class StockMove(models.Model):
+    _inherit = "stock.move"
+
+    def _action_done(self, cancel_backorder=False):
+        moves = super()._action_done(cancel_backorder=cancel_backorder)
+        Job = self.env["shopify.bisync.job"]
+        Binding = self.env["shopify.bisync.binding"]
+        products = moves.product_id
+        for instance in self.env["shopify.bisync.instance"].sudo().search(
+                [("sync_stock", "in", ("export", "both"))]):
+            for product in products:
+                if Binding.get(self.env, instance, "product.product",
+                               record=product):
+                    Job.enqueue(instance, "out", "stock",
+                                {"res_id": product.id}, priority=15,
+                                lock_key=f"stock:{product.id}")
+        return moves

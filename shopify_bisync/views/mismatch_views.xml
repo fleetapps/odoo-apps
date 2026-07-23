@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="mismatch_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.mismatch.list</field>
+            <field name="model">shopify.bisync.mismatch</field>
+            <field name="arch" type="xml">
+                <list decoration-muted="resolved">
+                    <header>
+                        <button name="action_mark_resolved" type="object"
+                                string="Mark resolved"/>
+                    </header>
+                    <field name="create_date"/>
+                    <field name="instance_id"/>
+                    <field name="kind"/>
+                    <field name="reference"/>
+                    <field name="message"/>
+                    <field name="sale_order_id"/>
+                    <field name="resolved" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="mismatch_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.mismatch.search</field>
+            <field name="model">shopify.bisync.mismatch</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="reference"/>
+                    <field name="message"/>
+                    <filter name="filter_open" string="Open"
+                            domain="[('resolved', '=', False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_kind" string="Kind"
+                                context="{'group_by': 'kind'}"/>
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="mismatch_action" model="ir.actions.act_window">
+            <field name="name">Mismatch Log</field>
+            <field name="res_model">shopify.bisync.mismatch</field>
+            <field name="view_mode">list</field>
+            <field name="context">{'search_default_filter_open': 1}</field>
+        </record>
+
+        <menuitem id="menu_mismatch" name="Mismatch Log" parent="menu_operations"
+                  action="mismatch_action" sequence="30"/>
+
+    </data>
+</odoo>

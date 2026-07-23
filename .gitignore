@@ -54,6 +54,9 @@ cover/
 # Translations
 *.mo
 *.pot
+# ...but Odoo module translation templates/catalogs under i18n/ are shipped source
+!*/i18n/*.pot
+!*/i18n/*.po
 
 # Django stuff:
 *.log

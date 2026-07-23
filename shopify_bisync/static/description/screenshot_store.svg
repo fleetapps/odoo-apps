@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" font-family="Arial, Helvetica, sans-serif">
+  <rect width="900" height="520" fill="#f4f6f8"/>
+  <rect x="0" y="0" width="900" height="48" fill="#2b3d4f"/>
+  <text x="20" y="30" fill="#fff" font-size="16" font-weight="bold">Shopify Sync — Stores / My Shopify Store</text>
+  <rect x="16" y="64" width="868" height="440" rx="6" fill="#fff" stroke="#d8dde3"/>
+  <rect x="32" y="80" width="130" height="30" rx="4" fill="#714b67"/>
+  <text x="45" y="100" fill="#fff" font-size="13">Test Connection</text>
+  <rect x="170" y="80" width="150" height="30" rx="4" fill="#e7e9ed"/>
+  <text x="182" y="100" fill="#2b3d4f" font-size="13">Register Webhooks</text>
+  <rect x="328" y="80" width="140" height="30" rx="4" fill="#e7e9ed"/>
+  <text x="340" y="100" fill="#2b3d4f" font-size="13">Fetch Locations</text>
+  <g transform="translate(32,128)">
+    <rect width="90" height="24" rx="12" fill="#f5c518" opacity="0.25"/>
+    <text x="10" y="16" font-size="12" fill="#7a5b00">3 Pending</text>
+    <rect x="98" width="80" height="24" rx="12" fill="#d9534f" opacity="0.2"/>
+    <text x="108" y="16" font-size="12" fill="#8f1f1b">0 Failed</text>
+    <rect x="186" width="90" height="24" rx="12" fill="#5cb85c" opacity="0.2"/>
+    <text x="196" y="16" font-size="12" fill="#1e5e1e">412 Done</text>
+  </g>
+  <text x="32" y="190" font-size="20" font-weight="bold" fill="#2b3d4f">My Shopify Store</text>
+  <g font-size="13" fill="#556270">
+    <text x="32" y="226" font-weight="bold" fill="#2b3d4f">Connection</text>
+    <text x="32" y="252">Shop URL</text><text x="200" y="252" fill="#2b3d4f">mystore.myshopify.com</text>
+    <text x="32" y="278">Access Token</text><text x="200" y="278" fill="#2b3d4f">••••••••••••••••</text>
+    <text x="32" y="304">Webhook Secret</text><text x="200" y="304" fill="#2b3d4f">••••••••••••</text>
+    <text x="470" y="226" font-weight="bold" fill="#2b3d4f">Two-Way Sync Policy</text>
+    <text x="470" y="252">Products</text><text x="640" y="252" fill="#2b3d4f">Two-way</text>
+    <text x="470" y="278">Stock</text><text x="640" y="278" fill="#2b3d4f">Odoo → Shopify</text>
+    <text x="470" y="304">Orders</text><text x="640" y="304" fill="#2b3d4f">Shopify → Odoo</text>
+    <text x="470" y="330">Conflicts</text><text x="640" y="330" fill="#2b3d4f">Most recent edit wins</text>
+  </g>
+  <g transform="translate(32,360)" font-size="12">
+    <rect width="820" height="28" fill="#eef1f4"/>
+    <text x="10" y="19" font-weight="bold" fill="#2b3d4f">Shopify Location</text>
+    <text x="300" y="19" font-weight="bold" fill="#2b3d4f">Odoo Warehouse</text>
+    <text x="600" y="19" font-weight="bold" fill="#2b3d4f">Sync Stock</text>
+    <rect y="28" width="820" height="26" fill="#fff"/>
+    <text x="10" y="46" fill="#556270">Main warehouse (74561238)</text>
+    <text x="300" y="46" fill="#556270">WH — San Francisco</text>
+    <text x="600" y="46" fill="#5cb85c">✓</text>
+    <rect y="54" width="820" height="26" fill="#fafbfc"/>
+    <text x="10" y="72" fill="#556270">Retail POS (74561240)</text>
+    <text x="300" y="72" fill="#556270">SHOP — Downtown</text>
+    <text x="600" y="72" fill="#5cb85c">✓</text>
+  </g>
+</svg>

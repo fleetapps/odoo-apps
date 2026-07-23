@@ -1,24 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="binding_view_list" model="ir.ui.view">
-        <field name="name">shopify.bisync.binding.list</field>
-        <field name="model">shopify.bisync.binding</field>
-        <field name="arch" type="xml">
-            <list>
-                <field name="instance_id"/>
-                <field name="res_model"/>
-                <field name="res_id"/>
-                <field name="external_id"/>
-                <field name="external_updated_at"/>
-                <field name="odoo_write_date"/>
-            </list>
-        </field>
-    </record>
-    <record id="binding_action" model="ir.actions.act_window">
-        <field name="name">Bindings</field>
-        <field name="res_model">shopify.bisync.binding</field>
-        <field name="view_mode">list</field>
-    </record>
-    <menuitem id="menu_bindings" name="Bindings" parent="menu_root"
-              action="binding_action"/>
+    <data>
+
+        <record id="binding_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.binding.list</field>
+            <field name="model">shopify.bisync.binding</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="instance_id"/>
+                    <field name="res_model"/>
+                    <field name="res_id"/>
+                    <field name="external_id"/>
+                    <field name="inventory_item_id" optional="hide"/>
+                    <field name="shopify_status" optional="hide"/>
+                    <field name="external_updated_at"/>
+                    <field name="odoo_write_date"/>
+                    <field name="checksum" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="binding_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.binding.search</field>
+            <field name="model">shopify.bisync.binding</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="external_id"/>
+                    <field name="res_id"/>
+                    <filter name="filter_products" string="Products"
+                            domain="[('res_model', '=', 'product.template')]"/>
+                    <filter name="filter_variants" string="Variants"
+                            domain="[('res_model', '=', 'product.product')]"/>
+                    <filter name="filter_orders" string="Orders"
+                            domain="[('res_model', '=', 'sale.order')]"/>
+                    <filter name="filter_partners" string="Customers"
+                            domain="[('res_model', '=', 'res.partner')]"/>
+                    <group expand="0" string="Group By">
+                        <filter name="group_model" string="Model"
+                                context="{'group_by': 'res_model'}"/>
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="binding_action" model="ir.actions.act_window">
+            <field name="name">Bindings</field>
+            <field name="res_model">shopify.bisync.binding</field>
+            <field name="view_mode">list</field>
+        </record>
+
+        <menuitem id="menu_bindings" name="Bindings" parent="menu_operations"
+                  action="binding_action" sequence="20"/>
+
+    </data>
 </odoo>

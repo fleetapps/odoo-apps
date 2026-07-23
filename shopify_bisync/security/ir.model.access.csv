@@ -4,4 +4,11 @@ access_instance_user,instance user,model_shopify_bisync_instance,group_connector
 access_binding_admin,binding admin,model_shopify_bisync_binding,group_connector_admin,1,1,1,1
 access_binding_user,binding user,model_shopify_bisync_binding,group_connector_user,1,0,0,0
 access_job_admin,job admin,model_shopify_bisync_job,group_connector_admin,1,1,1,1
-access_job_user,job user,model_shopify_bisync_job,group_connector_user,1,0,0,0
+access_job_user,job user,model_shopify_bisync_job,group_connector_user,1,1,0,0
+access_location_map_admin,location map admin,model_shopify_bisync_location_map,group_connector_admin,1,1,1,1
+access_location_map_user,location map user,model_shopify_bisync_location_map,group_connector_user,1,0,0,0
+access_carrier_map_admin,carrier map admin,model_shopify_bisync_carrier_map,group_connector_admin,1,1,1,1
+access_carrier_map_user,carrier map user,model_shopify_bisync_carrier_map,group_connector_user,1,0,0,0
+access_mismatch_admin,mismatch admin,model_shopify_bisync_mismatch,group_connector_admin,1,1,1,1
+access_mismatch_user,mismatch user,model_shopify_bisync_mismatch,group_connector_user,1,1,0,0
+access_backfill_admin,backfill wizard admin,model_shopify_bisync_backfill,group_connector_admin,1,1,1,1
