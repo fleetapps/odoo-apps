@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- <list> is the list-view root element in Odoo 19:
-         https://www.odoo.com/documentation/19.0/developer/tutorials/server_framework_101/06_basicviews.html -->
+    <!-- ================================================================= -->
+    <!--  Access Profile - list / search / form                            -->
+    <!--  List root is <list> (Odoo 18/19). On Odoo 17 replace <list> with -->
+    <!--  <tree> in this file (mechanical, matches upgrade_code behaviour). -->
+    <!-- ================================================================= -->
+
     <record id="access_profile_view_list" model="ir.ui.view">
         <field name="name">access.manager.profile.list</field>
         <field name="model">access.manager.profile</field>
@@ -9,10 +13,39 @@
             <list>
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
-                <field name="user_ids" widget="many2many_tags"/>
-                <field name="group_ids" widget="many2many_tags"/>
+                <field name="user_ids" widget="many2many_tags" optional="show"/>
+                <field name="group_ids" widget="many2many_tags" optional="show"/>
+                <field name="company_ids" widget="many2many_tags" optional="hide"
+                       groups="base.group_multi_company"/>
+                <field name="is_readonly_user" optional="hide"/>
+                <field name="disable_login" optional="hide"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
+        </field>
+    </record>
+
+    <record id="access_profile_view_search" model="ir.ui.view">
+        <field name="name">access.manager.profile.search</field>
+        <field name="model">access.manager.profile</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="user_ids"/>
+                <field name="group_ids"/>
+                <field name="company_ids" groups="base.group_multi_company"/>
+                <filter name="readonly_users" string="Read-Only Users"
+                        domain="[('is_readonly_user', '=', True)]"/>
+                <filter name="login_disabled" string="Login Disabled"
+                        domain="[('disable_login', '=', True)]"/>
+                <separator/>
+                <filter name="inactive" string="Archived"
+                        domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_company" string="Company"
+                            context="{'group_by': 'company_ids'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -21,53 +54,260 @@
         <field name="model">access.manager.profile</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_export_json" type="object"
+                            string="Export JSON" icon="fa-download"
+                            class="btn-secondary"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="scheduled,active,expiring,expired"/>
+                </header>
                 <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Warehouse Staff"/></h1>
+                    </div>
                     <group>
-                        <group>
-                            <field name="name"/>
-                            <field name="active"/>
-                        </group>
-                        <group>
+                        <group string="Applies To">
                             <field name="user_ids" widget="many2many_tags"/>
                             <field name="group_ids" widget="many2many_tags"/>
-                            <field name="company_ids" widget="many2many_tags"/>
+                            <field name="company_ids" widget="many2many_tags"
+                                   groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Options">
+                            <field name="sequence"/>
+                            <field name="active"/>
                         </group>
                     </group>
+                    <div class="alert alert-info" role="alert"
+                         invisible="user_ids or group_ids">
+                        This profile targets no user or group yet, so it has no
+                        effect. Add at least one user or group above.
+                    </div>
                     <notebook>
-                        <page string="Menus">
-                            <field name="hidden_menu_ids"/>
+                        <page string="Menus" name="menus">
+                            <group>
+                                <field name="hide_apps_menu"/>
+                            </group>
+                            <separator string="Hidden Menus"/>
+                            <field name="hidden_menu_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
                         </page>
-                        <page string="Fields">
+
+                        <page string="Models" name="models">
+                            <field name="model_rule_ids">
+                                <list>
+                                    <field name="model_id"/>
+                                    <field name="readonly" string="Read-Only"/>
+                                    <field name="hide_create"/>
+                                    <field name="hide_edit"/>
+                                    <field name="hide_delete"/>
+                                    <field name="hide_duplicate" optional="show"/>
+                                    <field name="hide_archive" optional="show"/>
+                                    <field name="hide_import" optional="hide"/>
+                                    <field name="hide_export"/>
+                                    <field name="hide_chatter" optional="hide"/>
+                                </list>
+                                <form>
+                                    <group>
+                                        <field name="model_id"/>
+                                        <field name="model_name" invisible="1"/>
+                                    </group>
+                                    <group>
+                                        <group string="Buttons">
+                                            <field name="readonly"/>
+                                            <field name="hide_create"/>
+                                            <field name="hide_edit"/>
+                                            <field name="hide_delete"/>
+                                            <field name="hide_duplicate"/>
+                                            <field name="hide_archive"/>
+                                            <field name="hide_import"/>
+                                            <field name="hide_export"/>
+                                        </group>
+                                        <group string="Chatter">
+                                            <field name="hide_chatter"/>
+                                            <field name="hide_send_message"
+                                                   invisible="hide_chatter"/>
+                                            <field name="hide_log_note"
+                                                   invisible="hide_chatter"/>
+                                            <field name="hide_activity"
+                                                   invisible="hide_chatter"/>
+                                            <field name="hide_followers"
+                                                   invisible="hide_chatter"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group string="Hide View Types">
+                                            <field name="hide_kanban"/>
+                                            <field name="hide_pivot"/>
+                                            <field name="hide_graph"/>
+                                            <field name="hide_calendar"/>
+                                            <field name="hide_activity_view"/>
+                                            <field name="hide_map"/>
+                                        </group>
+                                        <group string="Search &amp; Extras">
+                                            <field name="hide_spreadsheet"/>
+                                            <field name="hide_favourites"/>
+                                        </group>
+                                    </group>
+                                    <separator string="Reports &amp; Actions to Hide"/>
+                                    <group>
+                                        <field name="hidden_report_ids"
+                                               widget="many2many_tags"
+                                               options="{'no_create': True}"/>
+                                        <field name="hidden_action_ids"
+                                               widget="many2many_tags"
+                                               options="{'no_create': True}"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+
+                        <page string="Fields" name="fields">
                             <field name="field_rule_ids">
                                 <list editable="bottom">
                                     <field name="model_id"/>
-                                    <field name="field_id"/>
+                                    <field name="field_id"
+                                           options="{'no_create': True}"/>
                                     <field name="mode"/>
+                                    <field name="no_create"/>
+                                    <field name="no_open"/>
+                                    <field name="mask_char" optional="hide"/>
+                                    <field name="mask_show_last" optional="hide"/>
+                                    <field name="condition"
+                                           placeholder="e.g. state == 'done'"/>
                                 </list>
                             </field>
+                            <p class="text-muted">
+                                An <b>Invisible</b> field is also removed from list
+                                columns, search filters, group-by and server-side
+                                export. A <b>Condition</b> (optional) applies the
+                                mode only when the expression is truthy.
+                            </p>
                         </page>
-                        <page string="Buttons &amp; Tabs">
+
+                        <page string="Buttons / Tabs / Filters" name="elements">
                             <field name="element_rule_ids">
                                 <list editable="bottom">
                                     <field name="model_id"/>
                                     <field name="element_type"/>
                                     <field name="selector"/>
                                     <field name="mode"/>
+                                    <field name="condition"
+                                           placeholder="e.g. state != 'draft'"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Model Switches">
-                            <field name="model_rule_ids">
-                                <list editable="bottom">
+
+                        <page string="Records (Conditions)" name="domains">
+                            <field name="domain_rule_ids">
+                                <list>
+                                    <field name="name"/>
                                     <field name="model_id"/>
-                                    <field name="hide_create"/>
-                                    <field name="hide_edit"/>
-                                    <field name="hide_delete"/>
-                                    <field name="hide_duplicate"/>
-                                    <field name="block_export"/>
-                                    <field name="hide_chatter"/>
+                                    <field name="perm_read"/>
+                                    <field name="perm_create"/>
+                                    <field name="perm_write"/>
+                                    <field name="perm_unlink"/>
+                                    <field name="is_soft"/>
                                 </list>
+                                <form>
+                                    <group>
+                                        <field name="name"/>
+                                        <field name="model_id"/>
+                                        <field name="model_name" invisible="1"/>
+                                    </group>
+                                    <group string="Restrict">
+                                        <field name="perm_read"/>
+                                        <field name="perm_create"/>
+                                        <field name="perm_write"/>
+                                        <field name="perm_unlink"/>
+                                        <field name="is_soft"/>
+                                    </group>
+                                    <group string="Hierarchy Access">
+                                        <field name="use_hierarchy"/>
+                                        <field name="hierarchy_field_id"
+                                               invisible="not use_hierarchy"
+                                               required="use_hierarchy"
+                                               options="{'no_create': True}"/>
+                                        <field name="hierarchy_mode"
+                                               invisible="not use_hierarchy"/>
+                                        <field name="hierarchy_field_name" invisible="1"/>
+                                    </group>
+                                    <separator string="Restricted Records (Domain)"
+                                               invisible="use_hierarchy"/>
+                                    <field name="domain" widget="domain"
+                                           options="{'model': 'model_name'}"
+                                           invisible="use_hierarchy"/>
+                                    <p class="text-muted" invisible="use_hierarchy">
+                                        Records matching this domain are restricted.
+                                        Dynamic helpers are available, e.g.
+                                        <code>[('user_id','!=',uid)]</code> or
+                                        <code>[('date','&lt;', (context_today() - relativedelta(days=30)))]</code>.
+                                    </p>
+                                </form>
                             </field>
+                        </page>
+
+                        <page string="Scheduling" name="scheduling">
+                            <group>
+                                <group string="Validity Window">
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="restriction_type" readonly="1"/>
+                                </group>
+                                <group string="Daily Time Window">
+                                    <field name="restriction_time_based"/>
+                                    <field name="time_start" widget="float_time"
+                                           invisible="not restriction_time_based"/>
+                                    <field name="time_end" widget="float_time"
+                                           invisible="not restriction_time_based"/>
+                                    <field name="tz" invisible="not restriction_time_based"/>
+                                </group>
+                            </group>
+                            <div class="alert alert-info" role="alert"
+                                 invisible="not date_end">
+                                Expired profiles are auto-revoked (deactivated) by
+                                the scheduled action, and are ignored immediately
+                                once the expiry passes.
+                            </div>
+                        </page>
+
+                        <page string="User &amp; Global" name="global">
+                            <group>
+                                <group string="User Level">
+                                    <field name="is_readonly_user"/>
+                                    <field name="disable_developer_mode"/>
+                                    <field name="disable_login"/>
+                                </group>
+                                <group string="All Models (Global)">
+                                    <field name="hide_import"/>
+                                    <field name="hide_export"/>
+                                    <field name="hide_add_property"/>
+                                    <field name="hide_search_panel"/>
+                                    <field name="hide_spreadsheet"/>
+                                    <field name="hide_favourites"/>
+                                </group>
+                            </group>
+                            <group string="Global Chatter">
+                                <group>
+                                    <field name="hide_chatter"/>
+                                    <field name="hide_send_message"
+                                           invisible="hide_chatter"/>
+                                    <field name="hide_log_note"
+                                           invisible="hide_chatter"/>
+                                </group>
+                                <group>
+                                    <field name="hide_activity"
+                                           invisible="hide_chatter"/>
+                                    <field name="hide_followers"
+                                           invisible="hide_chatter"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Notes" name="notes">
+                            <field name="note" placeholder="Internal notes..."/>
                         </page>
                     </notebook>
                 </sheet>
@@ -79,10 +319,10 @@
         <field name="name">Access Profiles</field>
         <field name="res_model">access.manager.profile</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first access profile</p>
+            <p>Pick the users or groups it applies to, then define what they may
+               see and do across menus, models, fields, records and chatter.</p>
+        </field>
     </record>
-
-    <menuitem id="menu_access_manager_root" name="Access Manager"
-              groups="access_manager_pro.group_access_manager_admin" sequence="90"/>
-    <menuitem id="menu_access_profiles" name="Profiles"
-              parent="menu_access_manager_root" action="access_profile_action"/>
 </odoo>

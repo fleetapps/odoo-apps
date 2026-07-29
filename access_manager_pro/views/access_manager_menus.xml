@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root menu is restricted to the delegated administrators; Settings/System
+         admins receive that group automatically (see security groups). -->
+    <menuitem id="menu_access_manager_root"
+              name="Access Manager"
+              web_icon="access_manager_pro,static/description/icon.png"
+              groups="access_manager_pro.group_access_manager_admin"
+              sequence="90"/>
+
+    <menuitem id="menu_access_dashboard"
+              name="Dashboard"
+              parent="menu_access_manager_root"
+              action="action_access_dashboard"
+              sequence="5"/>
+
+    <menuitem id="menu_access_profiles"
+              name="Access Profiles"
+              parent="menu_access_manager_root"
+              action="access_profile_action"
+              sequence="10"/>
+
+    <menuitem id="menu_access_import"
+              name="Import Profiles"
+              parent="menu_access_manager_root"
+              action="action_access_import_wizard"
+              sequence="20"/>
+</odoo>

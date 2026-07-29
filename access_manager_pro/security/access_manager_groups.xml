@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Security reference:
+         https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html -->
+
+    <record id="module_category_access_manager" model="ir.module.category">
+        <field name="name">Access Manager</field>
+        <field name="description">Manage Access Manager Pro profiles and rules.</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <!-- Delegated administrator group. Members configure profiles and are, by
+         design, never restricted by the module (anti-lockout). The group does
+         NOT grant any extra data privileges on its own. -->
+    <record id="group_access_manager_admin" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="category_id" ref="module_category_access_manager"/>
+        <field name="comment">Configure Access Manager Pro. Never restricted by
+            the module's own rules.</field>
+    </record>
+
+    <!-- Every Settings/System administrator automatically administers this app
+         (so they see the menu and can never lock themselves out), without this
+         module's group leaking system privileges to anyone else. -->
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_access_manager_admin'))]"/>
+    </record>
+</odoo>

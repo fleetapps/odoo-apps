@@ -1,9 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_profile_admin,profile admin,model_access_manager_profile,group_access_manager_admin,1,1,1,1
-access_field_rule_admin,field rule admin,model_access_manager_field_rule,group_access_manager_admin,1,1,1,1
-access_element_rule_admin,element rule admin,model_access_manager_element_rule,group_access_manager_admin,1,1,1,1
-access_model_rule_admin,model rule admin,model_access_manager_model_rule,group_access_manager_admin,1,1,1,1
-access_profile_user,profile read all,model_access_manager_profile,base.group_user,1,0,0,0
-access_field_rule_user,field rule read,model_access_manager_field_rule,base.group_user,1,0,0,0
-access_element_rule_user,element rule read,model_access_manager_element_rule,base.group_user,1,0,0,0
-access_model_rule_user,model rule read,model_access_manager_model_rule,base.group_user,1,0,0,0
+access_profile_admin,access.manager.profile admin,model_access_manager_profile,group_access_manager_admin,1,1,1,1
+access_model_rule_admin,access.manager.model.rule admin,model_access_manager_model_rule,group_access_manager_admin,1,1,1,1
+access_field_rule_admin,access.manager.field.rule admin,model_access_manager_field_rule,group_access_manager_admin,1,1,1,1
+access_element_rule_admin,access.manager.element.rule admin,model_access_manager_element_rule,group_access_manager_admin,1,1,1,1
+access_domain_rule_admin,access.manager.domain.rule admin,model_access_manager_domain_rule,group_access_manager_admin,1,1,1,1
+access_import_wizard_admin,access.manager.import.wizard admin,model_access_manager_import_wizard,group_access_manager_admin,1,1,1,1

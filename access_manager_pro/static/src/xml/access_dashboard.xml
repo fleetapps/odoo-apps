@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!-- ===== reusable: horizontal bar list ===== -->
+<t t-name="access_manager_pro.HBars">
+  <div class="o_am_bars">
+    <div t-foreach="chart" t-as="bar" t-key="bar_index" class="o_am_bar_row">
+      <span class="o_am_bar_label" t-att-title="bar.label" t-esc="bar.label"/>
+      <div class="o_am_bar_track">
+        <div class="o_am_bar_fill" t-att-style="'width:' + bar.pct + '%; background:' + bar.color"/>
+      </div>
+      <span class="o_am_bar_val" t-esc="bar.count"/>
+    </div>
+    <div t-if="!chart.length" class="o_am_empty">No data yet.</div>
+  </div>
+</t>
+
+<!-- ===== reusable: vertical bar chart with y-axis ===== -->
+<t t-name="access_manager_pro.VBars">
+  <svg t-att-viewBox="'0 0 ' + chart.w + ' ' + chart.h" class="o_am_vbars">
+    <g t-foreach="chart.ticks" t-as="tk" t-key="tk_index">
+      <line t-att-x1="chart.padL" x2="292" t-att-y1="tk.y" t-att-y2="tk.y" class="o_am_gridline"/>
+      <text t-att-x="chart.padL - 6" t-att-y="tk.y + 3" class="o_am_ytick" t-esc="tk.v"/>
+    </g>
+    <g t-foreach="chart.bars" t-as="b" t-key="b_index">
+      <rect t-att-x="b.x" t-att-y="b.y" t-att-width="b.w" t-att-height="b.h" rx="3" t-att-fill="b.color">
+        <title><t t-esc="b.label"/>: <t t-esc="b.value"/></title>
+      </rect>
+      <text t-att-x="b.cx" t-att-y="b.y - 4" class="o_am_barnum" t-esc="b.value"/>
+      <text t-att-x="b.cx" t-att-y="chart.h - 8" class="o_am_xtick" t-esc="b.label"/>
+    </g>
+  </svg>
+</t>
+
+<t t-name="access_manager_pro.Dashboard">
+  <div class="o_am_dash" t-att-class="{ o_am_dark: state.dark }">
+
+    <div t-if="state.loading" class="o_am_loading">
+      <i class="fa fa-circle-o-notch fa-spin"/> <span>Loading access analytics…</span>
+    </div>
+
+    <t t-else="">
+      <!-- ============ Header ============ -->
+      <div class="o_am_header">
+        <div class="o_am_brand">
+          <div class="o_am_shield"><i class="fa fa-shield"/></div>
+          <div>
+            <h1>Access Management</h1>
+            <div class="o_am_meta">
+              <span class="o_am_pill"><i class="fa fa-building-o"/> <t t-esc="state.data.company.name"/></span>
+              <span class="o_am_pill"><i class="fa fa-clock-o"/> Updated <t t-esc="state.data.updated"/></span>
+            </div>
+          </div>
+        </div>
+        <div class="o_am_actions">
+          <button class="o_am_icon_btn" t-on-click="toggleDark" title="Toggle theme">
+            <i t-att-class="state.dark ? 'fa fa-sun-o' : 'fa fa-moon-o'"/>
+          </button>
+          <button class="o_am_btn o_am_btn_light" t-on-click="refresh"><i class="fa fa-refresh"/> Refresh</button>
+        </div>
+      </div>
+
+      <!-- ============ KPI cards ============ -->
+      <div class="o_am_kpis">
+        <div t-foreach="kpiCards" t-as="card" t-key="card.label" t-att-class="'o_am_kpi accent-' + card.accent">
+          <div class="o_am_kpi_top">
+            <span class="o_am_kpi_icon"><i t-att-class="'fa ' + card.icon"/></span>
+            <span class="o_am_kpi_sub" t-esc="card.sub"/>
+          </div>
+          <div class="o_am_kpi_val" t-esc="card.value"/>
+          <div class="o_am_kpi_label" t-esc="card.label"/>
+        </div>
+      </div>
+
+      <!-- ============ Donut + Trend ============ -->
+      <div class="o_am_grid2">
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-pie-chart"/> Rules by Restriction Type</h2></div>
+          <div class="o_am_donut_wrap">
+            <svg viewBox="0 0 140 140" class="o_am_donut">
+              <circle cx="70" cy="70" t-att-r="donut.r" fill="none" class="o_am_track" stroke-width="18"/>
+              <circle t-foreach="donut.arcs" t-as="arc" t-key="arc_index"
+                      cx="70" cy="70" t-att-r="donut.r" fill="none" t-att-stroke="arc.color" stroke-width="18"
+                      t-att-stroke-dasharray="arc.dash" t-att-stroke-dashoffset="arc.off"
+                      transform="rotate(-90 70 70)">
+                <title><t t-esc="arc.label"/>: <t t-esc="arc.value"/> (<t t-esc="arc.pct"/>%)</title>
+              </circle>
+              <text x="70" y="66" class="o_am_donut_num" t-esc="donut.total"/>
+              <text x="70" y="84" class="o_am_donut_cap">rules</text>
+            </svg>
+            <div class="o_am_legend">
+              <span t-foreach="donut.arcs" t-as="arc" t-key="arc_index">
+                <i class="o_am_dot" t-att-style="'background:' + arc.color"/>
+                <t t-esc="arc.label"/> <b t-esc="arc.value"/> <small t-esc="'(' + arc.pct + '%)'"/>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-line-chart"/> Rules Created — Last 6 Months</h2>
+            <span class="o_am_series_key"><i class="o_am_dot" style="background:#0f8f8f"/> New rules</span>
+          </div>
+          <svg viewBox="0 0 340 148" class="o_am_line">
+            <defs>
+              <linearGradient id="amArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0f8f8f" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="#0f8f8f" stop-opacity="0.02"/>
+              </linearGradient>
+            </defs>
+            <g t-foreach="line.yTicks" t-as="t" t-key="t_index">
+              <line t-att-x1="line.padL" t-att-x2="line.right" t-att-y1="t.y" t-att-y2="t.y" class="o_am_gridline"/>
+              <text t-att-x="line.padL - 6" t-att-y="t.y + 3" class="o_am_ytick" t-esc="t.v"/>
+            </g>
+            <path t-att-d="line.area" class="o_am_area" fill="url(#amArea)"/>
+            <path t-att-d="line.path" class="o_am_stroke"/>
+            <circle t-foreach="line.pts" t-as="pt" t-key="pt_index" t-att-cx="pt.x" t-att-cy="pt.y" r="3" class="o_am_pt">
+              <title><t t-esc="pt.label"/>: <t t-esc="pt.value"/></title>
+            </circle>
+            <circle t-att-cx="line.last.x" t-att-cy="line.last.y" r="4.5" class="o_am_pt_last"/>
+            <text t-att-x="line.last.x" t-att-y="line.last.y - 9" class="o_am_lastval" t-esc="line.last.value"/>
+            <text t-foreach="line.pts" t-as="pt" t-key="pt_index" t-att-x="pt.x" y="143" class="o_am_xtick" t-esc="pt.label"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ============ Restriction composition (stacked) ============ -->
+      <div class="o_am_card">
+        <div class="o_am_card_head"><h2><i class="fa fa-object-group"/> Restriction Composition
+          <small>what kinds of rules govern access</small></h2>
+        </div>
+        <div class="o_am_stack">
+          <div t-foreach="ruleMix.segments" t-as="seg" t-key="seg.label" class="o_am_stack_seg"
+               t-att-style="'width:' + seg.pct + '%; background:' + seg.color" t-att-title="seg.label + ': ' + seg.value"/>
+        </div>
+        <div class="o_am_legend o_am_legend_wrap">
+          <span t-foreach="ruleMix.legend" t-as="l" t-key="l.label">
+            <i class="o_am_dot" t-att-style="'background:' + l.color"/> <t t-esc="l.label"/> <b t-esc="l.value"/>
+          </span>
+        </div>
+      </div>
+
+      <!-- ============ Distribution + Outliers ============ -->
+      <div class="o_am_grid2">
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-bar-chart"/> Users by Restriction Load</h2>
+            <small class="o_am_muted">rules affecting each user</small></div>
+          <t t-call="access_manager_pro.VBars"><t t-set="chart" t-value="loadHist"/></t>
+        </div>
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-user-times"/> Most-Restricted Users</h2>
+            <small class="o_am_muted">outliers to review</small></div>
+          <t t-call="access_manager_pro.HBars"><t t-set="chart" t-value="topUsers"/></t>
+        </div>
+      </div>
+
+      <!-- ============ Company + Expirations ============ -->
+      <div class="o_am_grid2">
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-building"/> Rules by Company</h2></div>
+          <t t-call="access_manager_pro.HBars"><t t-set="chart" t-value="companyBars"/></t>
+        </div>
+        <div class="o_am_card">
+          <div class="o_am_card_head"><h2><i class="fa fa-hourglass-half"/> Upcoming Expirations</h2>
+            <small class="o_am_muted">temporary access</small></div>
+          <t t-call="access_manager_pro.VBars"><t t-set="chart" t-value="expBars"/></t>
+        </div>
+      </div>
+
+      <!-- ============ Restricted models + Insights ============ -->
+      <div class="o_am_grid2">
+        <div class="o_am_card">
+          <div class="o_am_card_head">
+            <h2><i class="fa fa-bars"/> Restricted Models — Top 10</h2>
+            <div class="o_am_head_tools">
+              <select class="o_am_select" t-on-change="(ev) => this.state.sort = ev.target.value">
+                <option value="most">Most restricted</option>
+                <option value="least">Least restricted</option>
+                <option value="az">Name A-Z</option>
+                <option value="za">Name Z-A</option>
+              </select>
+              <button class="o_am_btn o_am_btn_ghost" t-on-click="() => this.openList('All Rules', [])">Show All</button>
+            </div>
+          </div>
+          <div class="o_am_hint"><i class="fa fa-info-circle"/> Number of rules restricting fields or views per model</div>
+          <t t-call="access_manager_pro.HBars"><t t-set="chart" t-value="bars"/></t>
+        </div>
+
+        <div class="o_am_card">
+          <div class="o_am_card_head">
+            <h2><i class="fa fa-heartbeat"/> Access Insights</h2>
+            <div class="o_am_gauge">
+              <svg viewBox="0 0 76 76">
+                <circle cx="38" cy="38" t-att-r="gauge.r" fill="none" class="o_am_track" stroke-width="7"/>
+                <circle cx="38" cy="38" t-att-r="gauge.r" fill="none" t-att-stroke="gauge.color" stroke-width="7"
+                        t-att-stroke-dasharray="gauge.dash" transform="rotate(-90 38 38)" stroke-linecap="round"/>
+                <text x="38" y="42" class="o_am_gauge_num" t-esc="gauge.score"/>
+              </svg>
+              <div class="o_am_gauge_cap"><b t-att-style="'color:' + gauge.color" t-esc="gauge.rating"/><span>Config Score</span></div>
+            </div>
+          </div>
+          <div class="o_am_insights">
+            <div t-foreach="insightRows" t-as="row" t-key="row.title" class="o_am_insight">
+              <span class="o_am_insight_ic"><i t-att-class="'fa ' + row.icon"/></span>
+              <div class="o_am_insight_txt"><b t-esc="row.title"/><span t-esc="row.sub"/></div>
+              <span t-att-class="'o_am_badge tone-' + row.tone" t-esc="row.badge"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Heatmap ============ -->
+      <div class="o_am_card">
+        <div class="o_am_card_head">
+          <h2><i class="fa fa-th"/> Model Access Heatmap
+            <small><t t-esc="heat.rows.length"/> of <t t-esc="heat.totalModels"/> models · <t t-esc="heat.allActions.length"/> actions</small>
+          </h2>
+          <div class="o_am_head_tools">
+            <button class="o_am_btn o_am_btn_ghost" t-on-click="lessModels">
+              <i class="fa fa-compress"/> <t t-esc="state.heatModels > 6 ? 'Less models' : 'More models'"/>
+            </button>
+            <button class="o_am_btn o_am_btn_ghost" t-on-click="moreColumns">
+              <i class="fa fa-columns"/> <t t-esc="state.heatCols === 'all' ? 'Fewer columns' : 'More columns'"/>
+            </button>
+          </div>
+        </div>
+        <div class="o_am_heat_legend">
+          <span><i class="o_am_hc none"/> None</span><span><i class="o_am_hc low"/> 1–2 Low</span>
+          <span><i class="o_am_hc med"/> 3–4 Med</span><span><i class="o_am_hc high"/> 5+ High</span>
+        </div>
+        <div class="o_am_table_scroll">
+          <table class="o_am_heat">
+            <thead><tr><th class="o_am_heat_model">MODEL</th>
+              <th t-foreach="heat.cols" t-as="col" t-key="col" t-esc="colLabel(col)"/><th>TOTAL</th></tr></thead>
+            <tbody>
+              <tr t-foreach="heat.rows" t-as="row" t-key="row.model">
+                <td class="o_am_heat_model" t-esc="row.model"/>
+                <td t-foreach="heat.cols" t-as="col" t-key="col">
+                  <span t-att-class="'o_am_hcell ' + heatClass(row.cells[col])" t-esc="row.cells[col]"/>
+                </td>
+                <td class="o_am_heat_total" t-esc="row.total"/>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ User inspector ============ -->
+      <div class="o_am_card">
+        <div class="o_am_card_head">
+          <h2><i class="fa fa-search"/> User Access Inspector <small>— inspect what affects a specific user</small></h2>
+          <select class="o_am_select o_am_user_select" t-on-change="onSelectUser">
+            <option value="">Select a user…</option>
+            <option t-foreach="state.data.users" t-as="u" t-key="u.id" t-att-value="u.id" t-esc="u.name + '  (' + u.login + ')'"/>
+          </select>
+        </div>
+
+        <t t-if="state.inspection">
+          <div class="o_am_inspect_head">
+            <div class="o_am_avatar" t-esc="state.inspection.user.name.slice(0,1)"/>
+            <div><b t-esc="state.inspection.user.name"/><span class="o_am_muted" t-esc="state.inspection.user.login"/></div>
+            <div class="o_am_inspect_chips">
+              <span class="o_am_chip tone-violet"><i class="fa fa-list"/> <t t-esc="state.inspection.counts.rules"/> rules</span>
+              <span class="o_am_chip tone-red"><i class="fa fa-ban"/> <t t-esc="state.inspection.counts.menus"/> menus</span>
+              <span class="o_am_chip tone-blue"><i class="fa fa-lock"/> <t t-esc="state.inspection.counts.fields"/> fields</span>
+              <span class="o_am_chip tone-teal"><i class="fa fa-bolt"/> <t t-esc="state.inspection.counts.effective"/> effective</span>
+            </div>
+          </div>
+          <div class="o_am_tabs">
+            <button t-att-class="{ active: state.inspectTab === 'rules' }" t-on-click="() => this.setTab('rules')"><i class="fa fa-list"/> Active Rules <b t-esc="state.inspection.counts.rules"/></button>
+            <button t-att-class="{ active: state.inspectTab === 'menus' }" t-on-click="() => this.setTab('menus')"><i class="fa fa-bars"/> Hidden Menus <b t-esc="state.inspection.counts.menus"/></button>
+            <button t-att-class="{ active: state.inspectTab === 'fields' }" t-on-click="() => this.setTab('fields')"><i class="fa fa-lock"/> Fields <b t-esc="state.inspection.counts.fields"/></button>
+            <button t-att-class="{ active: state.inspectTab === 'effective' }" t-on-click="() => this.setTab('effective')"><i class="fa fa-bolt"/> Effective <b t-esc="state.inspection.counts.effective"/></button>
+          </div>
+          <div t-if="state.inspectTab === 'rules' or state.inspectTab === 'effective'" class="o_am_table_scroll">
+            <table class="o_am_list">
+              <thead><tr><th>RULE</th><th>TYPE</th><th>STATUS</th><th>EXPIRY</th><th></th></tr></thead>
+              <tbody>
+                <tr t-foreach="state.inspection.rules" t-as="r" t-key="r.id" t-if="state.inspectTab === 'rules' or r.active">
+                  <td class="o_am_strong" t-esc="r.name"/>
+                  <td><span class="o_am_tag" t-esc="r.type"/></td>
+                  <td><span t-att-class="'o_am_status s-' + r.status.toLowerCase()">
+                    <i t-att-class="r.status === 'Expiring' ? 'fa fa-exclamation-triangle' : 'fa fa-clock-o'"/> <t t-esc="r.status"/></span></td>
+                  <td class="o_am_mono" t-esc="r.expiry"/>
+                  <td><button class="o_am_link" t-on-click="() => this.openProfile(r.id)"><i class="fa fa-external-link"/> Open</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div t-if="state.inspectTab === 'menus'" class="o_am_taglist">
+            <span t-foreach="state.inspection.menus" t-as="m" t-key="m.id" class="o_am_menutag"><i class="fa fa-ban"/> <t t-esc="m.name"/></span>
+            <div t-if="!state.inspection.menus.length" class="o_am_empty">No hidden menus.</div>
+          </div>
+          <div t-if="state.inspectTab === 'fields'" class="o_am_table_scroll">
+            <table class="o_am_list">
+              <thead><tr><th>MODEL</th><th>FIELD</th><th>MODE</th></tr></thead>
+              <tbody>
+                <tr t-foreach="state.inspection.fields" t-as="f" t-key="f_index">
+                  <td class="o_am_mono" t-esc="f.model"/><td class="o_am_strong" t-esc="f.field"/>
+                  <td><span t-att-class="'o_am_tag mode-' + f.mode" t-esc="f.mode"/></td>
+                </tr>
+              </tbody>
+            </table>
+            <div t-if="!state.inspection.fields.length" class="o_am_empty">No field rules.</div>
+          </div>
+        </t>
+        <div t-else="" class="o_am_empty o_am_empty_lg">
+          <i class="fa fa-user-o"/> Choose a user to see every rule, hidden menu and field that affects them.
+        </div>
+      </div>
+
+      <!-- ============ Quick actions ============ -->
+      <div class="o_am_quick">
+        <span class="o_am_quick_label"><i class="fa fa-bolt"/> QUICK ACTIONS</span>
+        <button t-foreach="quickActions" t-as="qa" t-key="qa.label" class="o_am_qbtn" t-on-click="qa.fn">
+          <i t-att-class="'fa ' + qa.icon"/> <t t-esc="qa.label"/>
+        </button>
+      </div>
+    </t>
+  </div>
+</t>
+
+</templates>

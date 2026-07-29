@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- OWL client action rendering the Access Management dashboard. -->
+    <record id="action_access_dashboard" model="ir.actions.client">
+        <field name="name">Access Management</field>
+        <field name="tag">access_manager_dashboard</field>
+    </record>
+</odoo>
