@@ -12,9 +12,18 @@
     <!-- Delegated administrator group. Members configure profiles and are, by
          design, never restricted by the module (anti-lockout). The group does
          NOT grant any extra data privileges on its own. -->
+    <!-- Odoo 19 removed res.groups.category_id and put res.groups.privilege
+         between the module category and the group: the group now points at a
+         privilege, and the privilege carries the category. -->
+    <record id="privilege_access_manager" model="res.groups.privilege">
+        <field name="name">Access Manager</field>
+        <field name="category_id" ref="module_category_access_manager"/>
+        <field name="sequence">20</field>
+    </record>
+
     <record id="group_access_manager_admin" model="res.groups">
         <field name="name">Administrator</field>
-        <field name="category_id" ref="module_category_access_manager"/>
+        <field name="privilege_id" ref="privilege_access_manager"/>
         <field name="comment">Configure Access Manager Pro. Never restricted by
             the module's own rules.</field>
     </record>

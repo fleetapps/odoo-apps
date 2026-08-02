@@ -3,9 +3,15 @@
     <record id="module_category_po_capture" model="ir.module.category">
         <field name="name">PO Capture</field>
     </record>
+    <!-- Odoo 19: res.groups.category_id was replaced by privilege_id, which
+         points at a res.groups.privilege carrying the module category. -->
+    <record id="privilege_po_capture" model="res.groups.privilege">
+        <field name="name">PO Capture</field>
+        <field name="category_id" ref="module_category_po_capture"/>
+    </record>
     <record id="group_capture_user" model="res.groups">
         <field name="name">PO Capture: Clerk</field>
-        <field name="category_id" ref="module_category_po_capture"/>
+        <field name="privilege_id" ref="privilege_po_capture"/>
         <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
     </record>
 </odoo>
