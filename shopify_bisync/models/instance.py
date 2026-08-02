@@ -280,6 +280,17 @@ class ShopifyInstance(models.Model):
     last_import_orders = fields.Datetime(readonly=True)
     last_export_stock = fields.Datetime(readonly=True)
     last_import_payouts = fields.Datetime(readonly=True)
+
+    # Setup milestones. These exist so the onboarding panel and the header
+    # buttons can reflect what has actually happened rather than guessing:
+    # without them "connection tested" is unknowable after the notification
+    # toast disappears.
+    connection_ok_on = fields.Datetime(
+        readonly=True, copy=False,
+        help="Last time Test Connection succeeded against this store.")
+    webhooks_registered_on = fields.Datetime(
+        readonly=True, copy=False,
+        help="Last time the inbound webhooks were verified or registered.")
     job_count = fields.Integer(compute="_compute_job_count")
 
     # ------------------------------------------------------------------ ORM -
@@ -430,6 +441,8 @@ class ShopifyInstance(models.Model):
     def action_test_connection(self):
         self.ensure_one()
         shop = self.api_call("GET", "shop.json").get("shop", {})
+        # Only stamped on success: api_call raises before reaching this line.
+        self.connection_ok_on = fields.Datetime.now()
         return {
             "type": "ir.actions.client", "tag": "display_notification",
             "params": {"type": "success", "sticky": False,
@@ -456,6 +469,7 @@ class ShopifyInstance(models.Model):
                     instance.api_call("POST", "webhooks.json", {
                         "webhook": {"topic": topic, "address": address,
                                     "format": "json"}})
+            instance.webhooks_registered_on = fields.Datetime.now()
             instance.message_post(body=_("Webhooks verified/registered (%s topics).",
                                          len(WEBHOOK_TOPICS)))
         return True

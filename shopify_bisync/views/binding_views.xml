@@ -49,6 +49,10 @@
             <field name="name">Bindings</field>
             <field name="res_model">shopify.bisync.binding</field>
             <field name="view_mode">list</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No records linked yet</p>
+                <p>A binding is the link between an Odoo record and its Shopify counterpart. They're created automatically by sync — you rarely edit these by hand.</p>
+            </field>
         </record>
 
         <menuitem id="menu_bindings" name="Bindings" parent="menu_operations"

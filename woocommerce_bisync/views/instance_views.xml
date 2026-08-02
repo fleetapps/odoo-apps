@@ -59,6 +59,10 @@
         <field name="name">WooCommerce Stores</field>
         <field name="res_model">woo.bisync.instance</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Connect your first WooCommerce store</p>
+            <p>Create REST API keys in WooCommerce (Settings → Advanced → REST API) with read/write access, then paste the consumer key and secret here.</p>
+        </field>
     </record>
     <menuitem id="menu_root" name="Woo Sync" sequence="66"
               groups="woocommerce_bisync.group_connector_user"/>

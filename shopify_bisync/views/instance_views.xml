@@ -8,17 +8,26 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
+                        <!-- Gated in setup order. Every one of these calls the
+                             Shopify API, so offering them on an unsaved or
+                             untested store only ever produced a raw API error.
+                             Test Connection is the only primary action: it is
+                             the gate the rest of the setup hangs off. -->
                         <button name="action_test_connection" type="object"
-                                string="Test Connection" class="btn-primary"/>
+                                string="Test Connection" invisible="not id"
+                                class="btn-primary"/>
                         <button name="action_register_webhooks" type="object"
-                                string="Register Webhooks"/>
+                                string="Register Webhooks"
+                                invisible="not connection_ok_on"/>
                         <button name="action_fetch_locations" type="object"
-                                string="Fetch Locations"/>
+                                string="Fetch Locations"
+                                invisible="not connection_ok_on"/>
                         <button name="action_fetch_publications" type="object"
-                                string="Fetch Sales Channels"/>
+                                string="Fetch Sales Channels"
+                                invisible="not connection_ok_on"/>
                         <button name="action_export_prices" type="object"
                                 string="Export Prices"
-                                invisible="sync_prices != 'export'"/>
+                                invisible="sync_prices != 'export' or not connection_ok_on"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">

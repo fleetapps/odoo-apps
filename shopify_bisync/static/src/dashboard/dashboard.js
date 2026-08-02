@@ -17,19 +17,47 @@ export class ShopifyDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ loading: true, data: null });
+        this.state = useState({ loading: true, data: null, onboarding: null });
         onWillStart(() => this.load());
     }
 
     async load() {
         this.state.loading = true;
-        this.state.data = await this.orm.call(
-            "shopify.bisync.sale.report",
-            "dashboard_data",
+        const [data, onboarding] = await Promise.all([
+            this.orm.call("shopify.bisync.sale.report", "dashboard_data", [], {}),
+            this.orm.call("shopify.bisync.instance", "onboarding_panel_data", [], {}),
+        ]);
+        this.state.data = data;
+        this.state.onboarding = onboarding;
+        this.state.loading = false;
+    }
+
+    // The panel is only useful while setup is incomplete; once every step is
+    // done it would just be chrome on a working dashboard, so it hides itself.
+    get showOnboarding() {
+        return this.state.onboarding && !this.state.onboarding.all_done;
+    }
+
+    get onboardingSteps() {
+        return this.state.onboarding ? this.state.onboarding.steps : [];
+    }
+
+    get onboardingDoneCount() {
+        return this.onboardingSteps.filter((step) => step.done).length;
+    }
+
+    async openStep(step) {
+        const action = await this.orm.call(
+            "onboarding.onboarding.step",
+            step.action,
             [],
             {}
         );
-        this.state.loading = false;
+        this.action.doAction(action, {
+            // Re-read completion when the user comes back, so a step ticks over
+            // as soon as it is genuinely done rather than on next page load.
+            onClose: () => this.load(),
+        });
     }
 
     get panels() {

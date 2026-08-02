@@ -95,6 +95,10 @@
             <field name="name">Payouts</field>
             <field name="res_model">shopify.bisync.payout</field>
             <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No payouts imported</p>
+                <p>Shopify Payments payouts land here with their transactions, matched against your invoices. Enable <b>Import Payouts</b> on the store first.</p>
+            </field>
         </record>
 
         <menuitem id="menu_payouts" name="Payouts" parent="menu_operations"

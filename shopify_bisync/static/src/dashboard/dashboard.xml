@@ -10,6 +10,40 @@
                 </div>
             </t>
             <t t-else="">
+                <!-- Setup panel. Shows only while a step is outstanding, and
+                     each tile reflects real configuration state, not whether
+                     the button was clicked. -->
+                <div t-if="showOnboarding" class="o_shopify_onboarding border rounded mb-4 p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <h5 class="mb-0 flex-grow-1">Finish setting up your Shopify sync</h5>
+                        <span class="badge text-bg-light">
+                            <t t-out="onboardingDoneCount"/>
+                            of
+                            <t t-out="onboardingSteps.length"/>
+                            done
+                        </span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div t-foreach="onboardingSteps" t-as="step" t-key="step.id"
+                             class="o_shopify_onboarding_step border rounded p-3 flex-grow-1"
+                             t-att-class="step.done ? 'bg-light' : ''"
+                             style="min-width: 190px; max-width: 260px;">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fa me-2"
+                                   t-att-class="step.done ? 'fa-check-circle text-success' : 'fa-circle-o text-muted'"/>
+                                <strong t-out="step.title"/>
+                            </div>
+                            <p class="text-muted small mb-2" t-out="step.description"/>
+                            <button class="btn btn-sm"
+                                    t-att-class="step.done ? 'btn-link p-0' : 'btn-primary'"
+                                    t-on-click="() => this.openStep(step)">
+                                <t t-if="step.done" t-out="step.done_text"/>
+                                <t t-else="" t-out="step.button_text"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex align-items-center mb-3">
                     <h2 class="mb-0 flex-grow-1">Shopify Sales</h2>
                     <button class="btn btn-primary" t-on-click="openOrders">

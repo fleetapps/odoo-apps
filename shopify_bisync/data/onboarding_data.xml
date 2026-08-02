@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Onboarding panel, using Odoo's own onboarding models so progress is
+         stored and scoped per company like the Invoicing setup panel.
+         noduplicate: noupdate="1" so a module upgrade never resets a store's
+         progress back to step 1. -->
+    <data noupdate="1">
+
+        <record id="onboarding_step_connect_store" model="onboarding.onboarding.step">
+            <field name="title">Connect your store</field>
+            <field name="description">Paste the Admin API access token from your Shopify custom app.</field>
+            <field name="button_text">Connect</field>
+            <field name="done_text">Store connected</field>
+            <field name="done_icon">fa-plug</field>
+            <field name="panel_step_open_action_name">action_open_step_connect_store</field>
+            <field name="sequence">1</field>
+        </record>
+
+        <record id="onboarding_step_test_connection" model="onboarding.onboarding.step">
+            <field name="title">Test the connection</field>
+            <field name="description">Confirm Shopify accepts the token before anything syncs.</field>
+            <field name="button_text">Test</field>
+            <field name="done_text">Shopify answered</field>
+            <field name="done_icon">fa-check-circle</field>
+            <field name="panel_step_open_action_name">action_open_step_test_connection</field>
+            <field name="sequence">2</field>
+        </record>
+
+        <record id="onboarding_step_webhooks" model="onboarding.onboarding.step">
+            <field name="title">Register webhooks</field>
+            <field name="description">Turns on real-time inbound sync. Needs a public HTTPS address.</field>
+            <field name="button_text">Register</field>
+            <field name="done_text">Listening to Shopify</field>
+            <field name="done_icon">fa-bolt</field>
+            <field name="panel_step_open_action_name">action_open_step_webhooks</field>
+            <field name="sequence">3</field>
+        </record>
+
+        <record id="onboarding_step_locations" model="onboarding.onboarding.step">
+            <field name="title">Map your locations</field>
+            <field name="description">Point each Shopify location at an Odoo warehouse. Unmapped ones are skipped.</field>
+            <field name="button_text">Map</field>
+            <field name="done_text">Warehouses mapped</field>
+            <field name="done_icon">fa-map-marker</field>
+            <field name="panel_step_open_action_name">action_open_step_locations</field>
+            <field name="sequence">4</field>
+        </record>
+
+        <record id="onboarding_step_backfill" model="onboarding.onboarding.step">
+            <field name="title">Import what's already there</field>
+            <field name="description">Bring existing products, customers and orders across. Count first, then start.</field>
+            <field name="button_text">Backfill</field>
+            <field name="done_text">History imported</field>
+            <field name="done_icon">fa-download</field>
+            <field name="panel_step_open_action_name">action_open_step_backfill</field>
+            <field name="sequence">5</field>
+        </record>
+
+        <record id="onboarding_shopify" model="onboarding.onboarding">
+            <field name="name">Shopify Sync Onboarding</field>
+            <field name="route_name">shopify_bisync</field>
+            <field name="text_completed">Your Shopify store is syncing.</field>
+            <field name="panel_close_action_name">action_close_panel</field>
+            <field name="step_ids" eval="[
+                Command.link(ref('shopify_bisync.onboarding_step_connect_store')),
+                Command.link(ref('shopify_bisync.onboarding_step_test_connection')),
+                Command.link(ref('shopify_bisync.onboarding_step_webhooks')),
+                Command.link(ref('shopify_bisync.onboarding_step_locations')),
+                Command.link(ref('shopify_bisync.onboarding_step_backfill')),
+            ]"/>
+        </record>
+
+    </data>
+</odoo>

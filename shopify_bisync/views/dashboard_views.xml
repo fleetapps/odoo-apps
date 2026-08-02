@@ -56,6 +56,10 @@
             <field name="view_mode">graph,pivot</field>
             <field name="context">{'search_default_filter_confirmed': 1,
                                    'search_default_group_instance': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No Shopify sales yet</p>
+                <p>Once orders import, this is where revenue breaks down by product, category, country and store.</p>
+            </field>
         </record>
 
         <!-- OWL dashboard client action. -->

@@ -51,6 +51,10 @@
             <field name="res_model">shopify.bisync.backfill</field>
             <field name="view_mode">form</field>
             <field name="target">new</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Import what's already in Shopify</p>
+                <p>Pick the entities to bring across, run <b>Count (dry run)</b> first to see the volume, then Start. Progress shows under Sync Jobs and survives a restart.</p>
+            </field>
         </record>
 
         <menuitem id="menu_backfill" name="Backfill" parent="menu_root"

@@ -76,6 +76,10 @@
         <field name="name">AI Bill Inbox</field>
         <field name="res_model">ai.bill.inbox</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No bills waiting</p>
+            <p>Forward supplier invoices to this inbox or upload them. Each is read, matched to a vendor, and staged as a draft bill for you to confirm.</p>
+        </field>
     </record>
     <menuitem id="menu_ai_bill_root" name="AI Bill OCR"
               parent="account.menu_finance" sequence="16"

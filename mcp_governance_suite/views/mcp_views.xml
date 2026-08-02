@@ -81,25 +81,55 @@
         </field>
     </record>
 
+    <!-- Empty states. Every one of these screens opened as a blank void with
+         no explanation of what the record is for or which order to create
+         things in; the order that matters is scope first, then key. -->
     <record id="mcp_key_action" model="ir.actions.act_window">
         <field name="name">API Keys</field>
         <field name="res_model">mcp.api.key</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Issue your first API key</p>
+            <p>A key is how an MCP client authenticates to this Odoo. Each key
+               is bound to a scope, so it can only reach the models and
+               operations that scope allows.</p>
+            <p><b>Define a Scope first</b> — a key without one can do nothing.
+               The secret is shown once, at creation, and never again.</p>
+        </field>
     </record>
     <record id="mcp_scope_action" model="ir.actions.act_window">
         <field name="name">Scopes</field>
         <field name="res_model">mcp.scope</field>
         <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Define what an agent may touch</p>
+            <p>A scope is an allow-list: which models an MCP client can read,
+               write, create or delete. Anything not listed is denied.</p>
+            <p>Start narrow — one model, read only. You can widen a scope later
+               without reissuing the keys that use it.</p>
+        </field>
     </record>
     <record id="mcp_audit_action" model="ir.actions.act_window">
         <field name="name">Audit Log</field>
         <field name="res_model">mcp.audit.log</field>
         <field name="view_mode">list,graph,pivot</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing has called in yet</p>
+            <p>Every MCP request lands here — which key, which model, what it
+               asked for and whether it was allowed. This is the record you
+               reach for when someone asks what an agent actually did.</p>
+        </field>
     </record>
     <record id="mcp_approval_action" model="ir.actions.act_window">
         <field name="name">Approvals</field>
         <field name="res_model">mcp.approval.request</field>
         <field name="view_mode">kanban,list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No approvals waiting</p>
+            <p>When a scope marks an operation as requiring sign-off, the
+               request pauses here until an approver accepts or rejects it,
+               instead of the agent proceeding on its own.</p>
+        </field>
     </record>
 
     <menuitem id="menu_mcp_root" name="MCP Governance"

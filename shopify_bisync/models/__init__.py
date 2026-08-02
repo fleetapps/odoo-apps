@@ -13,3 +13,4 @@ from . import fulfillment_sync
 from . import refund_sync
 from . import payout
 from . import dashboard
+from . import onboarding
