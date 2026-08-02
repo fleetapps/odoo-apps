@@ -17,7 +17,6 @@ class SkuAlias(models.Model):
                                  ondelete="cascade")
     hit_count = fields.Integer(default=0, help="Times confirmed by a human.")
 
-    _sql_constraints = [
-        ("uniq_alias", "unique(partner_id, customer_code)",
-         "This customer already has a mapping for that code."),
-    ]
+    _uniq_alias = models.Constraint(
+        "UNIQUE(partner_id, customer_code)",
+        "This customer already has a mapping for that code.")

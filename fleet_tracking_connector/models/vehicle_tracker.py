@@ -18,8 +18,9 @@ class FleetVehicleTracker(models.Model):
     speed_limit_kph = fields.Float(default=0.0,
                                    help="0 = no speeding alerts for this vehicle.")
 
-    _sql_constraints = [("uniq_dev", "unique(provider_id, external_id)",
-                         "Device already mapped.")]
+    _uniq_dev = models.Constraint(
+        "UNIQUE(provider_id, external_id)",
+        "Device already mapped.")
 
     def _sync_odometer(self, odometer_km):
         """Write into core Fleet's odometer log (fleet.vehicle.odometer) so

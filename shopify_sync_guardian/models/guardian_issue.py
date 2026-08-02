@@ -23,10 +23,9 @@ class GuardianIssue(models.Model):
     retry_count = fields.Integer(default=0)
     last_retry = fields.Datetime()
 
-    _sql_constraints = [
-        ("uniq_ref", "unique(res_model, res_id, kind)",
-         "This sync record is already tracked."),
-    ]
+    _uniq_ref = models.Constraint(
+        "UNIQUE(res_model, res_id, kind)",
+        "This sync record is already tracked.")
 
     # ---------------- crons ----------------
     @api.model

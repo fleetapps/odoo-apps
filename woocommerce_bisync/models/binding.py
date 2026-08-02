@@ -23,12 +23,12 @@ class WooCommerceBinding(models.Model):
         help="Odoo write_date at last sync - conflict detection input.")
     checksum = fields.Char(help="Hash of last synced payload; skip no-op syncs.")
 
-    _sql_constraints = [
-        ("uniq_binding", "unique(instance_id, res_model, res_id)",
-         "Record already bound to this store."),
-        ("uniq_external", "unique(instance_id, res_model, external_id)",
-         "External id already bound."),
-    ]
+    _uniq_binding = models.Constraint(
+        "UNIQUE(instance_id, res_model, res_id)",
+        "Record already bound to this store.")
+    _uniq_external = models.Constraint(
+        "UNIQUE(instance_id, res_model, external_id)",
+        "External id already bound.")
 
     def resolve(self):
         self.ensure_one()
