@@ -32,8 +32,23 @@
   </svg>
 </t>
 
+<!--
+  Client-action layout contract (Odoo 19).
+
+  ``ActionContainer`` renders the client action inside
+  ``<div class="o_action_manager">``, which is ``height: 100%; overflow: hidden``
+  (web/static/src/webclient/webclient_layout.scss). The framework only gives the
+  action its own scrolling when the root carries ``o_action`` and the scrollable
+  part carries ``o_content`` - that pair is what turns on
+  ``> .o_action { display: flex; flex-flow: column } .o_content { overflow: auto;
+  height: 100% }`` and the mobile fallback that moves the scroll up to
+  ``.o_action``. Without them the page is clipped at exactly one viewport and
+  everything below it is unreachable, which is why the charts under the fold
+  never appeared. Same structure as stock.Forecasted / mrp.BomOverviewComponent.
+-->
 <t t-name="access_manager_pro.Dashboard">
-  <div class="o_am_dash" t-att-class="{ o_am_dark: state.dark }">
+  <div class="o_action o_am_dash" t-att-class="{ o_am_dark: state.dark }">
+   <div class="o_content o_am_scroll">
 
     <div t-if="state.loading" class="o_am_loading">
       <i class="fa fa-circle-o-notch fa-spin"/> <span>Loading access analytics…</span>
@@ -133,6 +148,7 @@
           <div t-foreach="ruleMix.segments" t-as="seg" t-key="seg.label" class="o_am_stack_seg"
                t-att-style="'width:' + seg.pct + '%; background:' + seg.color" t-att-title="seg.label + ': ' + seg.value"/>
         </div>
+        <div t-if="!ruleMix.total" class="o_am_empty">No restrictions configured yet.</div>
         <div class="o_am_legend o_am_legend_wrap">
           <span t-foreach="ruleMix.legend" t-as="l" t-key="l.label">
             <i class="o_am_dot" t-att-style="'background:' + l.color"/> <t t-esc="l.label"/> <b t-esc="l.value"/>
@@ -242,6 +258,9 @@
               </tr>
             </tbody>
           </table>
+          <div t-if="!heat.rows.length" class="o_am_empty">
+            No model, field, element or record rule yet — nothing to map.
+          </div>
         </div>
       </div>
 
@@ -317,6 +336,8 @@
         </button>
       </div>
     </t>
+
+   </div>
   </div>
 </t>
 

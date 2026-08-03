@@ -1,0 +1,2111 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* access_manager_pro
+#
+# NOTE: model, field, selection, constraint and code terms below are
+# byte-exact. The model_terms:ir.ui.view entries have their whitespace
+# normalised for readability, so refresh this template with
+#   odoo-bin -d <db> --i18n-export=access_manager_pro.pot --modules=access_manager_pro
+# before a release if you need those to bind byte-for-byte.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-03 19:10+0000\n"
+"PO-Revision-Date: 2026-08-03 19:10+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "%(count)s actions hidden"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "%(count)s buttons/tabs"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "%(count)s fields"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "%(count)s menus"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "%(count)s models"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "%(count)s record rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "%(count)s reports hidden"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "1–2 Low"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "3–4 Med"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "5+ High"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-clock-o me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Outside the daily window the profile simply stops applying, so the user regains normal access — it does not lock them out. An end earlier than the start spans midnight (22:00 → 06:00)."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-clock-o me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> This profile stops applying the moment the expiry passes, and the scheduled action archives it shortly after."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-exclamation-triangle me-2\" role=\"img\" aria-label=\"Warning\" title=\"Warning\" /> <span> Nobody is targeted yet, so this profile does nothing. Add a <b>user</b> above, or a <b>group</b> to cover a whole role at once. </span>"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> <b>Invisible</b> also drops the field from export, search and group-by. A <b>Condition</b> is a Python expression on the record, e.g. <code>state == 'done'</code>. <b>Apply Field Domain</b> narrows what a relational field offers in its dropdown — it filters the picker, so pair it with a <b>Records</b> rule when the data must be genuinely out of reach."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> <b>Invisible</b> also drops the field from list columns, search, group-by and server-side export. <b>Masked</b> shows it read-only with the value hidden (useful for salaries or IBANs). Leave <b>Condition</b> empty to apply always."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> <b>Read-only</b> already blocks create, edit and delete on this model, server-side."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Everything here applies to <b>every model at once</b>, so you do not have to list them one by one. A switch set here cannot be re-enabled for a single model in the <b>Models</b> tab — restrict per model there instead when you need exceptions."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Hide a single header button, a notebook tab, a search filter or a group-by option. Turn on developer mode and hover an element to read its technical name — that name is the selector."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Leave this tab empty and the profile simply applies all the time. Set an expiry for temporary access (a contractor, an audit) — it stops applying the moment it passes and is auto-archived afterwards."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Menus are searched by their full path, so typing <b>Settings/Users</b> finds the right one straight away. Hiding a menu hides everything under it."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Notes are for administrators only — the restricted users never see them. Recording who asked for a profile is what makes an access review possible later."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> One line per model. Use this to take away buttons (Create, Delete, Export...), whole view types, the chatter, or specific reports — enforced on the server, not just hidden in the interface."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Open a line to change what it restricts. Every switch here is enforced server-side, so it holds over XML-RPC and the API too."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Records <b>matching</b> a rule are the restricted ones. The rule name is what the user sees in the refusal message, so word it as the reason."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Restrict <b>which records</b> a person may touch — \"only their own orders\", \"nothing older than 30 days\". <b>Hide Only</b> makes a rule declutter the list without ever raising an error."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Selectors are technical names, not labels — turn on developer mode and hover an element to read its name. Notebook tabs also accept their visible label."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> Sub-menus are hidden along with their parent. Hiding a menu does not block the data behind it — use <b>Models</b> or <b>Records</b> for that."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-info-circle me-1\" role=\"img\" aria-label=\"Info\" title=\"Info\" /> The user keeps their own records (and their team's, on the subordinates setting) and is restricted from everyone else's. No domain to write."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "<i class=\"fa fa-shield me-1\" role=\"img\" aria-label=\"Effect\" title=\"Effect\" />"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__hierarchy_field_id
+msgid "A Many2one-to-Users field on the model (e.g. Salesperson)."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Access Insights"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+#: model:ir.actions.client,name:access_manager_pro.action_access_dashboard
+msgid "Access Management"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.module.category,name:access_manager_pro.module_category_access_manager
+#: model:res.groups.privilege,name:access_manager_pro.privilege_access_manager
+#: model:ir.ui.menu,name:access_manager_pro.menu_access_manager_root
+msgid "Access Manager"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_cache_mixin
+msgid "Access Manager - Cache Invalidation Mixin"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_field_rule
+msgid "Access Manager - Field Rule"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_import_wizard
+msgid "Access Manager - Import Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_model_rule
+msgid "Access Manager - Model Rule"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_domain_rule
+msgid "Access Manager - Record (Domain) Rule"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_element_rule
+msgid "Access Manager - View Element Rule"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model,name:access_manager_pro.model_access_manager_profile
+msgid "Access Manager Profile"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.cron,name:access_manager_pro.ir_cron_revoke_expired
+msgid "Access Manager: Revoke Expired Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.ui.menu,name:access_manager_pro.menu_access_profiles
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "Access Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+#: model:ir.actions.act_window,name:access_manager_pro.action_access_import_wizard
+msgid "access.manager.import.wizard"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+msgid "access.manager.import.wizard.form"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__profile_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_element_rule__profile_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__profile_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__profile_id
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_list
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "access.manager.profile"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "access.manager.profile.form"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_list
+msgid "access.manager.profile.list"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "access.manager.profile.search"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.client,name:access_manager_pro.action_access_dashboard
+msgid "access_manager_dashboard"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Account Restrictions"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "actions"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__state__active
+msgid "Active"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__date_start
+msgid "Active From"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Active Rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "activities"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__auto_assign
+msgid "Add newly created users to this profile automatically, so a new joiner is restricted from their first login instead of from the day somebody remembers. 'Portal' covers every shared user (portal and public); 'Internal' covers employees. Existing users are never touched - add them above."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:res.groups,name:access_manager_pro.group_access_manager_admin
+msgid "Administrator"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "All companies"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "All Models"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "all records — or e.g. [('is_company', '=', True)]"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "always — or e.g. state != 'draft'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "always — or e.g. state == 'done'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.constraint,message:access_manager_pro.constraint_access_manager_profile_name_uniq
+msgid "An access profile with this name already exists."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Applies To"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Applies to New Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__restriction_type
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Applies Via"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__dropdown_domain
+msgid "Apply Field Domain"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__restriction_time_based
+msgid "Apply the profile only during a daily time window."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__auto_assign
+msgid "Apply to New Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "Apps menu hidden"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Archived"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__active
+msgid "Archiving a profile lifts every restriction it carries, immediately and for everyone it targets."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/base_access.py:0
+msgid "Archiving and unarchiving is disabled for you on %s."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block Create"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block Delete"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block Developer Mode"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block Edit"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block External API"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__disable_rpc
+msgid "Block External API (XML-RPC / Scripts)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Block Login"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__button
+msgid "Button (by name)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_element_rule__selector
+msgid ""
+"button: the button 'name' attribute (method or action id)\n"
+"page: the tab label (string) or its 'name' attribute\n"
+"filter / groupby: the filter 'name' attribute\n"
+"kanban: a CSS class or 'name' present on the element\n"
+"xpath: any XPath, e.g. //group[@name='pricing']"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Buttons & Tabs"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+msgid "Cancel"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__mask_char
+msgid "Character repeated to mask the value."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Chatter"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Choose a user to see every rule, hidden menu and field that affects them."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.cron,name:access_manager_pro.ir_cron_revoke_expired
+msgid "code"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__company_ids
+msgid "Companies"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Company"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_element_rule__condition
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__condition
+msgid "Condition"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Config Score"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:res.groups,name:access_manager_pro.group_access_manager_admin
+msgid "Configure Access Manager Pro. Never restricted by the module's own rules."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "Create your first access profile"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__xpath
+msgid "Custom XPath"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Daily Time Window"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "daily time window"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.ui.menu,name:access_manager_pro.menu_access_dashboard
+msgid "Dashboard"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Date Range"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__mode__readonly
+msgid "Disable (read-only)"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_domain_rule.py:0
+msgid "Domain rule %(name)s must restrict at least one operation."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Download this profile as a portable JSON bundle."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "e.g. Only my own orders"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "e.g. Warehouse Staff - no pricing"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__summary
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_list
+msgid "Effect"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Effective"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "effective"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__time_end
+msgid "End of the daily window. If earlier than the start, the window spans midnight (e.g. 22:00 -> 06:00)."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hidden_action_ids
+msgid "Entries removed from the Action (gear) menu, e.g. a mass-update or a related-records shortcut."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Entries removed from the Action menu"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__readonly
+msgid "Every field of every view of this model becomes read-only for the targeted users. Implies no create, edit or delete."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__auto_assign__all
+msgid "Every new user"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__group_ids
+msgid "Every user of these groups is restricted, including users who get the group indirectly through another one. This is the way to restrict a whole role at once."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "Everything is enforced on the server, so the interface never shows something the database would refuse."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__state__expired
+msgid "Expired"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "expires %(date)s"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__date_end
+msgid "Expires On"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__state__expiring
+msgid "Expiring"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Expiring or Expired"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "EXPIRY"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/base_access.py:0
+msgid "Export is disabled for you on %s."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Export JSON"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "External API Blocked"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "external API blocked"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "FIELD"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__field_id
+msgid "Field"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__field_name
+msgid "Field Name"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__field_rule_ids
+msgid "Field Rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Fields"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "fields"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_import_wizard__filename
+msgid "File Name"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "followers"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__disable_developer_mode
+msgid "Force the developer/debug mode off for the targeted users."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.action_access_import_wizard
+msgid "form"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__note
+msgid "Free notes for administrators. Not shown to end users."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__time_start
+msgid "From (hour)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__restriction_type__group
+msgid "Group"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__groupby
+msgid "Group By option (by name)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__group_ids
+msgid "Groups"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hidden_action_ids
+msgid "Hidden Actions"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hidden_menu_ids
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Hidden Menus"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hidden_report_ids
+msgid "Hidden Reports"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__mode__invisible
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Hide"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_activity
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_activity
+msgid "Hide 'Activities'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_add_property
+msgid "Hide 'Add a Property'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_apps_menu
+msgid "Hide 'Apps' Main Menu"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_spreadsheet
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_spreadsheet
+msgid "Hide 'Insert in Spreadsheet'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_log_note
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_log_note
+msgid "Hide 'Log note'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_send_message
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_send_message
+msgid "Hide 'Send message'"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_activity_view
+msgid "Hide Activity View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_archive
+msgid "Hide Archive / Unarchive"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_calendar
+msgid "Hide Calendar View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_chatter
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_chatter
+msgid "Hide Chatter"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_create
+msgid "Hide Create"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_delete
+msgid "Hide Delete"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_duplicate
+msgid "Hide Duplicate"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_edit
+msgid "Hide Edit"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_export
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_export
+msgid "Hide Export"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_favourites
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_favourites
+msgid "Hide Favorites"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_followers
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_followers
+msgid "Hide Followers"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_graph
+msgid "Hide Graph View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_import
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_import
+msgid "Hide Import"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_kanban
+msgid "Hide Kanban View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_map
+msgid "Hide Map View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Hide Only"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_pivot
+msgid "Hide Pivot View"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_element_rule__mode
+msgid "Hide removes the element entirely. Disable leaves it visible but inert - useful when its absence would be confusing. Buttons are always hidden rather than disabled."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__hide_search_panel
+msgid "Hide Search Panel"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__perm_read
+msgid "Hide the matching records from the targeted users."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__hide_print
+msgid "Hide the whole Print menu"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Hide View Types"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "hides %(views)s view"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__use_hierarchy
+msgid "Hierarchy Access"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_domain_rule.py:0
+msgid "Hierarchy access on %(name)s needs a user field."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.cron,name:access_manager_pro.ir_cron_revoke_expired
+msgid "hours"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__restriction_type
+msgid "How this profile reaches people: named users, whole groups, or both. 'Unassigned' means it targets nobody and does nothing."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+msgid "Import"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Import & Export"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+#: model:ir.actions.act_window,name:access_manager_pro.action_access_import_wizard
+msgid "Import Access Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.ui.menu,name:access_manager_pro.menu_access_import
+msgid "Import Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/wizard/access_import_wizard.py:0
+msgid "Imported Profiles"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__state__inactive
+msgid "Inactive"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__user_ids
+msgid "Individual users this profile restricts. Use Groups instead when the rule really belongs to a role - new joiners are then covered automatically."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Individual users..."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_field_rule__mode__invisible
+msgid "Invisible"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__mode
+msgid "Invisible also removes the field from list columns, search filters, group-by, kanban and server-side export. Masked replaces the value with a masked string on the client and makes the field read-only."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_import_wizard__file
+msgid "JSON File"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__kanban
+msgid "Kanban Link / Element (by class or name)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_followers
+msgid "Keeps the chatter but hides the followers avatars and the Add followers button. Interface only - Odoo subscribes followers automatically on most records."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_activity
+msgid "Keeps the chatter but removes the Activities button, so the user cannot schedule follow-ups on this model. Creating an activity is also refused server-side."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_log_note
+msgid "Keeps the chatter but removes the Log note button. Logging a note is also refused server-side for this model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_send_message
+msgid "Keeps the chatter but removes the Send message button, so the user cannot email the customer from the record. Posting is also refused server-side for this model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_followers
+msgid "Keeps the chatter everywhere but hides the followers avatars and the Add followers button. Interface only: Odoo subscribes followers automatically on most records, so refusing it server-side would break ordinary record creation."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_activity
+msgid "Keeps the chatter everywhere but removes the Activities button, so this user cannot schedule follow-ups on any model. Creating an activity is also refused server-side."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_log_note
+msgid "Keeps the chatter everywhere but removes the Log note button. Also refused server-side, so it holds over the API too."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_send_message
+msgid "Keeps the chatter everywhere but removes the Send message button, so this user can never email a contact from a record. Also refused server-side, so it holds over the API too."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__recent_model_id
+msgid "Last Model Used"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Least restricted"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__company_ids
+msgid "Leave empty to apply in every company. When set, the profile only applies while one of these companies is the active company."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "list,form"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Loading access analytics…"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "log note"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/mail_thread.py:0
+msgid "Logging notes is disabled for you on %s."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "login blocked"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Login Disabled"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__readonly
+msgid "Make Model Read-Only"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.module.category,name:access_manager_pro.module_category_access_manager
+msgid "Manage Access Manager Pro profiles and rules."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__mask_char
+msgid "Mask Character"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_field_rule__mode__masked
+msgid "Masked (Sensitive Data)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Menus"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "menus"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Menus to Hide"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "MODE"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "MODEL"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__model_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_element_rule__model_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__model_id
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__model_id
+msgid "Model"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Model Access Heatmap"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__model_name
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_element_rule__model_name
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__model_name
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__model_name
+msgid "Model Name"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__model_rule_ids
+msgid "Model Rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.cron,name:access_manager_pro.ir_cron_revoke_expired
+msgid "model._cron_revoke_expired()"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Models"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "models ·"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Most restricted"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Most-Restricted Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Name A-Z"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__name
+msgid "Name this after the people it covers and what it takes away, e.g. 'Warehouse staff - no pricing'. It is never shown to the restricted users."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Name Z-A"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Needs Attention"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.action_access_import_wizard
+msgid "new"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__auto_assign__internal
+msgid "New internal users"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__auto_assign__portal
+msgid "New portal / public users"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "New rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__auto_assign__none
+msgid "No"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no %(items)s"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no archive"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no chatter"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no create"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__no_create
+msgid "No Create / Create & Edit"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "No data yet."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no delete"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no duplicate"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no edit"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no export"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no favorites"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "No field rules."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "No hidden menus."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no import"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__no_open
+msgid "No Internal / External Link"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "No model, field, element or record rule yet — nothing to map."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no print"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "No restrictions configured yet."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "no spreadsheet"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "None"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__page
+msgid "Notebook Tab (by label or name)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Notes"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "Nothing restricted yet — open this line to choose"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Number of rules restricting fields or views per model"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__mask_show_last
+msgid "Number of trailing characters left visible (e.g. 4 -> '••••••1234'). 0 masks the whole value."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "of"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__dropdown_domain
+msgid ""
+"On a relational field, narrow the records offered in its dropdown, e.g. [('country_id.code', '=', 'KE')]. It is combined with any domain the view already sets, never replacing it. The same dynamic names a view domain may use are available (uid, context, and the other fields of the record).\n"
+"This filters the picker; to make the records genuinely unreachable, add a Record (Domain) Rule on the target model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__no_open
+msgid "On relational fields, remove the button that opens the linked record."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__no_create
+msgid "On relational fields, remove the inline 'Create' and 'Create and Edit' quick-create options from the dropdown."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__is_soft
+msgid "Only hide the matching records; never raise an error on create/edit/delete."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Open"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__condition
+msgid "Optional Python attribute expression evaluated on the record, e.g. state == 'done'. When set, the chosen mode is applied only when the expression is truthy. Leave empty to always apply."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_element_rule__condition
+msgid "Optional Python attribute expression. When set, the element is hidden/disabled only when the expression is truthy on the record."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__sequence
+msgid "Order in which profiles are listed. When several profiles target the same user their restrictions add up, so the order is presentation only - it never decides which one wins."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "outliers to review"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_domain_rule__hierarchy_mode__subordinates
+msgid "Own + subordinates (employee hierarchy)"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_domain_rule__hierarchy_mode__own
+msgid "Own records only"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__hierarchy_mode
+msgid "Own records only: strictly their own. Own + subordinates: also the records of everyone reporting to them, read from the manager chain in Employees."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__field_rule_ids
+msgid "Per-field restrictions: hide, lock, require or mask a field."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.actions.act_window,name:access_manager_pro.access_profile_action
+msgid "Pick the people it covers — a few users, or a whole group in one go — then take away what they should not see: menus, buttons, fields, records, reports or the chatter."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__summary
+msgid "Plain-language recap of everything this profile currently does."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__restriction_summary
+msgid "Plain-language recap of the switches set on this line. Open the line to change them."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/wizard/access_import_wizard.py:0
+msgid "Please select a JSON file to import."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__disable_login
+msgid "Prevent the targeted users from logging in at all. Administrators of this app are never blocked."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Profile"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Profile Name"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_import_wizard__profile_count
+msgid "Profiles in File"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Profiles that may not be doing what you expect."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "QUICK ACTIONS"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_field_rule__mode__readonly
+msgid "Read-Only"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "read-only"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Read-Only Everywhere"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__is_readonly_user
+msgid "Read-Only User"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "read-only user"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Read-Only Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__domain_rule_ids
+msgid "Record (Domain) Rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Records"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Records <b>matching</b> this filter are the restricted ones. Dynamic helpers work here, e.g. <code>[('user_id','!=',uid)]</code> or <code>[('date','&lt;', (context_today() - relativedelta(days=30)))]</code>."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__domain
+msgid "Records matching this domain are restricted for the targeted users. Supports the dynamic helpers available to record rules. Ignored when 'Hierarchy access' is enabled."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_edit
+msgid "Records open read-only: no field can be changed and the save indicator never appears."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Refresh"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__perm_create
+msgid "Refuse creating a record that would match this rule, e.g. an order assigned to somebody else."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__perm_unlink
+msgid "Refuse deleting a matching record."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__perm_write
+msgid "Refuse editing a matching record. Combine with Restrict Read to hide it outright, or leave Read off to show it read-only."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_apps_menu
+msgid "Remove the top-level Apps/Settings developer menus from the targeted users."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_archive
+msgid "Removes Archive and Unarchive, and blocks any change to the active flag server-side - including a direct field edit."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_delete
+msgid "Removes Delete from the Action menu and from the list's multi-select toolbar."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_duplicate
+msgid "Removes Duplicate from the Action menu of the form view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_print
+msgid "Removes every report bound to this model at once, so the Print button disappears entirely. Use the list below instead when only some documents should go."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_export
+msgid "Removes Export everywhere and blocks it server-side, so it cannot be reached over XML-RPC or by URL either."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_spreadsheet
+msgid "Removes Insert in Spreadsheet everywhere. Worth pairing with Hide Export - it is the usual way around an export restriction."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_spreadsheet
+msgid "Removes Insert in Spreadsheet from list and pivot views, a common way of exporting data around an export restriction."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_activity_view
+msgid "Removes the activity (to-do grid) view. This is the view type, not the chatter's Activities button."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_add_property
+msgid "Removes the Add a Property button, which would otherwise let the user add custom fields to records."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_calendar
+msgid "Removes the calendar view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_export
+msgid "Removes the Export action and blocks server-side export (XML-RPC / URL) for this model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_favourites
+msgid "Removes the Favorites menu from the search bar on every model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_favourites
+msgid "Removes the Favorites menu from the search bar, so saved filters cannot be created or shared on this model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_graph
+msgid "Removes the graph (chart) view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_import
+msgid "Removes the Import records link from every list view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_import
+msgid "Removes the Import records link from the list view of this model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_search_panel
+msgid "Removes the left-hand filter panel of list and kanban views."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_map
+msgid "Removes the map view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_create
+msgid "Removes the New button. Creating is still blocked server-side, so it cannot be worked around from the API."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_pivot
+msgid "Removes the pivot (analysis) view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hide_chatter
+msgid "Removes the whole chatter panel everywhere - messages, notes, activities and followers, on every model."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_chatter
+msgid "Removes the whole right-hand panel: messages, log notes, activities and followers."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hide_kanban
+msgid "Removes this view from the switcher in the top-right corner. List and form are never removed, so every menu keeps a landing view."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Reports & Actions to Hide"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Reports removed from the Print menu"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__hidden_report_ids
+msgid "Reports removed from the Print menu. Only reports belonging to the model above are offered."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_field_rule__mode__required
+msgid "Required"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Restrict"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__perm_create
+msgid "Restrict Create"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__perm_unlink
+msgid "Restrict Delete"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__perm_write
+msgid "Restrict Edit"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__perm_read
+msgid "Restrict Read"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__use_hierarchy
+msgid "Restrict to records whose user field points to the current user (and, optionally, their subordinates in the employee hierarchy). Replaces the domain above."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Restricted Models — Top 10"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Restriction Composition"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_model_rule__restriction_summary
+msgid "Restrictions"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_field_rule__mask_show_last
+msgid "Reveal Last N"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "RULE"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "rules affecting each user"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Rules by Company"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Rules by Restriction Type"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Rules Created — Last 6 Months"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__state__scheduled
+msgid "Scheduled"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__state
+msgid "Scheduled: starts later. Active: applying now. Expiring: ends within 7 days. Expired: no longer applying, awaiting auto-archive. Inactive: archived, restricts nothing."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/mail_thread.py:0
+msgid "Scheduling activities is disabled for you on %s."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__hierarchy_mode
+msgid "Scope"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Search & Extras"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Search & Views"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_element_rule__element_type__filter
+msgid "Search Filter (by name)"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Select a user…"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__hidden_menu_ids
+msgid "Selected menus and all of their sub-menus are removed from the navigation of the targeted users."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_model_rule.py:0
+msgid "send message"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/mail_thread.py:0
+msgid "Sending messages is disabled for you on %s."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Show All"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__name
+msgid "Shown to the user in the error message when the rule blocks them, so word it as the reason, e.g. 'Only your own orders'."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__element_rule_ids
+msgid "Single buttons, notebook tabs, search filters and group-by options to hide or disable."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__is_soft
+msgid "Soft Restriction"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__time_start
+msgid "Start of the daily window (0-24) in the timezone below."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "STATUS"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__state
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Status"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__is_readonly_user
+msgid "Targeted users may read data but cannot create, edit or delete any record (enforced server-side)."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__recent_model_id
+msgid "Technical field: the model of the most recently added rule line. New rule lines default to it so the model is not re-picked for every line of the same model."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "temporary access"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_domain_rule.py:0
+msgid "The domain of %(name)s is not a valid Python literal: %(error)s"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_domain_rule.py:0
+msgid "The domain of %(name)s must be a list of tuples."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_field_rule.py:0
+msgid "The field domain of %(field)s is not a valid Python expression: %(error)s"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_field_rule.py:0
+msgid "The field domain of %(field)s must evaluate to a list of conditions, e.g. [('active', '=', True)]."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__field_id
+msgid "The field to restrict. The rule follows this field into every view of the model - form, list, kanban and search alike."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/wizard/access_import_wizard.py:0
+msgid "The file could not be read as JSON: %s"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_field_rule__model_id
+msgid "The model the field belongs to, e.g. Sales Order. Pick it first - it narrows the field list below."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_model_rule__model_id
+msgid "The model these restrictions apply to, e.g. Sales Order. One line per model, per profile."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_domain_rule__model_id
+msgid "The model whose records are restricted, e.g. Sales Order."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_element_rule__model_id
+msgid "The model whose views contain the element, e.g. Sales Order."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__date_start
+msgid "The profile is ignored before this moment. Empty = always."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__date_end
+msgid "The profile stops applying after this moment and is auto-revoked (deactivated) by a scheduled action."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__disable_rpc
+msgid "The targeted users may only work through the Odoo web interface. Every non-interactive entry point is refused: XML-RPC, JSON-RPC, the /json/2 endpoints and any API key they own. Their normal browser session is untouched. Administrators of this app are never blocked."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "The user's own timezone"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.constraint,message:access_manager_pro.constraint_access_manager_field_rule_field_mode_uniq
+msgid "This field already has a rule with the same mode in this profile."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/access_profile.py:0
+msgid "This file is not an Access Manager profile bundle."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.constraint,message:access_manager_pro.constraint_access_manager_model_rule_model_uniq
+msgid "This model already has a rule line in this profile."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__restriction_time_based
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_search
+msgid "Time-Based"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__tz
+msgid "Timezone"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__tz
+msgid "Timezone used to evaluate the daily window. Defaults to the user's timezone when empty."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__time_end
+msgid "To (hour)"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Toggle theme"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Toolbar"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "TOTAL"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "TYPE"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Type a menu path, e.g. Settings/Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__restriction_type__none
+msgid "Unassigned"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Upcoming Expirations"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Updated"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_import_wizard_form
+msgid "Upload a JSON bundle previously exported from Access Manager Pro. References that cannot be resolved on this database (missing models, fields, users, reports…) are skipped and logged."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__restriction_type__user
+msgid "User"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields.selection,name:access_manager_pro.selection__access_manager_profile__restriction_type__mixed
+msgid "User & Group"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "User Access Inspector"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_domain_rule__hierarchy_field_id
+msgid "User Field"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__user_ids
+msgid "Users"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "Users by Restriction Load"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Validity"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,field_description:access_manager_pro.field_access_manager_profile__element_rule_ids
+msgid "View Element Rules"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_element_rule__element_type
+msgid "What kind of thing to target. This decides how the selector below is interpreted, so pick the type first."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "what kinds of rules govern access"
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__domain_rule_ids
+msgid "Which records the user may see and touch, e.g. only their own."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Which Records?"
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Whole roles / groups..."
+msgstr ""
+
+#. module: access_manager_pro
+#: model:ir.model.fields,help:access_manager_pro.field_access_manager_profile__model_rule_ids
+msgid "Whole-model restrictions: buttons, view types, chatter, reports."
+msgstr ""
+
+#. module: access_manager_pro
+#: model_terms:ir.ui.view,arch_db:access_manager_pro.access_profile_view_form
+msgid "Why does this profile exist? Who asked for it, and when can it be removed?"
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/base_access.py:0
+msgid "You are not allowed to %(op)s '%(record)s' (restriction: %(rule)s)."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/models/base_access.py:0
+msgid "Your access is read-only. You are not allowed to %(op)s %(model)s records."
+msgstr ""
+
+#. module: access_manager_pro
+#: code:addons/access_manager_pro/static/src/xml/access_dashboard.xml:0
+msgid "— inspect what affects a specific user"
+msgstr ""

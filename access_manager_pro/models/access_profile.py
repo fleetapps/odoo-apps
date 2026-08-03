@@ -120,6 +120,25 @@ class AccessProfile(models.Model):
     disable_login = fields.Boolean(
         help="Prevent the targeted users from logging in at all. Administrators "
              "of this app are never blocked.")
+    disable_rpc = fields.Boolean(
+        string="Block External API (XML-RPC / Scripts)",
+        help="The targeted users may only work through the Odoo web interface. "
+             "Every non-interactive entry point is refused: XML-RPC, JSON-RPC, "
+             "the /json/2 endpoints and any API key they own. Their normal "
+             "browser session is untouched. Administrators of this app are "
+             "never blocked.")
+
+    auto_assign = fields.Selection(
+        [("none", "No"),
+         ("internal", "New internal users"),
+         ("portal", "New portal / public users"),
+         ("all", "Every new user")],
+        default="none", required=True, string="Apply to New Users",
+        help="Add newly created users to this profile automatically, so a new "
+             "joiner is restricted from their first login instead of from the "
+             "day somebody remembers. 'Portal' covers every shared user "
+             "(portal and public); 'Internal' covers employees. Existing users "
+             "are never touched - add them above.")
 
     # --- Scheduling / expiration / auto-revocation ---------------------------
     date_start = fields.Datetime(
@@ -178,18 +197,23 @@ class AccessProfile(models.Model):
     hide_send_message = fields.Boolean(
         string="Hide 'Send message'",
         help="Keeps the chatter everywhere but removes the Send message "
-             "button, so this user can never email a contact from a record.")
+             "button, so this user can never email a contact from a record. "
+             "Also refused server-side, so it holds over the API too.")
     hide_log_note = fields.Boolean(
         string="Hide 'Log note'",
-        help="Keeps the chatter everywhere but removes the Log note button.")
+        help="Keeps the chatter everywhere but removes the Log note button. "
+             "Also refused server-side, so it holds over the API too.")
     hide_activity = fields.Boolean(
         string="Hide 'Activities'",
         help="Keeps the chatter everywhere but removes the Activities button, "
-             "so this user cannot schedule follow-ups on any model.")
+             "so this user cannot schedule follow-ups on any model. Creating "
+             "an activity is also refused server-side.")
     hide_followers = fields.Boolean(
         string="Hide Followers",
         help="Keeps the chatter everywhere but hides the followers avatars "
-             "and the Add followers button.")
+             "and the Add followers button. Interface only: Odoo subscribes "
+             "followers automatically on most records, so refusing it "
+             "server-side would break ordinary record creation.")
     hide_import = fields.Boolean(
         string="Hide Import",
         help="Removes the Import records link from every list view.")
@@ -280,10 +304,10 @@ class AccessProfile(models.Model):
             else:
                 profile.state = "active"
 
-    @api.depends("is_readonly_user", "disable_login", "hidden_menu_ids",
-                 "hide_apps_menu", "model_rule_ids", "field_rule_ids",
-                 "element_rule_ids", "domain_rule_ids", "date_end",
-                 "restriction_time_based")
+    @api.depends("is_readonly_user", "disable_login", "disable_rpc",
+                 "hidden_menu_ids", "hide_apps_menu", "model_rule_ids",
+                 "field_rule_ids", "element_rule_ids", "domain_rule_ids",
+                 "date_end", "restriction_time_based")
     def _compute_summary(self):
         """One line telling an administrator what this profile actually does.
 
@@ -297,6 +321,8 @@ class AccessProfile(models.Model):
                 parts.append(_("read-only user"))
             if profile.disable_login:
                 parts.append(_("login blocked"))
+            if profile.disable_rpc:
+                parts.append(_("external API blocked"))
             if profile.hide_apps_menu:
                 parts.append(_("Apps menu hidden"))
             if profile.hidden_menu_ids:
@@ -380,6 +406,17 @@ class AccessProfile(models.Model):
         return profiles.filtered(_applies)
 
     @api.model
+    def _profiles_for_new_user(self, user):
+        """Profiles that claim ``user`` because it was just created.
+
+        ``share`` is Odoo's own internal/external split (True for portal and
+        public users), so it is what decides which bucket a new user falls in.
+        """
+        kinds = ("all", "portal" if user.share else "internal")
+        return self.sudo().with_context(**{SKIP_KEY: True}).search(
+            [("auto_assign", "in", kinds)])
+
+    @api.model
     def _cron_revoke_expired(self):
         """Deactivate profiles whose expiry has passed (auto-revocation)."""
         now = fields.Datetime.now()
@@ -418,11 +455,11 @@ class AccessProfile(models.Model):
             "hide_chatter", "hide_send_message", "hide_log_note",
             "hide_activity", "hide_followers", "hide_kanban", "hide_pivot",
             "hide_graph", "hide_calendar", "hide_activity_view", "hide_map",
-            "hide_spreadsheet", "hide_favourites",
+            "hide_spreadsheet", "hide_favourites", "hide_print",
         ],
         "field_rule_ids": [
             "field_name", "mode", "no_create", "no_open", "condition",
-            "mask_char", "mask_show_last",
+            "mask_char", "mask_show_last", "dropdown_domain",
         ],
         "element_rule_ids": ["element_type", "selector", "mode", "condition"],
         "domain_rule_ids": [
@@ -434,6 +471,7 @@ class AccessProfile(models.Model):
     _EXPORT_PROFILE_FIELDS = [
         "name", "active", "sequence", "note", "hide_apps_menu",
         "is_readonly_user", "disable_developer_mode", "disable_login",
+        "disable_rpc", "auto_assign",
         "restriction_time_based", "time_start", "time_end", "tz",
         "hide_chatter", "hide_send_message", "hide_log_note", "hide_activity",
         "hide_followers", "hide_import", "hide_export", "hide_add_property",
@@ -563,12 +601,14 @@ class AccessProfile(models.Model):
             candidate = "%s (%d)" % (name, i)
         return candidate
 
-    def _login_disabled_for(self, user):
-        """Whether ``user`` is blocked from logging in by any active profile.
+    def _am_switch_active_for(self, user, field_name):
+        """Whether any live profile sets ``field_name`` for ``user``.
 
-        Evaluated without company scoping (login happens before a company is
-        chosen) and with a hard anti-lockout guard: the superuser, this app's
-        administrators and settings administrators can never be locked out.
+        Used by the two enforcement points that run *before* a company (and
+        therefore the compiled configuration) exists: the login check and the
+        external-API check.  Evaluated without company scoping and with a hard
+        anti-lockout guard - the superuser, this app's administrators and
+        settings administrators are never affected.
         """
         group_ids = set(self._user_group_ids(user))
         safe_groups = (
@@ -580,11 +620,24 @@ class AccessProfile(models.Model):
         now = fields.Datetime.now()
         return bool(self.sudo().with_context(**{SKIP_KEY: True}).search_count([
             ("active", "=", True),
-            ("disable_login", "=", True),
+            (field_name, "=", True),
             "|", ("date_start", "=", False), ("date_start", "<=", now),
             "|", ("date_end", "=", False), ("date_end", ">=", now),
             "|", ("user_ids", "in", user.id), ("group_ids", "in", list(group_ids)),
         ], limit=1))
+
+    def _login_disabled_for(self, user):
+        """Whether ``user`` is blocked from logging in by any active profile."""
+        return self._am_switch_active_for(user, "disable_login")
+
+    def _rpc_disabled_for(self, user):
+        """Whether ``user`` is blocked from the external API by any profile.
+
+        Note that the daily *time window* is deliberately not evaluated here:
+        like the login switch, this decides whether a credential is accepted at
+        all, and a half-open API is worse than a closed one.
+        """
+        return self._am_switch_active_for(user, "disable_rpc")
 
     # ------------------------------------------------------------------ #
     #  Compiled configuration (cached)
@@ -672,6 +725,7 @@ class AccessProfile(models.Model):
                     "condition": (rule.condition or "").strip(),
                     "mask_char": rule.mask_char or "•",
                     "mask_show_last": max(0, rule.mask_show_last or 0),
+                    "dropdown_domain": (rule.dropdown_domain or "").strip(),
                 })
 
             for rule in profile.element_rule_ids:
@@ -755,6 +809,6 @@ class AccessProfile(models.Model):
             "hide_archive", "hide_export", "hide_import", "readonly",
             "hide_chatter", "hide_send_message", "hide_log_note",
             "hide_activity", "hide_followers",
-            "hide_spreadsheet", "hide_favourites",
+            "hide_spreadsheet", "hide_favourites", "hide_print",
         ):
             switches[key] = switches.get(key, False) or rule[key]

@@ -98,20 +98,29 @@ class AccessModelRule(models.Model):
     hide_send_message = fields.Boolean(
         string="Hide 'Send message'",
         help="Keeps the chatter but removes the Send message button, so the "
-             "user cannot email the customer from the record.")
+             "user cannot email the customer from the record. Posting is also "
+             "refused server-side for this model.")
     hide_log_note = fields.Boolean(
         string="Hide 'Log note'",
-        help="Keeps the chatter but removes the Log note button.")
+        help="Keeps the chatter but removes the Log note button. Logging a "
+             "note is also refused server-side for this model.")
     hide_activity = fields.Boolean(
         string="Hide 'Activities'",
         help="Keeps the chatter but removes the Activities button, so the "
-             "user cannot schedule follow-ups on this model.")
+             "user cannot schedule follow-ups on this model. Creating an "
+             "activity is also refused server-side.")
     hide_followers = fields.Boolean(
         string="Hide Followers",
         help="Keeps the chatter but hides the followers avatars and the "
-             "Add followers button.")
+             "Add followers button. Interface only - Odoo subscribes "
+             "followers automatically on most records.")
 
     # Reports and contextual actions removed from the model's Action menu.
+    hide_print = fields.Boolean(
+        string="Hide the whole Print menu",
+        help="Removes every report bound to this model at once, so the Print "
+             "button disappears entirely. Use the list below instead when only "
+             "some documents should go.")
     hidden_report_ids = fields.Many2many(
         "ir.actions.report", "access_model_rule_report_rel", "rule_id", "report_id",
         string="Hidden Reports", domain="[('model', '=', model_name)]",
@@ -157,7 +166,7 @@ class AccessModelRule(models.Model):
                  "hide_activity", "hide_followers", "hide_spreadsheet",
                  "hide_favourites", "hide_kanban", "hide_pivot", "hide_graph",
                  "hide_calendar", "hide_activity_view", "hide_map",
-                 "hidden_report_ids", "hidden_action_ids")
+                 "hide_print", "hidden_report_ids", "hidden_action_ids")
     def _compute_restriction_summary(self):
         # Switch -> wording, in reading order. Built per call so the labels are
         # translated for the reader rather than at import time.
@@ -171,6 +180,7 @@ class AccessModelRule(models.Model):
             ("hide_import", _("no import")),
             ("hide_export", _("no export")),
             ("hide_chatter", _("no chatter")),
+            ("hide_print", _("no print")),
             ("hide_spreadsheet", _("no spreadsheet")),
             ("hide_favourites", _("no favorites")),
         )

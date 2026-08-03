@@ -26,16 +26,24 @@ class IrActionsActions(models.Model):
             return bindings
         hidden = config["reports"].get(model_name, frozenset()) \
             | config["actions"].get(model_name, frozenset())
-        if not hidden:
+        # "Hide the whole Print menu" drops the entire ``report`` binding type,
+        # which is what makes the Print button itself disappear - the client
+        # only renders it when the model has at least one bound report.
+        hide_print = config["models"].get(model_name, {}) \
+            .get("switches", {}).get("hide_print")
+        if not hidden and not hide_print:
             return bindings
         # Note: get_bindings returns 'action' as a *tuple* (sorted) and 'report'
         # as a list on Odoo 19, so accept both sequence kinds. Rebuild fresh
         # containers - the source lists/tuples are cached and must not mutate.
         result = {}
         for key, value in bindings.items():
+            if hide_print and key == "report":
+                continue
             if isinstance(value, (list, tuple)):
                 kept = [item for item in value if item.get("id") not in hidden]
-                result[key] = type(value)(kept)
+                if kept:
+                    result[key] = type(value)(kept)
             else:
                 result[key] = value
         return result

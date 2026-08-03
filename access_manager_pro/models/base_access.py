@@ -147,6 +147,17 @@ class Base(models.AbstractModel):
     # ------------------------------------------------------------------ #
     #  Record (domain) rules - read filtering
     # ------------------------------------------------------------------ #
+    # ``_search`` is the *only* hook needed to cover aggregates as well: every
+    # grouping entry point in Odoo 19 builds its query from it -
+    # ``_read_group`` (odoo/orm/models.py), ``_read_grouping_sets``,
+    # ``search_count``, and the web layer's ``formatted_read_group`` /
+    # ``formatted_read_grouping_sets`` / ``web_read_group`` all call
+    # ``self._search(domain)`` and then decorate that Query. So pivot, graph,
+    # grouped list/kanban counts and progress bars are filtered here too, and
+    # a separate ``_read_group`` override would only re-apply the same
+    # exclusion twice. ``test_domain_filtering_applies_to_read_group`` locks
+    # this in, so a future version that stops routing through ``_search``
+    # fails loudly instead of quietly leaking totals.
     def _search(self, domain, *args, **kwargs):
         if not self._am_skip():
             domain = self._am_augment_search_domain(domain)

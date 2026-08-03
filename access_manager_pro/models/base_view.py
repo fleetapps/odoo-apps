@@ -114,6 +114,35 @@ class Base(models.AbstractModel):
             self._am_update_field_options(
                 node, no_create=rule["no_create"], no_open=rule["no_open"])
 
+        if rule.get("dropdown_domain"):
+            self._am_merge_field_domain(node, rule["dropdown_domain"])
+
+    @staticmethod
+    def _am_merge_field_domain(node, extra):
+        """AND ``extra`` into the ``domain`` attribute of a relational field.
+
+        The attribute is a Python *expression* evaluated in the browser against
+        the record, not a literal, so the two domains are combined the same way
+        the expression language allows: ``["&"] + (a) + (b)``. The client's
+        evaluator (``@web/core/py_js``) implements ``+`` on lists, so this
+        stays a single valid domain however dynamic either side is.
+
+        A pre-existing domain that is not list-shaped (a dict, as reference
+        fields may carry) is left alone rather than corrupted.
+        """
+        extra = extra.strip()
+        existing = (node.get("domain") or "").strip()
+        if not existing or existing in ("[]", "()"):
+            node.set("domain", extra)
+            return
+        if not existing.startswith(("[", "(")):
+            _logger.debug(
+                "Access Manager: field %r keeps its non-list domain %r; the "
+                "configured field domain was not merged", node.get("name"),
+                existing)
+            return
+        node.set("domain", '["&"] + (%s) + (%s)' % (existing, extra))
+
     @staticmethod
     def _am_set_condition(node, attr, condition):
         """Set ``attr`` to ``1`` (unconditional) or OR-in a condition."""
@@ -215,10 +244,21 @@ class Base(models.AbstractModel):
             self._am_apply_chatter(arch, switches)
 
     # Fine-grained chatter switch -> CSS class added to the <chatter/> node.
-    # The matching rules live in static/src/scss/access_manager.scss; because
-    # the class lands on this form's chatter only, the hiding is naturally
-    # scoped to the model - no component patching (and no fragile cross-version
-    # import) required.  Whole-chatter removal is done structurally below.
+    #
+    # This works because of ``ViewCompiler.compileNode``: after a node is handed
+    # to its compiler it runs ``copyAttributes(node, compiledNode)``, which
+    # copies the arch node's ``class`` onto the compiled element
+    # (web/static/src/views/view_compiler.js). ``compileChatter`` itself never
+    # reads the attribute, but its result - the ``o-mail-Form-chatter`` hook -
+    # receives the class from that generic step, and mail's later
+    # ``cloneNode(true)`` for the sheet-background layout carries it along. The
+    # matching rules live in static/src/scss/access_manager.scss; because the
+    # class lands on this form's chatter only, the hiding is naturally scoped to
+    # the model - no component patching (and no fragile cross-version import)
+    # required. Whole-chatter removal is done structurally below.
+    #
+    # Hiding a button is not a restriction on its own, so posting and activity
+    # scheduling are additionally refused at the model - see models/mail_thread.py.
     _CHATTER_CLASSES = {
         "hide_send_message": "o_am_hide_message",
         "hide_log_note": "o_am_hide_note",

@@ -61,7 +61,11 @@ export class AccessDashboard extends Component {
     }
 
     _donutGeom(items, colors) {
-        const total = items.reduce((a, b) => a + b.value, 0) || 1;
+        // `realTotal` is what the chart *reports*; `total` is only the divisor
+        // that keeps the arc maths finite when there is nothing to draw. Using
+        // the fallback for both is what made an empty database read "1 rules".
+        const realTotal = items.reduce((a, b) => a + b.value, 0);
+        const total = realTotal || 1;
         const r = 54, C = 2 * Math.PI * r;
         let acc = 0;
         const arcs = items.map((it, i) => {
@@ -76,7 +80,7 @@ export class AccessDashboard extends Component {
             acc += len;
             return seg;
         });
-        return { r, C, total, arcs };
+        return { r, C, total: realTotal, arcs };
     }
 
     // vertical bars with y-axis + value labels; data = [{label,value}]
@@ -168,9 +172,10 @@ export class AccessDashboard extends Component {
     // ================= restriction composition (stacked bar) ================= //
     get ruleMix() {
         const items = this.state.data.rule_mix;
-        const total = items.reduce((a, b) => a + b.value, 0) || 1;
+        const realTotal = items.reduce((a, b) => a + b.value, 0);
+        const total = realTotal || 1;   // divisor only - see _donutGeom
         return {
-            total,
+            total: realTotal,
             segments: items.map((it, i) => ({
                 ...it, pct: (it.value / total) * 100,
                 color: MIX_COLORS[i % MIX_COLORS.length],

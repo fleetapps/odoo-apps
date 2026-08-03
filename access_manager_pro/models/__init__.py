@@ -13,4 +13,5 @@ from . import ir_ui_menu
 from . import ir_actions_actions
 from . import ir_actions_act_window
 from . import ir_http
+from . import mail_thread
 from . import res_users

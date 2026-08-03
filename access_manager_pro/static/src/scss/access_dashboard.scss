@@ -18,10 +18,27 @@
 
     background: var(--am-bg);
     color: var(--am-ink);
-    padding: 16px;
-    min-height: 100%;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    overflow-x: hidden;
+
+    // The root also carries `o_action`, so the framework already gives it
+    // `height: 100%; display: flex; flex-flow: column; overflow: hidden`.
+    // Restated here so the dashboard still lays out correctly if it is ever
+    // rendered outside the action manager (e.g. embedded in a test harness).
+    display: flex;
+    flex-flow: column nowrap;
+    height: 100%;
+    overflow: hidden;
+
+    // The single scrolling element. `o_content` is what the framework styles
+    // (`overflow: auto; height: 100%`), and what its mobile breakpoint hands
+    // back to `.o_action`; the padding is ours.
+    > .o_am_scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 16px;
+    }
 
     &.o_am_dark {
         --am-bg: #14121f;

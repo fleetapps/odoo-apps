@@ -59,6 +59,10 @@
                         domain="[('is_readonly_user', '=', True)]"/>
                 <filter name="login_disabled" string="Login Disabled"
                         domain="[('disable_login', '=', True)]"/>
+                <filter name="rpc_disabled" string="External API Blocked"
+                        domain="[('disable_rpc', '=', True)]"/>
+                <filter name="auto_assigned" string="Applies to New Users"
+                        domain="[('auto_assign', '!=', 'none')]"/>
                 <filter name="time_based" string="Time-Based"
                         domain="[('restriction_time_based', '=', True)]"/>
                 <separator/>
@@ -134,13 +138,17 @@
                                    string="Block Developer Mode"/>
                             <field name="disable_login" widget="boolean_toggle"
                                    string="Block Login"/>
+                            <field name="disable_rpc" widget="boolean_toggle"
+                                   string="Block External API"/>
+                            <field name="auto_assign"/>
                             <field name="sequence" groups="base.group_no_one"/>
                             <field name="active" invisible="1"/>
                         </group>
                     </group>
 
                     <div class="alert alert-warning d-flex align-items-center"
-                         role="alert" invisible="user_ids or group_ids">
+                         role="alert"
+                         invisible="user_ids or group_ids or auto_assign != 'none'">
                         <i class="fa fa-exclamation-triangle me-2" role="img"
                            aria-label="Warning" title="Warning"/>
                         <span>
@@ -235,7 +243,9 @@
                                     </group>
                                     <separator string="Reports &amp; Actions to Hide"/>
                                     <group>
+                                        <field name="hide_print" widget="boolean_toggle"/>
                                         <field name="hidden_report_ids"
+                                               invisible="hide_print"
                                                widget="many2many_tags"
                                                options="{'no_create': True}"
                                                placeholder="Reports removed from the Print menu"/>
@@ -285,6 +295,8 @@
                                            placeholder="always — or e.g. state == 'done'"/>
                                     <field name="no_create" optional="show"/>
                                     <field name="no_open" optional="show"/>
+                                    <field name="dropdown_domain" optional="show"
+                                           placeholder="all records — or e.g. [('is_company', '=', True)]"/>
                                     <field name="mask_char"
                                            invisible="mode != 'masked'"/>
                                     <field name="mask_show_last"
@@ -309,6 +321,10 @@
                                 search and group-by. A <b>Condition</b> is a Python
                                 expression on the record, e.g.
                                 <code>state == 'done'</code>.
+                                <b>Apply Field Domain</b> narrows what a relational
+                                field offers in its dropdown — it filters the
+                                picker, so pair it with a <b>Records</b> rule when
+                                the data must be genuinely out of reach.
                             </div>
                         </page>
 

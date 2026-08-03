@@ -3,10 +3,11 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "Access Manager Pro",
-    "version": "19.0.2.0.0",
+    "version": "19.0.3.0.0",
     "category": "Extra Tools/Access Rights",
     "summary": "No-code access control: hide or make read-only any menu, field, "
-               "button, tab, report, action or export - per user, group and company.",
+               "button, tab, report, record or export - per user, group and "
+               "company, in the interface and over the API.",
     "description": """
 Access Manager Pro
 ==================
@@ -17,18 +18,25 @@ companies and control:
 
 * Menus and sub-menus (and the Apps installer menu)
 * Model buttons: Create, Edit, Delete, Duplicate, Archive, Import, Export
-* Fields: invisible, read-only, required, no quick-create, no open link
+* Fields: invisible, read-only, required, masked, no quick-create, no open
+  link, and a domain narrowing what a relational field offers in its dropdown
 * View elements: header/statusbar buttons, notebook tabs, kanban links,
   search filters and group-by options (with optional conditions)
-* Reports and contextual actions
+* Reports and contextual actions, or the whole Print menu at once
 * Chatter: the whole chatter, or Send message / Log note / Activities /
-  Followers
+  Followers - with posting and activity scheduling refused at the server, not
+  only hidden
 * Record-level (conditional) domain restrictions on read/create/edit/delete,
-  with a soft (hide-only) option
-* Read-only users, disabled developer mode and disabled login
+  with a soft (hide-only) option; they hold in pivot and graph totals too
+* Read-only users, disabled developer mode, disabled login, and a full block
+  on the external API (XML-RPC, JSON-RPC, /json/2 and the user's API keys) for
+  people who should only ever work through the interface
+* A default profile applied to new users automatically, per user kind
+  (internal or portal), so a joiner is covered from their first login
 
 Enforcement is server-side wherever it matters (export, read-only users,
-record domains, archive, login), with the view layer kept in sync so the UI
+record domains and their aggregates, archive, chatter posting, activity
+scheduling, external API, login), with the view layer kept in sync so the UI
 never shows what the server would refuse.
 """,
     "author": "YourCompany",
