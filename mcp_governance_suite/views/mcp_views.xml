@@ -190,7 +190,11 @@
                 <filter name="errors" string="Errors" domain="[('status','=','error')]"/>
                 <filter name="today" string="Today"
                         domain="[('create_date','>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
-                <group expand="0" string="Group By">
+                <!-- Bare <group>: the search-view RNG allows only colspan,
+                     rowspan, fill, height, width, name, color, invisible,
+                     position and groups here. 'expand' and 'string' are not
+                     among them, and core's own search views carry neither. -->
+                <group>
                     <filter name="g_user" string="User" context="{'group_by':'user_id'}"/>
                     <filter name="g_tool" string="Tool" context="{'group_by':'tool'}"/>
                     <filter name="g_model" string="Model" context="{'group_by':'model_name'}"/>

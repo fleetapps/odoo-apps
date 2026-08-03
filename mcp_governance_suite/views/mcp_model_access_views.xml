@@ -116,7 +116,10 @@
                 <separator/>
                 <filter name="f_inactive" string="Archived"
                         domain="[('active','=',False)]"/>
-                <group expand="1" string="Group By">
+                <!-- Bare <group>: 'expand' and 'string' are not in the
+                     search-view RNG's attribute list for group, and core's own
+                     search views use neither. -->
+                <group>
                     <filter name="group_scope" string="Scope"
                             context="{'group_by': 'scope_id'}"/>
                     <filter name="group_model" string="Model"
