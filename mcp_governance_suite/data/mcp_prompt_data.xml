@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Curated, role-based prompts. noupdate so admins can edit/remove without
+         them reappearing on upgrade. These give users value on day one instead
+         of a blank chat box. -->
+    <data noupdate="1">
+        <record id="prompt_pipeline_review" model="mcp.prompt">
+            <field name="name">sales_pipeline_review</field>
+            <field name="title">Sales pipeline review</field>
+            <field name="persona">Sales Manager</field>
+            <field name="capability_id" ref="cap_data_read"/>
+            <field name="description">Summarise the open sales pipeline and flag risks.</field>
+            <field name="template">You are my sales manager. Using read_group and search_records, review the current open pipeline. Break it down by salesperson and stage, highlight the largest opportunities, flag deals with no activity in the last {{days}} days, and end with three concrete actions for this week.</field>
+            <field name="arguments_json">[{"name": "days", "description": "Inactivity threshold in days", "required": false}]</field>
+        </record>
+
+        <record id="prompt_cfo_snapshot" model="mcp.prompt">
+            <field name="name">cfo_cash_snapshot</field>
+            <field name="title">CFO cash &amp; receivables snapshot</field>
+            <field name="persona">CFO</field>
+            <field name="capability_id" ref="cap_data_read"/>
+            <field name="description">A concise cash, receivables and payables snapshot.</field>
+            <field name="template">Act as my CFO. Build a snapshot of receivables and payables: total outstanding, overdue amounts bucketed by age, and the top ten customers by overdue balance. Use read_group for the aggregates. Present it as a short executive briefing with one paragraph of commentary.</field>
+            <field name="arguments_json">[]</field>
+        </record>
+
+        <record id="prompt_monthly_revenue" model="mcp.prompt">
+            <field name="name">monthly_revenue_report</field>
+            <field name="title">Monthly revenue report</field>
+            <field name="persona">Financial Controller</field>
+            <field name="capability_id" ref="cap_data_read"/>
+            <field name="description">Revenue by month with trend commentary.</field>
+            <field name="template">Produce a revenue report for {{year}}. Use read_group on the relevant sales/invoicing model grouped by month, compare each month to the previous one, identify the best and worst months, and summarise the trend in three bullet points a board would read.</field>
+            <field name="arguments_json">[{"name": "year", "description": "Fiscal year, e.g. 2026", "required": false}]</field>
+        </record>
+
+        <record id="prompt_low_stock" model="mcp.prompt">
+            <field name="name">warehouse_low_stock</field>
+            <field name="title">Low-stock watch</field>
+            <field name="persona">Warehouse Manager</field>
+            <field name="capability_id" ref="cap_data_read"/>
+            <field name="description">Find products below a stock threshold.</field>
+            <field name="template">Act as my warehouse manager. Find products with on-hand quantity below {{threshold}} units. First call get_schema to confirm the stock fields, then search_records. Return a table sorted by urgency and suggest which to reorder first.</field>
+            <field name="arguments_json">[{"name": "threshold", "description": "Units below which to alert", "required": false}]</field>
+        </record>
+
+        <record id="prompt_customer_360" model="mcp.prompt">
+            <field name="name">customer_360</field>
+            <field name="title">Customer 360</field>
+            <field name="persona">Account Manager</field>
+            <field name="capability_id" ref="cap_core"/>
+            <field name="description">A 360-degree view of one customer.</field>
+            <field name="template">Give me a 360-degree view of the customer "{{customer}}". Use name_search to resolve them, then gather their recent orders, invoices and open activities. Summarise relationship health, outstanding balance, and any risks or opportunities.</field>
+            <field name="arguments_json">[{"name": "customer", "description": "Customer name to look up", "required": true}]</field>
+        </record>
+
+        <record id="prompt_executive_summary" model="mcp.prompt">
+            <field name="name">executive_summary</field>
+            <field name="title">Weekly executive summary</field>
+            <field name="persona">CEO</field>
+            <field name="capability_id" ref="cap_data_read"/>
+            <field name="description">A one-page executive summary across the business.</field>
+            <field name="template">Act as my chief of staff. Produce a one-page executive summary for the last week: sales won and lost, cash position, operational bottlenecks, and anything that needs my attention. Use aggregates, keep it to a single page, and lead with the three things that matter most.</field>
+            <field name="arguments_json">[]</field>
+        </record>
+
+        <record id="prompt_data_explorer" model="mcp.prompt">
+            <field name="name">data_explorer</field>
+            <field name="title">Explore my data safely</field>
+            <field name="persona">Analyst</field>
+            <field name="capability_id" ref="cap_core"/>
+            <field name="description">Discover what is available before diving in.</field>
+            <field name="template">Help me explore my Odoo data. Start with list_capabilities and list_models to see what is accessible, read the business context, then propose five useful questions you could answer for me right now.</field>
+            <field name="arguments_json">[]</field>
+        </record>
+    </data>
+</odoo>

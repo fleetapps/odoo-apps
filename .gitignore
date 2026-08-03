@@ -223,3 +223,7 @@ __marimo__/
 # Claude Code session state. shopify_bisync/.claude/worktrees/ holds full git
 # worktrees — nested checkouts of this repo — which must never be committed.
 .claude/
+
+# macOS Finder junk. These were tracked inside mcp_governance_suite and
+# ship to the App Store in the module zip.
+.DS_Store

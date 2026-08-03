@@ -1,80 +1,93 @@
 # -*- coding: utf-8 -*-
-import hashlib
-import secrets
-from odoo import api, fields, models
+"""Connection-scoped API keys (the non-OAuth path).
+
+OAuth 2.1 is the recommended way to connect (see mcp_oauth.py), but keys remain
+useful for headless clients, CI, and MCP clients that cannot run a browser
+authorization flow. Either way the principle is identical: every call executes
+*as* an Odoo user, so ir.model.access and ir.rule bound that user on top of the
+MCP governance scope.
+
+The plaintext key is shown to a human exactly once, through a reveal wizard;
+only its SHA-256 digest is stored at rest.
+"""
+from odoo import _, api, fields, models
+
+from .tools_crypto import hash_secret, new_secret
+
+KEY_PREFIX = "mcp-"
 
 
 class MCPApiKey(models.Model):
     _name = "mcp.api.key"
     _description = "MCP API Key"
-    _order = "name"
+    _order = "create_date desc"
 
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
-    user_id = fields.Many2one("res.users", required=True,
-                              help="All MCP calls with this key run AS this user: "
-                                   "ir.model.access + ir.rule apply on top of scopes.")
-    scope_id = fields.Many2one("mcp.scope", required=True)
-    key_hash = fields.Char(readonly=True, index=True)
-    key_preview = fields.Char(readonly=True)
-    expiry = fields.Date()
+    user_id = fields.Many2one(
+        "res.users", required=True, ondelete="cascade",
+        default=lambda self: self.env.user,
+        help="Every MCP call made with this key runs AS this user: "
+             "ir.model.access + ir.rule apply on top of the MCP scope.")
+    scope_id = fields.Many2one(
+        "mcp.scope", required=True, ondelete="restrict",
+        help="Governance scope: which models/operations this connection may use.")
+    company_id = fields.Many2one(
+        "res.company", default=lambda self: self.env.company,
+        help="Used for record-rule filtering of keys in multi-company setups.")
+    key_hash = fields.Char(readonly=True, index=True, copy=False)
+    key_preview = fields.Char(readonly=True, copy=False)
+    is_generated = fields.Boolean(compute="_compute_is_generated")
+    expiry = fields.Date(help="Optional hard expiry. After this date the key is refused.")
     last_used = fields.Datetime(readonly=True)
+    call_count = fields.Integer(compute="_compute_call_count")
 
-    # Not stored: it turns on when a date passes, and nothing writes the record
-    # on that day, so a stored value would simply be wrong. The explicit
-    # ``search`` is what makes it usable in the search view's filter domains -
-    # a compute with neither ``store`` nor ``search`` raises "Unsearchable
-    # field" at install time, not at first use.
-    expired = fields.Boolean(
-        string="Expired", compute="_compute_expired", search="_search_expired",
-        help="The expiry date has passed. The key is refused at authentication.")
+    _sql_constraints = [
+        ("key_hash_uniq", "unique(key_hash)", "This API key already exists."),
+    ]
 
-    @api.depends("expiry")
-    def _compute_expired(self):
-        today = fields.Date.today()
-        for key in self:
-            key.expired = bool(key.expiry and key.expiry < today)
+    @api.depends("key_hash")
+    def _compute_is_generated(self):
+        for rec in self:
+            rec.is_generated = bool(rec.key_hash)
 
-    def _search_expired(self, operator, value):
-        if operator not in ("=", "!="):
-            raise NotImplementedError
-        today = fields.Date.today()
-        is_expired = bool(value) if operator == "=" else not value
-        if is_expired:
-            return [("expiry", "!=", False), ("expiry", "<", today)]
-        return ["|", ("expiry", "=", False), ("expiry", ">=", today)]
+    def _compute_call_count(self):
+        data = self.env["mcp.audit.log"].sudo()._read_group(
+            [("api_key_id", "in", self.ids)],
+            groupby=["api_key_id"], aggregates=["__count"])
+        counts = {k.id: n for k, n in data}
+        for rec in self:
+            rec.call_count = counts.get(rec.id, 0)
 
     def is_expired(self):
         self.ensure_one()
         return bool(self.expiry and fields.Date.today() > self.expiry)
 
     def action_generate_key(self):
-        """Mint the secret and show it once, in a sticky notification.
+        """Mint (or rotate) the secret and reveal it once via a wizard.
 
-        Generation is an explicit button rather than a side effect of create()
-        because the raw secret is never persisted - only its sha256 - so the
-        one moment it exists has to be a moment the admin is looking at. A
-        second press invalidates the previous secret.
+        Rotating invalidates the previous secret immediately - the safe default
+        for credential compromise response.
         """
         self.ensure_one()
-        raw = "mcp_" + secrets.token_urlsafe(32)
-        self.write({
-            "key_hash": hashlib.sha256(raw.encode()).hexdigest(),
-            "key_preview": raw[:12] + "…",
-        })
+        raw = new_secret(prefix=KEY_PREFIX, nbytes=32)
+        self.write({"key_hash": hash_secret(raw), "key_preview": raw[:12] + "..."})
+        wizard = self.env["mcp.key.reveal"].create({
+            "api_key_id": self.id, "secret": raw})
         return {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "type": "warning",
-                "title": self.env._("Copy this key now"),
-                "message": self.env._(
-                    "%(key)s\n\nOnly its hash is stored. Closing this notice "
-                    "is the last time this value exists anywhere.", key=raw),
-                "sticky": True,
-            },
+            "type": "ir.actions.act_window",
+            "name": _("Copy your MCP API key"),
+            "res_model": "mcp.key.reveal",
+            "res_id": wizard.id,
+            "view_mode": "form",
+            "target": "new",
         }
 
-    def is_usable(self):
-        self.ensure_one()
-        return bool(self.key_hash) and self.active and not self.is_expired()
+    def mcp_authenticate(self, presented_key):
+        """Resolve a presented bearer secret to a live key record, or empty."""
+        key = self.sudo().search(
+            [("key_hash", "=", hash_secret(presented_key)),
+             ("active", "=", True)], limit=1)
+        if not key or key.is_expired():
+            return self.browse()
+        return key

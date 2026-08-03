@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================================= The permission matrix ======== -->
+    <!-- The single most important screen in the module: every model an AI can
+         touch, and exactly what it may do, switchable without opening a record. -->
+    <record id="mcp_scope_line_view_list" model="ir.ui.view">
+        <field name="name">mcp.scope.line.matrix</field>
+        <field name="model">mcp.scope.line</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" multi_edit="1"
+                  decoration-warning="can_call_methods"
+                  decoration-muted="not active"
+                  default_order="scope_id, model_name">
+                <field name="scope_id" optional="show"/>
+                <field name="model_id" string="Model"
+                       options="{'no_create': True}"
+                       domain="[('transient', '=', False)]"/>
+                <field name="model_name" string="Technical Name" readonly="1"
+                       optional="show"/>
+                <field name="can_read" widget="boolean_toggle"/>
+                <field name="can_create" widget="boolean_toggle"/>
+                <field name="can_write" widget="boolean_toggle"/>
+                <field name="can_unlink" widget="boolean_toggle"/>
+                <field name="can_call_methods" widget="boolean_toggle"/>
+                <field name="allowed_methods"
+                       placeholder="action_confirm, action_post"
+                       readonly="not can_call_methods"
+                       optional="show"/>
+                <field name="field_blacklist" placeholder="vat, bank_ids"
+                       optional="hide"/>
+                <field name="record_domain" optional="hide"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+                <field name="write_date" string="Last Modified" readonly="1"
+                       optional="show"/>
+                <field name="write_uid" string="Modified By" readonly="1"
+                       optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_scope_line_view_form" model="ir.ui.view">
+        <field name="name">mcp.scope.line.form</field>
+        <field name="model">mcp.scope.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <b>This can only ever take access away, never add it.</b>
+                        Every call is executed as the signed-in Odoo user, so the
+                        effective permission is whichever is
+                        <i>narrower</i> — this matrix, or that user's own Odoo
+                        access rights. Switching something on here does not grant
+                        it; it stops this layer from blocking it.
+                    </div>
+                    <div class="oe_title">
+                        <label for="model_id"/>
+                        <h1><field name="model_id" options="{'no_create': True}"/></h1>
+                        <field name="model_name" readonly="1" class="text-muted"/>
+                    </div>
+                    <group>
+                        <group string="Data operations">
+                            <field name="can_read"/>
+                            <field name="can_create"/>
+                            <field name="can_write"/>
+                            <field name="can_unlink"/>
+                        </group>
+                        <group string="Scope">
+                            <field name="scope_id"/>
+                            <field name="active"/>
+                            <field name="write_date" string="Last Modified" readonly="1"/>
+                            <field name="write_uid" string="Modified By" readonly="1"/>
+                        </group>
+                    </group>
+                    <separator string="Business method calls"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not can_call_methods">
+                        <b>This is the most powerful switch in the module.</b>
+                        Business methods change state and are often irreversible
+                        (confirming an order, posting an invoice, sending an
+                        email). Nothing is callable until you name the exact
+                        methods below — an empty list allows nothing. Private
+                        methods and raw ORM verbs are always refused.
+                    </div>
+                    <group>
+                        <field name="can_call_methods"/>
+                        <field name="allowed_methods"
+                               placeholder="action_confirm, action_post"
+                               invisible="not can_call_methods"/>
+                    </group>
+                    <separator string="Extra restrictions"/>
+                    <group>
+                        <field name="field_blacklist" placeholder="vat, bank_ids"/>
+                        <field name="record_domain"
+                               placeholder="[('state', '!=', 'draft')]"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_scope_line_view_search" model="ir.ui.view">
+        <field name="name">mcp.scope.line.search</field>
+        <field name="model">mcp.scope.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="model_id"/>
+                <field name="model_name"/>
+                <field name="scope_id"/>
+                <filter name="f_write" string="Can change data"
+                        domain="['|', '|', ('can_create','=',True),
+                                 ('can_write','=',True), ('can_unlink','=',True)]"/>
+                <filter name="f_delete" string="Can delete"
+                        domain="[('can_unlink','=',True)]"/>
+                <filter name="f_methods" string="Can call methods"
+                        domain="[('can_call_methods','=',True)]"/>
+                <separator/>
+                <filter name="f_inactive" string="Archived"
+                        domain="[('active','=',False)]"/>
+                <group expand="1" string="Group By">
+                    <filter name="group_scope" string="Scope"
+                            context="{'group_by': 'scope_id'}"/>
+                    <filter name="group_model" string="Model"
+                            context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="mcp_scope_line_action" model="ir.actions.act_window">
+        <field name="name">Model Permissions</field>
+        <field name="res_model">mcp.scope.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="mcp_scope_line_view_search"/>
+        <field name="context">{'search_default_group_scope': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Decide what your AI can touch</p>
+            <p>
+                This is the master switchboard: one row per Odoo model, one
+                column per operation. Toggle anything directly in the list — no
+                need to open records.
+            </p>
+            <p>
+                <b>It can only ever take access away, never add it.</b> Every AI
+                call runs as the signed-in Odoo user, so the effective permission
+                is whichever is narrower: this matrix, or that user's own access
+                rights. That makes it safe to start permissive here and tighten
+                later.
+            </p>
+            <p>
+                Use <b>Add Models</b> in the Configuration menu to add a whole
+                set at once.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============================================ Bulk model picker ======= -->
+    <record id="mcp_model_picker_view_form" model="ir.ui.view">
+        <field name="name">mcp.model.picker.form</field>
+        <field name="model">mcp.model.picker</field>
+        <field name="arch" type="xml">
+            <form string="Add Models">
+                <div class="alert alert-info" role="alert">
+                    Pick as many models as you like and apply one preset to all
+                    of them. Anything already in the scope is skipped, so it is
+                    safe to re-run. Fine-tune individual rows afterwards in the
+                    permission matrix.
+                </div>
+                <group>
+                    <field name="scope_id" options="{'no_create': True}"/>
+                    <field name="preset" widget="radio"/>
+                </group>
+                <field name="model_ids" widget="many2many_tags"
+                       options="{'no_create': True}"
+                       placeholder="Start typing a model name, e.g. Contact, Sales Order…"/>
+                <div class="text-muted mt-2" invisible="not model_ids">
+                    <field name="new_count" class="oe_inline"/> will be added.
+                    <span invisible="not already_count">
+                        <field name="already_count" class="oe_inline"/> already
+                        in this scope and will be skipped.
+                    </span>
+                </div>
+                <footer>
+                    <button name="action_add" type="object" string="Add Models"
+                            class="btn-primary" invisible="not new_count"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_model_picker_action" model="ir.actions.act_window">
+        <field name="name">Add Models</field>
+        <field name="res_model">mcp.model.picker</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

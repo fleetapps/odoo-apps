@@ -1,43 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="module_category_mcp" model="ir.module.category">
-        <field name="name">MCP Governance</field>
-    </record>
-    <!-- Odoo 19: res.groups.category_id was replaced by privilege_id, which
-         points at a res.groups.privilege carrying the module category. -->
-    <record id="privilege_mcp" model="res.groups.privilege">
-        <field name="name">MCP Governance</field>
-        <field name="category_id" ref="module_category_mcp"/>
-    </record>
-    <record id="group_mcp_admin" model="res.groups">
-        <field name="name">MCP: Administrator</field>
-        <field name="privilege_id" ref="privilege_mcp"/>
-    </record>
-    <record id="group_mcp_approver" model="res.groups">
-        <field name="name">MCP: Approver</field>
-        <field name="privilege_id" ref="privilege_mcp"/>
-    </record>
+    <data>
+        <!-- ============================================ Groups ============= -->
+        <record id="module_category_mcp" model="ir.module.category">
+            <field name="name">Fleet AI</field>
+            <field name="description">AI / MCP connector governance.</field>
+            <field name="sequence">80</field>
+        </record>
 
-    <!-- An administrator may approve as well as configure; the reverse is not
-         true, so the implication only runs one way. -->
-    <record id="group_mcp_admin" model="res.groups">
-        <field name="implied_ids" eval="[(4, ref('group_mcp_approver'))]"/>
-    </record>
+        <!-- Odoo 19 moved the group<->category link behind res.groups.privilege:
+             res.groups.category_id no longer exists, it is privilege_id, and the
+             privilege carries the ir.module.category. Setting category_id on a
+             group here fails the install outright. -->
+        <record id="privilege_mcp" model="res.groups.privilege">
+            <field name="name">Fleet AI</field>
+            <field name="category_id" ref="module_category_mcp"/>
+            <field name="sequence">80</field>
+            <field name="description">Who may connect AI assistants, approve their
+                writes, and configure the MCP governance layer.</field>
+        </record>
 
-    <!-- This grant is what makes the module visible at all, and it was missing
-         until 19.0.1.0.0. group_mcp_admin was created and handed to nobody,
-         while every menuitem in views/mcp_views.xml is gated on it and every
-         ir.model.access line names it - so the app installed cleanly and then
-         showed the administrator nothing: no app tile, no menus, and (once the
-         Settings page existed) no MCP tab either, because
-         _postprocess_access_rights deletes any node whose `groups` the reader
-         does not match.
+        <record id="group_mcp_user" model="res.groups">
+            <field name="name">User</field>
+            <field name="privilege_id" ref="privilege_mcp"/>
+            <field name="comment">Can connect their own AI assistant, manage their
+                own API keys/tokens and read their own audit trail.</field>
+        </record>
 
-         Databases installed before this line existed need an actual module
-         *upgrade* to pick it up; restarting the server is not enough.
+        <record id="group_mcp_approver" model="res.groups">
+            <field name="name">Approver</field>
+            <field name="privilege_id" ref="privilege_mcp"/>
+            <field name="implied_ids" eval="[(4, ref('group_mcp_user'))]"/>
+            <field name="comment">Can approve or reject AI-initiated writes.</field>
+        </record>
 
-         Settings > Users can still take the group away per user. -->
-    <record id="base.group_system" model="res.groups">
-        <field name="implied_ids" eval="[(4, ref('group_mcp_admin'))]"/>
-    </record>
+        <record id="group_mcp_admin" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="privilege_id" ref="privilege_mcp"/>
+            <field name="implied_ids" eval="[(4, ref('group_mcp_approver'))]"/>
+            <field name="comment">Full configuration: scopes, capabilities, tools,
+                prompts, OAuth clients and the full audit log.</field>
+        </record>
+
+        <!-- Admins inherit the technical settings group so the Settings page
+             and config models are reachable. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_mcp_admin'))]"/>
+        </record>
+
+        <!-- ======================================= Record Rules =========== -->
+        <!-- API keys: a user sees only their own; admins see all. -->
+        <record id="rule_api_key_own" model="ir.rule">
+            <field name="name">MCP keys: own only</field>
+            <field name="model_id" ref="model_mcp_api_key"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
+        </record>
+        <record id="rule_api_key_admin" model="ir.rule">
+            <field name="name">MCP keys: admin all</field>
+            <field name="model_id" ref="model_mcp_api_key"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_admin'))]"/>
+        </record>
+        <!-- Multi-company isolation for keys. -->
+        <record id="rule_api_key_company" model="ir.rule">
+            <field name="name">MCP keys: company</field>
+            <field name="model_id" ref="model_mcp_api_key"/>
+            <field name="global" eval="True"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- OAuth tokens: own vs admin. -->
+        <record id="rule_oauth_token_own" model="ir.rule">
+            <field name="name">MCP tokens: own only</field>
+            <field name="model_id" ref="model_mcp_oauth_token"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
+        </record>
+        <record id="rule_oauth_token_admin" model="ir.rule">
+            <field name="name">MCP tokens: admin all</field>
+            <field name="model_id" ref="model_mcp_oauth_token"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_admin'))]"/>
+        </record>
+
+        <!-- Audit log: own vs admin (approvers may see all to investigate). -->
+        <record id="rule_audit_own" model="ir.rule">
+            <field name="name">MCP audit: own only</field>
+            <field name="model_id" ref="model_mcp_audit_log"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
+        </record>
+        <record id="rule_audit_admin" model="ir.rule">
+            <field name="name">MCP audit: admin/approver all</field>
+            <field name="model_id" ref="model_mcp_audit_log"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_approver'))]"/>
+        </record>
+
+        <!-- Approvals: a user tracks their own; approvers see the whole queue. -->
+        <record id="rule_approval_own" model="ir.rule">
+            <field name="name">MCP approvals: own only</field>
+            <field name="model_id" ref="model_mcp_approval_request"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
+        </record>
+        <record id="rule_approval_approver" model="ir.rule">
+            <field name="name">MCP approvals: approver all</field>
+            <field name="model_id" ref="model_mcp_approval_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mcp_approver'))]"/>
+        </record>
+    </data>
 </odoo>

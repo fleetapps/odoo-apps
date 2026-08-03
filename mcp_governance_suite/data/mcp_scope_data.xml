@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- User-owned configuration: noupdate so admin edits are never clobbered
+         on upgrade. Lines reference only `base` models so installation never
+         fails on an app that happens not to be installed. Admins extend the
+         scope (or clone it) to reach sale.order, crm.lead, account.move, ... -->
+    <data noupdate="1">
+        <record id="scope_readonly_default" model="mcp.scope">
+            <field name="name">Read-only (safe default)</field>
+            <field name="read_only" eval="True"/>
+            <field name="require_approval" eval="True"/>
+            <field name="rate_limit_per_hour">500</field>
+            <field name="max_records">200</field>
+            <field name="description">The safe starting point: the AI can read and
+                aggregate the models listed below, and nothing else. Add rows or
+                clone this scope to grant more. Turn off "Read Only" (and keep
+                "Require Approval" on) when you are ready for governed writes.</field>
+        </record>
+
+        <record id="scope_line_partner" model="mcp.scope.line">
+            <field name="scope_id" ref="scope_readonly_default"/>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="can_read" eval="True"/>
+        </record>
+        <record id="scope_line_company" model="mcp.scope.line">
+            <field name="scope_id" ref="scope_readonly_default"/>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="can_read" eval="True"/>
+        </record>
+        <record id="scope_line_country" model="mcp.scope.line">
+            <field name="scope_id" ref="scope_readonly_default"/>
+            <field name="model_id" ref="base.model_res_country"/>
+            <field name="can_read" eval="True"/>
+        </record>
+        <record id="scope_line_currency" model="mcp.scope.line">
+            <field name="scope_id" ref="scope_readonly_default"/>
+            <field name="model_id" ref="base.model_res_currency"/>
+            <field name="can_read" eval="True"/>
+        </record>
+
+        <!-- Make it the default scope for OAuth users out of the box. -->
+        <record id="param_default_scope" model="ir.config_parameter">
+            <field name="key">mcp_governance_suite.default_scope_id</field>
+            <field name="value" eval="ref('scope_readonly_default')"/>
+        </record>
+
+        <!-- Starter business context. Extend with your own domain knowledge. -->
+        <record id="ctx_company" model="mcp.context">
+            <field name="name">About this company</field>
+            <field name="body">This is a live Odoo ERP. Records reflect real
+operations. Prefer aggregates (read_group) for questions about totals and
+trends, and always resolve names to ids with name_search before filtering by a
+related record. Never assume a model or field exists — call get_schema first.</field>
+        </record>
+        <record id="ctx_partner" model="mcp.context">
+            <field name="name">Customers &amp; vendors (res.partner)</field>
+            <field name="model_id" ref="base.model_res_partner"/>
+            <field name="body">res.partner holds both companies and individuals,
+customers and vendors. `customer_rank` greater than zero indicates a customer;
+`supplier_rank` greater than zero indicates a vendor. A company and its contacts
+are linked through `parent_id`. Filter on `country_id` for geography.</field>
+        </record>
+    </data>
+</odoo>

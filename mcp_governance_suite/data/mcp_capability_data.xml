@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Framework capabilities & tools. Shipped with noupdate=0 so schema fixes
+         propagate on upgrade. Tools are generic, model-parameterised verbs;
+         partners add domain packs simply by shipping more of these records. -->
+
+    <!-- ============================================== Capabilities ========= -->
+    <record id="cap_core" model="mcp.capability">
+        <field name="name">Core &amp; Discovery</field>
+        <field name="technical_name">core</field>
+        <field name="sequence">1</field>
+        <field name="description">Discover what you can do, inspect model schemas, and read the business context that explains what the data means.</field>
+    </record>
+
+    <record id="cap_data_read" model="mcp.capability">
+        <field name="name">Data — Read &amp; Report</field>
+        <field name="technical_name">data_read</field>
+        <field name="sequence">2</field>
+        <field name="description">Search, count, resolve names and aggregate any model the connection is scoped to — the foundation for questions, reports and dashboards.</field>
+    </record>
+
+    <record id="cap_data_write" model="mcp.capability">
+        <field name="name">Data — Write (governed)</field>
+        <field name="technical_name">data_write</field>
+        <field name="sequence">3</field>
+        <field name="description">Create, update and delete records. Hidden entirely from read-only scopes and optionally routed through human approval.</field>
+    </record>
+
+    <!-- ================================================ Core tools ========= -->
+    <record id="tool_list_capabilities" model="mcp.tool">
+        <field name="name">list_capabilities</field>
+        <field name="title">List capabilities</field>
+        <field name="capability_id" ref="cap_core"/>
+        <field name="handler">list_capabilities</field>
+        <field name="sequence">1</field>
+        <field name="description">List the capabilities and tools available to this connection, and whether it is read-only. Call this first to learn what you can do.</field>
+        <field name="input_schema">{"type": "object", "properties": {}}</field>
+    </record>
+
+    <record id="tool_list_models" model="mcp.tool">
+        <field name="name">list_models</field>
+        <field name="title">List accessible models</field>
+        <field name="capability_id" ref="cap_core"/>
+        <field name="handler">list_models</field>
+        <field name="sequence">2</field>
+        <field name="description">List the Odoo models this connection may access and which operations (read, create, write, delete) are permitted on each.</field>
+        <field name="input_schema">{"type": "object", "properties": {}}</field>
+    </record>
+
+    <record id="tool_get_schema" model="mcp.tool">
+        <field name="name">get_schema</field>
+        <field name="title">Describe a model</field>
+        <field name="capability_id" ref="cap_core"/>
+        <field name="handler">get_schema</field>
+        <field name="sequence">3</field>
+        <field name="description">Return the fields of a model (label, type, help, relation) so you can build correct domains and value dictionaries. Blacklisted fields are omitted.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string", "description": "Technical model name, e.g. sale.order"}}, "required": ["model"]}</field>
+    </record>
+
+    <record id="tool_get_business_context" model="mcp.tool">
+        <field name="name">get_business_context</field>
+        <field name="title">Get business context</field>
+        <field name="capability_id" ref="cap_core"/>
+        <field name="handler">get_business_context</field>
+        <field name="sequence">4</field>
+        <field name="description">Return admin-authored, plain-language context that explains what a model or the company means in business terms. Use it to reason correctly about workflows.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string", "description": "Optional model to scope the context to"}}}</field>
+    </record>
+
+    <!-- ============================================ Read / report tools ==== -->
+    <record id="tool_search_records" model="mcp.tool">
+        <field name="name">search_records</field>
+        <field name="title">Search records</field>
+        <field name="capability_id" ref="cap_data_read"/>
+        <field name="handler">search_records</field>
+        <field name="sequence">1</field>
+        <field name="description">Search a model with an Odoo domain and read fields back. The domain is a list-of-tuples given as a string. Results respect the user permissions and the scope row cap.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "domain": {"type": "string", "description": "Odoo domain as a list-of-tuples string, e.g. [(\"state\",\"=\",\"sale\")]"}, "fields": {"type": "array", "items": {"type": "string"}}, "limit": {"type": "integer"}, "offset": {"type": "integer"}, "order": {"type": "string"}, "company_ids": {"type": "array", "items": {"type": "integer"}}}, "required": ["model"]}</field>
+    </record>
+
+    <record id="tool_count_records" model="mcp.tool">
+        <field name="name">count_records</field>
+        <field name="title">Count records</field>
+        <field name="capability_id" ref="cap_data_read"/>
+        <field name="handler">count_records</field>
+        <field name="sequence">2</field>
+        <field name="description">Count records matching an Odoo domain, without reading them. Cheap and safe for large models.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "domain": {"type": "string"}, "company_ids": {"type": "array", "items": {"type": "integer"}}}, "required": ["model"]}</field>
+    </record>
+
+    <record id="tool_name_search" model="mcp.tool">
+        <field name="name">name_search</field>
+        <field name="title">Resolve names to ids</field>
+        <field name="capability_id" ref="cap_data_read"/>
+        <field name="handler">name_search</field>
+        <field name="sequence">3</field>
+        <field name="description">Resolve a text query to record ids and display names — the reliable way to turn a customer or product name into an id before searching or writing.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "name": {"type": "string"}, "domain": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["model"]}</field>
+    </record>
+
+    <record id="tool_read_group" model="mcp.tool">
+        <field name="name">read_group</field>
+        <field name="title">Aggregate / group by</field>
+        <field name="capability_id" ref="cap_data_read"/>
+        <field name="handler">read_group</field>
+        <field name="sequence">4</field>
+        <field name="description">Aggregate a model by one or more fields and compute measures (sum, avg, count). This powers reports and dashboards, e.g. revenue by month or open leads by salesperson. Date fields accept a granularity suffix like create_date:month.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "domain": {"type": "string"}, "group_by": {"type": "array", "items": {"type": "string"}, "description": "Fields to group by; use field:granularity for dates"}, "measures": {"type": "array", "items": {"type": "string"}, "description": "Aggregates like amount_total:sum, or __count"}, "limit": {"type": "integer"}}, "required": ["model", "group_by"]}</field>
+    </record>
+
+    <!-- ================================================ Write tools ======== -->
+    <record id="tool_create_record" model="mcp.tool">
+        <field name="name">create_record</field>
+        <field name="title">Create a record</field>
+        <field name="capability_id" ref="cap_data_write"/>
+        <field name="handler">create_record</field>
+        <field name="sequence">1</field>
+        <field name="description">Create a record from a values object. Subject to the scope: may be blocked, may strip blacklisted fields, and may be routed to human approval instead of executing.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "values": {"type": "object"}}, "required": ["model", "values"]}</field>
+    </record>
+
+    <record id="tool_write_record" model="mcp.tool">
+        <field name="name">write_record</field>
+        <field name="title">Update a record</field>
+        <field name="capability_id" ref="cap_data_write"/>
+        <field name="handler">write_record</field>
+        <field name="sequence">2</field>
+        <field name="description">Update one record by id with a values object. The target must satisfy the scope record domain. May be routed to human approval.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "record_id": {"type": "integer"}, "values": {"type": "object"}}, "required": ["model", "record_id", "values"]}</field>
+    </record>
+
+    <record id="tool_unlink_record" model="mcp.tool">
+        <field name="name">unlink_record</field>
+        <field name="title">Delete a record</field>
+        <field name="capability_id" ref="cap_data_write"/>
+        <field name="handler">unlink_record</field>
+        <field name="sequence">3</field>
+        <field name="description">Delete one record by id. The target must satisfy the scope record domain. May be routed to human approval.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "record_id": {"type": "integer"}}, "required": ["model", "record_id"]}</field>
+    </record>
+
+    <record id="tool_call_method" model="mcp.tool">
+        <field name="name">call_method</field>
+        <field name="title">Call a business method</field>
+        <field name="capability_id" ref="cap_data_write"/>
+        <field name="handler">call_method</field>
+        <field name="sequence">4</field>
+        <field name="description">Run a business action on existing records, such as confirming a quotation or posting an invoice. Only methods an administrator has explicitly allow-listed for that model can be called; everything else is refused. Call get_schema or ask the user if you are unsure which action applies. These actions change business state and are frequently irreversible, so prefer describing what you are about to do and why before calling.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "method": {"type": "string", "description": "Exact allow-listed method name, e.g. action_confirm"}, "record_ids": {"type": "array", "items": {"type": "integer"}}, "kwargs": {"type": "object", "description": "Optional keyword arguments for the method"}}, "required": ["model", "method", "record_ids"]}</field>
+    </record>
+</odoo>

@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="mcp_governance_suite.Connect">
+    <div class="o_mcp_connect o_action">
+        <div t-if="state.loading" class="o_mcp_loading">
+            <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
+        </div>
+
+        <div t-elif="state.failed" class="alert alert-danger m-4">
+            Could not load the connection status. Reload the page to try again.
+        </div>
+
+        <div t-else="" class="o_mcp_wrap">
+
+            <!-- ============================================= Page header -->
+            <div class="o_mcp_header">
+                <h1>Connect your AI</h1>
+                <p class="text-muted">
+                    Give an AI assistant access to this Odoo. Copy one URL,
+                    paste it into your assistant, click Allow. Everything it does
+                    runs as you and is recorded.
+                </p>
+            </div>
+
+            <!-- ==================================== Region 1 — readiness -->
+            <section class="o_mcp_card"
+                     t-att-class="blockingChecks.length ? 'o_mcp_card--alert' : ''">
+                <div class="o_mcp_card_head">
+                    <h2>
+                        <span t-if="!blockingChecks.length" class="fa fa-check-circle text-success"/>
+                        <span t-else="" class="fa fa-exclamation-triangle text-danger"/>
+                        Before you start
+                    </h2>
+                    <button class="btn btn-sm btn-link" t-on-click="() => this.testReachability()"
+                            t-att-disabled="state.testing">
+                        <span t-if="state.testing" class="fa fa-circle-o-notch fa-spin me-1"/>
+                        Re-test
+                    </button>
+                </div>
+
+                <p t-if="blockingChecks.length" class="o_mcp_blocker">
+                    <b>Fix <t t-esc="blockingChecks.length"/> item(s) below first.</b>
+                    Until then, assistants will fail to connect — usually with an
+                    error that gives no clue why.
+                </p>
+
+                <ul class="o_mcp_checks">
+                    <li t-foreach="state.data.checks" t-as="check" t-key="check.key"
+                        t-att-class="'o_mcp_check o_mcp_check--' + check.state">
+                        <span class="o_mcp_check_icon">
+                            <span t-if="check.state === 'ok'" class="fa fa-check"/>
+                            <span t-elif="check.state === 'fail'" class="fa fa-times"/>
+                            <span t-else="" class="fa fa-question"/>
+                        </span>
+                        <div class="o_mcp_check_body">
+                            <div class="o_mcp_check_label"><t t-esc="check.label"/></div>
+                            <div t-if="check.detail" class="o_mcp_check_detail">
+                                <t t-esc="check.detail"/>
+                            </div>
+                        </div>
+                        <button t-if="check.fix_action" class="btn btn-sm btn-outline-primary"
+                                t-on-click="() => this.openFix(check.fix_action)">
+                            <t t-esc="check.fix_label"/>
+                        </button>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- ================================ Region 2 — the URL, big -->
+            <section class="o_mcp_card o_mcp_hero">
+                <div class="o_mcp_hero_main">
+                    <h2>Your server URL</h2>
+                    <p class="text-muted">This is the only thing you need to copy.</p>
+                    <div class="o_mcp_url_row">
+                        <code class="o_mcp_url"><t t-esc="state.data.urls.mcp"/></code>
+                        <button class="btn btn-primary"
+                                t-on-click="() => this.copy(state.data.urls.mcp, 'Server URL copied')">
+                            <span class="fa fa-clipboard me-1"/> Copy
+                        </button>
+                    </div>
+
+                    <!-- Region 3 — live status, right under the URL -->
+                    <div t-att-class="'o_mcp_status o_mcp_status--' + state.data.status.state">
+                        <span t-if="state.data.status.state === 'waiting'"
+                              class="fa fa-circle-o-notch fa-spin"/>
+                        <span t-else="" class="fa fa-check-circle"/>
+                        <div>
+                            <b><t t-esc="state.data.status.headline"/></b>
+                            <div class="o_mcp_status_detail">
+                                <t t-esc="state.data.status.detail"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div t-if="state.data.qr" class="o_mcp_qr">
+                    <img t-att-src="state.data.qr" alt="QR code for the server URL"/>
+                    <span class="text-muted">Scan for mobile</span>
+                </div>
+            </section>
+
+            <!-- ================================== Region 4 — client picker -->
+            <section class="o_mcp_card">
+                <h2>Add it to your assistant</h2>
+                <div class="o_mcp_picker">
+                    <button t-foreach="state.data.clients" t-as="c" t-key="c.key"
+                            t-att-class="'o_mcp_pick ' + (state.client === c.key ? 'o_mcp_pick--on' : '')"
+                            t-on-click="() => this.state.client = c.key">
+                        <t t-esc="c.name"/>
+                    </button>
+                </div>
+
+                <t t-if="guide">
+                    <ol class="o_mcp_steps">
+                        <li t-foreach="guide.steps" t-as="step" t-key="step_index">
+                            <t t-out="step"/>
+                        </li>
+                    </ol>
+
+                    <div t-if="guide.note" class="o_mcp_note">
+                        <span class="fa fa-info-circle me-1"/><t t-esc="guide.note"/>
+                    </div>
+
+                    <div t-if="guide.config" class="o_mcp_config">
+                        <div class="o_mcp_config_head">
+                            <span>Configuration</span>
+                            <button class="btn btn-sm btn-secondary"
+                                    t-on-click="() => this.copy(guide.config, 'Configuration copied')">
+                                <span class="fa fa-clipboard me-1"/> Copy
+                            </button>
+                        </div>
+                        <pre><t t-esc="guide.config"/></pre>
+                    </div>
+                </t>
+            </section>
+
+            <!-- ============================== Region 5 — starter prompts -->
+            <section class="o_mcp_card">
+                <h2>Try one of these</h2>
+                <p class="text-muted">
+                    Click to copy, then paste into your assistant. Only prompts
+                    your current permissions can actually satisfy are shown.
+                </p>
+                <div class="o_mcp_chips">
+                    <button t-foreach="state.data.prompts" t-as="prompt" t-key="prompt_index"
+                            class="o_mcp_chip"
+                            t-on-click="() => this.copy(prompt, 'Prompt copied')">
+                        <span class="fa fa-clipboard me-1 opacity-50"/><t t-esc="prompt"/>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ========================== Region 6 — connected assistants -->
+            <section class="o_mcp_card">
+                <div class="o_mcp_card_head">
+                    <h2>Connected assistants</h2>
+                    <button t-if="state.data.connections.length"
+                            class="btn btn-sm btn-outline-danger"
+                            t-on-click="() => this.revokeAll()">
+                        <t t-if="state.data.can_admin">Disconnect all</t>
+                        <t t-else="">Disconnect all of mine</t>
+                    </button>
+                </div>
+
+                <p t-if="!state.data.connections.length" class="text-muted">
+                    Nothing connected yet.
+                </p>
+
+                <table t-else="" class="table o_mcp_table">
+                    <thead>
+                        <tr>
+                            <th>User</th><th>Assistant</th><th>Permissions</th>
+                            <th>Last used</th><th/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="state.data.connections" t-as="conn" t-key="conn.id">
+                            <td><t t-esc="conn.user"/></td>
+                            <td><t t-esc="conn.client"/></td>
+                            <td><t t-esc="conn.scope"/></td>
+                            <td>
+                                <t t-esc="conn.last_used"/>
+                                <span t-if="conn.expired" class="badge text-bg-light ms-1">
+                                    session expired
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-link text-danger"
+                                        t-on-click="() => this.revoke(conn.id)">
+                                    Disconnect
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+</t>
+
+</templates>

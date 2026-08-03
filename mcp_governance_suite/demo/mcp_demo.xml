@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Demo shows the governed-write posture: the AI may draft changes to
+         partners, but every write lands in the approval queue first. -->
+    <record id="demo_scope_sales_assistant" model="mcp.scope">
+        <field name="name">Demo — Sales assistant (write, approval)</field>
+        <field name="read_only" eval="False"/>
+        <field name="require_approval" eval="True"/>
+        <field name="rate_limit_per_hour">1000</field>
+        <field name="max_records">200</field>
+        <field name="description">Demonstration scope: read + governed write on
+            contacts, with human approval required before anything executes.</field>
+    </record>
+
+    <record id="demo_scope_line_partner" model="mcp.scope.line">
+        <field name="scope_id" ref="demo_scope_sales_assistant"/>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="can_read" eval="True"/>
+        <field name="can_create" eval="True"/>
+        <field name="can_write" eval="True"/>
+        <field name="field_blacklist">vat</field>
+    </record>
+
+    <record id="demo_context_sales" model="mcp.context">
+        <field name="name">Demo: how we qualify contacts</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="body">In this demo company, a contact is "qualified" once it has
+a country and an email. The AI may draft new contacts from documents, but a human
+approves every write before it is saved.</field>
+    </record>
+</odoo>

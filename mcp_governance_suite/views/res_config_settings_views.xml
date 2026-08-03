@@ -1,153 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- Settings > MCP Governance.
-         Structure follows Odoo 19's settings arch (app / block / setting), as
-         used by every core module - see addons/base_setup/views/res_config_settings_views.xml.
-
-         Two things here are load-bearing and were previously wrong:
-
-         * NO `groups` attribute on <app>. `_postprocess_access_rights` deletes
-           any node whose `groups` the reader does not match - the whole tab,
-           silently, with no error anywhere. Gating an app tab on a module's own
-           group means it disappears for everyone the moment the implied-group
-           grant does not take (a partial upgrade, a hand-edited Administrator,
-           a user with Settings but not this app). Core Odoo never gates an <app>
-           node; Settings itself is already base.group_system-only, which is the
-           access control that matters. The individual escape-hatch buttons below
-           still carry their own group.
-
-         * An explicit `logo`. Without it the compiler derives
-           /mcp_governance_suite/static/description/icon.png, so a module that
-           ships no icon renders its tab with a broken image and no visual
-           anchor in the sidebar. We now ship that icon and name it outright. -->
     <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.mcp</field>
         <field name="model">res.config.settings</field>
-        <field name="priority" eval="40"/>
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="MCP Governance" string="MCP Governance"
-                     name="mcp_governance_suite"
-                     logo="/mcp_governance_suite/static/description/icon.png">
-
-                    <block title="Server" name="mcp_access_container">
-                        <setting id="mcp_enabled_setting"
-                                 string="Enable MCP Server"
-                                 help="Serve the /mcp/v1 endpoint. Off means every request is refused, valid key or not.">
+                <app string="Fleet AI" name="mcp_governance_suite">
+                    <block title="MCP Server" name="mcp_server_block">
+                        <setting string="Enable MCP Server"
+                                 help="Serve the MCP endpoint at /mcp for AI assistants.">
                             <field name="mcp_enabled"/>
-                            <div class="content-group mt8" invisible="not mcp_enabled">
-                                <div class="text-muted">
-                                    Endpoint <code>/mcp/v1</code> — POST, JSON-RPC 2.0 over Streamable HTTP.
-                                </div>
-                                <div class="mt8">
-                                    <button name="action_open_mcp_dashboard" type="object"
-                                            icon="oi-arrow-right" string="Open Dashboard"
-                                            class="btn-link"/>
-                                </div>
-                            </div>
-                            <div class="content-group mt8" invisible="mcp_enabled">
-                                <div class="text-muted">
-                                    The endpoint answers <b>503</b> to every caller while this is off.
-                                    Define a scope and issue a key first, then switch it on.
-                                </div>
-                            </div>
                         </setting>
-                        <setting id="mcp_api_key_setting"
-                                 string="API Key Authentication"
-                                 help="Static Bearer tokens for local clients. Each key is bound to one Odoo user and one scope.">
-                            <field name="mcp_api_key_enabled"/>
+                        <setting string="Sign in with Odoo (OAuth 2.1)"
+                                 help="Recommended. Browser-based connect — no keys, no files.">
+                            <field name="mcp_oauth_enabled"/>
+                        </setting>
+                        <setting string="Allow API-key connections"
+                                 help="For headless clients and CI that cannot open a browser.">
+                            <field name="mcp_apikey_enabled"/>
+                        </setting>
+                        <setting string="Dynamic client registration"
+                                 help="RFC 7591, deprecated upstream. Client ID Metadata Documents are always supported; keep this on only for clients that cannot use them.">
+                            <field name="mcp_dynamic_registration"/>
+                        </setting>
+                        <setting string="Allowed browser origins"
+                                 help="Comma-separated. Empty is the safe default — MCP clients are not browsers, and accepting any origin invites DNS-rebinding attacks.">
+                            <field name="mcp_allowed_origins" placeholder="https://app.example.com"/>
                         </setting>
                     </block>
 
-                    <block title="Permissions" name="mcp_permissions_container">
-                        <setting id="mcp_scopes_setting"
-                                 string="Scopes"
-                                 help="A scope is the allow-list of models and operations a connection may reach. Define one before issuing any key.">
-                            <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
-                                <button name="action_open_mcp_scopes" type="object"
-                                        icon="oi-arrow-right" string="Manage Scopes"
-                                        class="btn-link"/>
-                            </div>
+                    <block title="Governance &amp; Lifetimes" name="mcp_gov_block">
+                        <setting string="Default OAuth scope"
+                                 help="Applied to OAuth users with no personal scope. Start read-only.">
+                            <field name="mcp_default_scope_id"/>
                         </setting>
-                        <setting id="mcp_keys_setting"
-                                 string="API Keys"
-                                 help="Keys inherit the permissions of the Odoo user they are bound to, narrowed by their scope. They can never widen it.">
-                            <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
-                                <button name="action_open_mcp_keys" type="object"
-                                        icon="oi-arrow-right" string="Manage API Keys"
-                                        class="btn-link"/>
-                            </div>
+                        <setting string="Access token lifetime"
+                                 help="Seconds. Short-lived is safer (OAuth 2.1).">
+                            <field name="mcp_access_token_ttl"/>
+                        </setting>
+                        <setting string="Refresh token lifetime" help="Seconds.">
+                            <field name="mcp_refresh_token_ttl"/>
+                        </setting>
+                        <setting string="Audit retention" help="Months of audit history to keep.">
+                            <field name="mcp_audit_retention_months"/>
                         </setting>
                     </block>
 
-                    <block title="Limits" name="mcp_limits_container">
-                        <setting id="mcp_record_limit_setting"
-                                 string="Record Limits"
-                                 help="Caps on how much a single search may return. Unbounded reads exhaust the model's context window and cost money.">
-                            <div class="content-group">
-                                <div class="row mt8">
-                                    <label for="mcp_default_record_limit" string="Default"
-                                           class="col-lg-4 o_light_label"/>
-                                    <field name="mcp_default_record_limit" class="oe_inline"/>
-                                </div>
-                                <div class="row">
-                                    <label for="mcp_max_record_limit" string="Maximum"
-                                           class="col-lg-4 o_light_label"/>
-                                    <field name="mcp_max_record_limit" class="oe_inline"/>
-                                </div>
-                            </div>
+                    <block title="Connect" name="mcp_connect_block">
+                        <setting string="MCP Server URL"
+                                 help="Paste this into your AI client's custom connector.">
+                            <field name="mcp_endpoint_url" widget="CopyClipboardChar" readonly="1"/>
                         </setting>
-                        <setting id="mcp_rate_limit_setting"
-                                 string="Rate Limit"
-                                 help="Calls per hour per key, for scopes that do not set their own. 0 is unlimited.">
-                            <div class="content-group">
-                                <div class="row mt8">
-                                    <label for="mcp_rate_limit_per_hour" string="Calls / hour"
-                                           class="col-lg-4 o_light_label"/>
-                                    <field name="mcp_rate_limit_per_hour" class="oe_inline"/>
-                                </div>
-                                <div class="text-muted mt8" invisible="mcp_log_requests">
-                                    The ceiling is counted from the audit log, so it does
-                                    nothing while <b>Log Every Request</b> is off.
-                                </div>
-                            </div>
+                        <setting string="Discovery URL"
+                                 help="OAuth is discovered automatically from here (RFC 9728).">
+                            <field name="mcp_metadata_url" widget="CopyClipboardChar" readonly="1"/>
+                        </setting>
+                        <setting string="Guided setup"
+                                 help="Readiness checks, the URL to paste, a QR code for mobile, per-client steps and live connection status.">
+                            <button name="action_open_connect" type="object"
+                                    string="Open the Connect screen" class="btn-primary"/>
                         </setting>
                     </block>
-
-                    <block title="Audit" name="mcp_audit_container">
-                        <setting id="mcp_log_setting"
-                                 string="Log Every Request"
-                                 help="One audit row per tool call: which key, which model, allowed or refused. Turning this off is what you would do to hide activity, so it is on by default.">
-                            <field name="mcp_log_requests"/>
-                            <div class="content-group mt8" invisible="not mcp_log_requests">
-                                <div class="row">
-                                    <label for="mcp_log_retention_days" string="Keep for (days)"
-                                           class="col-lg-4 o_light_label"/>
-                                    <field name="mcp_log_retention_days" class="oe_inline"/>
-                                </div>
-                                <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
-                                    <button name="action_open_mcp_audit" type="object"
-                                            icon="oi-arrow-right" string="Open Audit Log"
-                                            class="btn-link"/>
-                                </div>
-                            </div>
-                        </setting>
-                    </block>
-
                 </app>
             </xpath>
         </field>
     </record>
 
-    <!-- Reachable from inside the module too, not only from the Settings app. -->
+    <!-- No <target>: 'inline' was dropped from the act_window target selection
+         in Odoo 19. Core's own Settings action (base_setup) now omits the field
+         and relies on the 'current' default, which renders the settings page
+         exactly the same way. -->
     <record id="mcp_config_settings_action" model="ir.actions.act_window">
         <field name="name">Settings</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
-        <field name="target">inline</field>
         <field name="context">{'module': 'mcp_governance_suite'}</field>
     </record>
-
 </odoo>

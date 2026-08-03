@@ -1,10 +1,27 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_mcp_key_admin,mcp key admin,model_mcp_api_key,group_mcp_admin,1,1,1,1
+access_mcp_capability_user,mcp capability user,model_mcp_capability,group_mcp_user,1,0,0,0
+access_mcp_capability_admin,mcp capability admin,model_mcp_capability,group_mcp_admin,1,1,1,1
+access_mcp_tool_user,mcp tool user,model_mcp_tool,group_mcp_user,1,0,0,0
+access_mcp_tool_admin,mcp tool admin,model_mcp_tool,group_mcp_admin,1,1,1,1
+access_mcp_prompt_user,mcp prompt user,model_mcp_prompt,group_mcp_user,1,0,0,0
+access_mcp_prompt_admin,mcp prompt admin,model_mcp_prompt,group_mcp_admin,1,1,1,1
+access_mcp_context_user,mcp context user,model_mcp_context,group_mcp_user,1,0,0,0
+access_mcp_context_admin,mcp context admin,model_mcp_context,group_mcp_admin,1,1,1,1
+access_mcp_scope_user,mcp scope user,model_mcp_scope,group_mcp_user,1,0,0,0
 access_mcp_scope_admin,mcp scope admin,model_mcp_scope,group_mcp_admin,1,1,1,1
+access_mcp_scope_line_user,mcp scope line user,model_mcp_scope_line,group_mcp_user,1,0,0,0
 access_mcp_scope_line_admin,mcp scope line admin,model_mcp_scope_line,group_mcp_admin,1,1,1,1
+access_mcp_api_key_user,mcp key user,model_mcp_api_key,group_mcp_user,1,1,1,1
+access_mcp_api_key_admin,mcp key admin,model_mcp_api_key,group_mcp_admin,1,1,1,1
+access_mcp_oauth_client_admin,mcp oauth client admin,model_mcp_oauth_client,group_mcp_admin,1,1,1,1
+access_mcp_oauth_authcode_admin,mcp oauth authcode admin,model_mcp_oauth_authcode,group_mcp_admin,1,0,0,1
+access_mcp_oauth_token_user,mcp token user,model_mcp_oauth_token,group_mcp_user,1,1,0,1
+access_mcp_oauth_token_admin,mcp token admin,model_mcp_oauth_token,group_mcp_admin,1,1,0,1
+access_mcp_audit_user,mcp audit user,model_mcp_audit_log,group_mcp_user,1,0,0,0
 access_mcp_audit_admin,mcp audit admin,model_mcp_audit_log,group_mcp_admin,1,0,0,1
-access_mcp_approval_admin,mcp approval admin,model_mcp_approval_request,group_mcp_admin,1,1,1,1
+access_mcp_approval_user,mcp approval user,model_mcp_approval_request,group_mcp_user,1,0,0,0
 access_mcp_approval_approver,mcp approval approver,model_mcp_approval_request,group_mcp_approver,1,1,0,0
-access_mcp_key_approver,mcp key approver read,model_mcp_api_key,group_mcp_approver,1,0,0,0
-access_mcp_scope_approver,mcp scope approver read,model_mcp_scope,group_mcp_approver,1,0,0,0
-access_mcp_scope_line_approver,mcp scope line approver read,model_mcp_scope_line,group_mcp_approver,1,0,0,0
+access_mcp_approval_admin,mcp approval admin,model_mcp_approval_request,group_mcp_admin,1,1,1,1
+access_mcp_key_reveal_user,mcp key reveal user,model_mcp_key_reveal,group_mcp_user,1,1,1,1
+access_mcp_model_picker_admin,mcp model picker admin,model_mcp_model_picker,group_mcp_admin,1,1,1,1
+access_mcp_connect_user,mcp connect user,model_mcp_connect,group_mcp_user,1,1,1,1

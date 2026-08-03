@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ Reveal key once ======== -->
+    <record id="mcp_key_reveal_view_form" model="ir.ui.view">
+        <field name="name">mcp.key.reveal.form</field>
+        <field name="model">mcp.key.reveal</field>
+        <field name="arch" type="xml">
+            <form>
+                <div class="alert alert-warning" role="alert">
+                    <b>Copy this key now.</b> It is shown only once — only its hash is stored.
+                </div>
+                <group>
+                    <field name="secret" widget="CopyClipboardChar" nolabel="1"/>
+                </group>
+                <footer>
+                    <button string="Done" class="btn-primary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

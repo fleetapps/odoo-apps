@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mcp_root" name="Fleet AI"
+              web_icon="mcp_governance_suite,static/description/icon.png"
+              groups="mcp_governance_suite.group_mcp_user"
+              sequence="80"/>
+
+    <!-- Everyday -->
+    <menuitem id="menu_mcp_connect" name="Connect your AI"
+              parent="menu_mcp_root" action="mcp_connect_action"
+              groups="mcp_governance_suite.group_mcp_user" sequence="1"/>
+    <!-- Every user can see what their own assistant did. The record rule
+         already permitted this; before this menu existed there was no way to
+         reach it. -->
+    <menuitem id="menu_mcp_my_activity" name="My AI Activity"
+              parent="menu_mcp_root" action="mcp_audit_own_action"
+              groups="mcp_governance_suite.group_mcp_user" sequence="5"/>
+    <menuitem id="menu_mcp_connections" name="Connections"
+              parent="menu_mcp_root" action="mcp_oauth_token_action"
+              groups="mcp_governance_suite.group_mcp_user" sequence="10"/>
+    <menuitem id="menu_mcp_keys" name="API Keys"
+              parent="menu_mcp_root" action="mcp_api_key_action"
+              groups="mcp_governance_suite.group_mcp_user" sequence="15"/>
+    <menuitem id="menu_mcp_approvals" name="Approvals"
+              parent="menu_mcp_root" action="mcp_approval_action"
+              groups="mcp_governance_suite.group_mcp_approver" sequence="20"/>
+    <menuitem id="menu_mcp_audit" name="Audit Log"
+              parent="menu_mcp_root" action="mcp_audit_action"
+              groups="mcp_governance_suite.group_mcp_approver" sequence="25"/>
+
+    <!-- Permissions: the security-critical screen, one level up from
+         Configuration so it is not buried. -->
+    <menuitem id="menu_mcp_permissions" name="Permissions"
+              parent="menu_mcp_root"
+              groups="mcp_governance_suite.group_mcp_admin" sequence="50"/>
+    <menuitem id="menu_mcp_model_access" name="Model Permissions"
+              parent="menu_mcp_permissions" action="mcp_scope_line_action"
+              sequence="10"/>
+    <menuitem id="menu_mcp_add_models" name="Add Models"
+              parent="menu_mcp_permissions" action="mcp_model_picker_action"
+              sequence="20"/>
+    <menuitem id="menu_mcp_scopes" name="Scopes"
+              parent="menu_mcp_permissions" action="mcp_scope_action"
+              sequence="30"/>
+
+    <!-- Configuration (admins) -->
+    <menuitem id="menu_mcp_config" name="Configuration"
+              parent="menu_mcp_root"
+              groups="mcp_governance_suite.group_mcp_admin" sequence="90"/>
+    <menuitem id="menu_mcp_capabilities" name="Capabilities"
+              parent="menu_mcp_config" action="mcp_capability_action" sequence="20"/>
+    <menuitem id="menu_mcp_tools" name="Tools"
+              parent="menu_mcp_config" action="mcp_tool_action" sequence="30"/>
+    <menuitem id="menu_mcp_prompts" name="Prompt Library"
+              parent="menu_mcp_config" action="mcp_prompt_action" sequence="40"/>
+    <menuitem id="menu_mcp_context" name="Business Context"
+              parent="menu_mcp_config" action="mcp_context_action" sequence="50"/>
+    <menuitem id="menu_mcp_oauth_clients" name="OAuth Clients"
+              parent="menu_mcp_config" action="mcp_oauth_client_action" sequence="60"/>
+    <menuitem id="menu_mcp_settings" name="Settings"
+              parent="menu_mcp_config" action="mcp_config_settings_action" sequence="99"/>
+</odoo>

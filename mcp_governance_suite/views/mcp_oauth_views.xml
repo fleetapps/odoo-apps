@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== OAuth Clients ======== -->
+    <record id="mcp_oauth_client_view_list" model="ir.ui.view">
+        <field name="name">mcp.oauth.client.list</field>
+        <field name="model">mcp.oauth.client</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="client_id"/>
+                <field name="token_endpoint_auth_method"/>
+                <field name="token_count"/>
+                <field name="registration_type"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_oauth_client_view_form" model="ir.ui.view">
+        <field name="name">mcp.oauth.client.form</field>
+        <field name="model">mcp.oauth.client</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_revoke_tokens" type="object"
+                            string="Revoke all tokens" class="btn-secondary"
+                            confirm="Disconnect every active session for this client. Continue?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="client_id"/>
+                            <field name="token_endpoint_auth_method"/>
+                            <field name="registration_type"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="grant_types"/>
+                            <field name="scope"/>
+                            <field name="token_count"/>
+                        </group>
+                    </group>
+                    <separator string="Redirect URIs"/>
+                    <field name="redirect_uris"/>
+                    <group string="Client-published metadata"
+                           invisible="registration_type != 'cimd'">
+                        <div class="alert alert-warning" role="alert" colspan="2">
+                            The client hosts this metadata itself, so treat every
+                            value below as <b>unverified</b>. It is shown for
+                            identification only and grants nothing — authority
+                            comes from the user's consent and from exact
+                            redirect URI matching.
+                        </div>
+                        <field name="client_uri" widget="url"/>
+                        <field name="logo_uri"/>
+                        <field name="jwks_uri"/>
+                        <field name="metadata_fetched_at"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_oauth_client_action" model="ir.actions.act_window">
+        <field name="name">OAuth Clients</field>
+        <field name="res_model">mcp.oauth.client</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- =============================================== Connections ========= -->
+    <record id="mcp_oauth_token_view_list" model="ir.ui.view">
+        <field name="name">mcp.oauth.token.list</field>
+        <field name="model">mcp.oauth.token</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="revoked" create="false">
+                <field name="user_id"/>
+                <field name="client_name"/>
+                <field name="client_id" optional="hide"/>
+                <field name="scope_id"/>
+                <field name="access_expires_at"/>
+                <field name="last_used"/>
+                <field name="revoked"/>
+                <button name="action_revoke" type="object" string="Revoke"
+                        icon="fa-ban" invisible="revoked"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_oauth_token_view_form" model="ir.ui.view">
+        <field name="name">mcp.oauth.token.form</field>
+        <field name="model">mcp.oauth.token</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_revoke" type="object" string="Revoke"
+                            class="btn-primary" invisible="revoked"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="client_name"/>
+                            <field name="client_id"/>
+                            <field name="scope_id"/>
+                            <field name="resource"/>
+                        </group>
+                        <group>
+                            <field name="access_expires_at"/>
+                            <field name="refresh_expires_at"/>
+                            <field name="last_used"/>
+                            <field name="revoked"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_oauth_token_action" model="ir.actions.act_window">
+        <field name="name">Connections</field>
+        <field name="res_model">mcp.oauth.token</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No active AI connections yet</p>
+            <p>When a user authorizes an assistant over OAuth, the live session
+               appears here. Revoke any row to disconnect it instantly.</p>
+        </field>
+    </record>
+</odoo>

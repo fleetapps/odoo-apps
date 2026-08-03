@@ -1,103 +1,135 @@
-<section style="max-width:1000px;margin:0 auto;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2b2b40;">
+<section class="oe_container">
+<div class="fleetai-listing">
+<style>
+.fleetai-listing{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2430;max-width:1100px;margin:0 auto;line-height:1.6;background:#fff;padding:28px}
+.fleetai-listing *{box-sizing:border-box}
+.fa-hero{background:linear-gradient(135deg,#8b71ff,#5b3fd6);border-radius:20px;padding:56px 40px;color:#fff;text-align:center}
+.fa-hero h1{font-size:40px;margin:0 0 10px;font-weight:800;letter-spacing:-.02em}
+.fa-hero p{font-size:20px;margin:0 auto;max-width:760px;opacity:.95}
+.fa-pill{display:inline-block;margin:22px 6px 0;padding:8px 16px;border-radius:999px;background:rgba(255,255,255,.15);font-weight:600;font-size:14px}
+.fa-sec{margin:52px 0}
+.fa-sec h2{font-size:28px;font-weight:800;text-align:center;letter-spacing:-.01em;margin-bottom:8px}
+.fa-sec .fa-lead{text-align:center;color:#6b7280;max-width:720px;margin:0 auto 28px;font-size:17px}
+.fa-grid{display:flex;flex-wrap:wrap;gap:18px}
+.fa-card{flex:1 1 300px;background:#fff;border:1px solid #eceef3;border-radius:16px;padding:24px}
+.fa-card h3{margin:0 0 6px;font-size:18px;font-weight:700}
+.fa-card p{margin:0;color:#5b6472;font-size:15px}
+.fa-emoji{font-size:26px;display:block;margin-bottom:10px}
+.fa-steps{counter-reset:s;display:flex;flex-wrap:wrap;gap:18px}
+.fa-step{flex:1 1 280px;background:#f7f6ff;border:1px solid #e7e2ff;border-radius:16px;padding:24px;position:relative}
+.fa-step:before{counter-increment:s;content:counter(s);position:absolute;top:-16px;left:24px;width:34px;height:34px;border-radius:50%;background:#7b61ff;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.fa-step h3{margin:10px 0 6px;font-size:17px}
+.fa-step p{margin:0;color:#5b6472;font-size:15px}
+.fa-table{width:100%;border-collapse:collapse;font-size:15px;overflow:hidden;border-radius:14px;border:1px solid #eceef3}
+.fa-table th,.fa-table td{padding:14px 18px;text-align:left;border-bottom:1px solid #eef0f4}
+.fa-table th{background:#faf9ff}
+.fa-table td.ok{color:#1e7d46;font-weight:700}
+.fa-table td.no{color:#b42318;font-weight:700}
+.fa-mock{background:#0f1020;border-radius:14px;padding:18px;color:#cbd2e0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;overflow:auto}
+.fa-mock .u{color:#9e86ff}.fa-mock .k{color:#5ad19b}
+.fa-cta{background:linear-gradient(135deg,#8b71ff,#5b3fd6);border-radius:20px;padding:44px;text-align:center;color:#fff}
+.fa-cta h2{color:#fff;font-size:28px;margin:0 0 6px}
+.fa-faq{background:#fff;border:1px solid #eceef3;border-radius:14px;padding:18px 22px;margin-bottom:12px}
+.fa-faq b{display:block;margin-bottom:4px}
+.fa-faq p{margin:0;color:#5b6472}
+@media(max-width:640px){.fa-hero h1{font-size:30px}.fa-hero{padding:38px 22px}}
+</style>
 
-  <div style="background:linear-gradient(135deg,#3B1D6E,#6D28D9);border-radius:16px;padding:48px 40px;color:#fff;text-align:center;">
-    <h1 style="font-size:40px;margin:0 0 8px;font-weight:700;">MCP Governance Suite</h1>
-    <p style="font-size:20px;opacity:.92;margin:0;">Give an AI agent access to Odoo &mdash; and keep control of exactly what it can touch.</p>
-    <p style="font-size:15px;opacity:.8;margin:18px 0 0;">Odoo 19 &nbsp;|&nbsp; Streamable HTTP &bull; JSON-RPC 2.0 &bull; scoped, audited, approval-gated</p>
+<!-- HERO -->
+<div class="fa-hero">
+  <img src="icon.png" alt="Fleet AI" style="width:84px;height:84px;border-radius:20px;margin-bottom:14px"/>
+  <h1>Chat with your Odoo. Safely.</h1>
+  <p>Connect Claude, ChatGPT, Gemini, Cursor or any MCP client to Odoo with
+     one-click OAuth 2.1. Every AI action runs as the real user — scoped,
+     rate-limited, audited and approval-gated.</p>
+  <div>
+    <span class="fa-pill">🔐 OAuth 2.1 · PKCE</span>
+    <span class="fa-pill">🧭 Runs inside Odoo</span>
+    <span class="fa-pill">🧩 Zero dependencies</span>
+    <span class="fa-pill">🏢 Multi-company</span>
   </div>
+</div>
 
-  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:32px 0;">
-    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Allow-list</div>
-      <div style="color:#555;">anything unlisted is denied</div>
-    </div>
-    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Every call</div>
-      <div style="color:#555;">logged, timed, costed</div>
-    </div>
-    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
-      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Human gate</div>
-      <div style="color:#555;">writes wait for approval</div>
-    </div>
+<!-- HIGHLIGHTS -->
+<div class="fa-sec">
+  <h2>Not a connector. A governance layer.</h2>
+  <p class="fa-lead">A bare connector hands the AI a shared admin token. This one
+     makes AI-over-ERP something your security team will actually approve.</p>
+  <div class="fa-grid">
+    <div class="fa-card"><span class="fa-emoji">👤</span><h3>Runs as the real user</h3><p>Every request goes through the ORM as the signed-in user. Access rights, record rules and field groups all apply. The AI can never exceed the person using it.</p></div>
+    <div class="fa-card"><span class="fa-emoji">🎯</span><h3>Precise scopes</h3><p>Per-model read/write/delete, field blacklists, extra record domains and row caps. Read-only by default.</p></div>
+    <div class="fa-card"><span class="fa-emoji">✋</span><h3>Approval gate</h3><p>Turn on approval and every AI write becomes a human-reviewed request — executed as the original user only after you say yes.</p></div>
+    <div class="fa-card"><span class="fa-emoji">📜</span><h3>Full audit trail</h3><p>One attributable row per call: user, tool, model, IP, duration and a token estimate for cost tracking.</p></div>
+    <div class="fa-card"><span class="fa-emoji">⚡</span><h3>One-click connect</h3><p>OAuth 2.1 with PKCE. Paste one URL, click Allow. No API keys, no config files, no <code>mcp-remote</code>.</p></div>
+    <div class="fa-card"><span class="fa-emoji">📊</span><h3>Reports &amp; dashboards</h3><p>A governed aggregation tool answers “revenue by month” and “open leads by rep” — the foundation for AI-built dashboards.</p></div>
   </div>
+</div>
 
-  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">What it does</h2>
-  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;">
-
-    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
-      <h3 style="margin-top:0;color:#3B1D6E;">Scopes</h3>
-      <ul style="line-height:1.7;color:#444;">
-        <li>Per-model read / create / write / delete</li>
-        <li>Field blacklist &mdash; never returned, never accepted</li>
-        <li>Record domain ANDed onto every read</li>
-        <li>Read-only kill-switch per scope</li>
-        <li>Calls-per-hour ceiling per scope</li>
-      </ul>
-    </div>
-
-    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
-      <h3 style="margin-top:0;color:#3B1D6E;">API keys</h3>
-      <ul style="line-height:1.7;color:#444;">
-        <li>Bound to one Odoo user and one scope</li>
-        <li>Calls run <em>as</em> that user &mdash; ACLs and record rules still apply</li>
-        <li>Secret shown once; only its SHA-256 is stored</li>
-        <li>Expiry dates, with an expiring-soon view</li>
-      </ul>
-    </div>
-
-    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
-      <h3 style="margin-top:0;color:#3B1D6E;">Approvals</h3>
-      <ul style="line-height:1.7;color:#444;">
-        <li>Writes pause as a request instead of executing</li>
-        <li>Approver sees the model, the record and the payload</li>
-        <li>Approve executes under the key's user, not yours</li>
-        <li>Chatter keeps the decision trail</li>
-      </ul>
-    </div>
-
-    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
-      <h3 style="margin-top:0;color:#3B1D6E;">Audit &amp; cost</h3>
-      <ul style="line-height:1.7;color:#444;">
-        <li>One row per tool call: key, tool, outcome, duration</li>
-        <li>Size-based token estimate for cost tracking</li>
-        <li>Graph and pivot views over the whole history</li>
-        <li>Retention window with a weekly purge</li>
-      </ul>
-    </div>
-
+<!-- HOW IT WORKS -->
+<div class="fa-sec">
+  <h2>Connected in two clicks</h2>
+  <div class="fa-steps">
+    <div class="fa-step"><h3>Install &amp; enable</h3><p>Install the module. Settings → Fleet AI is already on. Copy your MCP Server URL.</p></div>
+    <div class="fa-step"><h3>Paste the URL</h3><p>Add a custom connector in Claude / ChatGPT / Cursor and paste the URL. OAuth is discovered automatically.</p></div>
+    <div class="fa-step"><h3>Sign in &amp; Allow</h3><p>Log in to Odoo, click Allow. Start asking questions. Every action is audited.</p></div>
   </div>
+</div>
 
-  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">The dashboard</h2>
-  <p style="line-height:1.7;color:#444;">
-    The app opens on a single screen that answers the three questions an administrator
-    actually has: is the endpoint live, who is calling it, and what is waiting on me.
-    Endpoint status and protocol revision, activity for the last fourteen days split
-    into successes and errors, the busiest tools and keys, pending approvals you can
-    decide in place, your scopes and keys at a glance, and the latest calls.
-    A fresh install shows a three-step setup checklist in the order that works &mdash;
-    scope, key, then switch the server on.
-  </p>
-
-  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">How it fits together</h2>
-  <div style="background:#f9f8fe;border:1px solid #ebe7f6;border-radius:12px;padding:22px;line-height:1.8;color:#444;">
-    <b>1.</b> Define a scope &mdash; the models and operations an agent may reach.<br/>
-    <b>2.</b> Issue an API key bound to that scope and to an Odoo user.<br/>
-    <b>3.</b> Switch the server on. Until then <code>/mcp/v1</code> answers 503 to every caller.<br/>
-    <b>4.</b> Point your MCP client at <code>https://your-odoo/mcp/v1</code> with the key as a Bearer token.
+<!-- EXAMPLE -->
+<div class="fa-sec">
+  <h2>Ask in plain language</h2>
+  <p class="fa-lead">Your assistant discovers what it can do, understands your
+     business context, and answers — within its scope.</p>
+  <div class="fa-mock">
+<span class="u">You ▸</span> Show me customers from France, then revenue by month this year.<br/>
+<span class="k">Odoo ▸</span> name_search · search_records(res.partner) · read_group(month, amount:sum)<br/>
+<span class="k">Odoo ▸</span> 128 customers · Jan €82k · Feb €91k · Mar €76k …<br/><br/>
+<span class="u">You ▸</span> Create a contact for the attached business card.<br/>
+<span class="k">Odoo ▸</span> ✋ create_record queued for approval (scope requires human sign-off)
   </div>
+</div>
 
-  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">Defense in depth</h2>
-  <p style="line-height:1.7;color:#444;">
-    A scope narrows; it never widens. Because every call executes as the key's Odoo
-    user, <code>ir.model.access</code> and record rules apply underneath the scope &mdash;
-    so a misconfigured scope cannot hand an agent more than the user behind it already had.
-    The master switch is off on install, so the endpoint is never live the moment the
-    module lands.
-  </p>
+<!-- COMPARISON -->
+<div class="fa-sec">
+  <h2>Fleet AI vs. a plain MCP connector</h2>
+  <table class="fa-table">
+    <tr><th>Capability</th><th>Plain connector</th><th>Fleet AI</th></tr>
+    <tr><td>OAuth 2.1 one-click connect</td><td class="no">Sometimes</td><td class="ok">✓ Built-in AS</td></tr>
+    <tr><td>Runs as the real user (no shared token)</td><td class="no">Often shared admin</td><td class="ok">✓ Per-identity</td></tr>
+    <tr><td>Per-model scopes &amp; field blacklists</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td>Human approval for writes</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td>Full audit log + token/cost tracking</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td>Rate limiting</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td>Business context &amp; prompt library</td><td class="no">✗</td><td class="ok">✓</td></tr>
+    <tr><td>External Python dependencies</td><td class="no">Often</td><td class="ok">✓ None</td></tr>
+  </table>
+</div>
 
-  <div style="background:linear-gradient(135deg,#3B1D6E,#6D28D9);border-radius:16px;padding:32px;color:#fff;text-align:center;margin-top:32px;">
-    <div style="font-size:22px;font-weight:600;">Governance first, then agents.</div>
-    <div style="opacity:.85;margin-top:6px;">Multi-company &bull; installs clean &bull; no external services</div>
+<!-- SECURITY -->
+<div class="fa-sec">
+  <h2>Security you can defend in a review</h2>
+  <div class="fa-grid">
+    <div class="fa-card"><h3>OAuth 2.1 + PKCE (S256)</h3><p>Self-contained Authorization Server: RFC 9728/8414 discovery, RFC 7591 dynamic registration, RFC 8707 audience-bound tokens, refresh rotation.</p></div>
+    <div class="fa-card"><h3>Secrets hashed at rest</h3><p>Only SHA-256 digests are stored for keys, codes and tokens. Plaintext is shown exactly once.</p></div>
+    <div class="fa-card"><h3>Defence in depth</h3><p>The MCP scope can only narrow native Odoo permissions, never widen them. Multi-company isolation is preserved.</p></div>
   </div>
+</div>
 
+<!-- FAQ -->
+<div class="fa-sec">
+  <h2>FAQ</h2>
+  <div class="fa-faq"><b>Which AI clients are supported?</b><p>Any MCP client speaking Streamable HTTP — Claude, ChatGPT, Gemini, Cursor, Copilot, VS Code and more.</p></div>
+  <div class="fa-faq"><b>Do I need an extra server or proxy?</b><p>No. The MCP server runs inside Odoo with zero external Python dependencies.</p></div>
+  <div class="fa-faq"><b>Can the AI get admin rights?</b><p>Never. It operates as the connected user, bounded further by the governance scope.</p></div>
+  <div class="fa-faq"><b>Can it change data?</b><p>Only if the scope allows writes — and you can require human approval for every one.</p></div>
+</div>
+
+<!-- CTA -->
+<div class="fa-cta">
+  <h2>Give your team an AI that respects your ERP</h2>
+  <p style="font-size:18px;opacity:.95;margin:0 0 4px">Install Fleet AI — MCP Governance Suite and connect your first assistant in minutes.</p>
+  <p style="opacity:.85;margin:0">Odoo 19 &amp; 18 · Community · Enterprise · Odoo.sh</p>
+</div>
+
+</div>
 </section>

@@ -1,116 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-    <!-- ================================================================ -->
-    <!--  API keys                                                        -->
-    <!-- ================================================================ -->
+    <!-- ================================================ API Keys =========== -->
     <record id="mcp_api_key_view_list" model="ir.ui.view">
         <field name="name">mcp.api.key.list</field>
         <field name="model">mcp.api.key</field>
         <field name="arch" type="xml">
-            <list decoration-muted="not active" decoration-danger="expired">
+            <list>
                 <field name="name"/>
                 <field name="user_id"/>
                 <field name="scope_id"/>
-                <field name="key_preview" string="Key"/>
+                <field name="key_preview"/>
+                <field name="call_count"/>
                 <field name="expiry"/>
                 <field name="last_used"/>
-                <field name="expired" column_invisible="1"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
     </record>
 
-    <!-- There was no form view at all, so the key screen fell back to Odoo's
-         generated form - with no way to actually mint a secret. -->
     <record id="mcp_api_key_view_form" model="ir.ui.view">
         <field name="name">mcp.api.key.form</field>
         <field name="model">mcp.api.key</field>
         <field name="arch" type="xml">
             <form>
+                <div class="alert alert-warning" role="alert" invisible="is_generated">
+                    No secret yet. Click <b>Generate Key</b> to mint one — it is shown only once.
+                </div>
                 <header>
-                    <button name="action_generate_key" type="object"
-                            string="Generate Key" class="btn-primary"
-                            invisible="not id"
-                            confirm="Generating a key invalidates the previous secret for this record. Any client still using it will start failing. Continue?"/>
+                    <button name="action_generate_key" type="object" string="Generate Key"
+                            class="btn-primary" invisible="is_generated"/>
+                    <button name="action_generate_key" type="object" string="Rotate Key"
+                            class="btn-secondary" invisible="not is_generated"
+                            confirm="Rotating invalidates the current key immediately. Continue?"/>
                 </header>
                 <sheet>
-                    <widget name="web_ribbon" title="Expired" bg_color="text-bg-danger"
-                            invisible="not expired"/>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="e.g. Claude Desktop — Finance"/></h1>
-                    </div>
-                    <div class="alert alert-info" role="alert" invisible="key_preview">
-                        Save the record, then press <b>Generate Key</b>. The secret is
-                        shown once and only its hash is kept, so there is no way to
-                        recover it later — a lost key is replaced, not looked up.
+                        <h1><field name="name" placeholder="e.g. Claude — Sales team"/></h1>
                     </div>
                     <group>
                         <group>
                             <field name="user_id"/>
                             <field name="scope_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
-                            <field name="key_preview" string="Key"/>
+                            <field name="key_preview" invisible="not is_generated"/>
                             <field name="expiry"/>
                             <field name="last_used"/>
-                            <field name="expired" invisible="1"/>
-                            <field name="active" widget="boolean_toggle"/>
+                            <field name="call_count"/>
+                            <field name="active"/>
+                            <field name="is_generated" invisible="1"/>
                         </group>
                     </group>
-                    <div class="text-muted">
-                        Calls made with this key run as the user above, so Odoo's own
-                        access rights and record rules apply on top of the scope. The
-                        scope can only narrow what that user could already do — never
-                        widen it.
-                    </div>
+                    <p class="text-muted">
+                        Calls made with this key run as <b>the selected user</b>. Odoo access
+                        rights and record rules apply on top of the governance scope.
+                    </p>
                 </sheet>
             </form>
         </field>
     </record>
 
-    <record id="mcp_api_key_view_search" model="ir.ui.view">
-        <field name="name">mcp.api.key.search</field>
-        <field name="model">mcp.api.key</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="name"/>
-                <field name="user_id"/>
-                <field name="scope_id"/>
-                <filter name="filter_usable" string="Usable"
-                        domain="[('active', '=', True), ('key_hash', '!=', False), ('expired', '=', False)]"/>
-                <filter name="filter_expired" string="Expired"
-                        domain="[('expired', '=', True)]"/>
-                <filter name="filter_no_secret" string="No Secret Generated"
-                        domain="[('key_hash', '=', False)]"/>
-                <separator/>
-                <filter name="filter_archived" string="Archived"
-                        domain="[('active', '=', False)]"/>
-                <group name="group_by">
-                    <filter name="group_user" string="User" context="{'group_by': 'user_id'}"/>
-                    <filter name="group_scope" string="Scope" context="{'group_by': 'scope_id'}"/>
-                </group>
-            </search>
+    <record id="mcp_api_key_action" model="ir.actions.act_window">
+        <field name="name">API Keys</field>
+        <field name="res_model">mcp.api.key</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Create your first MCP API key</p>
+            <p>API keys are the headless way to connect an AI client. For desktop
+               apps, prefer the OAuth "Connect an AI Assistant" flow.</p>
         </field>
     </record>
 
-    <!-- ================================================================ -->
-    <!--  Scopes                                                          -->
-    <!-- ================================================================ -->
-    <!-- The action opened list,form with no list view defined, so scopes
-         landed on Odoo's generated one-column fallback. -->
+    <!-- =================================================== Scopes ========== -->
     <record id="mcp_scope_view_list" model="ir.ui.view">
         <field name="name">mcp.scope.list</field>
         <field name="model">mcp.scope</field>
         <field name="arch" type="xml">
-            <list decoration-warning="not read_only and not require_approval">
+            <list>
                 <field name="name"/>
-                <field name="model_count" string="Models"/>
                 <field name="read_only" widget="boolean_toggle"/>
                 <field name="require_approval" widget="boolean_toggle"/>
                 <field name="rate_limit_per_hour"/>
-                <field name="key_count" string="Keys"/>
+                <field name="line_count"/>
+                <field name="key_count"/>
             </list>
         </field>
     </record>
@@ -121,50 +95,57 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="action_open_keys" type="object"
-                                class="oe_stat_button" icon="fa-key">
-                            <field name="key_count" widget="statinfo" string="Keys"/>
-                        </button>
-                    </div>
                     <div class="oe_title">
                         <label for="name"/>
-                        <h1><field name="name" placeholder="e.g. Read-only CRM"/></h1>
+                        <h1><field name="name" placeholder="e.g. Read-only Sales"/></h1>
                     </div>
                     <group>
-                        <group>
+                        <group string="Safety">
                             <field name="read_only"/>
-                            <field name="require_approval"/>
+                            <field name="require_approval" invisible="read_only"/>
                         </group>
-                        <group>
+                        <group string="Limits">
                             <field name="rate_limit_per_hour"/>
-                            <field name="model_count"/>
+                            <field name="max_records"/>
                         </group>
                     </group>
-                    <div class="alert alert-warning" role="alert"
-                         invisible="read_only or require_approval">
-                        This scope lets an agent write to Odoo with no human in the
-                        loop. Keep <b>Require Approval</b> on unless the models below
-                        are ones you are happy for a model to change unattended.
-                    </div>
+                    <field name="description" placeholder="What this scope is for…"/>
                     <notebook>
-                        <page string="Allowed Models" name="models">
-                            <field name="line_ids">
-                                <list editable="bottom">
-                                    <field name="model_id"/>
+                        <page string="Model Access" name="lines">
+                            <div class="alert alert-info" role="alert">
+                                These switches can only ever <b>take access away</b>.
+                                Every call runs as the signed-in Odoo user, so the
+                                effective permission is whichever is narrower — this
+                                matrix, or that user's own Odoo rights.
+                            </div>
+                            <button name="%(mcp_model_picker_action)d" type="action"
+                                    string="Add Models" icon="fa-plus"
+                                    class="btn-secondary mb-2"
+                                    context="{'default_scope_id': id}"/>
+                            <field name="line_ids"
+                                   context="{'default_scope_id': id}">
+                                <list editable="bottom"
+                                      decoration-warning="can_call_methods">
+                                    <field name="model_id"
+                                           options="{'no_create': True}"/>
                                     <field name="can_read" widget="boolean_toggle"/>
                                     <field name="can_create" widget="boolean_toggle"/>
                                     <field name="can_write" widget="boolean_toggle"/>
                                     <field name="can_unlink" widget="boolean_toggle"/>
-                                    <field name="field_blacklist"/>
-                                    <field name="record_domain"/>
+                                    <field name="can_call_methods" widget="boolean_toggle"/>
+                                    <field name="allowed_methods"
+                                           placeholder="action_confirm, action_post"
+                                           readonly="not can_call_methods"/>
+                                    <field name="field_blacklist" optional="hide"/>
+                                    <field name="record_domain" optional="hide"/>
                                 </list>
                             </field>
-                            <div class="text-muted mt-2">
-                                Anything not listed here is denied. <b>Field blacklist</b>
-                                is a comma-separated list never returned or accepted;
-                                <b>Record domain</b> is ANDed to every read on that model.
+                        </page>
+                        <page string="Capabilities" name="capabilities">
+                            <div class="alert alert-info" role="alert">
+                                Leave empty to expose every installed capability.
                             </div>
+                            <field name="capability_ids" widget="many2many_tags"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -172,94 +153,29 @@
         </field>
     </record>
 
-    <record id="mcp_scope_view_search" model="ir.ui.view">
-        <field name="name">mcp.scope.search</field>
-        <field name="model">mcp.scope</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="name"/>
-                <filter name="filter_read_only" string="Read-Only"
-                        domain="[('read_only', '=', True)]"/>
-                <filter name="filter_writable" string="Allows Writes"
-                        domain="[('read_only', '=', False)]"/>
-                <filter name="filter_unattended" string="Unattended Writes"
-                        domain="[('read_only', '=', False), ('require_approval', '=', False)]"/>
-                <group name="group_by">
-                    <filter name="group_read_only" string="Mode"
-                            context="{'group_by': 'read_only'}"/>
-                </group>
-            </search>
-        </field>
+    <record id="mcp_scope_action" model="ir.actions.act_window">
+        <field name="name">Scopes</field>
+        <field name="res_model">mcp.scope</field>
+        <field name="view_mode">list,form</field>
     </record>
 
-    <!-- ================================================================ -->
-    <!--  Audit log                                                       -->
-    <!-- ================================================================ -->
+    <!-- ================================================= Audit Log ========= -->
     <record id="mcp_audit_view_list" model="ir.ui.view">
         <field name="name">mcp.audit.log.list</field>
         <field name="model">mcp.audit.log</field>
         <field name="arch" type="xml">
             <list decoration-danger="status == 'error'" create="false">
-                <field name="create_date" string="When"/>
+                <field name="create_date"/>
                 <field name="user_id"/>
-                <field name="api_key_id" string="Key"/>
                 <field name="tool"/>
+                <field name="model_name"/>
+                <field name="transport"/>
                 <field name="status" widget="badge"
-                       decoration-success="status == 'ok'"
-                       decoration-danger="status == 'error'"/>
-                <field name="duration_ms" sum="Total ms"/>
+                       decoration-success="status == 'ok'" decoration-danger="status == 'error'"/>
+                <field name="duration_ms"/>
                 <field name="tokens_est" sum="Total tokens"/>
+                <field name="remote_addr" optional="hide"/>
             </list>
-        </field>
-    </record>
-
-    <record id="mcp_audit_view_form" model="ir.ui.view">
-        <field name="name">mcp.audit.log.form</field>
-        <field name="model">mcp.audit.log</field>
-        <field name="arch" type="xml">
-            <form create="false" edit="false">
-                <sheet>
-                    <group>
-                        <group>
-                            <field name="create_date" string="When"/>
-                            <field name="user_id"/>
-                            <field name="api_key_id"/>
-                        </group>
-                        <group>
-                            <field name="tool"/>
-                            <field name="status"/>
-                            <field name="duration_ms"/>
-                            <field name="tokens_est"/>
-                        </group>
-                    </group>
-                    <group string="Arguments">
-                        <field name="args_json" nolabel="1" widget="text"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <record id="mcp_audit_view_graph" model="ir.ui.view">
-        <field name="name">mcp.audit.log.graph</field>
-        <field name="model">mcp.audit.log</field>
-        <field name="arch" type="xml">
-            <graph type="line" sample="1">
-                <field name="create_date" interval="day"/>
-                <field name="status"/>
-            </graph>
-        </field>
-    </record>
-
-    <record id="mcp_audit_view_pivot" model="ir.ui.view">
-        <field name="name">mcp.audit.log.pivot</field>
-        <field name="model">mcp.audit.log</field>
-        <field name="arch" type="xml">
-            <pivot sample="1">
-                <field name="tool" type="row"/>
-                <field name="status" type="col"/>
-                <field name="tokens_est" type="measure"/>
-            </pivot>
         </field>
     </record>
 
@@ -268,54 +184,80 @@
         <field name="model">mcp.audit.log</field>
         <field name="arch" type="xml">
             <search>
-                <field name="tool"/>
                 <field name="user_id"/>
-                <field name="api_key_id"/>
-                <filter name="filter_errors" string="Errors"
-                        domain="[('status', '=', 'error')]"/>
-                <separator/>
-                <filter name="filter_today" string="Today"
-                        domain="[('create_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
-                <filter name="filter_7d" string="Last 7 Days"
-                        domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
-                <filter name="filter_30d" string="Last 30 Days"
-                        domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
-                <group name="group_by">
-                    <filter name="group_tool" string="Tool" context="{'group_by': 'tool'}"/>
-                    <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
-                    <filter name="group_user" string="User" context="{'group_by': 'user_id'}"/>
-                    <filter name="group_key" string="Key" context="{'group_by': 'api_key_id'}"/>
-                    <filter name="group_day" string="Day"
-                            context="{'group_by': 'create_date:day'}"/>
+                <field name="tool"/>
+                <field name="model_name"/>
+                <filter name="errors" string="Errors" domain="[('status','=','error')]"/>
+                <filter name="today" string="Today"
+                        domain="[('create_date','>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_user" string="User" context="{'group_by':'user_id'}"/>
+                    <filter name="g_tool" string="Tool" context="{'group_by':'tool'}"/>
+                    <filter name="g_model" string="Model" context="{'group_by':'model_name'}"/>
+                    <filter name="g_status" string="Status" context="{'group_by':'status'}"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- ================================================================ -->
-    <!--  Approvals                                                       -->
-    <!-- ================================================================ -->
+    <record id="mcp_audit_view_graph" model="ir.ui.view">
+        <field name="name">mcp.audit.log.graph</field>
+        <field name="model">mcp.audit.log</field>
+        <field name="arch" type="xml">
+            <graph sample="1">
+                <field name="tool"/>
+                <field name="tokens_est" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="mcp_audit_action" model="ir.actions.act_window">
+        <field name="name">Audit Log</field>
+        <field name="res_model">mcp.audit.log</field>
+        <field name="view_mode">list,graph,pivot</field>
+        <field name="search_view_id" ref="mcp_audit_view_search"/>
+    </record>
+
+    <!-- Every user can see what their own assistant did. The record rule
+         already allows this; without a menu the permission was unreachable. -->
+    <record id="mcp_audit_own_action" model="ir.actions.act_window">
+        <field name="name">My AI Activity</field>
+        <field name="res_model">mcp.audit.log</field>
+        <field name="view_mode">list,graph,pivot</field>
+        <field name="search_view_id" ref="mcp_audit_view_search"/>
+        <field name="domain">[('user_id', '=', uid)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing here yet</p>
+            <p>
+                Every action an AI assistant takes on your behalf is recorded
+                here — which tool it used, on which model, when, and how long it
+                took. Connect an assistant and come back.
+            </p>
+        </field>
+    </record>
+
+    <!-- ================================================= Approvals ========= -->
     <record id="mcp_approval_view_kanban" model="ir.ui.view">
         <field name="name">mcp.approval.kanban</field>
         <field name="model">mcp.approval.request</field>
         <field name="arch" type="xml">
             <kanban default_group_by="state" create="false">
+                <field name="state"/>
                 <templates>
                     <t t-name="card">
-                        <div class="d-flex justify-content-between">
-                            <strong><field name="model_name"/></strong>
-                            <field name="operation" widget="badge"/>
-                        </div>
-                        <div class="text-muted">
-                            <field name="api_key_id"/>
-                            <span invisible="not record_id"> · #<field name="record_id"/></span>
-                        </div>
-                        <field name="values_json" class="small text-muted"/>
-                        <div class="mt-2" invisible="state != 'pending'">
-                            <button name="action_approve" type="object"
-                                    class="btn btn-primary btn-sm">Approve</button>
-                            <button name="action_reject" type="object"
-                                    class="btn btn-secondary btn-sm ms-1">Reject</button>
+                        <div class="oe_kanban_global_click p-2">
+                            <div class="d-flex justify-content-between">
+                                <strong><field name="model_name"/></strong>
+                                <span class="badge text-bg-secondary"><field name="operation"/></span>
+                            </div>
+                            <div class="text-muted"><field name="user_id"/></div>
+                            <div t-if="record.record_id.raw_value">Record #<field name="record_id"/></div>
+                            <div class="mt-2" invisible="state != 'pending'">
+                                <button name="action_approve" type="object"
+                                        class="btn btn-primary btn-sm">Approve</button>
+                                <button name="action_reject" type="object"
+                                        class="btn btn-outline-secondary btn-sm">Reject</button>
+                            </div>
                         </div>
                     </t>
                 </templates>
@@ -323,183 +265,44 @@
         </field>
     </record>
 
-    <record id="mcp_approval_view_list" model="ir.ui.view">
-        <field name="name">mcp.approval.list</field>
-        <field name="model">mcp.approval.request</field>
-        <field name="arch" type="xml">
-            <list decoration-warning="state == 'pending'"
-                  decoration-danger="state == 'failed'"
-                  decoration-muted="state == 'rejected'" create="false">
-                <field name="create_date" string="Requested"/>
-                <field name="api_key_id"/>
-                <field name="operation"/>
-                <field name="model_name"/>
-                <field name="record_id"/>
-                <field name="state" widget="badge"
-                       decoration-success="state == 'executed'"
-                       decoration-danger="state == 'failed'"/>
-                <button name="action_approve" type="object" string="Approve"
-                        icon="fa-check" invisible="state != 'pending'"/>
-                <button name="action_reject" type="object" string="Reject"
-                        icon="fa-times" invisible="state != 'pending'"/>
-            </list>
-        </field>
-    </record>
-
-    <!-- Clicking a kanban card opened Odoo's generated form, which shows the
-         raw payload with no way to act on it. -->
     <record id="mcp_approval_view_form" model="ir.ui.view">
         <field name="name">mcp.approval.form</field>
         <field name="model">mcp.approval.request</field>
         <field name="arch" type="xml">
-            <form create="false">
+            <form>
                 <header>
                     <button name="action_approve" type="object" string="Approve"
-                            class="btn-primary" invisible="state != 'pending'"
-                            confirm="This executes the operation immediately, as the key's Odoo user. Continue?"/>
+                            class="btn-primary" invisible="state != 'pending'"/>
                     <button name="action_reject" type="object" string="Reject"
                             invisible="state != 'pending'"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="pending,approved,executed"/>
+                           statusbar_visible="pending,executed"/>
                 </header>
                 <sheet>
-                    <div class="oe_title">
-                        <h1>
-                            <field name="operation" readonly="1"/>
-                            on <field name="model_name" readonly="1" class="oe_inline"/>
-                        </h1>
-                    </div>
                     <group>
                         <group>
-                            <field name="api_key_id"/>
-                            <field name="requester_id"/>
+                            <field name="operation"/>
+                            <field name="model_name"/>
                             <field name="record_id"/>
                         </group>
                         <group>
-                            <field name="create_date" string="Requested"/>
+                            <field name="user_id"/>
+                            <field name="scope_id"/>
+                            <field name="result_ref" invisible="not result_ref"/>
                         </group>
                     </group>
-                    <group string="Payload">
-                        <field name="values_json" nolabel="1" widget="text"/>
-                    </group>
+                    <separator string="Requested values"/>
+                    <field name="values_json" readonly="1"/>
                 </sheet>
                 <chatter/>
             </form>
         </field>
     </record>
 
-    <record id="mcp_approval_view_search" model="ir.ui.view">
-        <field name="name">mcp.approval.search</field>
-        <field name="model">mcp.approval.request</field>
-        <field name="arch" type="xml">
-            <search>
-                <field name="model_name"/>
-                <field name="api_key_id"/>
-                <filter name="filter_pending" string="Pending"
-                        domain="[('state', '=', 'pending')]"/>
-                <filter name="filter_failed" string="Failed"
-                        domain="[('state', '=', 'failed')]"/>
-                <group name="group_by">
-                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
-                    <filter name="group_model" string="Model" context="{'group_by': 'model_name'}"/>
-                    <filter name="group_operation" string="Operation"
-                            context="{'group_by': 'operation'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
-
-    <!-- ================================================================ -->
-    <!--  Actions                                                         -->
-    <!-- ================================================================ -->
-    <record id="mcp_dashboard_action" model="ir.actions.client">
-        <field name="name">MCP Governance</field>
-        <field name="tag">mcp_governance_dashboard</field>
-    </record>
-
-    <!-- Empty states. Every one of these screens opened as a blank void with
-         no explanation of what the record is for or which order to create
-         things in; the order that matters is scope first, then key. -->
-    <record id="mcp_key_action" model="ir.actions.act_window">
-        <field name="name">API Keys</field>
-        <field name="res_model">mcp.api.key</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="mcp_api_key_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Issue your first API key</p>
-            <p>A key is how an MCP client authenticates to this Odoo. Each key
-               is bound to a scope, so it can only reach the models and
-               operations that scope allows.</p>
-            <p><b>Define a Scope first</b> — a key without one can do nothing.
-               The secret is shown once, at creation, and never again.</p>
-        </field>
-    </record>
-    <record id="mcp_scope_action" model="ir.actions.act_window">
-        <field name="name">Scopes</field>
-        <field name="res_model">mcp.scope</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="mcp_scope_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Define what an agent may touch</p>
-            <p>A scope is an allow-list: which models an MCP client can read,
-               write, create or delete. Anything not listed is denied.</p>
-            <p>Start narrow — one model, read only. You can widen a scope later
-               without reissuing the keys that use it.</p>
-        </field>
-    </record>
-    <record id="mcp_audit_action" model="ir.actions.act_window">
-        <field name="name">Audit Log</field>
-        <field name="res_model">mcp.audit.log</field>
-        <field name="view_mode">list,graph,pivot,form</field>
-        <field name="search_view_id" ref="mcp_audit_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Nothing has called in yet</p>
-            <p>Every MCP request lands here — which key, which model, what it
-               asked for and whether it was allowed. This is the record you
-               reach for when someone asks what an agent actually did.</p>
-        </field>
-    </record>
     <record id="mcp_approval_action" model="ir.actions.act_window">
         <field name="name">Approvals</field>
         <field name="res_model">mcp.approval.request</field>
         <field name="view_mode">kanban,list,form</field>
-        <field name="search_view_id" ref="mcp_approval_view_search"/>
-        <field name="context">{'search_default_filter_pending': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No approvals waiting</p>
-            <p>When a scope marks an operation as requiring sign-off, the
-               request pauses here until an approver accepts or rejects it,
-               instead of the agent proceeding on its own.</p>
-        </field>
+        <field name="context">{'search_default_pending': 1}</field>
     </record>
-
-    <!-- ================================================================ -->
-    <!--  Menus                                                           -->
-    <!-- ================================================================ -->
-    <!-- web_icon: without it the app tile in the Apps switcher renders as a
-         blank placeholder, which is most of what "this module has no UI"
-         looks like from the outside. -->
-    <menuitem id="menu_mcp_root" name="MCP Governance"
-              web_icon="mcp_governance_suite,static/description/icon.png"
-              groups="mcp_governance_suite.group_mcp_admin,mcp_governance_suite.group_mcp_approver"
-              sequence="80"/>
-    <menuitem id="menu_mcp_dashboard" name="Dashboard" parent="menu_mcp_root"
-              action="mcp_dashboard_action"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="5"/>
-    <menuitem id="menu_mcp_approvals" name="Approvals" parent="menu_mcp_root"
-              action="mcp_approval_action" sequence="10"/>
-    <menuitem id="menu_mcp_config" name="Configuration" parent="menu_mcp_root"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="20"/>
-    <menuitem id="menu_mcp_scopes" name="Scopes" parent="menu_mcp_config"
-              action="mcp_scope_action"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="10"/>
-    <menuitem id="menu_mcp_keys" name="API Keys" parent="menu_mcp_config"
-              action="mcp_key_action"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="20"/>
-    <menuitem id="menu_mcp_settings" name="Settings" parent="menu_mcp_config"
-              action="mcp_config_settings_action"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="90"/>
-    <menuitem id="menu_mcp_audit" name="Audit Log" parent="menu_mcp_root"
-              action="mcp_audit_action"
-              groups="mcp_governance_suite.group_mcp_admin" sequence="40"/>
 </odoo>
