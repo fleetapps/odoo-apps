@@ -87,6 +87,16 @@
         </div>
       </div>
 
+      <!-- ============ Quick actions ============ -->
+      <!-- Directly under the KPI cards: these are the things you came to do,
+           so they should not sit below several screens of charts. -->
+      <div class="o_am_quick">
+        <span class="o_am_quick_label"><i class="fa fa-bolt"/> QUICK ACTIONS</span>
+        <button t-foreach="quickActions" t-as="qa" t-key="qa.label" class="o_am_qbtn" t-on-click="qa.fn">
+          <i t-att-class="'fa ' + qa.icon"/> <t t-esc="qa.label"/>
+        </button>
+      </div>
+
       <!-- ============ Donut + Trend ============ -->
       <div class="o_am_grid2">
         <div class="o_am_card">
@@ -328,13 +338,6 @@
         </div>
       </div>
 
-      <!-- ============ Quick actions ============ -->
-      <div class="o_am_quick">
-        <span class="o_am_quick_label"><i class="fa fa-bolt"/> QUICK ACTIONS</span>
-        <button t-foreach="quickActions" t-as="qa" t-key="qa.label" class="o_am_qbtn" t-on-click="qa.fn">
-          <i t-att-class="'fa ' + qa.icon"/> <t t-esc="qa.label"/>
-        </button>
-      </div>
     </t>
 
    </div>
