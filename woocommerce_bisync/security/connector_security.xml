@@ -18,4 +18,13 @@
         <field name="privilege_id" ref="privilege_woo_bisync"/>
         <field name="implied_ids" eval="[(4, ref('group_connector_user'))]"/>
     </record>
+
+    <!-- Every Settings/System administrator administers this app too. Without
+         this nobody holds group_connector_user on a fresh install - Odoo never
+         puts admin in a group a module invents - so the root menu, which is
+         gated on it, is invisible to every user and the whole app is
+         unreachable despite installing cleanly. -->
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_connector_admin'))]"/>
+    </record>
 </odoo>
