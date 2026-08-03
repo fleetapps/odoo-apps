@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+<t t-name="mcp_governance_suite.Dashboard">
+  <div class="o_mcp_dash">
+
+    <!-- ============ loading ============ -->
+    <div t-if="state.loading" class="o_mcp_loading">
+      <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+      <span>Loading MCP governance data…</span>
+    </div>
+
+    <t t-else="">
+      <!-- ============ header ============ -->
+      <div class="o_mcp_header">
+        <div class="o_mcp_header_main">
+          <h1>MCP Governance</h1>
+          <div class="o_mcp_endpoint">
+            <span t-attf-class="o_mcp_pill {{ status.enabled ? 'live' : 'off' }}">
+              <i t-attf-class="fa {{ status.enabled ? 'fa-circle' : 'fa-ban' }}"/>
+              <t t-esc="status.enabled ? 'Live' : 'Disabled'"/>
+            </span>
+            <code t-esc="status.endpoint"/>
+            <button class="btn btn-sm btn-link p-0 ms-1" title="Copy endpoint"
+                    t-on-click="() => this.copyEndpoint()">
+              <i class="fa fa-clipboard"/>
+            </button>
+            <span t-if="status.protocol" class="o_mcp_proto">
+              protocol <t t-esc="status.protocol"/>
+            </span>
+          </div>
+        </div>
+        <div class="o_mcp_header_actions">
+          <button t-foreach="quickActions" t-as="qa" t-key="qa.label"
+                  class="btn btn-sm btn-secondary" t-on-click="qa.fn">
+            <i t-attf-class="fa {{ qa.icon }} me-1"/><t t-esc="qa.label"/>
+          </button>
+          <button class="btn btn-sm btn-primary" t-on-click="() => this.refresh()">
+            <i class="fa fa-refresh me-1"/>Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ setup checklist ============ -->
+      <div t-if="!setupDone" class="o_mcp_card o_mcp_setup">
+        <div class="o_mcp_card_head">
+          <h2>Finish the setup</h2>
+          <span class="o_mcp_muted">Three steps, in this order — a key without a scope can do nothing.</span>
+        </div>
+        <div class="o_mcp_steps">
+          <div t-foreach="state.data.setup" t-as="step" t-key="step.key"
+               t-attf-class="o_mcp_step {{ step.done ? 'done' : '' }}">
+            <div class="o_mcp_step_mark">
+              <i t-attf-class="fa {{ step.done ? 'fa-check' : 'fa-circle-o' }}"/>
+            </div>
+            <div class="o_mcp_step_body">
+              <div class="o_mcp_step_title" t-esc="step.title"/>
+              <div class="o_mcp_muted" t-esc="step.detail"/>
+              <button t-if="!step.done" class="btn btn-sm btn-primary mt-2"
+                      t-on-click="() => this.open(step.action)">
+                <t t-esc="step.cta"/>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ KPI tiles ============ -->
+      <div class="o_mcp_kpis">
+        <div t-foreach="kpiCards" t-as="card" t-key="card.label"
+             t-attf-class="o_mcp_kpi accent-{{ card.accent }}">
+          <div class="o_mcp_kpi_icon"><i t-attf-class="fa {{ card.icon }}"/></div>
+          <div class="o_mcp_kpi_body">
+            <div class="o_mcp_kpi_value" t-esc="card.value"/>
+            <div class="o_mcp_kpi_label" t-esc="card.label"/>
+            <div class="o_mcp_kpi_sub" t-esc="card.sub"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ activity + bar lists ============ -->
+      <div class="o_mcp_row">
+        <div class="o_mcp_card o_mcp_grow">
+          <div class="o_mcp_card_head">
+            <h2>Activity — last 14 days</h2>
+            <div class="o_mcp_legend">
+              <span><i class="o_mcp_swatch" t-attf-style="background:{{ okColor }}"/>OK</span>
+              <span><i class="o_mcp_swatch" t-attf-style="background:{{ errColor }}"/>Error</span>
+            </div>
+          </div>
+          <div t-if="chart.empty" class="o_mcp_empty">
+            <i class="fa fa-plug"/>
+            <div>No calls recorded yet.</div>
+            <div class="o_mcp_muted" t-if="!status.log_requests">
+              Request logging is off, so nothing will ever appear here.
+            </div>
+            <div class="o_mcp_muted" t-elif="!status.enabled">
+              The server is switched off — every request is refused with 503.
+            </div>
+            <div class="o_mcp_muted" t-else="">
+              Point an MCP client at the endpoint above with a valid Bearer key.
+            </div>
+          </div>
+          <svg t-else="" class="o_mcp_chart" t-attf-viewBox="0 0 {{ chart.w }} {{ chart.h }}"
+               preserveAspectRatio="xMidYMid meet">
+            <g class="o_mcp_grid">
+              <t t-foreach="chart.ticks" t-as="tick" t-key="tick_index">
+                <line t-att-x1="chart.padL" t-att-x2="chart.right"
+                      t-att-y1="tick.y" t-att-y2="tick.y"/>
+                <text t-att-x="chart.padL - 6" t-att-y="tick.y + 3"
+                      text-anchor="end" t-esc="tick.v"/>
+              </t>
+            </g>
+            <g t-foreach="chart.cols" t-as="col" t-key="col_index">
+              <title><t t-esc="col.label"/>: <t t-esc="col.total"/> calls (<t t-esc="col.error"/> errors)</title>
+              <rect t-att-x="col.x" t-att-y="col.okY" t-att-width="col.w"
+                    t-att-height="col.okH" rx="2" t-attf-fill="{{ okColor }}"/>
+              <rect t-if="col.error" t-att-x="col.x" t-att-y="col.errY" t-att-width="col.w"
+                    t-att-height="col.errH" rx="2" t-attf-fill="{{ errColor }}"/>
+              <text class="o_mcp_axis" t-att-x="col.cx" t-att-y="chart.baseline + 16"
+                    text-anchor="middle" t-esc="col.short"/>
+            </g>
+            <line class="o_mcp_baseline" t-att-x1="chart.padL" t-att-x2="chart.right"
+                  t-att-y1="chart.baseline" t-att-y2="chart.baseline"/>
+          </svg>
+        </div>
+
+        <div class="o_mcp_card o_mcp_side">
+          <div class="o_mcp_card_head"><h2>Busiest tools (7d)</h2></div>
+          <div t-if="!toolBars.length" class="o_mcp_muted p-2">No calls in the last 7 days.</div>
+          <div t-foreach="toolBars" t-as="bar" t-key="bar.label" class="o_mcp_bar">
+            <div class="o_mcp_bar_head">
+              <span t-esc="bar.label"/><span t-esc="bar.value"/>
+            </div>
+            <div class="o_mcp_bar_track">
+              <div class="o_mcp_bar_fill"
+                   t-attf-style="width:{{ bar.pct }}%;background:{{ bar.color }}"/>
+            </div>
+          </div>
+
+          <div class="o_mcp_card_head mt-3"><h2>Busiest keys (7d)</h2></div>
+          <div t-if="!keyBars.length" class="o_mcp_muted p-2">No key has called in yet.</div>
+          <div t-foreach="keyBars" t-as="bar" t-key="bar.label" class="o_mcp_bar">
+            <div class="o_mcp_bar_head">
+              <a href="#" t-on-click.prevent="() => this.openRecord('mcp.api.key', bar.id)"
+                 t-esc="bar.label"/>
+              <span t-esc="bar.value"/>
+            </div>
+            <div class="o_mcp_bar_track">
+              <div class="o_mcp_bar_fill"
+                   t-attf-style="width:{{ bar.pct }}%;background:{{ bar.color }}"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ approvals ============ -->
+      <div class="o_mcp_card">
+        <div class="o_mcp_card_head">
+          <h2>Waiting for approval</h2>
+          <button class="btn btn-sm btn-link" t-on-click="() => this.open('approvals')">
+            Open all<i class="fa fa-arrow-right ms-1"/>
+          </button>
+        </div>
+        <div t-if="!state.data.approvals.length" class="o_mcp_empty small">
+          <i class="fa fa-check-circle"/>
+          <div>Nothing is queued.</div>
+          <div class="o_mcp_muted">
+            Writes pause here only for scopes with <b>Require Approval</b> on.
+          </div>
+        </div>
+        <table t-else="" class="o_mcp_table">
+          <thead>
+            <tr><th>When</th><th>Operation</th><th>Model</th><th>Record</th>
+                <th>Key</th><th>Runs as</th><th class="text-end">Decision</th></tr>
+          </thead>
+          <tbody>
+            <tr t-foreach="state.data.approvals" t-as="req" t-key="req.id">
+              <td t-esc="req.when"/>
+              <td><span class="o_mcp_tag" t-esc="req.operation"/></td>
+              <td><code t-esc="req.model_name"/></td>
+              <td t-esc="req.record_id or '—'"/>
+              <td t-esc="req.key"/>
+              <td t-esc="req.user"/>
+              <td class="text-end">
+                <button class="btn btn-sm btn-primary me-1" t-att-disabled="state.busy"
+                        t-on-click="() => this.approve(req.id)">Approve</button>
+                <button class="btn btn-sm btn-secondary" t-att-disabled="state.busy"
+                        t-on-click="() => this.reject(req.id)">Reject</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ============ scopes + keys ============ -->
+      <div class="o_mcp_row">
+        <div class="o_mcp_card o_mcp_grow">
+          <div class="o_mcp_card_head">
+            <h2>Scopes</h2>
+            <button class="btn btn-sm btn-link" t-on-click="() => this.open('scopes')">
+              Manage<i class="fa fa-arrow-right ms-1"/>
+            </button>
+          </div>
+          <div t-if="!state.data.scopes.length" class="o_mcp_empty small">
+            <i class="fa fa-shield"/>
+            <div>No scope defined.</div>
+            <div class="o_mcp_muted">Start narrow: one model, read only.</div>
+          </div>
+          <table t-else="" class="o_mcp_table">
+            <thead>
+              <tr><th>Scope</th><th>Models</th><th>Mode</th><th>Approval</th>
+                  <th>Rate</th><th>Keys</th></tr>
+            </thead>
+            <tbody>
+              <tr t-foreach="state.data.scopes" t-as="sc" t-key="sc.id">
+                <td>
+                  <a href="#" t-on-click.prevent="() => this.openRecord('mcp.scope', sc.id)"
+                     t-esc="sc.name"/>
+                </td>
+                <td t-esc="sc.models"/>
+                <td>
+                  <span t-if="sc.read_only" class="o_mcp_tag ok">read-only</span>
+                  <span t-else="" class="o_mcp_tag warn">
+                    writes on <t t-esc="sc.writable"/>
+                  </span>
+                </td>
+                <td>
+                  <span t-if="sc.require_approval" class="o_mcp_tag ok">required</span>
+                  <span t-else="" class="o_mcp_tag warn">auto</span>
+                </td>
+                <td t-esc="sc.rate_limit or '∞'"/>
+                <td t-esc="sc.keys"/>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="o_mcp_card o_mcp_grow">
+          <div class="o_mcp_card_head">
+            <h2>API keys</h2>
+            <button class="btn btn-sm btn-link" t-on-click="() => this.open('keys')">
+              Manage<i class="fa fa-arrow-right ms-1"/>
+            </button>
+          </div>
+          <div t-if="!state.data.keys.length" class="o_mcp_empty small">
+            <i class="fa fa-key"/>
+            <div>No key issued.</div>
+            <div class="o_mcp_muted">Define a scope first, then bind a key to it.</div>
+          </div>
+          <table t-else="" class="o_mcp_table">
+            <thead>
+              <tr><th>Key</th><th>Runs as</th><th>Scope</th><th>Status</th><th>Last used</th></tr>
+            </thead>
+            <tbody>
+              <tr t-foreach="state.data.keys" t-as="k" t-key="k.id">
+                <td>
+                  <a href="#" t-on-click.prevent="() => this.openRecord('mcp.api.key', k.id)"
+                     t-esc="k.name"/>
+                  <div class="o_mcp_muted small" t-if="k.preview" t-esc="k.preview"/>
+                </td>
+                <td t-esc="k.user"/>
+                <td t-esc="k.scope"/>
+                <td>
+                  <span t-if="k.state === 'active'" class="o_mcp_tag ok">active</span>
+                  <span t-elif="k.state === 'expired'" class="o_mcp_tag bad">expired</span>
+                  <span t-elif="k.state === 'no_secret'" class="o_mcp_tag warn">no secret</span>
+                  <span t-else="" class="o_mcp_tag">archived</span>
+                </td>
+                <td t-esc="k.last_used or '—'"/>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ recent calls ============ -->
+      <div class="o_mcp_card">
+        <div class="o_mcp_card_head">
+          <h2>Latest calls</h2>
+          <button class="btn btn-sm btn-link" t-on-click="() => this.open('audit')">
+            Full audit log<i class="fa fa-arrow-right ms-1"/>
+          </button>
+        </div>
+        <div t-if="!state.data.recent.length" class="o_mcp_empty small">
+          <i class="fa fa-list"/>
+          <div>The audit log is empty.</div>
+        </div>
+        <table t-else="" class="o_mcp_table">
+          <thead>
+            <tr><th>When</th><th>User</th><th>Tool</th><th>Status</th>
+                <th class="text-end">Duration</th><th class="text-end">Tokens</th></tr>
+          </thead>
+          <tbody>
+            <tr t-foreach="state.data.recent" t-as="log" t-key="log.id">
+              <td t-esc="log.when"/>
+              <td t-esc="log.user"/>
+              <td><code t-esc="log.tool"/></td>
+              <td>
+                <span t-if="log.status === 'error'" class="o_mcp_tag bad">error</span>
+                <span t-else="" class="o_mcp_tag ok">ok</span>
+              </td>
+              <td class="text-end"><t t-esc="log.duration_ms"/> ms</td>
+              <td class="text-end" t-esc="log.tokens"/>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="o_mcp_foot o_mcp_muted">
+        Limits in force: <b t-esc="status.default_limit"/> records by default,
+        <b t-esc="status.max_limit"/> maximum,
+        <b t-esc="status.rate_limit or '∞'"/> calls/hour per key.
+        Audit rows are kept for <b t-esc="status.retention_days or '∞'"/> days.
+      </div>
+    </t>
+  </div>
+</t>
+
+</templates>

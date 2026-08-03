@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import secrets
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class MCPApiKey(models.Model):
     _name = "mcp.api.key"
     _description = "MCP API Key"
+    _order = "name"
 
     name = fields.Char(required=True)
     active = fields.Boolean(default=True)
@@ -18,6 +19,30 @@ class MCPApiKey(models.Model):
     key_preview = fields.Char(readonly=True)
     expiry = fields.Date()
     last_used = fields.Datetime(readonly=True)
+
+    # Not stored: it turns on when a date passes, and nothing writes the record
+    # on that day, so a stored value would simply be wrong. The explicit
+    # ``search`` is what makes it usable in the search view's filter domains -
+    # a compute with neither ``store`` nor ``search`` raises "Unsearchable
+    # field" at install time, not at first use.
+    expired = fields.Boolean(
+        string="Expired", compute="_compute_expired", search="_search_expired",
+        help="The expiry date has passed. The key is refused at authentication.")
+
+    @api.depends("expiry")
+    def _compute_expired(self):
+        today = fields.Date.today()
+        for key in self:
+            key.expired = bool(key.expiry and key.expiry < today)
+
+    def _search_expired(self, operator, value):
+        if operator not in ("=", "!="):
+            raise NotImplementedError
+        today = fields.Date.today()
+        is_expired = bool(value) if operator == "=" else not value
+        if is_expired:
+            return [("expiry", "!=", False), ("expiry", "<", today)]
+        return ["|", ("expiry", "=", False), ("expiry", ">=", today)]
 
     def is_expired(self):
         self.ensure_one()

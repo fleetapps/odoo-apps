@@ -3,10 +3,24 @@
 
     <!-- Settings > MCP Governance.
          Structure follows Odoo 19's settings arch (app / block / setting), as
-         used by every core module - see addons/stock/views/res_config_settings_views.xml.
-         Without this record the module has no presence in Settings at all;
-         its own top-level menu is not a substitute, because Settings is where
-         an admin looks first. -->
+         used by every core module - see addons/base_setup/views/res_config_settings_views.xml.
+
+         Two things here are load-bearing and were previously wrong:
+
+         * NO `groups` attribute on <app>. `_postprocess_access_rights` deletes
+           any node whose `groups` the reader does not match - the whole tab,
+           silently, with no error anywhere. Gating an app tab on a module's own
+           group means it disappears for everyone the moment the implied-group
+           grant does not take (a partial upgrade, a hand-edited Administrator,
+           a user with Settings but not this app). Core Odoo never gates an <app>
+           node; Settings itself is already base.group_system-only, which is the
+           access control that matters. The individual escape-hatch buttons below
+           still carry their own group.
+
+         * An explicit `logo`. Without it the compiler derives
+           /mcp_governance_suite/static/description/icon.png, so a module that
+           ships no icon renders its tab with a broken image and no visual
+           anchor in the sidebar. We now ship that icon and name it outright. -->
     <record id="res_config_settings_view_form" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.mcp</field>
         <field name="model">res.config.settings</field>
@@ -16,16 +30,27 @@
             <xpath expr="//form" position="inside">
                 <app data-string="MCP Governance" string="MCP Governance"
                      name="mcp_governance_suite"
-                     groups="mcp_governance_suite.group_mcp_admin">
+                     logo="/mcp_governance_suite/static/description/icon.png">
 
-                    <block title="Access" name="mcp_access_container">
+                    <block title="Server" name="mcp_access_container">
                         <setting id="mcp_enabled_setting"
                                  string="Enable MCP Server"
                                  help="Serve the /mcp/v1 endpoint. Off means every request is refused, valid key or not.">
                             <field name="mcp_enabled"/>
                             <div class="content-group mt8" invisible="not mcp_enabled">
                                 <div class="text-muted">
-                                    Endpoint: <code>/mcp/v1</code> — POST, JSON-RPC 2.0 over Streamable HTTP.
+                                    Endpoint <code>/mcp/v1</code> — POST, JSON-RPC 2.0 over Streamable HTTP.
+                                </div>
+                                <div class="mt8">
+                                    <button name="action_open_mcp_dashboard" type="object"
+                                            icon="oi-arrow-right" string="Open Dashboard"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                            <div class="content-group mt8" invisible="mcp_enabled">
+                                <div class="text-muted">
+                                    The endpoint answers <b>503</b> to every caller while this is off.
+                                    Define a scope and issue a key first, then switch it on.
                                 </div>
                             </div>
                         </setting>
@@ -40,16 +65,20 @@
                         <setting id="mcp_scopes_setting"
                                  string="Scopes"
                                  help="A scope is the allow-list of models and operations a connection may reach. Define one before issuing any key.">
-                            <button name="action_open_mcp_scopes" type="object"
-                                    string="Manage Scopes" icon="fa-shield"
-                                    class="btn-link"/>
+                            <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
+                                <button name="action_open_mcp_scopes" type="object"
+                                        icon="oi-arrow-right" string="Manage Scopes"
+                                        class="btn-link"/>
+                            </div>
                         </setting>
                         <setting id="mcp_keys_setting"
                                  string="API Keys"
                                  help="Keys inherit the permissions of the Odoo user they are bound to, narrowed by their scope. They can never widen it.">
-                            <button name="action_open_mcp_keys" type="object"
-                                    string="Manage API Keys" icon="fa-key"
-                                    class="btn-link"/>
+                            <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
+                                <button name="action_open_mcp_keys" type="object"
+                                        icon="oi-arrow-right" string="Manage API Keys"
+                                        class="btn-link"/>
+                            </div>
                         </setting>
                     </block>
 
@@ -79,6 +108,10 @@
                                            class="col-lg-4 o_light_label"/>
                                     <field name="mcp_rate_limit_per_hour" class="oe_inline"/>
                                 </div>
+                                <div class="text-muted mt8" invisible="mcp_log_requests">
+                                    The ceiling is counted from the audit log, so it does
+                                    nothing while <b>Log Every Request</b> is off.
+                                </div>
                             </div>
                         </setting>
                     </block>
@@ -94,9 +127,11 @@
                                            class="col-lg-4 o_light_label"/>
                                     <field name="mcp_log_retention_days" class="oe_inline"/>
                                 </div>
-                                <button name="action_open_mcp_audit" type="object"
-                                        string="Open Audit Log" icon="fa-list"
-                                        class="btn-link mt8"/>
+                                <div class="mt8" groups="mcp_governance_suite.group_mcp_admin">
+                                    <button name="action_open_mcp_audit" type="object"
+                                            icon="oi-arrow-right" string="Open Audit Log"
+                                            class="btn-link"/>
+                                </div>
                             </div>
                         </setting>
                     </block>

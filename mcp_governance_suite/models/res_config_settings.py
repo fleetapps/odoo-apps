@@ -87,6 +87,10 @@ class ResConfigSettings(models.TransientModel):
     # ------------------------------------------------------------- shortcuts
     # The Settings page is where an admin lands first; these buttons take them
     # to the records that actually have to exist, in the order they matter.
+    def action_open_mcp_dashboard(self):
+        return self.env["ir.actions.actions"]._for_xml_id(
+            "mcp_governance_suite.mcp_dashboard_action")
+
     def action_open_mcp_scopes(self):
         return self.env["ir.actions.act_window"]._for_xml_id(
             "mcp_governance_suite.mcp_scope_action")

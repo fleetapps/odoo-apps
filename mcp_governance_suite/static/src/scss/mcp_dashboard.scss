@@ -1,0 +1,371 @@
+// MCP Governance dashboard.
+//
+// Colours come from Bootstrap's runtime custom properties (--bs-body-bg,
+// --bs-border-color, ...) rather than Odoo's compile-time SCSS variables, so
+// the screen follows the user's light/dark theme without this file knowing
+// which one is active.
+
+.o_mcp_dash {
+    --mcp-gap: 16px;
+    --mcp-radius: 10px;
+    --mcp-line: var(--bs-border-color, #dee2e6);
+    --mcp-surface: var(--bs-body-bg, #fff);
+    --mcp-ink: var(--bs-body-color, #212529);
+    --mcp-muted: var(--bs-secondary-color, rgba(33, 37, 41, 0.65));
+    --mcp-violet: #6d28d9;
+    --mcp-teal: #0f8f8f;
+
+    height: 100%;
+    overflow: auto;
+    padding: var(--mcp-gap);
+    background: var(--bs-tertiary-bg, #f8f9fa);
+    color: var(--mcp-ink);
+}
+
+.o_mcp_loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 60vh;
+    color: var(--mcp-muted);
+}
+
+.o_mcp_muted {
+    color: var(--mcp-muted);
+}
+
+// ----------------------------------------------------------------- header
+.o_mcp_header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: var(--mcp-gap);
+
+    h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+    }
+}
+
+.o_mcp_endpoint {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 0.85rem;
+
+    code {
+        background: var(--bs-secondary-bg, #e9ecef);
+        border-radius: 4px;
+        padding: 2px 6px;
+    }
+}
+
+.o_mcp_proto {
+    color: var(--mcp-muted);
+    font-size: 0.78rem;
+}
+
+.o_mcp_pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+
+    i {
+        font-size: 0.55rem;
+    }
+    &.live {
+        background: rgba(45, 212, 191, 0.18);
+        color: #0d7a6d;
+    }
+    &.off {
+        background: rgba(224, 83, 61, 0.16);
+        color: #b03a26;
+    }
+}
+
+.o_mcp_header_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+// ------------------------------------------------------------------ cards
+.o_mcp_card {
+    background: var(--mcp-surface);
+    border: 1px solid var(--mcp-line);
+    border-radius: var(--mcp-radius);
+    padding: 14px 16px;
+    margin-bottom: var(--mcp-gap);
+}
+
+.o_mcp_card_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    h2 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin: 0;
+    }
+}
+
+.o_mcp_row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mcp-gap);
+
+    > .o_mcp_card {
+        margin-bottom: var(--mcp-gap);
+    }
+    .o_mcp_grow {
+        flex: 1 1 420px;
+        min-width: 0;
+    }
+    .o_mcp_side {
+        flex: 0 1 300px;
+        min-width: 0;
+    }
+}
+
+// --------------------------------------------------------------- checklist
+.o_mcp_setup {
+    border-left: 3px solid var(--mcp-violet);
+
+    // Title and caption belong together here; the default space-between of a
+    // card head pushes the caption to the far edge, where it reads as an
+    // unrelated note rather than the subtitle it is.
+    .o_mcp_card_head {
+        justify-content: flex-start;
+        gap: 12px;
+    }
+}
+
+.o_mcp_steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mcp-gap);
+}
+
+.o_mcp_step {
+    display: flex;
+    gap: 10px;
+    flex: 1 1 240px;
+    min-width: 0;
+
+    &.done .o_mcp_step_mark {
+        background: rgba(45, 212, 191, 0.18);
+        color: #0d7a6d;
+    }
+    &.done .o_mcp_step_title {
+        text-decoration: line-through;
+        color: var(--mcp-muted);
+    }
+}
+
+.o_mcp_step_mark {
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-secondary-bg, #e9ecef);
+    color: var(--mcp-muted);
+    font-size: 0.75rem;
+}
+
+.o_mcp_step_title {
+    font-weight: 600;
+}
+
+// -------------------------------------------------------------------- KPIs
+.o_mcp_kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    margin-bottom: var(--mcp-gap);
+}
+
+.o_mcp_kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--mcp-surface);
+    border: 1px solid var(--mcp-line);
+    border-radius: var(--mcp-radius);
+    padding: 12px 14px;
+    border-top: 3px solid var(--mcp-violet);
+
+    &.accent-violet { border-top-color: #6d28d9; }
+    &.accent-blue   { border-top-color: #3b82f6; }
+    &.accent-teal   { border-top-color: #0f8f8f; }
+    &.accent-amber  { border-top-color: #e0a417; }
+    &.accent-red    { border-top-color: #e0533d; }
+    &.accent-magenta{ border-top-color: #d6409f; }
+    &.accent-slate  { border-top-color: #94a3b8; }
+    &.accent-dark   { border-top-color: #475569; }
+}
+
+.o_mcp_kpi_icon {
+    opacity: 0.35;
+    font-size: 1.4rem;
+}
+
+.o_mcp_kpi_value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.o_mcp_kpi_label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.o_mcp_kpi_sub {
+    font-size: 0.72rem;
+    color: var(--mcp-muted);
+}
+
+// ------------------------------------------------------------------ charts
+.o_mcp_chart {
+    width: 100%;
+    height: auto;
+
+    .o_mcp_grid line {
+        stroke: var(--mcp-line);
+        stroke-dasharray: 3 3;
+    }
+    .o_mcp_grid text,
+    .o_mcp_axis {
+        fill: var(--mcp-muted);
+        font-size: 10px;
+    }
+    .o_mcp_baseline {
+        stroke: var(--mcp-line);
+    }
+}
+
+.o_mcp_legend {
+    display: flex;
+    gap: 12px;
+    font-size: 0.76rem;
+    color: var(--mcp-muted);
+}
+
+.o_mcp_swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 5px;
+}
+
+.o_mcp_bar {
+    margin-bottom: 9px;
+}
+
+.o_mcp_bar_head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.78rem;
+    margin-bottom: 3px;
+
+    > :first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.o_mcp_bar_track {
+    height: 7px;
+    border-radius: 4px;
+    background: var(--bs-secondary-bg, #e9ecef);
+    overflow: hidden;
+}
+
+.o_mcp_bar_fill {
+    height: 100%;
+    border-radius: 4px;
+}
+
+// ------------------------------------------------------------------ tables
+.o_mcp_table {
+    width: 100%;
+    font-size: 0.82rem;
+    border-collapse: collapse;
+
+    th {
+        text-align: left;
+        font-weight: 600;
+        color: var(--mcp-muted);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--mcp-line);
+    }
+    td {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--mcp-line);
+        vertical-align: middle;
+    }
+    tr:last-child td {
+        border-bottom: 0;
+    }
+}
+
+.o_mcp_tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: var(--bs-secondary-bg, #e9ecef);
+    color: var(--mcp-muted);
+
+    &.ok   { background: rgba(45, 212, 191, 0.18); color: #0d7a6d; }
+    &.warn { background: rgba(224, 164, 23, 0.18); color: #8a6209; }
+    &.bad  { background: rgba(224, 83, 61, 0.16); color: #b03a26; }
+}
+
+// ------------------------------------------------------------- empty state
+.o_mcp_empty {
+    text-align: center;
+    padding: 28px 12px;
+    color: var(--mcp-ink);
+
+    i {
+        font-size: 1.8rem;
+        opacity: 0.3;
+        display: block;
+        margin-bottom: 8px;
+    }
+    &.small {
+        padding: 18px 12px;
+    }
+}
+
+.o_mcp_foot {
+    font-size: 0.76rem;
+    padding: 0 2px 12px;
+}

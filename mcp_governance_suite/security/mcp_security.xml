@@ -24,10 +24,19 @@
         <field name="implied_ids" eval="[(4, ref('group_mcp_approver'))]"/>
     </record>
 
-    <!-- Without this, group_mcp_admin is granted to nobody at install: every
-         menu in this module is gated on it, every ir.model.access line names
-         it, so a fresh install shows the administrator an empty void and no
-         MCP entry in Settings. Settings/Users can still remove it per user. -->
+    <!-- This grant is what makes the module visible at all, and it was missing
+         until 19.0.1.0.0. group_mcp_admin was created and handed to nobody,
+         while every menuitem in views/mcp_views.xml is gated on it and every
+         ir.model.access line names it - so the app installed cleanly and then
+         showed the administrator nothing: no app tile, no menus, and (once the
+         Settings page existed) no MCP tab either, because
+         _postprocess_access_rights deletes any node whose `groups` the reader
+         does not match.
+
+         Databases installed before this line existed need an actual module
+         *upgrade* to pick it up; restarting the server is not enough.
+
+         Settings > Users can still take the group away per user. -->
     <record id="base.group_system" model="res.groups">
         <field name="implied_ids" eval="[(4, ref('group_mcp_admin'))]"/>
     </record>

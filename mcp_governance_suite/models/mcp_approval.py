@@ -10,6 +10,10 @@ class MCPApprovalRequest(models.Model):
     _order = "create_date desc"
 
     api_key_id = fields.Many2one("mcp.api.key", required=True)
+    # Stored so the list can be grouped by whose credentials the write would
+    # run under - the question an approver actually asks.
+    requester_id = fields.Many2one(
+        related="api_key_id.user_id", store=True, string="Runs As")
     operation = fields.Selection([("create", "Create"), ("write", "Write"),
                                   ("unlink", "Delete")], required=True)
     model_name = fields.Char(required=True)

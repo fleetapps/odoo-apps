@@ -1,0 +1,103 @@
+<section style="max-width:1000px;margin:0 auto;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2b2b40;">
+
+  <div style="background:linear-gradient(135deg,#3B1D6E,#6D28D9);border-radius:16px;padding:48px 40px;color:#fff;text-align:center;">
+    <h1 style="font-size:40px;margin:0 0 8px;font-weight:700;">MCP Governance Suite</h1>
+    <p style="font-size:20px;opacity:.92;margin:0;">Give an AI agent access to Odoo &mdash; and keep control of exactly what it can touch.</p>
+    <p style="font-size:15px;opacity:.8;margin:18px 0 0;">Odoo 19 &nbsp;|&nbsp; Streamable HTTP &bull; JSON-RPC 2.0 &bull; scoped, audited, approval-gated</p>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:32px 0;">
+    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
+      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Allow-list</div>
+      <div style="color:#555;">anything unlisted is denied</div>
+    </div>
+    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
+      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Every call</div>
+      <div style="color:#555;">logged, timed, costed</div>
+    </div>
+    <div style="flex:1;min-width:200px;background:#f4f1fd;border-radius:12px;padding:20px;text-align:center;">
+      <div style="font-size:26px;font-weight:700;color:#6D28D9;">Human gate</div>
+      <div style="color:#555;">writes wait for approval</div>
+    </div>
+  </div>
+
+  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">What it does</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;">
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
+      <h3 style="margin-top:0;color:#3B1D6E;">Scopes</h3>
+      <ul style="line-height:1.7;color:#444;">
+        <li>Per-model read / create / write / delete</li>
+        <li>Field blacklist &mdash; never returned, never accepted</li>
+        <li>Record domain ANDed onto every read</li>
+        <li>Read-only kill-switch per scope</li>
+        <li>Calls-per-hour ceiling per scope</li>
+      </ul>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
+      <h3 style="margin-top:0;color:#3B1D6E;">API keys</h3>
+      <ul style="line-height:1.7;color:#444;">
+        <li>Bound to one Odoo user and one scope</li>
+        <li>Calls run <em>as</em> that user &mdash; ACLs and record rules still apply</li>
+        <li>Secret shown once; only its SHA-256 is stored</li>
+        <li>Expiry dates, with an expiring-soon view</li>
+      </ul>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
+      <h3 style="margin-top:0;color:#3B1D6E;">Approvals</h3>
+      <ul style="line-height:1.7;color:#444;">
+        <li>Writes pause as a request instead of executing</li>
+        <li>Approver sees the model, the record and the payload</li>
+        <li>Approve executes under the key's user, not yours</li>
+        <li>Chatter keeps the decision trail</li>
+      </ul>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#fff;border:1px solid #ebe7f6;border-radius:12px;padding:22px;">
+      <h3 style="margin-top:0;color:#3B1D6E;">Audit &amp; cost</h3>
+      <ul style="line-height:1.7;color:#444;">
+        <li>One row per tool call: key, tool, outcome, duration</li>
+        <li>Size-based token estimate for cost tracking</li>
+        <li>Graph and pivot views over the whole history</li>
+        <li>Retention window with a weekly purge</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">The dashboard</h2>
+  <p style="line-height:1.7;color:#444;">
+    The app opens on a single screen that answers the three questions an administrator
+    actually has: is the endpoint live, who is calling it, and what is waiting on me.
+    Endpoint status and protocol revision, activity for the last fourteen days split
+    into successes and errors, the busiest tools and keys, pending approvals you can
+    decide in place, your scopes and keys at a glance, and the latest calls.
+    A fresh install shows a three-step setup checklist in the order that works &mdash;
+    scope, key, then switch the server on.
+  </p>
+
+  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">How it fits together</h2>
+  <div style="background:#f9f8fe;border:1px solid #ebe7f6;border-radius:12px;padding:22px;line-height:1.8;color:#444;">
+    <b>1.</b> Define a scope &mdash; the models and operations an agent may reach.<br/>
+    <b>2.</b> Issue an API key bound to that scope and to an Odoo user.<br/>
+    <b>3.</b> Switch the server on. Until then <code>/mcp/v1</code> answers 503 to every caller.<br/>
+    <b>4.</b> Point your MCP client at <code>https://your-odoo/mcp/v1</code> with the key as a Bearer token.
+  </div>
+
+  <h2 style="font-size:26px;border-bottom:3px solid #6D28D9;padding-bottom:8px;">Defense in depth</h2>
+  <p style="line-height:1.7;color:#444;">
+    A scope narrows; it never widens. Because every call executes as the key's Odoo
+    user, <code>ir.model.access</code> and record rules apply underneath the scope &mdash;
+    so a misconfigured scope cannot hand an agent more than the user behind it already had.
+    The master switch is off on install, so the endpoint is never live the moment the
+    module lands.
+  </p>
+
+  <div style="background:linear-gradient(135deg,#3B1D6E,#6D28D9);border-radius:16px;padding:32px;color:#fff;text-align:center;margin-top:32px;">
+    <div style="font-size:22px;font-weight:600;">Governance first, then agents.</div>
+    <div style="opacity:.85;margin-top:6px;">Multi-company &bull; installs clean &bull; no external services</div>
+  </div>
+
+</section>
