@@ -2,23 +2,41 @@
 <odoo>
     <!-- ================================================================= -->
     <!--  Access Profile - list / search / form                            -->
-    <!--  List root is <list> (Odoo 18/19). On Odoo 17 replace <list> with -->
-    <!--  <tree> in this file (mechanical, matches upgrade_code behaviour). -->
+    <!--                                                                   -->
+    <!--  UX principles applied here:                                      -->
+    <!--   * "Who" and the three user-level switches sit above the tabs -   -->
+    <!--     the most common profile ("make this person read-only") needs   -->
+    <!--     no tab at all.                                                 -->
+    <!--   * Guidance appears only while a tab is empty, then gets out of   -->
+    <!--     the way. New users are taught, experienced ones are not        -->
+    <!--     nagged.                                                        -->
+    <!--   * Rule lines default to the model you last used, so writing five -->
+    <!--     rules for one model does not mean picking it five times.       -->
+    <!--   * Simple rule types are edited inline; only the two rule types   -->
+    <!--     with a dozen-plus options open a dialog.                       -->
     <!-- ================================================================= -->
 
     <record id="access_profile_view_list" model="ir.ui.view">
         <field name="name">access.manager.profile.list</field>
         <field name="model">access.manager.profile</field>
         <field name="arch" type="xml">
-            <list>
+            <list decoration-muted="not active"
+                  decoration-warning="state == 'expiring'"
+                  decoration-danger="state == 'expired'">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
+                <!-- What the profile actually does, without opening it. -->
+                <field name="summary" string="Effect" optional="show"/>
                 <field name="user_ids" widget="many2many_tags" optional="show"/>
                 <field name="group_ids" widget="many2many_tags" optional="show"/>
                 <field name="company_ids" widget="many2many_tags" optional="hide"
                        groups="base.group_multi_company"/>
-                <field name="is_readonly_user" optional="hide"/>
-                <field name="disable_login" optional="hide"/>
+                <field name="date_end" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-warning="state == 'expiring'"
+                       decoration-danger="state == 'expired'"
+                       decoration-muted="state in ('inactive', 'scheduled')"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
         </field>
@@ -29,18 +47,33 @@
         <field name="model">access.manager.profile</field>
         <field name="arch" type="xml">
             <search>
-                <field name="name"/>
+                <field name="name" string="Profile"/>
                 <field name="user_ids"/>
                 <field name="group_ids"/>
                 <field name="company_ids" groups="base.group_multi_company"/>
+                <filter name="needs_attention" string="Needs Attention"
+                        domain="['|', ('user_ids', '=', False), ('group_ids', '=', False)]"
+                        help="Profiles that may not be doing what you expect."/>
+                <separator/>
                 <filter name="readonly_users" string="Read-Only Users"
                         domain="[('is_readonly_user', '=', True)]"/>
                 <filter name="login_disabled" string="Login Disabled"
                         domain="[('disable_login', '=', True)]"/>
+                <filter name="time_based" string="Time-Based"
+                        domain="[('restriction_time_based', '=', True)]"/>
                 <separator/>
+                <filter name="expiring" string="Expiring or Expired"
+                        domain="[('date_end', '!=', False)]"/>
                 <filter name="inactive" string="Archived"
                         domain="[('active', '=', False)]"/>
-                <group expand="0" string="Group By">
+                <!-- Odoo 19 dropped 'expand' and 'string' from <group> in the
+                     view RNG (odoo/addons/base/rng/common.rng); the Group By
+                     section is titled by the client, not by the arch. -->
+                <group name="group_by">
+                    <filter name="group_by_target" string="Applies Via"
+                            context="{'group_by': 'restriction_type'}"/>
+                    <filter name="group_by_state" string="Status"
+                            context="{'group_by': 'state'}"/>
                     <filter name="group_by_company" string="Company"
                             context="{'group_by': 'company_ids'}"
                             groups="base.group_multi_company"/>
@@ -57,175 +90,292 @@
                 <header>
                     <button name="action_export_json" type="object"
                             string="Export JSON" icon="fa-download"
-                            class="btn-secondary"/>
+                            class="btn-secondary"
+                            help="Download this profile as a portable JSON bundle."/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="scheduled,active,expiring,expired"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
                             invisible="active"/>
+                    <!-- Feeds 'default_model_id' on every rule list below. -->
+                    <field name="recent_model_id" invisible="1"/>
+
                     <div class="oe_title">
-                        <label for="name"/>
-                        <h1><field name="name" placeholder="e.g. Warehouse Staff"/></h1>
+                        <label for="name" string="Profile Name"/>
+                        <h1>
+                            <field name="name"
+                                   placeholder="e.g. Warehouse Staff - no pricing"/>
+                        </h1>
+                        <!-- The whole profile in one line, always visible. -->
+                        <div class="text-muted" invisible="not summary">
+                            <i class="fa fa-shield me-1" role="img"
+                               aria-label="Effect" title="Effect"/>
+                            <field name="summary" class="oe_inline"/>
+                        </div>
                     </div>
+
                     <group>
-                        <group string="Applies To">
-                            <field name="user_ids" widget="many2many_tags"/>
-                            <field name="group_ids" widget="many2many_tags"/>
+                        <group string="Applies To" name="targeting">
+                            <field name="user_ids" widget="many2many_tags"
+                                   placeholder="Individual users..."/>
+                            <field name="group_ids" widget="many2many_tags"
+                                   placeholder="Whole roles / groups..."/>
                             <field name="company_ids" widget="many2many_tags"
+                                   placeholder="All companies"
                                    groups="base.group_multi_company"/>
                         </group>
-                        <group string="Options">
-                            <field name="sequence"/>
-                            <field name="active"/>
+                        <!-- The three switches people reach for first: no tab,
+                             no scrolling, no dialog. -->
+                        <group string="Account Restrictions" name="user_level">
+                            <field name="is_readonly_user" widget="boolean_toggle"
+                                   string="Read-Only Everywhere"/>
+                            <field name="disable_developer_mode" widget="boolean_toggle"
+                                   string="Block Developer Mode"/>
+                            <field name="disable_login" widget="boolean_toggle"
+                                   string="Block Login"/>
+                            <field name="sequence" groups="base.group_no_one"/>
+                            <field name="active" invisible="1"/>
                         </group>
                     </group>
-                    <div class="alert alert-info" role="alert"
-                         invisible="user_ids or group_ids">
-                        This profile targets no user or group yet, so it has no
-                        effect. Add at least one user or group above.
+
+                    <div class="alert alert-warning d-flex align-items-center"
+                         role="alert" invisible="user_ids or group_ids">
+                        <i class="fa fa-exclamation-triangle me-2" role="img"
+                           aria-label="Warning" title="Warning"/>
+                        <span>
+                            Nobody is targeted yet, so this profile does nothing.
+                            Add a <b>user</b> above, or a <b>group</b> to cover a
+                            whole role at once.
+                        </span>
                     </div>
+
                     <notebook>
                         <page string="Menus" name="menus">
                             <group>
-                                <field name="hide_apps_menu"/>
+                                <field name="hide_apps_menu" widget="boolean_toggle"/>
                             </group>
-                            <separator string="Hidden Menus"/>
+                            <separator string="Menus to Hide"/>
                             <field name="hidden_menu_ids" widget="many2many_tags"
-                                   options="{'no_create': True}"/>
+                                   options="{'no_create': True}"
+                                   placeholder="Type a menu path, e.g. Settings/Users"/>
+                            <!-- Teaching block while empty, one-line reminder
+                                 afterwards: guidance never disappears, but it
+                                 also never nags. -->
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="hidden_menu_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Menus are searched by their full path, so typing
+                                <b>Settings/Users</b> finds the right one straight
+                                away. Hiding a menu hides everything under it.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not hidden_menu_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Sub-menus are hidden along with their parent.
+                                Hiding a menu does not block the data behind it —
+                                use <b>Models</b> or <b>Records</b> for that.
+                            </div>
                         </page>
 
                         <page string="Models" name="models">
-                            <field name="model_rule_ids">
+                            <field name="model_rule_ids"
+                                   context="{'default_model_id': recent_model_id}">
                                 <list>
                                     <field name="model_id"/>
-                                    <field name="readonly" string="Read-Only"/>
-                                    <field name="hide_create"/>
-                                    <field name="hide_edit"/>
-                                    <field name="hide_delete"/>
-                                    <field name="hide_duplicate" optional="show"/>
-                                    <field name="hide_archive" optional="show"/>
-                                    <field name="hide_import" optional="hide"/>
-                                    <field name="hide_export"/>
-                                    <field name="hide_chatter" optional="hide"/>
+                                    <field name="restriction_summary"/>
                                 </list>
                                 <form>
                                     <group>
-                                        <field name="model_id"/>
+                                        <field name="model_id"
+                                               options="{'no_create': True}"/>
                                         <field name="model_name" invisible="1"/>
                                     </group>
                                     <group>
-                                        <group string="Buttons">
-                                            <field name="readonly"/>
-                                            <field name="hide_create"/>
-                                            <field name="hide_edit"/>
-                                            <field name="hide_delete"/>
-                                            <field name="hide_duplicate"/>
-                                            <field name="hide_archive"/>
-                                            <field name="hide_import"/>
-                                            <field name="hide_export"/>
+                                        <group string="Toolbar">
+                                            <field name="readonly" widget="boolean_toggle"/>
+                                            <field name="hide_create" widget="boolean_toggle"
+                                                   invisible="readonly"/>
+                                            <field name="hide_edit" widget="boolean_toggle"
+                                                   invisible="readonly"/>
+                                            <field name="hide_delete" widget="boolean_toggle"
+                                                   invisible="readonly"/>
+                                            <field name="hide_duplicate" widget="boolean_toggle"/>
+                                            <field name="hide_archive" widget="boolean_toggle"/>
+                                            <field name="hide_import" widget="boolean_toggle"/>
+                                            <field name="hide_export" widget="boolean_toggle"/>
                                         </group>
                                         <group string="Chatter">
-                                            <field name="hide_chatter"/>
-                                            <field name="hide_send_message"
+                                            <field name="hide_chatter" widget="boolean_toggle"/>
+                                            <field name="hide_send_message" widget="boolean_toggle"
                                                    invisible="hide_chatter"/>
-                                            <field name="hide_log_note"
+                                            <field name="hide_log_note" widget="boolean_toggle"
                                                    invisible="hide_chatter"/>
-                                            <field name="hide_activity"
+                                            <field name="hide_activity" widget="boolean_toggle"
                                                    invisible="hide_chatter"/>
-                                            <field name="hide_followers"
+                                            <field name="hide_followers" widget="boolean_toggle"
                                                    invisible="hide_chatter"/>
                                         </group>
                                     </group>
                                     <group>
                                         <group string="Hide View Types">
-                                            <field name="hide_kanban"/>
-                                            <field name="hide_pivot"/>
-                                            <field name="hide_graph"/>
-                                            <field name="hide_calendar"/>
-                                            <field name="hide_activity_view"/>
-                                            <field name="hide_map"/>
+                                            <field name="hide_kanban" widget="boolean_toggle"/>
+                                            <field name="hide_pivot" widget="boolean_toggle"/>
+                                            <field name="hide_graph" widget="boolean_toggle"/>
+                                            <field name="hide_calendar" widget="boolean_toggle"/>
+                                            <field name="hide_activity_view" widget="boolean_toggle"/>
+                                            <field name="hide_map" widget="boolean_toggle"/>
                                         </group>
                                         <group string="Search &amp; Extras">
-                                            <field name="hide_spreadsheet"/>
-                                            <field name="hide_favourites"/>
+                                            <field name="hide_spreadsheet" widget="boolean_toggle"/>
+                                            <field name="hide_favourites" widget="boolean_toggle"/>
                                         </group>
                                     </group>
                                     <separator string="Reports &amp; Actions to Hide"/>
                                     <group>
                                         <field name="hidden_report_ids"
                                                widget="many2many_tags"
-                                               options="{'no_create': True}"/>
+                                               options="{'no_create': True}"
+                                               placeholder="Reports removed from the Print menu"/>
                                         <field name="hidden_action_ids"
                                                widget="many2many_tags"
-                                               options="{'no_create': True}"/>
+                                               options="{'no_create': True}"
+                                               placeholder="Entries removed from the Action menu"/>
                                     </group>
+                                    <div class="alert alert-info mb-0" role="alert"
+                                         invisible="not readonly">
+                                        <i class="fa fa-info-circle me-1" role="img"
+                                           aria-label="Info" title="Info"/>
+                                        <b>Read-only</b> already blocks create, edit
+                                        and delete on this model, server-side.
+                                    </div>
                                 </form>
                             </field>
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="model_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                One line per model. Use this to take away buttons
+                                (Create, Delete, Export...), whole view types, the
+                                chatter, or specific reports — enforced on the
+                                server, not just hidden in the interface.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not model_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Open a line to change what it restricts. Every
+                                switch here is enforced server-side, so it holds
+                                over XML-RPC and the API too.
+                            </div>
                         </page>
 
                         <page string="Fields" name="fields">
-                            <field name="field_rule_ids">
+                            <field name="field_rule_ids"
+                                   context="{'default_model_id': recent_model_id}">
                                 <list editable="bottom">
-                                    <field name="model_id"/>
+                                    <field name="model_id"
+                                           options="{'no_create': True}"/>
                                     <field name="field_id"
                                            options="{'no_create': True}"/>
                                     <field name="mode"/>
-                                    <field name="no_create"/>
-                                    <field name="no_open"/>
-                                    <field name="mask_char" optional="hide"/>
-                                    <field name="mask_show_last" optional="hide"/>
                                     <field name="condition"
-                                           placeholder="e.g. state == 'done'"/>
+                                           placeholder="always — or e.g. state == 'done'"/>
+                                    <field name="no_create" optional="show"/>
+                                    <field name="no_open" optional="show"/>
+                                    <field name="mask_char"
+                                           invisible="mode != 'masked'"/>
+                                    <field name="mask_show_last"
+                                           invisible="mode != 'masked'"/>
                                 </list>
                             </field>
-                            <p class="text-muted">
-                                An <b>Invisible</b> field is also removed from list
-                                columns, search filters, group-by and server-side
-                                export. A <b>Condition</b> (optional) applies the
-                                mode only when the expression is truthy.
-                            </p>
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="field_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                <b>Invisible</b> also drops the field from list
+                                columns, search, group-by and server-side export.
+                                <b>Masked</b> shows it read-only with the value
+                                hidden (useful for salaries or IBANs). Leave
+                                <b>Condition</b> empty to apply always.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not field_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                <b>Invisible</b> also drops the field from export,
+                                search and group-by. A <b>Condition</b> is a Python
+                                expression on the record, e.g.
+                                <code>state == 'done'</code>.
+                            </div>
                         </page>
 
-                        <page string="Buttons / Tabs / Filters" name="elements">
-                            <field name="element_rule_ids">
+                        <page string="Buttons &amp; Tabs" name="elements">
+                            <field name="element_rule_ids"
+                                   context="{'default_model_id': recent_model_id}">
                                 <list editable="bottom">
-                                    <field name="model_id"/>
+                                    <field name="model_id"
+                                           options="{'no_create': True}"/>
                                     <field name="element_type"/>
                                     <field name="selector"/>
                                     <field name="mode"/>
                                     <field name="condition"
-                                           placeholder="e.g. state != 'draft'"/>
+                                           placeholder="always — or e.g. state != 'draft'"/>
                                 </list>
                             </field>
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="element_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Hide a single header button, a notebook tab, a
+                                search filter or a group-by option. Turn on
+                                developer mode and hover an element to read its
+                                technical name — that name is the selector.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not element_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Selectors are technical names, not labels — turn on
+                                developer mode and hover an element to read its
+                                name. Notebook tabs also accept their visible label.
+                            </div>
                         </page>
 
-                        <page string="Records (Conditions)" name="domains">
-                            <field name="domain_rule_ids">
+                        <page string="Records" name="domains">
+                            <field name="domain_rule_ids"
+                                   context="{'default_model_id': recent_model_id}">
                                 <list>
                                     <field name="name"/>
                                     <field name="model_id"/>
-                                    <field name="perm_read"/>
-                                    <field name="perm_create"/>
-                                    <field name="perm_write"/>
-                                    <field name="perm_unlink"/>
-                                    <field name="is_soft"/>
+                                    <field name="perm_read" string="Hide"/>
+                                    <field name="perm_create" string="Block Create"/>
+                                    <field name="perm_write" string="Block Edit"/>
+                                    <field name="perm_unlink" string="Block Delete"/>
+                                    <field name="is_soft" string="Hide Only"/>
                                 </list>
                                 <form>
                                     <group>
-                                        <field name="name"/>
-                                        <field name="model_id"/>
-                                        <field name="model_name" invisible="1"/>
+                                        <group>
+                                            <field name="name"
+                                                   placeholder="e.g. Only my own orders"/>
+                                            <field name="model_id"
+                                                   options="{'no_create': True}"/>
+                                            <field name="model_name" invisible="1"/>
+                                        </group>
+                                        <group string="Restrict">
+                                            <field name="perm_read" widget="boolean_toggle"/>
+                                            <field name="perm_create" widget="boolean_toggle"/>
+                                            <field name="perm_write" widget="boolean_toggle"/>
+                                            <field name="perm_unlink" widget="boolean_toggle"/>
+                                            <field name="is_soft" widget="boolean_toggle"/>
+                                        </group>
                                     </group>
-                                    <group string="Restrict">
-                                        <field name="perm_read"/>
-                                        <field name="perm_create"/>
-                                        <field name="perm_write"/>
-                                        <field name="perm_unlink"/>
-                                        <field name="is_soft"/>
-                                    </group>
-                                    <group string="Hierarchy Access">
-                                        <field name="use_hierarchy"/>
+                                    <separator string="Which Records?"/>
+                                    <group>
+                                        <field name="use_hierarchy" widget="boolean_toggle"/>
                                         <field name="hierarchy_field_id"
                                                invisible="not use_hierarchy"
                                                required="use_hierarchy"
@@ -234,80 +384,139 @@
                                                invisible="not use_hierarchy"/>
                                         <field name="hierarchy_field_name" invisible="1"/>
                                     </group>
-                                    <separator string="Restricted Records (Domain)"
-                                               invisible="use_hierarchy"/>
+                                    <div class="alert alert-info" role="alert"
+                                         invisible="not use_hierarchy">
+                                        <i class="fa fa-info-circle me-1" role="img"
+                                           aria-label="Info" title="Info"/>
+                                        The user keeps their own records (and their
+                                        team's, on the subordinates setting) and is
+                                        restricted from everyone else's. No domain
+                                        to write.
+                                    </div>
                                     <field name="domain" widget="domain"
                                            options="{'model': 'model_name'}"
                                            invisible="use_hierarchy"/>
-                                    <p class="text-muted" invisible="use_hierarchy">
-                                        Records matching this domain are restricted.
-                                        Dynamic helpers are available, e.g.
-                                        <code>[('user_id','!=',uid)]</code> or
+                                    <div class="text-muted" invisible="use_hierarchy">
+                                        Records <b>matching</b> this filter are the
+                                        restricted ones. Dynamic helpers work here,
+                                        e.g. <code>[('user_id','!=',uid)]</code> or
                                         <code>[('date','&lt;', (context_today() - relativedelta(days=30)))]</code>.
-                                    </p>
+                                    </div>
                                 </form>
                             </field>
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="domain_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Restrict <b>which records</b> a person may touch —
+                                "only their own orders", "nothing older than 30
+                                days". <b>Hide Only</b> makes a rule declutter the
+                                list without ever raising an error.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not domain_rule_ids">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Records <b>matching</b> a rule are the restricted
+                                ones. The rule name is what the user sees in the
+                                refusal message, so word it as the reason.
+                            </div>
                         </page>
 
-                        <page string="Scheduling" name="scheduling">
+                        <page string="Validity" name="scheduling">
                             <group>
-                                <group string="Validity Window">
+                                <group string="Date Range">
                                     <field name="date_start"/>
                                     <field name="date_end"/>
                                     <field name="restriction_type" readonly="1"/>
                                 </group>
                                 <group string="Daily Time Window">
-                                    <field name="restriction_time_based"/>
+                                    <field name="restriction_time_based"
+                                           widget="boolean_toggle"/>
                                     <field name="time_start" widget="float_time"
                                            invisible="not restriction_time_based"/>
                                     <field name="time_end" widget="float_time"
                                            invisible="not restriction_time_based"/>
-                                    <field name="tz" invisible="not restriction_time_based"/>
+                                    <field name="tz" invisible="not restriction_time_based"
+                                           placeholder="The user's own timezone"/>
                                 </group>
                             </group>
-                            <div class="alert alert-info" role="alert"
+                            <div class="alert alert-info mt-2" role="alert"
+                                 invisible="date_start or date_end or restriction_time_based">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Leave this tab empty and the profile simply applies
+                                all the time. Set an expiry for temporary access
+                                (a contractor, an audit) — it stops applying the
+                                moment it passes and is auto-archived afterwards.
+                            </div>
+                            <div class="text-muted small mt-2"
                                  invisible="not date_end">
-                                Expired profiles are auto-revoked (deactivated) by
-                                the scheduled action, and are ignored immediately
-                                once the expiry passes.
+                                <i class="fa fa-clock-o me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                This profile stops applying the moment the expiry
+                                passes, and the scheduled action archives it
+                                shortly after.
+                            </div>
+                            <div class="text-muted small mt-2"
+                                 invisible="not restriction_time_based">
+                                <i class="fa fa-clock-o me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Outside the daily window the profile simply stops
+                                applying, so the user regains normal access — it
+                                does not lock them out. An end earlier than the
+                                start spans midnight (22:00 → 06:00).
                             </div>
                         </page>
 
-                        <page string="User &amp; Global" name="global">
+                        <page string="All Models" name="global">
+                            <div class="alert alert-info" role="alert">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Everything here applies to <b>every model at once</b>,
+                                so you do not have to list them one by one. A switch
+                                set here cannot be re-enabled for a single model in
+                                the <b>Models</b> tab — restrict per model there
+                                instead when you need exceptions.
+                            </div>
                             <group>
-                                <group string="User Level">
-                                    <field name="is_readonly_user"/>
-                                    <field name="disable_developer_mode"/>
-                                    <field name="disable_login"/>
+                                <group string="Chatter">
+                                    <field name="hide_chatter" widget="boolean_toggle"/>
+                                    <field name="hide_send_message" widget="boolean_toggle"
+                                           invisible="hide_chatter"/>
+                                    <field name="hide_log_note" widget="boolean_toggle"
+                                           invisible="hide_chatter"/>
+                                    <field name="hide_activity" widget="boolean_toggle"
+                                           invisible="hide_chatter"/>
+                                    <field name="hide_followers" widget="boolean_toggle"
+                                           invisible="hide_chatter"/>
                                 </group>
-                                <group string="All Models (Global)">
-                                    <field name="hide_import"/>
-                                    <field name="hide_export"/>
-                                    <field name="hide_add_property"/>
-                                    <field name="hide_search_panel"/>
-                                    <field name="hide_spreadsheet"/>
-                                    <field name="hide_favourites"/>
+                                <group string="Import &amp; Export">
+                                    <field name="hide_import" widget="boolean_toggle"/>
+                                    <field name="hide_export" widget="boolean_toggle"/>
+                                    <field name="hide_spreadsheet" widget="boolean_toggle"/>
                                 </group>
                             </group>
-                            <group string="Global Chatter">
-                                <group>
-                                    <field name="hide_chatter"/>
-                                    <field name="hide_send_message"
-                                           invisible="hide_chatter"/>
-                                    <field name="hide_log_note"
-                                           invisible="hide_chatter"/>
-                                </group>
-                                <group>
-                                    <field name="hide_activity"
-                                           invisible="hide_chatter"/>
-                                    <field name="hide_followers"
-                                           invisible="hide_chatter"/>
+                            <group>
+                                <group string="Search &amp; Views">
+                                    <field name="hide_search_panel" widget="boolean_toggle"/>
+                                    <field name="hide_favourites" widget="boolean_toggle"/>
+                                    <field name="hide_add_property" widget="boolean_toggle"/>
                                 </group>
                             </group>
                         </page>
 
                         <page string="Notes" name="notes">
-                            <field name="note" placeholder="Internal notes..."/>
+                            <field name="note"
+                                   placeholder="Why does this profile exist? Who asked for it, and when can it be removed?"/>
+                            <div class="text-muted small mt-2">
+                                <i class="fa fa-info-circle me-1" role="img"
+                                   aria-label="Info" title="Info"/>
+                                Notes are for administrators only — the restricted
+                                users never see them. Recording who asked for a
+                                profile is what makes an access review possible
+                                later.
+                            </div>
                         </page>
                     </notebook>
                 </sheet>
@@ -321,8 +530,11 @@
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Create your first access profile</p>
-            <p>Pick the users or groups it applies to, then define what they may
-               see and do across menus, models, fields, records and chatter.</p>
+            <p>Pick the people it covers — a few users, or a whole group in one go —
+               then take away what they should not see: menus, buttons, fields,
+               records, reports or the chatter.</p>
+            <p>Everything is enforced on the server, so the interface never shows
+               something the database would refuse.</p>
         </field>
     </record>
 </odoo>

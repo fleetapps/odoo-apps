@@ -81,7 +81,7 @@
                             domain="[('state', '=', 'imported')]"/>
                     <filter name="filter_has_unmatched" string="Has Unmatched"
                             domain="[('unmatched_count', '&gt;', 0)]"/>
-                    <group expand="0" string="Group By">
+                    <group name="group_by">
                         <filter name="group_instance" string="Store"
                                 context="{'group_by': 'instance_id'}"/>
                         <filter name="group_state" string="Status"

@@ -21,12 +21,16 @@ class AccessFieldRule(models.Model):
         "access.manager.profile", required=True, ondelete="cascade", index=True)
     model_id = fields.Many2one(
         "ir.model", string="Model", required=True, ondelete="cascade",
-        domain="[('transient', '=', False)]")
+        domain="[('transient', '=', False)]",
+        help="The model the field belongs to, e.g. Sales Order. Pick it first "
+             "- it narrows the field list below.")
     model_name = fields.Char(
         related="model_id.model", store=True, index=True, string="Model Name")
     field_id = fields.Many2one(
         "ir.model.fields", string="Field", required=True, ondelete="cascade",
-        domain="[('model_id', '=', model_id)]")
+        domain="[('model_id', '=', model_id)]",
+        help="The field to restrict. The rule follows this field into every "
+             "view of the model - form, list, kanban and search alike.")
     field_name = fields.Char(
         related="field_id.name", store=True, string="Field Name")
 
@@ -61,10 +65,10 @@ class AccessFieldRule(models.Model):
              "e.g. state == 'done'. When set, the chosen mode is applied only "
              "when the expression is truthy. Leave empty to always apply.")
 
-    _sql_constraints = [
-        ("field_mode_uniq", "unique(profile_id, field_id, mode)",
-         "This field already has a rule with the same mode in this profile."),
-    ]
+    _field_mode_uniq = models.Constraint(
+        "UNIQUE (profile_id, field_id, mode)",
+        "This field already has a rule with the same mode in this profile.",
+    )
 
     @api.onchange("model_id")
     def _onchange_model_id(self):

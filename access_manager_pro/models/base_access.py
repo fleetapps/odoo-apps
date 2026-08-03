@@ -30,6 +30,11 @@ from odoo.tools.safe_eval import safe_eval
 
 from .access_profile import SKIP_KEY
 
+try:  # Odoo 19 exposes the domain AST; 17/18 only ever pass list domains.
+    from odoo.fields import Domain
+except ImportError:  # pragma: no cover - Odoo < 19
+    Domain = None
+
 _logger = logging.getLogger(__name__)
 
 # Technical models a read-only user must still be able to write to, otherwise
@@ -151,23 +156,31 @@ class Base(models.AbstractModel):
         config = self._am_config()
         if self._name not in config["domain_models"]:
             return domain
-        # Public callers pass a list; `_search` itself wraps it in Domain()
-        # afterwards. If a caller hands us a pre-built Domain object (Odoo 19)
-        # or anything non-list, leave it untouched rather than risk mangling it.
-        if not isinstance(domain, (list, tuple)):
-            return domain
         eval_ctx = self._am_domain_eval_context()
-        exclusions = []
+        restrictions = []
         for rule in config["domains"].get(self._name, ()):
             if not rule["read"]:
                 continue
             rule_domain = self._am_eval_domain(rule["domain"], eval_ctx)
-            if not rule_domain:
-                continue
-            # Hide records matching the restriction: AND NOT(rule_domain).
-            exclusions.append(["!"] + self._am_normalize_domain(rule_domain))
-        if not exclusions:
+            if rule_domain:
+                restrictions.append(rule_domain)
+        if not restrictions:
             return domain
+
+        # Hide the matching records: AND NOT(rule_domain) for every rule.
+        #
+        # Odoo 19 hands ``_search`` a ``Domain`` object on a number of internal
+        # paths (relational field domains, ``any`` sub-queries, group
+        # expansion); only public callers still pass a list. Combine in
+        # whichever form we were handed, so the restriction holds on every path
+        # instead of quietly dropping out on the ones that are not lists.
+        if Domain is not None and isinstance(domain, Domain):
+            for rule_domain in restrictions:
+                domain &= ~Domain(rule_domain)
+            return domain
+        if not isinstance(domain, (list, tuple)):
+            return domain
+        exclusions = [["!"] + self._am_normalize_domain(d) for d in restrictions]
         return self._am_and_domains([list(domain)] + exclusions)
 
     # ------------------------------------------------------------------ #

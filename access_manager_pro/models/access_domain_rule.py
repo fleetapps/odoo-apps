@@ -30,12 +30,16 @@ class AccessDomainRule(models.Model):
     _inherit = "access.manager.cache.mixin"
     _description = "Access Manager - Record (Domain) Rule"
 
-    name = fields.Char(required=True, default="Restriction")
+    name = fields.Char(
+        required=True, default="Restriction",
+        help="Shown to the user in the error message when the rule blocks "
+             "them, so word it as the reason, e.g. 'Only your own orders'.")
     profile_id = fields.Many2one(
         "access.manager.profile", required=True, ondelete="cascade", index=True)
     model_id = fields.Many2one(
         "ir.model", string="Model", required=True, ondelete="cascade",
-        domain="[('transient', '=', False)]")
+        domain="[('transient', '=', False)]",
+        help="The model whose records are restricted, e.g. Sales Order.")
     model_name = fields.Char(
         related="model_id.model", store=True, index=True, string="Model Name")
 
@@ -58,15 +62,25 @@ class AccessDomainRule(models.Model):
     hierarchy_mode = fields.Selection(
         [("own", "Own records only"),
          ("subordinates", "Own + subordinates (employee hierarchy)")],
-        default="subordinates", string="Scope")
+        default="subordinates", string="Scope",
+        help="Own records only: strictly their own. Own + subordinates: also "
+             "the records of everyone reporting to them, read from the "
+             "manager chain in Employees.")
     hierarchy_field_name = fields.Char(
         related="hierarchy_field_id.name", store=True)
     perm_read = fields.Boolean(
         string="Restrict Read", default=True,
         help="Hide the matching records from the targeted users.")
-    perm_create = fields.Boolean(string="Restrict Create")
-    perm_write = fields.Boolean(string="Restrict Edit")
-    perm_unlink = fields.Boolean(string="Restrict Delete")
+    perm_create = fields.Boolean(
+        string="Restrict Create",
+        help="Refuse creating a record that would match this rule, e.g. an "
+             "order assigned to somebody else.")
+    perm_write = fields.Boolean(
+        string="Restrict Edit",
+        help="Refuse editing a matching record. Combine with Restrict Read to "
+             "hide it outright, or leave Read off to show it read-only.")
+    perm_unlink = fields.Boolean(
+        string="Restrict Delete", help="Refuse deleting a matching record.")
     is_soft = fields.Boolean(
         string="Soft Restriction",
         help="Only hide the matching records; never raise an error on "

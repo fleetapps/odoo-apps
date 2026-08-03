@@ -49,16 +49,35 @@ class AccessProfile(models.Model):
     _description = "Access Manager Profile"
     _order = "sequence, name"
 
-    name = fields.Char(required=True, translate=True)
-    active = fields.Boolean(default=True)
-    sequence = fields.Integer(default=10)
+    name = fields.Char(
+        required=True, translate=True,
+        help="Name this after the people it covers and what it takes away, "
+             "e.g. 'Warehouse staff - no pricing'. It is never shown to the "
+             "restricted users.")
+    active = fields.Boolean(
+        default=True,
+        help="Archiving a profile lifts every restriction it carries, "
+             "immediately and for everyone it targets.")
+    sequence = fields.Integer(
+        default=10,
+        help="Order in which profiles are listed. When several profiles target "
+             "the same user their restrictions add up, so the order is "
+             "presentation only - it never decides which one wins.")
     note = fields.Text(help="Free notes for administrators. Not shown to end users.")
 
     # --- Targeting -----------------------------------------------------------
-    user_ids = fields.Many2many("res.users", "access_profile_user_rel",
-                                "profile_id", "user_id", string="Users")
-    group_ids = fields.Many2many("res.groups", "access_profile_group_rel",
-                                 "profile_id", "group_id", string="Groups")
+    user_ids = fields.Many2many(
+        "res.users", "access_profile_user_rel", "profile_id", "user_id",
+        string="Users",
+        help="Individual users this profile restricts. Use Groups instead when "
+             "the rule really belongs to a role - new joiners are then covered "
+             "automatically.")
+    group_ids = fields.Many2many(
+        "res.groups", "access_profile_group_rel", "profile_id", "group_id",
+        string="Groups",
+        help="Every user of these groups is restricted, including users who "
+             "get the group indirectly through another one. This is the way to "
+             "restrict a whole role at once.")
     company_ids = fields.Many2many(
         "res.company", "access_profile_company_rel", "profile_id", "company_id",
         string="Companies",
@@ -78,13 +97,18 @@ class AccessProfile(models.Model):
 
     # --- Rule lines ----------------------------------------------------------
     model_rule_ids = fields.One2many(
-        "access.manager.model.rule", "profile_id", string="Model Rules")
+        "access.manager.model.rule", "profile_id", string="Model Rules",
+        help="Whole-model restrictions: buttons, view types, chatter, reports.")
     field_rule_ids = fields.One2many(
-        "access.manager.field.rule", "profile_id", string="Field Rules")
+        "access.manager.field.rule", "profile_id", string="Field Rules",
+        help="Per-field restrictions: hide, lock, require or mask a field.")
     element_rule_ids = fields.One2many(
-        "access.manager.element.rule", "profile_id", string="View Element Rules")
+        "access.manager.element.rule", "profile_id", string="View Element Rules",
+        help="Single buttons, notebook tabs, search filters and group-by "
+             "options to hide or disable.")
     domain_rule_ids = fields.One2many(
-        "access.manager.domain.rule", "profile_id", string="Record (Domain) Rules")
+        "access.manager.domain.rule", "profile_id", string="Record (Domain) Rules",
+        help="Which records the user may see and touch, e.g. only their own.")
 
     # --- User-level switches -------------------------------------------------
     is_readonly_user = fields.Boolean(
@@ -124,29 +148,77 @@ class AccessProfile(models.Model):
     restriction_type = fields.Selection(
         [("user", "User"), ("group", "Group"), ("mixed", "User & Group"),
          ("none", "Unassigned")],
-        compute="_compute_restriction_type", store=True, string="Applies Via")
+        compute="_compute_restriction_type", store=True, string="Applies Via",
+        help="How this profile reaches people: named users, whole groups, or "
+             "both. 'Unassigned' means it targets nobody and does nothing.")
     state = fields.Selection(
         [("scheduled", "Scheduled"), ("active", "Active"),
          ("expiring", "Expiring"), ("expired", "Expired"),
          ("inactive", "Inactive")],
-        compute="_compute_state", string="Status")
+        compute="_compute_state", string="Status",
+        help="Scheduled: starts later. Active: applying now. Expiring: ends "
+             "within 7 days. Expired: no longer applying, awaiting "
+             "auto-archive. Inactive: archived, restricts nothing.")
+
+    # --- Form helpers (presentation only, never stored) ----------------------
+    summary = fields.Char(
+        compute="_compute_summary", string="Effect",
+        help="Plain-language recap of everything this profile currently does.")
+    recent_model_id = fields.Many2one(
+        "ir.model", compute="_compute_recent_model_id", string="Last Model Used",
+        help="Technical field: the model of the most recently added rule line. "
+             "New rule lines default to it so the model is not re-picked for "
+             "every line of the same model.")
 
     # --- Global (all-model) switches -----------------------------------------
-    hide_chatter = fields.Boolean(string="Hide Chatter (all models)")
-    hide_send_message = fields.Boolean(string="Hide 'Send message' (all models)")
-    hide_log_note = fields.Boolean(string="Hide 'Log note' (all models)")
-    hide_activity = fields.Boolean(string="Hide 'Activities' (all models)")
-    hide_followers = fields.Boolean(string="Hide Followers (all models)")
-    hide_import = fields.Boolean(string="Hide Import (all models)")
-    hide_export = fields.Boolean(string="Hide Export (all models)")
-    hide_add_property = fields.Boolean(string="Hide 'Add a Property' (all models)")
-    hide_search_panel = fields.Boolean(string="Hide Search Panel (all models)")
-    hide_spreadsheet = fields.Boolean(string="Hide 'Insert in Spreadsheet' (all models)")
-    hide_favourites = fields.Boolean(string="Hide Favorites (all models)")
+    hide_chatter = fields.Boolean(
+        string="Hide Chatter",
+        help="Removes the whole chatter panel everywhere - messages, notes, "
+             "activities and followers, on every model.")
+    hide_send_message = fields.Boolean(
+        string="Hide 'Send message'",
+        help="Keeps the chatter everywhere but removes the Send message "
+             "button, so this user can never email a contact from a record.")
+    hide_log_note = fields.Boolean(
+        string="Hide 'Log note'",
+        help="Keeps the chatter everywhere but removes the Log note button.")
+    hide_activity = fields.Boolean(
+        string="Hide 'Activities'",
+        help="Keeps the chatter everywhere but removes the Activities button, "
+             "so this user cannot schedule follow-ups on any model.")
+    hide_followers = fields.Boolean(
+        string="Hide Followers",
+        help="Keeps the chatter everywhere but hides the followers avatars "
+             "and the Add followers button.")
+    hide_import = fields.Boolean(
+        string="Hide Import",
+        help="Removes the Import records link from every list view.")
+    hide_export = fields.Boolean(
+        string="Hide Export",
+        help="Removes Export everywhere and blocks it server-side, so it "
+             "cannot be reached over XML-RPC or by URL either.")
+    hide_add_property = fields.Boolean(
+        string="Hide 'Add a Property'",
+        help="Removes the Add a Property button, which would otherwise let "
+             "the user add custom fields to records.")
+    hide_search_panel = fields.Boolean(
+        string="Hide Search Panel",
+        help="Removes the left-hand filter panel of list and kanban views.")
+    hide_spreadsheet = fields.Boolean(
+        string="Hide 'Insert in Spreadsheet'",
+        help="Removes Insert in Spreadsheet everywhere. Worth pairing with "
+             "Hide Export - it is the usual way around an export restriction.")
+    hide_favourites = fields.Boolean(
+        string="Hide Favorites",
+        help="Removes the Favorites menu from the search bar on every model.")
 
-    _sql_constraints = [
-        ("name_uniq", "unique(name)", "An access profile with this name already exists."),
-    ]
+    # Odoo 19 no longer reads ``_sql_constraints`` (it only logs "no longer
+    # supported" and builds the table objects from ``models.Constraint``).
+    # The database identifier stays ``access_manager_profile_name_uniq``.
+    _name_uniq = models.Constraint(
+        "UNIQUE (name)",
+        "An access profile with this name already exists.",
+    )
 
     # ------------------------------------------------------------------ #
     #  Targeting helpers
@@ -161,6 +233,20 @@ class AccessProfile(models.Model):
         if hasattr(user, "_get_group_ids"):
             return user._get_group_ids()
         return user.groups_id.ids
+
+    @api.model
+    def _group_user_ids(self, groups):
+        """Return the ids of the users targeted through ``groups``.
+
+        The reverse of :meth:`_user_group_ids`, so it must count *implied*
+        membership too: a user of a group that implies one of ``groups`` is
+        matched by ``_profiles_for`` and is therefore genuinely restricted.
+        Odoo 19 renamed ``res.groups.users`` to ``user_ids`` and added
+        ``all_user_ids`` (implied membership included); 17 and 18 only have the
+        direct ``users`` m2m.
+        """
+        field = "all_user_ids" if "all_user_ids" in groups._fields else "users"
+        return set(groups.mapped(field).ids)
 
     @api.model
     def _tz_selection(self):
@@ -190,6 +276,62 @@ class AccessProfile(models.Model):
                 profile.state = "expiring"
             else:
                 profile.state = "active"
+
+    @api.depends("is_readonly_user", "disable_login", "hidden_menu_ids",
+                 "hide_apps_menu", "model_rule_ids", "field_rule_ids",
+                 "element_rule_ids", "domain_rule_ids", "date_end",
+                 "restriction_time_based")
+    def _compute_summary(self):
+        """One line telling an administrator what this profile actually does.
+
+        Reading eight tabs to answer "what does this profile restrict?" is the
+        single biggest friction in a rule editor, so the answer is kept at the
+        top of the form and updates as the profile is edited.
+        """
+        for profile in self:
+            parts = []
+            if profile.is_readonly_user:
+                parts.append(_("read-only user"))
+            if profile.disable_login:
+                parts.append(_("login blocked"))
+            if profile.hide_apps_menu:
+                parts.append(_("Apps menu hidden"))
+            if profile.hidden_menu_ids:
+                parts.append(_("%(count)s menus", count=len(profile.hidden_menu_ids)))
+            if profile.model_rule_ids:
+                parts.append(_("%(count)s models", count=len(profile.model_rule_ids)))
+            if profile.field_rule_ids:
+                parts.append(_("%(count)s fields", count=len(profile.field_rule_ids)))
+            if profile.element_rule_ids:
+                parts.append(_("%(count)s buttons/tabs",
+                               count=len(profile.element_rule_ids)))
+            if profile.domain_rule_ids:
+                parts.append(_("%(count)s record rules",
+                               count=len(profile.domain_rule_ids)))
+            if profile.restriction_time_based:
+                parts.append(_("daily time window"))
+            if profile.date_end:
+                parts.append(_("expires %(date)s",
+                               date=fields.Date.to_string(profile.date_end)))
+            profile.summary = " · ".join(parts)
+
+    @api.depends("model_rule_ids.model_id", "field_rule_ids.model_id",
+                 "element_rule_ids.model_id", "domain_rule_ids.model_id")
+    def _compute_recent_model_id(self):
+        """The model to pre-select on the next rule line.
+
+        Rules are almost always written in bursts against one model (hide three
+        fields and two buttons on Sales Orders), so re-picking the model on
+        every line is pure friction.
+        """
+        for profile in self:
+            recent = self.env["ir.model"]
+            for lines in (profile.domain_rule_ids, profile.element_rule_ids,
+                          profile.field_rule_ids, profile.model_rule_ids):
+                if lines and lines[-1].model_id:
+                    recent = lines[-1].model_id
+                    break
+            profile.recent_model_id = recent
 
     def _within_time_window(self, profile, now_utc):
         """Whether ``now_utc`` falls in the profile's daily time window."""
@@ -299,10 +441,10 @@ class AccessProfile(models.Model):
         for profile in self:
             data = {f: profile[f] for f in self._EXPORT_PROFILE_FIELDS}
             data["users"] = profile.user_ids.mapped("login")
-            data["groups"] = [g._get_external_id().get(g.id) or g.full_name
+            data["groups"] = [g.get_external_id().get(g.id) or g.full_name
                               for g in profile.group_ids]
             data["companies"] = profile.company_ids.mapped("name")
-            data["menus"] = [m._get_external_id().get(m.id) for m in profile.hidden_menu_ids]
+            data["menus"] = [m.get_external_id().get(m.id) for m in profile.hidden_menu_ids]
             for o2m, field_names in self._EXPORT_RULE_FIELDS.items():
                 rows = []
                 for rule in profile[o2m]:
@@ -310,9 +452,9 @@ class AccessProfile(models.Model):
                     if "model_name" in rule._fields:
                         row["model"] = rule.model_name
                     if o2m == "model_rule_ids":
-                        row["reports"] = [r._get_external_id().get(r.id)
+                        row["reports"] = [r.get_external_id().get(r.id)
                                           for r in rule.hidden_report_ids]
-                        row["actions"] = [a._get_external_id().get(a.id)
+                        row["actions"] = [a.get_external_id().get(a.id)
                                           for a in rule.hidden_action_ids]
                     rows.append(row)
                 data[o2m] = rows

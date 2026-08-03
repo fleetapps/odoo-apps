@@ -131,7 +131,7 @@ class AccessDashboard(models.Model):
         """{user_id: number of active profiles affecting them} (direct + group)."""
         counter = Counter()
         for p in profiles:
-            uids = set(p.user_ids.ids) | set(p.group_ids.users.ids)
+            uids = set(p.user_ids.ids) | self._group_user_ids(p.group_ids)
             for uid in uids:
                 counter[uid] += 1
         return counter
@@ -221,7 +221,7 @@ class AccessDashboard(models.Model):
             models |= set(self.env[model].sudo().search([]).mapped("model_name"))
 
         affected = set(active.mapped("user_ids").ids)
-        affected |= set(active.mapped("group_ids.users").ids)
+        affected |= self._group_user_ids(active.mapped("group_ids"))
 
         return {
             "config_score": int(score),

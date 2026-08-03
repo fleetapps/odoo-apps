@@ -85,7 +85,7 @@
                             domain="[('direction', '=', 'in')]"/>
                     <filter name="filter_export" string="Exports"
                             domain="[('direction', '=', 'out')]"/>
-                    <group expand="0" string="Group By">
+                    <group name="group_by">
                         <filter name="group_state" string="Status"
                                 context="{'group_by': 'state'}"/>
                         <filter name="group_kind" string="Kind"

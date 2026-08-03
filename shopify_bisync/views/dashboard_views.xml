@@ -36,7 +36,7 @@
                     <field name="country_id"/>
                     <filter name="filter_confirmed" string="Confirmed"
                             domain="[('state', 'not in', ('draft', 'sent', 'cancel'))]"/>
-                    <group expand="0" string="Group By">
+                    <group name="group_by">
                         <filter name="group_instance" string="Store"
                                 context="{'group_by': 'instance_id'}"/>
                         <filter name="group_category" string="Category"

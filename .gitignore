@@ -219,3 +219,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Claude Code session state. shopify_bisync/.claude/worktrees/ holds full git
+# worktrees — nested checkouts of this repo — which must never be committed.
+.claude/

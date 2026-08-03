@@ -21,7 +21,8 @@ class AccessElementRule(models.Model):
         "access.manager.profile", required=True, ondelete="cascade", index=True)
     model_id = fields.Many2one(
         "ir.model", string="Model", required=True, ondelete="cascade",
-        domain="[('transient', '=', False)]")
+        domain="[('transient', '=', False)]",
+        help="The model whose views contain the element, e.g. Sales Order.")
     model_name = fields.Char(
         related="model_id.model", store=True, index=True, string="Model Name")
 
@@ -32,7 +33,9 @@ class AccessElementRule(models.Model):
          ("groupby", "Group By option (by name)"),
          ("kanban", "Kanban Link / Element (by class or name)"),
          ("xpath", "Custom XPath")],
-        required=True, default="button")
+        required=True, default="button",
+        help="What kind of thing to target. This decides how the selector "
+             "below is interpreted, so pick the type first.")
     selector = fields.Char(
         required=True,
         help="button: the button 'name' attribute (method or action id)\n"
@@ -42,7 +45,10 @@ class AccessElementRule(models.Model):
              "xpath: any XPath, e.g. //group[@name='pricing']")
     mode = fields.Selection(
         [("invisible", "Hide"), ("readonly", "Disable (read-only)")],
-        required=True, default="invisible")
+        required=True, default="invisible",
+        help="Hide removes the element entirely. Disable leaves it visible but "
+             "inert - useful when its absence would be confusing. Buttons are "
+             "always hidden rather than disabled.")
     condition = fields.Char(
         string="Condition",
         help="Optional Python attribute expression. When set, the element is "

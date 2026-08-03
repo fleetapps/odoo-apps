@@ -35,7 +35,7 @@
                             domain="[('res_model', '=', 'sale.order')]"/>
                     <filter name="filter_partners" string="Customers"
                             domain="[('res_model', '=', 'res.partner')]"/>
-                    <group expand="0" string="Group By">
+                    <group name="group_by">
                         <filter name="group_model" string="Model"
                                 context="{'group_by': 'res_model'}"/>
                         <filter name="group_instance" string="Store"

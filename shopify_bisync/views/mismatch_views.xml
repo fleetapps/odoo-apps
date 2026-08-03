@@ -31,7 +31,7 @@
                     <field name="message"/>
                     <filter name="filter_open" string="Open"
                             domain="[('resolved', '=', False)]"/>
-                    <group expand="0" string="Group By">
+                    <group name="group_by">
                         <filter name="group_kind" string="Kind"
                                 context="{'group_by': 'kind'}"/>
                         <filter name="group_instance" string="Store"
