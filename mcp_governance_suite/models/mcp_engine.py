@@ -7,6 +7,7 @@ https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html
 import ast
 import json
 import time
+from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import AccessError
 
@@ -53,24 +54,48 @@ class MCPEngine(models.AbstractModel):
         start = time.time()
         status, payload = "ok", None
         try:
+            self._check_rate_limit(key)
             handler = getattr(self, f"_tool_{name}", None)
             if not handler:
                 raise AccessError(f"Unknown tool {name}")
             payload = handler(key, args)
         except Exception as e:  # noqa: BLE001 - audited then surfaced
             status, payload = "error", {"error": str(e)}
-        self.env["mcp.audit.log"].sudo().create({
-            "api_key_id": key.id, "user_id": key.user_id.id, "tool": name,
-            "args_json": json.dumps(args)[:4000], "status": status,
-            "duration_ms": int((time.time() - start) * 1000),
-            "tokens_est": max(1, len(json.dumps(payload or {})) // 4),
-        })
+        if self.env["mcp.config"].get("log_requests", True, cast=bool):
+            self.env["mcp.audit.log"].sudo().create({
+                "api_key_id": key.id, "user_id": key.user_id.id, "tool": name,
+                "args_json": json.dumps(args)[:4000], "status": status,
+                "duration_ms": int((time.time() - start) * 1000),
+                "tokens_est": max(1, len(json.dumps(payload or {})) // 4),
+            })
         key.sudo().last_used = fields.Datetime.now()
         return {"content": [{"type": "text",
                              "text": json.dumps(payload, default=str)}],
                 "isError": status == "error"}
 
     # ------------------------------------------------------------- internals
+    def _check_rate_limit(self, key):
+        """Per-key calls/hour ceiling.
+
+        `mcp.scope.rate_limit_per_hour` existed as a field but was never read,
+        so the limit an admin typed in did nothing. The count comes from the
+        audit log, which means the ceiling only holds while request logging is
+        on - the Settings help text says so.
+        """
+        limit = key.scope_id.rate_limit_per_hour or self.env["mcp.config"].get(
+            "rate_limit_per_hour", 500)
+        if not limit or not self.env["mcp.config"].get(
+                "log_requests", True, cast=bool):
+            return
+        since = fields.Datetime.now() - timedelta(hours=1)
+        used = self.env["mcp.audit.log"].sudo().search_count([
+            ("api_key_id", "=", key.id),
+            ("create_date", ">=", since),
+        ])
+        if used >= limit:
+            raise AccessError(
+                f"Rate limit reached for this key: {limit} calls/hour.")
+
     def _scope_line(self, key, model, op):
         line = key.scope_id.line_ids.filtered(lambda l: l.model_name == model)
         if not line or not getattr(line[0], f"can_{op}"):
@@ -91,7 +116,12 @@ class MCPEngine(models.AbstractModel):
         blacklist = set((line.field_blacklist or "").replace(" ", "").split(","))
         fields_ = [f for f in (args.get("fields") or ["display_name"])
                    if f not in blacklist]
-        limit = min(int(args.get("limit") or 20), 200)
+        # Settings > MCP Governance > Limits. Asking for more than the ceiling
+        # is clamped, not refused - a hard error here just makes the model retry.
+        Config = self.env["mcp.config"]
+        default_limit = Config.get("default_record_limit", 10)
+        max_limit = Config.get("max_record_limit", 100)
+        limit = min(int(args.get("limit") or default_limit), max_limit)
         # env(user=key.user) already set by controller: ACLs + ir.rules apply.
         return self.env[model].search_read(domain, fields_, limit=limit)
 

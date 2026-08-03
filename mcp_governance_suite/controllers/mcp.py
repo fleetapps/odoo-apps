@@ -17,19 +17,23 @@ from odoo import http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
-PROTOCOL_VERSION = "2025-03-26"  # VERIFY-ON-BUILD against current MCP spec
+PROTOCOL_VERSION = "2026-07-28"  # current MCP revision; see docs/SPEC_OAUTH_AND_UX.md §1
 
 
 class MCPController(http.Controller):
 
     def _authenticate(self):
+        if not request.env["mcp.config"].sudo().get(
+                "api_key_enabled", True, cast=bool):
+            return None
         auth = request.httprequest.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return None
         key_hash = hashlib.sha256(auth[7:].encode()).hexdigest()
         key = request.env["mcp.api.key"].sudo().search(
-            [("key_hash", "=", key_hash), ("active", "=", True)], limit=1)
-        if not key or key.is_expired():
+            [("key_hash", "=", key_hash), ("key_hash", "!=", False),
+             ("active", "=", True)], limit=1)
+        if not key or not key.is_usable():
             return None
         request.update_env(user=key.user_id.id)
         return key
@@ -42,6 +46,15 @@ class MCPController(http.Controller):
     @http.route("/mcp/v1", type="http", auth="none", methods=["POST"],
                 csrf=False, save_session=False)
     def mcp_endpoint(self, **kw):
+        # Master switch (Settings > MCP Governance > Enable MCP Server). Checked
+        # before auth so a disabled server is not an oracle for valid keys.
+        if not request.env["mcp.config"].sudo().get(
+                "enabled", False, cast=bool):
+            return request.make_json_response(
+                {"error": "mcp_disabled",
+                 "message": "The MCP server is disabled on this Odoo instance."},
+                status=503)
+
         key = self._authenticate()
         if not key:
             return request.make_json_response(

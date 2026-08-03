@@ -155,7 +155,7 @@ class AccessProfile(models.Model):
         [("scheduled", "Scheduled"), ("active", "Active"),
          ("expiring", "Expiring"), ("expired", "Expired"),
          ("inactive", "Inactive")],
-        compute="_compute_state", string="Status",
+        compute="_compute_state", store=True, string="Status",
         help="Scheduled: starts later. Active: applying now. Expiring: ends "
              "within 7 days. Expired: no longer applying, awaiting "
              "auto-archive. Inactive: archived, restricts nothing.")
@@ -261,6 +261,9 @@ class AccessProfile(models.Model):
                 "user" if has_user else
                 "group" if has_group else "none")
 
+    # Stored so the search view can group and filter on it. The depends only
+    # cover edits; the clock moving is not a dependency, so the daily cron
+    # below re-runs this to roll profiles into expiring/expired/active on time.
     @api.depends("active", "date_start", "date_end")
     def _compute_state(self):
         now = fields.Datetime.now()
@@ -387,6 +390,15 @@ class AccessProfile(models.Model):
         ])
         if expired:
             expired.write({"active": False})  # clears cache via the mixin
+
+        # `state` is stored but time-dependent, so nothing invalidates it when
+        # a date_end simply passes. Recompute the profiles that carry a date so
+        # Status stays truthful for grouping and filtering.
+        dated = self.sudo().search([("date_end", "!=", False)]) \
+            | self.sudo().search([("date_start", "!=", False)])
+        if dated:
+            self.env.add_to_compute(self._fields["state"], dated)
+            dated.flush_recordset(["state"])
         return True
 
     @api.model

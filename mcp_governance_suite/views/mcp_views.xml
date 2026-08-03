@@ -16,6 +16,52 @@
         </field>
     </record>
 
+    <!-- There was no form view at all, so the key screen fell back to Odoo's
+         generated form - with no way to actually mint a secret. -->
+    <record id="mcp_api_key_view_form" model="ir.ui.view">
+        <field name="name">mcp.api.key.form</field>
+        <field name="model">mcp.api.key</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_generate_key" type="object"
+                            string="Generate Key" class="btn-primary"
+                            invisible="not id"
+                            confirm="Generating a key invalidates the previous secret for this record. Any client still using it will start failing. Continue?"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Claude Desktop — Finance"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="key_preview">
+                        Save the record, then press <b>Generate Key</b>. The secret is
+                        shown once and only its hash is kept, so there is no way to
+                        recover it later — a lost key is replaced, not looked up.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="scope_id"/>
+                        </group>
+                        <group>
+                            <field name="key_preview" string="Key"/>
+                            <field name="expiry"/>
+                            <field name="last_used"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        Calls made with this key run as the user above, so Odoo's own
+                        access rights and record rules apply on top of the scope. The
+                        scope can only narrow what that user could already do — never
+                        widen it.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="mcp_scope_view_form" model="ir.ui.view">
         <field name="name">mcp.scope.form</field>
         <field name="model">mcp.scope</field>
@@ -142,5 +188,9 @@
     <menuitem id="menu_mcp_approvals" name="Approvals" parent="menu_mcp_root"
               action="mcp_approval_action"/>
     <menuitem id="menu_mcp_audit" name="Audit Log" parent="menu_mcp_root"
-              action="mcp_audit_action" groups="mcp_governance_suite.group_mcp_admin"/>
+              action="mcp_audit_action" groups="mcp_governance_suite.group_mcp_admin"
+              sequence="40"/>
+    <menuitem id="menu_mcp_settings" name="Settings" parent="menu_mcp_root"
+              action="mcp_config_settings_action"
+              groups="mcp_governance_suite.group_mcp_admin" sequence="90"/>
 </odoo>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Settings > MCP Governance.
+         Structure follows Odoo 19's settings arch (app / block / setting), as
+         used by every core module - see addons/stock/views/res_config_settings_views.xml.
+         Without this record the module has no presence in Settings at all;
+         its own top-level menu is not a substitute, because Settings is where
+         an admin looks first. -->
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.mcp</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="40"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="MCP Governance" string="MCP Governance"
+                     name="mcp_governance_suite"
+                     groups="mcp_governance_suite.group_mcp_admin">
+
+                    <block title="Access" name="mcp_access_container">
+                        <setting id="mcp_enabled_setting"
+                                 string="Enable MCP Server"
+                                 help="Serve the /mcp/v1 endpoint. Off means every request is refused, valid key or not.">
+                            <field name="mcp_enabled"/>
+                            <div class="content-group mt8" invisible="not mcp_enabled">
+                                <div class="text-muted">
+                                    Endpoint: <code>/mcp/v1</code> — POST, JSON-RPC 2.0 over Streamable HTTP.
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="mcp_api_key_setting"
+                                 string="API Key Authentication"
+                                 help="Static Bearer tokens for local clients. Each key is bound to one Odoo user and one scope.">
+                            <field name="mcp_api_key_enabled"/>
+                        </setting>
+                    </block>
+
+                    <block title="Permissions" name="mcp_permissions_container">
+                        <setting id="mcp_scopes_setting"
+                                 string="Scopes"
+                                 help="A scope is the allow-list of models and operations a connection may reach. Define one before issuing any key.">
+                            <button name="action_open_mcp_scopes" type="object"
+                                    string="Manage Scopes" icon="fa-shield"
+                                    class="btn-link"/>
+                        </setting>
+                        <setting id="mcp_keys_setting"
+                                 string="API Keys"
+                                 help="Keys inherit the permissions of the Odoo user they are bound to, narrowed by their scope. They can never widen it.">
+                            <button name="action_open_mcp_keys" type="object"
+                                    string="Manage API Keys" icon="fa-key"
+                                    class="btn-link"/>
+                        </setting>
+                    </block>
+
+                    <block title="Limits" name="mcp_limits_container">
+                        <setting id="mcp_record_limit_setting"
+                                 string="Record Limits"
+                                 help="Caps on how much a single search may return. Unbounded reads exhaust the model's context window and cost money.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="mcp_default_record_limit" string="Default"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="mcp_default_record_limit" class="oe_inline"/>
+                                </div>
+                                <div class="row">
+                                    <label for="mcp_max_record_limit" string="Maximum"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="mcp_max_record_limit" class="oe_inline"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="mcp_rate_limit_setting"
+                                 string="Rate Limit"
+                                 help="Calls per hour per key, for scopes that do not set their own. 0 is unlimited.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="mcp_rate_limit_per_hour" string="Calls / hour"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="mcp_rate_limit_per_hour" class="oe_inline"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <block title="Audit" name="mcp_audit_container">
+                        <setting id="mcp_log_setting"
+                                 string="Log Every Request"
+                                 help="One audit row per tool call: which key, which model, allowed or refused. Turning this off is what you would do to hide activity, so it is on by default.">
+                            <field name="mcp_log_requests"/>
+                            <div class="content-group mt8" invisible="not mcp_log_requests">
+                                <div class="row">
+                                    <label for="mcp_log_retention_days" string="Keep for (days)"
+                                           class="col-lg-4 o_light_label"/>
+                                    <field name="mcp_log_retention_days" class="oe_inline"/>
+                                </div>
+                                <button name="action_open_mcp_audit" type="object"
+                                        string="Open Audit Log" icon="fa-list"
+                                        class="btn-link mt8"/>
+                            </div>
+                        </setting>
+                    </block>
+
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Reachable from inside the module too, not only from the Settings app. -->
+    <record id="mcp_config_settings_action" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'mcp_governance_suite'}</field>
+    </record>
+
+</odoo>

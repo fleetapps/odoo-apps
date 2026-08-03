@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import secrets
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class MCPApiKey(models.Model):
@@ -23,14 +23,33 @@ class MCPApiKey(models.Model):
         self.ensure_one()
         return bool(self.expiry and fields.Date.today() > self.expiry)
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        # api.model_create_multi is the documented batch-create decorator (ORM ref)
-        records = super().create(vals_list)
-        for rec in records:
-            raw = "mcp_" + secrets.token_urlsafe(32)
-            rec.key_hash = hashlib.sha256(raw.encode()).hexdigest()
-            rec.key_preview = raw[:8] + "..."
-            # TODO(build): surface `raw` ONCE to the admin (dialog / sticky
-            # notification). Only the sha256 hash is stored at rest.
-        return records
+    def action_generate_key(self):
+        """Mint the secret and show it once, in a sticky notification.
+
+        Generation is an explicit button rather than a side effect of create()
+        because the raw secret is never persisted - only its sha256 - so the
+        one moment it exists has to be a moment the admin is looking at. A
+        second press invalidates the previous secret.
+        """
+        self.ensure_one()
+        raw = "mcp_" + secrets.token_urlsafe(32)
+        self.write({
+            "key_hash": hashlib.sha256(raw.encode()).hexdigest(),
+            "key_preview": raw[:12] + "…",
+        })
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "type": "warning",
+                "title": self.env._("Copy this key now"),
+                "message": self.env._(
+                    "%(key)s\n\nOnly its hash is stored. Closing this notice "
+                    "is the last time this value exists anywhere.", key=raw),
+                "sticky": True,
+            },
+        }
+
+    def is_usable(self):
+        self.ensure_one()
+        return bool(self.key_hash) and self.active and not self.is_expired()

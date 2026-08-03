@@ -18,7 +18,11 @@ class MCPAuditLog(models.Model):
 
     @api.model
     def cron_purge(self):
-        months = int(self.env["ir.config_parameter"].sudo().get_param(
-            "mcp_governance_suite.retention_months", "12"))
-        cutoff = fields.Datetime.now() - relativedelta(months=months)
+        # Was reading `retention_months`, a parameter nothing ever wrote, so
+        # every install silently purged at the 12-month fallback. Now driven by
+        # Settings > MCP Governance > Audit; 0 means keep forever.
+        days = self.env["mcp.config"].get("log_retention_days", 365)
+        if not days:
+            return
+        cutoff = fields.Datetime.now() - relativedelta(days=days)
         self.search([("create_date", "<", cutoff)]).unlink()

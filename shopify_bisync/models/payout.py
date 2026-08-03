@@ -68,14 +68,19 @@ class ShopifyPayout(models.Model):
     adjustment_total = fields.Monetary(currency_field="currency_id")
     transaction_ids = fields.One2many(
         "shopify.bisync.payout.transaction", "payout_id")
-    transaction_count = fields.Integer(compute="_compute_stats")
-    matched_count = fields.Integer(compute="_compute_stats")
-    unmatched_count = fields.Integer(compute="_compute_stats")
+    # Stored: the payout search view filters on unmatched_count, and Odoo
+    # rejects a domain on a non-stored compute at install time
+    # ("Unsearchable field"). The depends below are all stored columns, so
+    # the ORM keeps these in sync on its own.
+    transaction_count = fields.Integer(compute="_compute_stats", store=True)
+    matched_count = fields.Integer(compute="_compute_stats", store=True)
+    unmatched_count = fields.Integer(compute="_compute_stats", store=True)
     state = fields.Selection(
         [("imported", "Imported"), ("reconciled", "Reconciled")],
         default="imported", index=True)
 
-    @api.depends("transaction_ids.matched")
+    @api.depends("transaction_ids", "transaction_ids.matched",
+                 "transaction_ids.transaction_type")
     def _compute_stats(self):
         for payout in self:
             order_txns = payout.transaction_ids.filtered(

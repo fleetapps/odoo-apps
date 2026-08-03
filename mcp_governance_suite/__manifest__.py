@@ -16,6 +16,9 @@
         "security/mcp_security.xml",
         "security/ir.model.access.csv",
         "data/ir_cron.xml",
+        # Before mcp_views.xml: the Configuration menu there points at the
+        # settings action defined here.
+        "views/res_config_settings_views.xml",
         "views/mcp_views.xml",
     ],
     "installable": True,
