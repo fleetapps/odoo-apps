@@ -59,6 +59,11 @@
             <field name="model_id" ref="model_shopify_bisync_mismatch"/>
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
+        <record id="rule_conflict_company" model="ir.rule">
+            <field name="name">Shopify conflict: multi-company</field>
+            <field name="model_id" ref="model_shopify_bisync_conflict"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
 
     </data>
 </odoo>

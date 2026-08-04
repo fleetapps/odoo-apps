@@ -14,6 +14,10 @@
                            invisible="not shopify_bisync_instance_id"/>
                     <field name="shopify_bisync_order_id"
                            invisible="not shopify_bisync_order_id"/>
+                    <field name="shopify_bisync_risk_recommendation"
+                           invisible="shopify_bisync_risk_recommendation in (False, 'NONE', 'ACCEPT')"/>
+                    <field name="shopify_bisync_risk_level"
+                           invisible="shopify_bisync_risk_recommendation in (False, 'NONE', 'ACCEPT')"/>
                 </xpath>
                 <xpath expr="//header" position="inside">
                     <button name="action_shopify_open" type="object"
@@ -37,6 +41,8 @@
                     <separator/>
                     <filter name="filter_shopify_orders" string="Shopify Orders"
                             domain="[('shopify_bisync_instance_id', '!=', False)]"/>
+                    <filter name="filter_shopify_risky" string="Shopify: Risky"
+                            domain="[('shopify_bisync_risk_recommendation', 'in', ('CANCEL', 'INVESTIGATE'))]"/>
                 </xpath>
             </field>
         </record>

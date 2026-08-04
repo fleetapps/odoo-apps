@@ -6,12 +6,12 @@ version bump.
 
 | # | Item | Decision baked into code | Doc consulted | Date |
 |---|---|---|---|---|
-| 1 | API version pin | `API_VERSION = "2026-07"` in `models/instance.py`; sunset 2027-07-01; startup + daily warning from 2 quarters out | <https://shopify.dev/docs/api/usage/versioning>, <https://shopify.dev/docs/api/release-notes> | 2026-07-23 |
+| 1 | API version pin | `API_VERSION = "2026-07"` in `models/instance.py`; still the current stable (released 2026-07-01, accessible until 2027-07-16 15:00 UTC); startup + daily warning from 2 quarters out | <https://shopify.dev/docs/api/usage/versioning> | 2026-08-04 |
 | 2 | Products via GraphQL | `productSet` (synchronous) is the create/update path; REST product endpoints not used | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/productSet> | 2026-07-23 |
 | 3 | Variant prices | `productVariantsBulkUpdate` for price/compare-at; cannot carry inventory quantities (confirmed) | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/productvariantsbulkupdate> | 2026-07-23 |
-| 4 | Inventory absolute set | `inventorySetQuantities` with `name: "available"`, `ignoreCompareQuantity: true` | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/inventorySetQuantities> | 2026-07-23 |
+| 4 | Inventory absolute set | `inventorySetQuantities` with `name: "available"`, `reason: "correction"`. **Corrected 2026-08-04:** `ignoreCompareQuantity` / `compareQuantity` were REMOVED in 2026-04; the per-quantity `changeFromQuantity` is now mandatory at runtime and `changeFromQuantity: null` is the documented opt-out that replaces `ignoreCompareQuantity: true`. `InventoryQuantityInput` = `{inventoryItemId, locationId, quantity, changeFromQuantity}` | <https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/InventorySetQuantitiesInput>, <https://shopify.dev/changelog/finalizing-compare-and-swap-redesign-for-inventory-set-quantities> | 2026-08-04 |
 | 5 | Fulfillments | Legacy `/fulfillments.json` gone; `fulfillmentCreate` + `FulfillmentInput.lineItemsByFulfillmentOrder` targeting FulfillmentOrder line items (`fulfillmentCreateV2` deprecated name) | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/fulfillmentcreate>, <https://shopify.dev/docs/api/admin-graphql/latest/input-objects/fulfillmentinput> | 2026-07-23 |
-| 6 | Rate limits | REST leaky bucket (2 rps, burst 40): honour `Retry-After` on 429. GraphQL calculated cost: read `extensions.cost`, sleep `(requested - available)/restoreRate` on THROTTLED and proactively post-success | <https://shopify.dev/docs/api/usage/limits> | 2026-07-23 |
+| 6 | Rate limits | REST leaky bucket (2 rps, burst 40): honour `Retry-After` on 429. GraphQL calculated cost: read `extensions.cost`, sleep `(requested - available)/restoreRate` on THROTTLED and proactively post-success. Restore rate is plan-dependent (100 Standard / 200 Advanced / 1000 Plus / 2000 Enterprise pts/s) and is read off the response, never hard-coded | <https://shopify.dev/docs/api/usage/limits> | 2026-08-04 |
 | 7 | Webhook lifecycle | ~19 retries over 48 h, then subscription deleted → answer 200 fast (enqueue only) + daily self-heal cron re-registering topics | <https://shopify.dev/docs/apps/build/webhooks> | 2026-07-23 |
 | 8 | Webhook auth | HMAC-SHA256 base64 of the **raw body** vs app secret, constant-time compare, before any parsing (scaffold behavior kept verbatim) | <https://shopify.dev/docs/apps/build/webhooks/subscriptions/verify-webhooks> | 2026-07-23 |
 | 9 | REST cursor pagination | `Link: <…page_info=…>; rel="next"`; when `page_info` is sent, other filters must be dropped | <https://shopify.dev/docs/api/usage/pagination-rest> | 2026-07-23 |
@@ -27,14 +27,44 @@ version bump.
 | 19 | Publishing | `publishablePublish` / `publishableUnpublish(id, input: [PublicationInput])`; channels via `publications` query | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/publishablePublish> | 2026-07-23 |
 | 20 | Payouts | REST `GET /shopify_payments/payouts.json` + `GET /shopify_payments/balance/transactions.json?payout_id=` (cursor-paginated); 404 when the store has no Shopify Payments | <https://shopify.dev/docs/api/admin-rest/latest/resources/payouts> | 2026-07-23 |
 | 21 | Product tags/type | GraphQL product `tags` (list) + `productType`; productSet input `tags` + `productType` | <https://shopify.dev/docs/api/admin-graphql/latest/mutations/productSet> | 2026-07-23 |
+| 22 | Mandatory idempotency | Since 2026-04 the `@idempotent(key: …)` directive is required **at runtime** on 17 mutations, of which we call `inventorySetQuantities` and `refundCreate`. The directive goes on the mutation *field*. The key is a UUID stored on the `shopify.bisync.job` row, so a queue retry replays the same key and Shopify collapses the duplicate rather than refunding/restocking twice | <https://shopify.dev/changelog/making-idempotency-mandatory-for-inventory-adjustments-and-refund-mutations> | 2026-08-04 |
+| 23 | `ProductVariantSetInput` shape | Resolved the open question from the previous round: `sku` and `barcode` ARE top-level fields on `ProductVariantSetInput` (they are not under `inventoryItem`). Current code was already correct | <https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/ProductVariantSetInput> | 2026-08-04 |
+| 24 | Fulfillment input shape | Re-confirmed against 2026-07: `FulfillmentOrderLineItemsInput = {fulfillmentOrderId: ID!, fulfillmentOrderLineItems: [FulfillmentOrderLineItemInput!]}` and `FulfillmentOrderLineItemInput = {id: ID!, quantity: Int!}` — the shape we send. Max 512 line items per fulfillment | <https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/FulfillmentOrderLineItemsInput> | 2026-08-04 |
+| 25 | REST still usable | REST Admin API is legacy as of 2024-10-01 and barred for *new public* apps since 2025-04-01, but **no removal date is announced** and the endpoints we still use (`shop`, `webhooks`, `locations`, `orders`, `customers`, `shopify_payments/*`) remain served on 2026-07. This module is installed as a merchant **custom app**, so it is not affected by the public-app rule | <https://shopify.dev/docs/api/admin-rest/usage/versioning> | 2026-08-04 |
+
+## 2026-08-04 feature round — sources consulted
+
+| # | Item | Decision baked into code | Doc consulted | Date |
+|---|---|---|---|---|
+| 26 | Search syntax for match-before-create | Shopify search treats `: \ ( )` and whitespace as structure, so values are quoted and escaped by `_search_literal()`. Results are re-filtered in Python for an EXACT case-sensitive hit because the search index is fuzzy and returns prefix matches | <https://shopify.dev/docs/api/usage/search-syntax> | 2026-08-04 |
+| 27 | Variant lookup by SKU/barcode | Root `productVariants(query:)` exists on 2026-07 and supports `sku`, `barcode`, `product_id`; the node exposes `product { legacyResourceId }`, which is what the binding stores | <https://shopify.dev/docs/api/admin-graphql/2026-07/queries/productVariants> | 2026-08-04 |
+| 28 | `productSet` is declarative | "For list fields: creates new entries, updates existing entries, and **deletes existing entries that aren't included** in the mutation's input." So `files` must always be sent COMPLETE; images Shopify already holds go as `{id}` references from `binding.image_map_json` instead of being re-uploaded | <https://shopify.dev/docs/api/admin-graphql/2026-07/mutations/productSet> | 2026-08-04 |
+| 29 | `ProductSetInput.id` deprecated | Switched to the sibling `identifier: ProductSetIdentifiers` argument (`{id}`; `handle` and `customId` also available) | <https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/ProductSetIdentifiers> | 2026-08-04 |
+| 30 | Media via `files` | `FileSetInput = {id, originalSource, alt, contentType, filename, duplicateResolutionMode}`. `filename` is deliberately omitted — Shopify rejects a filename whose extension disagrees with the staged source | <https://shopify.dev/docs/api/admin-graphql/2026-07/input-objects/FileSetInput> | 2026-08-04 |
+| 31 | Order risk | `Order.risk: OrderRiskSummary!` (the old `risks` is deprecated). `OrderRiskSummary{assessments, recommendation}`; `RiskAssessmentResult = HIGH/LOW/MEDIUM/NONE/PENDING`; `OrderRiskRecommendationResult = ACCEPT/CANCEL/INVESTIGATE/NONE`. Needs `read_orders` | <https://shopify.dev/docs/api/admin-graphql/2026-07/objects/OrderRiskSummary>, <https://shopify.dev/docs/api/admin-graphql/2026-07/enums/RiskAssessmentResult> | 2026-08-04 |
+| 32 | Risk webhook | `orders/risk_assessment_changed` replaces the removed Order Risk webhooks. Its payload shape is NOT published, so the handler uses it purely as a trigger and re-reads the assessment over GraphQL | <https://shopify.dev/changelog/deprecation-of-order-risk-apis-and-introduction-of-risk-assessments-api> | 2026-08-04 |
+| 33 | Odoo: `product.image` | Defined by **website_sale**, not `product`, in Odoo 19 (`addons/website_sale/models/product_image.py`), and website_sale drags in website + website_payment + html_builder. Adding it as a dependency for a connector whose whole premise is that Shopify is the storefront was rejected; gallery support is detected at runtime via `product_template_image_ids in tmpl._fields` and degrades to main-image-only with a mismatch-log entry | Odoo 19 source | 2026-08-04 |
+| 34 | Odoo: fee journal entry | Misc entry = `account.move` with `move_type='entry'`, `journal_id`, and `line_ids` carrying `account_id` + signed `balance` (positive = debit). Used to move fees out of the payout clearing account | Odoo 19 `addons/account` source | 2026-08-04 |
+
+## Known deviations, carried deliberately
+
+- **`orderCancel(refund:)` is deprecated** on 2026-07 in favour of
+  `refundMethod: OrderCancelRefundMethodInput`. We still send `refund: false`
+  because it is still accepted and dropping it risks a null-argument error on
+  a version we cannot test against. Migrate at the next version bump.
+- **Omitting `files` entirely** (image sync off) has undocumented semantics:
+  Shopify states what happens to entries missing from a supplied list, but not
+  what happens when the list field itself is absent. The code never depends on
+  the answer — when image sync is on, the complete list is always sent. Still
+  worth confirming on a dev store.
 
 ## Items to re-verify on a live dev store before listing submission
 
-- Exact `ProductSetInput` field set for the pinned version (notably `sku`
-  placement on `ProductVariantSetInput` vs `inventoryItem.sku`) — the
-  GraphQL schema is the source of truth; tests mock the transport.
-- `risk_recommendation` availability on order webhook payloads for the
-  pinned version (the field is optional in code).
+- Whether large order webhooks are truncated and under what key. Third-party
+  write-ups describe a `truncated_fields` array on high-cardinality payloads,
+  but this could **not** be confirmed on shopify.dev, so nothing is coded
+  against it. Test with an order of 150+ line items and compare the webhook
+  payload against `GET /orders/{id}` before assuming parity.
 - Odoo 17/18 backports: `is_storable` (19/18) vs `detailed_type` (17),
   `tax_ids` vs `tax_id` on sale.order.line (renamed in 18), stock context
   key `warehouse` vs `warehouse_id` (both are passed).

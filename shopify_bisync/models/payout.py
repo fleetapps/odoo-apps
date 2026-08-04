@@ -75,12 +75,25 @@ class ShopifyPayout(models.Model):
     transaction_count = fields.Integer(compute="_compute_stats", store=True)
     matched_count = fields.Integer(compute="_compute_stats", store=True)
     unmatched_count = fields.Integer(compute="_compute_stats", store=True)
+    net_total = fields.Monetary(
+        compute="_compute_stats", store=True, currency_field="currency_id",
+        string="Transactions Net",
+        help="Sum of the net amounts of this payout's transactions.")
+    difference = fields.Monetary(
+        compute="_compute_stats", store=True, currency_field="currency_id",
+        help="Deposited amount minus the sum of the transactions. Anything "
+             "other than zero means a transaction is missing or mis-typed - "
+             "the payout does not close, and the bank line will not either.")
+    fee_move_id = fields.Many2one(
+        "account.move", readonly=True, copy=False, string="Fee Entry",
+        help="Journal entry booking this payout's processing fees.")
     state = fields.Selection(
         [("imported", "Imported"), ("reconciled", "Reconciled")],
         default="imported", index=True)
 
     @api.depends("transaction_ids", "transaction_ids.matched",
-                 "transaction_ids.transaction_type")
+                 "transaction_ids.transaction_type", "transaction_ids.net",
+                 "amount")
     def _compute_stats(self):
         for payout in self:
             order_txns = payout.transaction_ids.filtered(
@@ -89,10 +102,22 @@ class ShopifyPayout(models.Model):
             payout.matched_count = len(order_txns.filtered("matched"))
             payout.unmatched_count = len(order_txns.filtered(
                 lambda t: not t.matched))
+            payout.net_total = sum(payout.transaction_ids.mapped("net"))
+            payout.difference = payout.amount - payout.net_total
 
+    # ------------------------------------------------------- reconciliation -
     def action_register_payments(self):
-        """Register payment on every matched, still-open invoice against the
-        store's payout journal. Idempotent: paid invoices are skipped."""
+        """Close the payout: register payment on every matched, still-open
+        invoice, then book the fees.
+
+        Payments alone do not close anything. They move the GROSS amount into
+        the clearing account while Shopify only deposits the NET, so without
+        the fee entry the difference sits in the clearing account forever and
+        the bank statement line never reconciles - which is where every other
+        connector's "payout import" stops being useful.
+
+        Idempotent: paid invoices are skipped and the fee entry is posted once.
+        """
         for payout in self:
             journal = (payout.instance_id.payout_journal_id
                        or payout.instance_id.payment_journal_id)
@@ -102,8 +127,79 @@ class ShopifyPayout(models.Model):
                     "before registering payout payments.",
                     payout.instance_id.name))
             payout.transaction_ids._register_payment(journal)
+            payout._book_fees(strict=False)
             payout.state = "reconciled"
         return True
+
+    def action_book_fees(self):
+        """Button: post the fee entry, complaining loudly if unconfigured."""
+        for payout in self:
+            payout._book_fees(strict=True)
+        return True
+
+    def _book_fees(self, strict=True):
+        """Post one journal entry moving fees (and adjustments) out of the
+        clearing account and into the fee expense account."""
+        self.ensure_one()
+        instance = self.instance_id
+        journal = instance.payout_fee_journal_id
+        expense = instance.payout_fee_account_id
+        clearing = (instance.payout_journal_id
+                    or instance.payment_journal_id).default_account_id
+        fees, adjustments = self.fee_total, self.adjustment_total
+        if self.fee_move_id or not (fees or adjustments):
+            return False
+        missing = not (journal and expense and clearing)
+        # Payout currency != company currency needs an FX policy this module
+        # does not get to invent, so it is refused rather than guessed.
+        foreign = (self.currency_id
+                   and self.currency_id != self.company_id.currency_id)
+        if missing or foreign:
+            reason = (_("the payout is in %(cur)s but the company books in "
+                        "%(company)s", cur=self.currency_id.name,
+                        company=self.company_id.currency_id.name)
+                      if foreign else
+                      _("the store has no Fee Journal / Fee Expense Account / "
+                        "payout journal account configured"))
+            if strict:
+                raise UserError(_(
+                    "Cannot book the fees of payout %(payout)s: %(reason)s.",
+                    payout=self.shopify_payout_id, reason=reason))
+            _logger.info("shopify_bisync: fees not booked for payout %s (%s)",
+                         self.shopify_payout_id, reason)
+            return False
+        lines = []
+        if fees:
+            lines.append(fields.Command.create({
+                "account_id": expense.id,
+                "name": _("Shopify Payments fees %s", self.shopify_payout_id),
+                "balance": fees}))
+        if adjustments:
+            lines.append(fields.Command.create({
+                "account_id": expense.id,
+                "name": _("Shopify payout adjustments %s",
+                          self.shopify_payout_id),
+                "balance": -adjustments}))
+        lines.append(fields.Command.create({
+            "account_id": clearing.id,
+            "name": _("Shopify payout %s", self.shopify_payout_id),
+            "balance": adjustments - fees}))
+        move = self.env["account.move"].create({
+            "move_type": "entry",
+            "journal_id": journal.id,
+            "date": self.date or fields.Date.today(),
+            "ref": _("Shopify payout %s", self.shopify_payout_id),
+            "company_id": self.company_id.id,
+            "line_ids": lines,
+        })
+        move.action_post()
+        self.fee_move_id = move
+        return True
+
+    def action_open_fee_move(self):
+        self.ensure_one()
+        return {"type": "ir.actions.act_window", "res_model": "account.move",
+                "res_id": self.fee_move_id.id, "view_mode": "form"}
 
 
 class ShopifyPayoutTransaction(models.Model):

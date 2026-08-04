@@ -9,3 +9,5 @@ from . import test_bidirectional
 from . import test_metadata
 from . import test_payout
 from . import test_dashboard
+from . import test_dedup
+from . import test_images_preview

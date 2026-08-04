@@ -204,13 +204,48 @@ class TestOrderImport(ShopifyBisyncCase):
         self.assertEqual(so.pricelist_id.currency_id, eur)
 
     # ----------------------------------------------------------------- risk
+    def _patch_risk(self, recommendation, level="HIGH"):
+        """Order.risk is a separate GraphQL read - the old risk_recommendation
+        key on the order payload has not existed since Shopify deprecated the
+        Order Risk API in 2024-04."""
+        def fake(instance, query, variables=None):
+            self.assertIn("risk", query)
+            return {"order": {"risk": {
+                "recommendation": recommendation,
+                "assessments": [{"riskLevel": level}]}}}
+        return self.patch_graphql(fake)
+
     def test_16_risky_order_tagged(self):
-        payload = order_payload(id=990018, order_number=1018,
-                                risk_recommendation="cancel")
-        self.OrderSync._import_order(self.instance, payload)
+        self.instance.risk_policy = "flag"
+        self._patch_risk("CANCEL")
+        self.OrderSync._import_order(
+            self.instance, order_payload(id=990018, order_number=1018))
         so = self._so(1018)
+        self.assertEqual(so.shopify_bisync_risk_recommendation, "CANCEL")
+        self.assertEqual(so.shopify_bisync_risk_level, "HIGH")
         self.assertIn("Shopify: Risky", so.tag_ids.mapped("name"))
         self.assertTrue(so.activity_ids)
+
+    def test_16b_accepted_order_not_flagged(self):
+        self.instance.risk_policy = "flag"
+        self._patch_risk("ACCEPT", level="LOW")
+        self.OrderSync._import_order(
+            self.instance, order_payload(id=990118, order_number=1118))
+        so = self._so(1118)
+        self.assertEqual(so.shopify_bisync_risk_recommendation, "ACCEPT")
+        self.assertNotIn("Shopify: Risky", so.tag_ids.mapped("name"))
+
+    def test_16c_risk_off_skips_the_query(self):
+        self.instance.risk_policy = "off"
+        calls = []
+
+        def fake(instance, query, variables=None):
+            calls.append(query)
+            return {}
+        self.patch_graphql(fake)
+        self.OrderSync._import_order(
+            self.instance, order_payload(id=990119, order_number=1119))
+        self.assertFalse(calls, "risk_policy=off must cost no API call")
 
     # ------------------------------------------------------- customer dedup
     def test_17_customer_email_dedup(self):

@@ -7,13 +7,15 @@
             <field name="model">shopify.bisync.payout</field>
             <field name="arch" type="xml">
                 <list decoration-success="state == 'reconciled'"
-                      decoration-warning="unmatched_count &gt; 0">
+                      decoration-warning="unmatched_count &gt; 0"
+                      decoration-danger="difference != 0">
                     <field name="date"/>
                     <field name="shopify_payout_id"/>
                     <field name="instance_id"/>
                     <field name="status"/>
                     <field name="amount"/>
                     <field name="fee_total" optional="show"/>
+                    <field name="difference" optional="show"/>
                     <field name="matched_count"/>
                     <field name="unmatched_count"/>
                     <field name="state" widget="badge"/>
@@ -29,8 +31,15 @@
                 <form>
                     <header>
                         <button name="action_register_payments" type="object"
-                                string="Register Payments" class="btn-primary"
+                                string="Register Payments &amp; Book Fees"
+                                class="btn-primary"
                                 invisible="matched_count == 0"/>
+                        <button name="action_book_fees" type="object"
+                                string="Book Fees Only"
+                                invisible="fee_move_id or not fee_total"/>
+                        <button name="action_open_fee_move" type="object"
+                                string="Fee Entry" icon="fa-book"
+                                invisible="not fee_move_id"/>
                         <field name="state" widget="statusbar"/>
                     </header>
                     <sheet>
@@ -50,6 +59,10 @@
                                 <field name="refund_total"/>
                                 <field name="fee_total"/>
                                 <field name="adjustment_total"/>
+                                <field name="net_total"/>
+                                <field name="difference"/>
+                                <field name="fee_move_id" readonly="1"
+                                       invisible="not fee_move_id"/>
                             </group>
                         </group>
                         <field name="transaction_ids">
@@ -81,6 +94,8 @@
                             domain="[('state', '=', 'imported')]"/>
                     <filter name="filter_has_unmatched" string="Has Unmatched"
                             domain="[('unmatched_count', '&gt;', 0)]"/>
+                    <filter name="filter_does_not_close" string="Does Not Close"
+                            domain="[('difference', '!=', 0)]"/>
                     <group name="group_by">
                         <filter name="group_instance" string="Store"
                                 context="{'group_by': 'instance_id'}"/>

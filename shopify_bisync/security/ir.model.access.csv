@@ -11,7 +11,11 @@ access_carrier_map_admin,carrier map admin,model_shopify_bisync_carrier_map,grou
 access_carrier_map_user,carrier map user,model_shopify_bisync_carrier_map,group_connector_user,1,0,0,0
 access_mismatch_admin,mismatch admin,model_shopify_bisync_mismatch,group_connector_admin,1,1,1,1
 access_mismatch_user,mismatch user,model_shopify_bisync_mismatch,group_connector_user,1,1,0,0
+access_conflict_admin,conflict admin,model_shopify_bisync_conflict,group_connector_admin,1,1,1,1
+access_conflict_user,conflict user,model_shopify_bisync_conflict,group_connector_user,1,0,0,0
 access_backfill_admin,backfill wizard admin,model_shopify_bisync_backfill,group_connector_admin,1,1,1,1
+access_preview_user,preview wizard user,model_shopify_bisync_preview,group_connector_user,1,1,1,1
+access_preview_line_user,preview line user,model_shopify_bisync_preview_line,group_connector_user,1,1,1,1
 access_publication_admin,publication admin,model_shopify_bisync_publication,group_connector_admin,1,1,1,1
 access_publication_user,publication user,model_shopify_bisync_publication,group_connector_user,1,0,0,0
 access_payout_admin,payout admin,model_shopify_bisync_payout,group_connector_admin,1,1,1,1

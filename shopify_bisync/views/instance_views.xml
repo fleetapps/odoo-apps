@@ -76,6 +76,8 @@
                                     <group string="Metadata">
                                         <field name="sync_product_tags"/>
                                         <field name="sync_product_category"/>
+                                        <field name="image_policy"/>
+                                        <field name="product_match_policy"/>
                                     </group>
                                     <group string="Scheduled Import">
                                         <field name="scheduled_import_orders"/>
@@ -86,10 +88,12 @@
                             <page string="Order Import" name="orders">
                                 <group>
                                     <group string="Financial">
+                                        <field name="order_ref_prefix"/>
                                         <field name="confirm_policy"/>
                                         <field name="payment_journal_id"
                                                invisible="confirm_policy != 'confirm_invoice'"
                                                required="confirm_policy == 'confirm_invoice'"/>
+                                        <field name="risk_policy"/>
                                         <field name="tax_policy"/>
                                         <field name="itemize_taxes"
                                                invisible="tax_policy != 'odoo'"/>
@@ -140,6 +144,10 @@
                                     </group>
                                     <group>
                                         <field name="payout_journal_id"
+                                               invisible="not import_payouts"/>
+                                        <field name="payout_fee_journal_id"
+                                               invisible="not import_payouts"/>
+                                        <field name="payout_fee_account_id"
                                                invisible="not import_payouts"/>
                                     </group>
                                 </group>

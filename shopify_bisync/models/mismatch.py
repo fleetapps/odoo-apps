@@ -25,6 +25,8 @@ class ShopifyMismatch(models.Model):
          ("currency_unmapped", "Currency: no pricelist"),
          ("fulfillment_gap", "Fulfillment: no open fulfillment order"),
          ("edit_delivered", "Order edit on delivered line"),
+         ("match_ambiguous", "Match before create: ambiguous candidate"),
+         ("image_gallery", "Images: gallery not synced"),
          ("other", "Other")],
         required=True, index=True, default="other")
     reference = fields.Char(

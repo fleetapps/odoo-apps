@@ -17,6 +17,7 @@ Hardening (spec A5):
 """
 import json
 import logging
+import uuid
 
 from datetime import timedelta
 
@@ -28,6 +29,11 @@ MAX_ATTEMPTS = 4
 GC_AFTER_DAYS = 30
 BACKOFF_BASE_MINUTES = 1
 
+#: Fixed namespace for the derived Shopify idempotency keys (see
+#: :meth:`SyncJob._idempotency_key`). Any constant UUID works; it must simply
+#: never change, or every in-flight job would get a new key.
+IDEMPOTENCY_NAMESPACE = uuid.UUID("6f2a1c94-7d3e-5b18-9a45-2c8e10bf37d1")
+
 #: job kind -> abstract engine model implementing ``process_job(job)``.
 HANDLERS = {
     "product": "shopify.bisync.product.sync",
@@ -36,6 +42,7 @@ HANDLERS = {
     "stock": "shopify.bisync.stock.sync",
     "order": "shopify.bisync.order.sync",
     "customer": "shopify.bisync.order.sync",
+    "risk": "shopify.bisync.order.sync",
     "fulfillment": "shopify.bisync.fulfillment.sync",
     "refund": "shopify.bisync.refund.sync",
     "refund_out": "shopify.bisync.refund.sync",
@@ -62,6 +69,7 @@ class SyncJob(models.Model):
         [("product", "Product"), ("stock", "Stock"), ("price", "Price"),
          ("publish", "Publish"), ("order", "Order"), ("customer", "Customer"),
          ("fulfillment", "Fulfillment"), ("refund", "Refund"),
+         ("risk", "Fraud Risk"),
          ("refund_out", "Refund → Shopify"), ("paid", "Mark Paid"),
          ("cancel", "Cancel → Shopify"), ("payout", "Payout"),
          ("backfill", "Backfill")],
@@ -85,7 +93,6 @@ class SyncJob(models.Model):
         index=True,
         help="Concurrency guard: jobs sharing a key are processed strictly "
              "in id order, never within the same batch.")
-
     # ------------------------------------------------------------------ api -
     @api.model
     def enqueue(self, instance, direction, kind, payload, priority=10,
@@ -106,6 +113,21 @@ class SyncJob(models.Model):
             "instance_id": instance.id, "direction": direction, "kind": kind,
             "payload_json": payload_json, "priority": priority,
             "lock_key": lock_key})
+
+    def _idempotency_key(self):
+        """Key for Shopify's ``@idempotent`` directive, mandatory since API
+        2026-04 on the inventory and refund mutations.
+
+        DERIVED from the row identity rather than stored, and that is the
+        whole point: a failed attempt rolls the transaction back, so a stored
+        key would be thrown away and regenerated on the retry - precisely the
+        moment Shopify needs to recognise the replay. Same job id, same key,
+        every attempt; a genuinely new job gets a new one. The database name
+        is in the hash so restoring a dump elsewhere cannot collide.
+        """
+        self.ensure_one()
+        return str(uuid.uuid5(
+            IDEMPOTENCY_NAMESPACE, f"{self.env.cr.dbname}:{self.id}"))
 
     @api.model
     def cron_process(self, batch=50):

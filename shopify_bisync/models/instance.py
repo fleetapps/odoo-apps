@@ -14,8 +14,11 @@ Platform facts (VERIFY-ON-BUILD register: see DOCS_REGISTER.md):
   REST stays for webhook registration and orders/customers read.
 - Rate limits (https://shopify.dev/docs/api/usage/limits): REST leaky bucket
   2 req/s burst 40 -> honour ``Retry-After`` on 429; GraphQL calculated cost
-  (~1000-point bucket, ~50 pts/s restore) -> read ``extensions.cost`` on every
-  response and sleep when ``currentlyAvailable < requestedQueryCost``.
+  (restore rate is plan-dependent: 100 pts/s Standard, 200 Advanced, 1000
+  Plus, 2000 Enterprise) -> read ``extensions.cost`` on every response and
+  sleep when ``currentlyAvailable < requestedQueryCost``. The rates are never
+  hard-coded: ``restoreRate`` comes off the response, so a Plus store
+  automatically drains its bigger bucket faster.
 - Webhooks: Shopify retries ~19 times over 48h then DELETES the subscription;
   :func:`cron_heal_webhooks` re-registers missing topics daily (self-healing).
 """
@@ -32,8 +35,11 @@ from odoo.exceptions import UserError, ValidationError
 _logger = logging.getLogger(__name__)
 
 #: Single pinned Shopify Admin API version for the whole module.
-#: Verified current stable on 2026-07-23 (release notes:
-#: https://shopify.dev/docs/api/release-notes). Sunset: 2027-07-01.
+#: Re-verified as the current stable on 2026-08-04 against
+#: https://shopify.dev/docs/api/usage/versioning (released 2026-07-01,
+#: accessible until 2027-07-16 15:00 UTC). The warning below deliberately
+#: computes the 1st of the month, i.e. it fires ~2 weeks early rather than
+#: late.
 API_VERSION = "2026-07"
 
 #: Topics the connector needs for real-time two-way sync. The webhook
@@ -49,6 +55,10 @@ WEBHOOK_TOPICS = (
     "inventory_levels/update",
     "customers/update",
     "refunds/create",
+    # Replaces the Order Risk API, deprecated in 2024-04. The payload shape is
+    # not documented, so the handler only uses it as a trigger and re-reads
+    # the assessment over GraphQL.
+    "orders/risk_assessment_changed",
 )
 
 GRAPHQL_MAX_RETRIES = 6
@@ -135,6 +145,17 @@ class ShopifyInstance(models.Model):
         default="newest_wins", required=True, tracking=True,
         help="Applied when the same record changed on both sides between "
              "syncs. Every resolution is logged on the record's chatter.")
+    product_match_policy = fields.Selection(
+        [("off", "Always create new"),
+         ("sku_barcode", "Match on SKU, then barcode"),
+         ("sku_barcode_title", "Match on SKU, then barcode, then exact title")],
+        default="sku_barcode_title", required=True,
+        string="Match Before Create",
+        help="Before creating a product on either side, look for one that is "
+             "already the same product. This is what stops a first sync from "
+             "doubling a catalogue that exists on both sides. A match is only "
+             "adopted when it is UNAMBIGUOUS - two candidates means neither is "
+             "used and the mismatch log records it for a human.")
     auto_export_new_products = fields.Boolean(
         help="Export products to Shopify as soon as they are created in Odoo "
              "(otherwise only already-bound products are kept in sync).")
@@ -160,6 +181,12 @@ class ShopifyInstance(models.Model):
         [("line", "Per-line discount %"),
          ("separate", "Single negative discount line")],
         default="line", required=True)
+    order_ref_prefix = fields.Char(
+        default="SHOPIFY", required=True, string="Order Reference Prefix",
+        help="Prefix of the imported order's Customer Reference, e.g. "
+             "SHOPIFY/1001. Give each store its own prefix when several "
+             "stores feed the same company, otherwise both show the same "
+             "reference for their own order number 1001.")
     confirm_policy = fields.Selection(
         [("draft", "Always import as quotation"),
          ("confirm", "Confirm when paid / partially paid"),
@@ -208,11 +235,32 @@ class ShopifyInstance(models.Model):
         "product.product", check_company=True, string="Duties Product",
         default=lambda self: self.env.ref(
             "shopify_bisync.product_duties", raise_if_not_found=False))
+    risk_policy = fields.Selection(
+        [("off", "Do not check"),
+         ("flag", "Tag risky orders and raise an activity")],
+        default="flag", required=True, string="Fraud Risk",
+        help="Read Shopify's risk assessment for each imported order. Costs "
+             "one small extra GraphQL query per order. Orders Shopify "
+             "recommends cancelling or investigating are tagged and raise an "
+             "activity for the connector admin before anything ships.")
     itemize_taxes = fields.Boolean(
         string="Itemize Shopify Taxes",
         help="In 'Odoo computes' mode, also add each Shopify tax line "
              "(e.g. the Colorado Retail Delivery Fee) as its own named, "
              "tax-free line for exact destination-tax parity.")
+    image_policy = fields.Selection(
+        [("off", "Do not sync images"),
+         ("primary", "Main image only"),
+         ("gallery", "Full gallery")],
+        default="gallery", required=True, string="Images",
+        help="Full gallery makes Odoo authoritative for an exported product's "
+             "images: Shopify's media is reconciled to match Odoo's, so an "
+             "image added only in Shopify admin is removed on the next "
+             "export. With two-way product sync that image reaches Odoo first "
+             "(via the products/update webhook), so it survives. Extra images "
+             "beyond the main one need the 'product.image' model, which ships "
+             "with Odoo's website_sale - without it, only the main image "
+             "syncs and the mismatch log says so once.")
     sync_product_tags = fields.Boolean(
         default=True, string="Sync Product Tags",
         help="Map Shopify product tags <-> Odoo product tags.")
@@ -270,6 +318,17 @@ class ShopifyInstance(models.Model):
         string="Auto-register Payout Payments",
         help="On payout import, automatically register payment on matched, "
              "open invoices (otherwise use the manual button).")
+    payout_fee_journal_id = fields.Many2one(
+        "account.journal", check_company=True, string="Fee Journal",
+        domain="[('type', '=', 'general')]",
+        help="Miscellaneous journal the payout's fee entry is posted in.")
+    payout_fee_account_id = fields.Many2one(
+        "account.account", check_company=True, string="Fee Expense Account",
+        help="Expense account for Shopify Payments processing fees. "
+             "Registering payment on the invoices moves the GROSS amount into "
+             "the clearing account while Shopify deposits the NET; this "
+             "account is where the difference is booked so the clearing "
+             "account empties and the bank line reconciles.")
 
     # ------------------------------------------------------------ mappings --
     location_map_ids = fields.One2many(

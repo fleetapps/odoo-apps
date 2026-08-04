@@ -53,7 +53,16 @@ class ShopifyBinding(models.Model):
         help="Hash of the last exported payload (all fields + image hash); "
              "identical hash -> export skipped entirely.")
     image_checksum = fields.Char(
-        help="Hash of the exported image alone, to skip media re-uploads.")
+        help="Hash of the Odoo-side gallery, to skip media re-uploads.")
+    image_source_hash = fields.Char(
+        help="Hash of the Shopify image URLs at last import. Shopify's URLs "
+             "carry a version, so an unchanged hash means an unchanged "
+             "gallery and the images are not downloaded again.")
+    image_map_json = fields.Text(
+        help="{odoo image sha1: Shopify file GID}. productSet reconciles the "
+             "media list declaratively, so every export has to send the WHOLE "
+             "gallery; this map lets the ones Shopify already holds go as an "
+             "id reference instead of a fresh upload.")
 
     def resolve(self):
         self.ensure_one()

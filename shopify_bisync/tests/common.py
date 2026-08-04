@@ -70,6 +70,10 @@ class ShopifyBisyncCase(TransactionCase):
             "access_token": "shpat_test",
             "webhook_secret": "shhh-secret",
             "warehouse_id": cls.warehouse.id,
+            # Risk lookup is a live GraphQL read, so it is off unless the test
+            # under way patches the transport and asks for it. Keeps the
+            # module-wide promise that no test touches the network.
+            "risk_policy": "off",
         })
         cls.Job = cls.env["shopify.bisync.job"]
         cls.Binding = cls.env["shopify.bisync.binding"]

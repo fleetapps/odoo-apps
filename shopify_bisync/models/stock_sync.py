@@ -19,14 +19,25 @@ cron remains the safety net underneath.
 """
 import json
 import logging
+import uuid
 
 from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+#: API 2026-04 removed ``ignoreCompareQuantity``/``compareQuantity`` and made
+#: BOTH the per-quantity ``changeFromQuantity`` and the ``@idempotent``
+#: directive mandatory at runtime (they are not marked required in the schema,
+#: so omitting them fails only when the mutation actually runs).
+#: ``changeFromQuantity: null`` is the documented opt-out of the compare-and-
+#: swap check, i.e. the exact replacement for ``ignoreCompareQuantity: true``:
+#: Odoo remains the source of truth and sets the absolute quantity.
+#: https://shopify.dev/changelog/finalizing-compare-and-swap-redesign-for-inventory-set-quantities
+#: https://shopify.dev/changelog/making-idempotency-mandatory-for-inventory-adjustments-and-refund-mutations
 INVENTORY_SET = """
-mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
-  inventorySetQuantities(input: $input) {
+mutation inventorySetQuantities($input: InventorySetQuantitiesInput!,
+                                $idempotencyKey: String!) {
+  inventorySetQuantities(input: $input) @idempotent(key: $idempotencyKey) {
     inventoryAdjustmentGroup { createdAt }
     userErrors { field message }
   }
@@ -43,7 +54,8 @@ class StockSync(models.AbstractModel):
         if job.direction == "in":
             self._import_level(job.instance_id, payload)
         else:
-            self._export_product_stock(job.instance_id, payload)
+            self._export_product_stock(job.instance_id, payload,
+                                       job._idempotency_key())
 
     # -------------------------------------------------------------- export --
     @api.model
@@ -55,7 +67,7 @@ class StockSync(models.AbstractModel):
             lambda m: m.stock_sync and m.warehouse_id)
 
     @api.model
-    def _export_product_stock(self, instance, payload):
+    def _export_product_stock(self, instance, payload, idempotency_key=None):
         if instance.sync_stock not in ("export", "both"):
             return
         product = self.env["product.product"].browse(
@@ -77,6 +89,8 @@ class StockSync(models.AbstractModel):
                 "locationId": instance.gid(
                     "Location", row.shopify_location_id),
                 "quantity": int(qty),
+                # Explicit null = opt out of the compare-and-swap check.
+                "changeFromQuantity": None,
             })
         if not quantities:
             _logger.info(
@@ -84,12 +98,14 @@ class StockSync(models.AbstractModel):
                 "%s not exported. Fetch & map locations on the store form.",
                 instance.name, product.display_name)
             return
-        data = instance.graphql(INVENTORY_SET, {"input": {
-            "name": "available",
-            "reason": "correction",
-            "ignoreCompareQuantity": True,
-            "quantities": quantities,
-        }})
+        data = instance.graphql(INVENTORY_SET, {
+            "input": {
+                "name": "available",
+                "reason": "correction",
+                "quantities": quantities,
+            },
+            "idempotencyKey": idempotency_key or str(uuid.uuid4()),
+        })
         instance.check_user_errors(
             data.get("inventorySetQuantities") or {}, "inventorySetQuantities")
         instance.last_export_stock = fields.Datetime.now()

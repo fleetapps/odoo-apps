@@ -32,6 +32,21 @@ _logger = logging.getLogger(__name__)
 
 CONFIRMABLE = ("paid", "partially_paid")
 
+RISK_ACTIVITY_SUMMARY = "Shopify flagged this order as risky"
+
+#: Order.risk replaces the Order Risk API removed after 2024-04.
+#: OrderRiskSummary.recommendation: ACCEPT | CANCEL | INVESTIGATE | NONE
+#: OrderRiskAssessment.riskLevel:   HIGH | LOW | MEDIUM | NONE | PENDING
+ORDER_RISK = """
+query orderRisk($id: ID!) {
+  order(id: $id) {
+    risk {
+      recommendation
+      assessments { riskLevel }
+    }
+  }
+}"""
+
 
 class OrderSync(models.AbstractModel):
     _name = "shopify.bisync.order.sync"
@@ -42,6 +57,8 @@ class OrderSync(models.AbstractModel):
         payload = json.loads(job.payload_json or "{}")
         if job.kind == "customer":
             self._update_customer(job.instance_id, payload)
+        elif job.kind == "risk":
+            self._update_risk(job.instance_id, payload)
         else:
             self._import_order(job.instance_id, payload)
 
@@ -76,12 +93,42 @@ class OrderSync(models.AbstractModel):
         }
 
     @api.model
+    def _guest_partner(self, instance):
+        """One reusable anonymous partner per store.
+
+        A guest checkout carries no Shopify customer id and no email, so there
+        is nothing to deduplicate on. Creating a partner per order grew the
+        contact book without bound and produced hundreds of identical "Shopify
+        Guest" records. The real name and address still reach Odoo - they are
+        attached as invoice/delivery children of this partner by
+        :meth:`_order_address_partner`, which is where an anonymous order's
+        address actually belongs.
+        """
+        Binding = self.env["shopify.bisync.binding"]
+        binding = Binding.get(self.env, instance, "res.partner",
+                              external_id="guest")
+        partner = binding and binding.resolve()
+        if partner:
+            return partner
+        partner = self.env["res.partner"].create({
+            "name": _("Shopify Guest (%s)", instance.name),
+            "company_id": instance.company_id.id,
+            "type": "contact",
+        })
+        Binding.create({
+            "instance_id": instance.id, "res_model": "res.partner",
+            "res_id": partner.id, "external_id": "guest"})
+        return partner
+
+    @api.model
     def _upsert_customer(self, instance, customer, fallback_name=None):
         """Email-deduplicated partner upsert. Marketing consent fields are
         deliberately NOT synced (privacy: they never leave Shopify)."""
         Partner = self.env["res.partner"]
         Binding = self.env["shopify.bisync.binding"]
         email = (customer.get("email") or "").strip().lower() or False
+        if not customer.get("id") and not email:
+            return self._guest_partner(instance)
         partner = Partner
         if customer.get("id"):
             binding = Binding.get(self.env, instance, "res.partner",
@@ -192,14 +239,44 @@ class OrderSync(models.AbstractModel):
 
     # --------------------------------------------------------------- orders --
     @api.model
+    def _order_ref(self, instance, o):
+        """Human-facing order reference. The prefix is per store so two shops
+        under one company do not both display 'SHOPIFY/1001'."""
+        number = o.get("order_number") or o.get("id")
+        return f"{instance.order_ref_prefix or 'SHOPIFY'}/{number}"
+
+    @api.model
+    def _find_existing_order(self, instance, o, ref):
+        """Locate the Odoo order for a Shopify order.
+
+        Keyed on (instance, Shopify order id): that pair is the only globally
+        unique identity. ``client_order_ref`` was the previous key, and it is
+        neither unique - two stores in the same company legitimately both
+        produce order number 1001, which silently merged them into one sale
+        order - nor stable, since a user can edit the field. The ref lookup
+        survives only as a fallback so orders imported before this became
+        identity-based are still recognised, and it is scoped to this store.
+        """
+        SaleOrder = self.env["sale.order"]
+        order_id = str(o.get("id") or "")
+        if order_id:
+            found = SaleOrder.search([
+                ("shopify_bisync_instance_id", "=", instance.id),
+                ("shopify_bisync_order_id", "=", order_id)], limit=1)
+            if found:
+                return found
+        return SaleOrder.search([
+            ("client_order_ref", "=", ref),
+            ("shopify_bisync_instance_id", "in", (False, instance.id)),
+            ("company_id", "=", instance.company_id.id)], limit=1)
+
+    @api.model
     def _import_order(self, instance, o):
         if instance.sync_orders != "import":
             return
         topic = o.get("_topic") or "orders/create"
-        ref = f"SHOPIFY/{o.get('order_number') or o.get('id')}"
-        existing = self.env["sale.order"].search(
-            [("client_order_ref", "=", ref),
-             ("company_id", "=", instance.company_id.id)], limit=1)
+        ref = self._order_ref(instance, o)
+        existing = self._find_existing_order(instance, o, ref)
         if topic == "orders/cancelled":
             return self._cancel_order(instance, existing, o)
         if existing:
@@ -230,7 +307,10 @@ class OrderSync(models.AbstractModel):
             "origin": _("Shopify %s", instance.name),
             "note": o.get("note") or False,
             "shopify_bisync_instance_id": instance.id,
-            "shopify_bisync_order_id": str(o.get("id") or ""),
+            # False, never "": the uniqueness constraint below relies on
+            # Postgres treating NULLs as distinct, and two orders both
+            # carrying an empty string would collide with each other.
+            "shopify_bisync_order_id": str(o["id"]) if o.get("id") else False,
         }
         pricelist = self._match_pricelist(instance, o, ref)
         if pricelist:
@@ -255,7 +335,7 @@ class OrderSync(models.AbstractModel):
             self._itemize_taxes(instance, so, o)
         self._post_tax_note(so, o)
         self._apply_order_tags(so, o)
-        self._flag_risk(instance, so, o)
+        self._flag_risk(instance, so)
         self._apply_financial_gating(instance, so, o)
         self._apply_embedded_fulfillments(instance, so, o)
         return so
@@ -435,21 +515,80 @@ class OrderSync(models.AbstractModel):
                 json.dumps(tax_lines)[:1500]))
 
     @api.model
-    def _flag_risk(self, instance, so, o):
-        recommendation = o.get("risk_recommendation")
-        if recommendation != "cancel":
+    def _shopify_order_id(self, payload):
+        """Best-effort order id out of a payload whose shape Shopify does not
+        publish (the risk-assessment topic). Only used to pick the order to
+        re-read; the assessment itself always comes from GraphQL."""
+        for key in ("order_id", "id", "orderId", "admin_graphql_api_order_id"):
+            value = payload.get(key)
+            if value:
+                return str(value).rsplit("/", 1)[-1]
+        nested = payload.get("order") or {}
+        if isinstance(nested, dict) and nested.get("id"):
+            return str(nested["id"]).rsplit("/", 1)[-1]
+        return ""
+
+    @api.model
+    def _update_risk(self, instance, payload):
+        """orders/risk_assessment_changed: re-read the order's assessment and
+        re-apply the flagging."""
+        order_id = self._shopify_order_id(payload)
+        if not order_id:
             return
-        tag = self.env["crm.tag"].search(
-            [("name", "=", "Shopify: Risky")], limit=1)
-        if not tag:
-            tag = self.env["crm.tag"].create({"name": "Shopify: Risky"})
+        so = self.env["sale.order"].search(
+            [("shopify_bisync_instance_id", "=", instance.id),
+             ("shopify_bisync_order_id", "=", order_id)], limit=1)
+        if so:
+            self._flag_risk(instance, so)
+
+    @api.model
+    def _fetch_risk(self, instance, shopify_order_id):
+        """Shopify's own fraud analysis for one order.
+
+        The old ``risk_recommendation`` key this used to read has not existed
+        on order payloads since the Order Risk API was deprecated in 2024-04,
+        so the feature silently did nothing. ``Order.risk`` is its
+        replacement and has to be queried explicitly.
+        """
+        data = instance.graphql(ORDER_RISK, {
+            "id": instance.gid("Order", shopify_order_id)})
+        risk = ((data.get("order") or {}).get("risk") or {})
+        levels = [a.get("riskLevel") for a in risk.get("assessments") or []]
+        # Worst assessment wins: several providers can score the same order.
+        level = next((candidate for candidate in ("HIGH", "MEDIUM", "LOW")
+                      if candidate in levels), "NONE")
+        return risk.get("recommendation") or "NONE", level
+
+    @api.model
+    def _flag_risk(self, instance, so):
+        """Tag and escalate orders Shopify considers risky, before they ship."""
+        if instance.risk_policy == "off" or not so.shopify_bisync_order_id:
+            return
+        try:
+            recommendation, level = self._fetch_risk(
+                instance, so.shopify_bisync_order_id)
+        except Exception:  # noqa: BLE001 - risk must never block an import
+            _logger.warning("shopify_bisync: risk lookup failed for %s",
+                            so.name, exc_info=True)
+            return
+        so.write({"shopify_bisync_risk_level": level,
+                  "shopify_bisync_risk_recommendation": recommendation})
+        if recommendation not in ("CANCEL", "INVESTIGATE"):
+            return
+        tag_name = "Shopify: Risky"
+        tag = (self.env["crm.tag"].search([("name", "=", tag_name)], limit=1)
+               or self.env["crm.tag"].create({"name": tag_name}))
         so.tag_ids = [fields.Command.link(tag.id)]
+        if so.activity_ids.filtered(
+                lambda a: a.summary == RISK_ACTIVITY_SUMMARY):
+            return  # already escalated; a re-assessment must not pile up
         so.activity_schedule(
             "mail.mail_activity_data_todo",
             user_id=(instance.admin_user_id or self.env.user).id,
-            summary=_("Shopify flagged this order for cancellation"),
-            note=_("Shopify risk recommendation is 'cancel'. Review before "
-                   "shipping."))
+            summary=RISK_ACTIVITY_SUMMARY,
+            note=_("Shopify's fraud analysis returned %(rec)s (risk level "
+                   "%(level)s). Review before shipping.",
+                   rec=recommendation, level=level))
 
     @api.model
     def _apply_financial_gating(self, instance, so, o):

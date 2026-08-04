@@ -35,6 +35,7 @@ TOPIC_KIND = {
     "inventory_levels/update": ("stock", 15),
     "customers/update": ("customer", 15),
     "refunds/create": ("refund", 10),
+    "orders/risk_assessment_changed": ("risk", 11),
 }
 assert set(TOPIC_KIND) == set(WEBHOOK_TOPICS)
 
@@ -71,8 +72,8 @@ class ShopifyWebhook(http.Controller):
         """Same Shopify object -> same key so its jobs never interleave."""
         if kind == "stock":
             return f"stock:item:{payload.get('inventory_item_id')}"
-        if kind in ("refund", "fulfillment"):
-            # order-scoped: fulfillments/refunds must not interleave with the
-            # order's other jobs.
-            return f"order:{payload.get('order_id')}"
+        if kind in ("refund", "fulfillment", "risk"):
+            # order-scoped: fulfillments/refunds/risk updates must not
+            # interleave with the order's other jobs.
+            return f"order:{payload.get('order_id') or payload.get('id')}"
         return f"{kind}:{payload.get('id')}"

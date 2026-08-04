@@ -19,6 +19,14 @@ SKIP_ORDER_EXPORT = "shopify_bisync_skip_order_export"
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
+    # Postgres does not collide on NULLs, so ordinary Odoo orders (both
+    # columns NULL) are unaffected; only a genuine second import of the same
+    # Shopify order is rejected. This is the database-level backstop under
+    # the identity lookup in OrderSync._find_existing_order.
+    _uniq_shopify_order = models.Constraint(
+        "UNIQUE(shopify_bisync_instance_id, shopify_bisync_order_id)",
+        "This Shopify order is already imported for this store.")
+
     shopify_bisync_instance_id = fields.Many2one(
         "shopify.bisync.instance", string="Shopify Store", readonly=True,
         index="btree_not_null", copy=False)
@@ -31,6 +39,17 @@ class SaleOrder(models.Model):
              "Odoo (idempotency for fulfillment-status import).")
     shopify_bisync_url = fields.Char(
         compute="_compute_shopify_bisync_url", string="Shopify Link")
+    # Values mirror Shopify's own enums so the field means exactly what the
+    # Shopify admin shows, with no lossy re-interpretation in between.
+    shopify_bisync_risk_level = fields.Selection(
+        [("HIGH", "High"), ("MEDIUM", "Medium"), ("LOW", "Low"),
+         ("NONE", "None"), ("PENDING", "Pending")],
+        string="Shopify Risk", readonly=True, copy=False,
+        help="Worst risk level across Shopify's fraud assessments.")
+    shopify_bisync_risk_recommendation = fields.Selection(
+        [("ACCEPT", "Accept"), ("INVESTIGATE", "Investigate"),
+         ("CANCEL", "Cancel"), ("NONE", "None")],
+        string="Shopify Recommends", readonly=True, copy=False)
 
     def _compute_shopify_bisync_url(self):
         for order in self:

@@ -15,14 +15,19 @@ that stays a merchant decision in Shopify.
 """
 import json
 import logging
+import uuid
 
 from odoo import _, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+#: The @idempotent directive is mandatory on refundCreate since API 2026-04.
+#: The key comes from the job row, so a retried refund push is recognised as
+#: the same intent and never creates a second refund on Shopify.
+#: https://shopify.dev/changelog/making-idempotency-mandatory-for-inventory-adjustments-and-refund-mutations
 REFUND_CREATE = """
-mutation refundCreate($input: RefundInput!) {
-  refundCreate(input: $input) {
+mutation refundCreate($input: RefundInput!, $idempotencyKey: String!) {
+  refundCreate(input: $input) @idempotent(key: $idempotencyKey) {
     refund { id }
     userErrors { field message }
   }
@@ -37,7 +42,8 @@ class RefundSync(models.AbstractModel):
     def process_job(self, job):
         payload = json.loads(job.payload_json or "{}")
         if job.kind == "refund_out":
-            self._export_refund(job.instance_id, payload)
+            self._export_refund(job.instance_id, payload,
+                                job._idempotency_key())
         else:
             self._import_refund(job.instance_id, payload)
 
@@ -158,7 +164,7 @@ class RefundSync(models.AbstractModel):
 
     # -------------------------------------------------------------- export --
     @api.model
-    def _export_refund(self, instance, payload):
+    def _export_refund(self, instance, payload, idempotency_key=None):
         """Record a matching refund on Shopify from a posted Odoo credit note
         (line items + shipping). No gateway transaction is created - money
         movement stays a merchant decision in Shopify."""
@@ -194,7 +200,9 @@ class RefundSync(models.AbstractModel):
             refund_input["shipping"] = {"amount": f"{shipping_amount:.2f}"}
         if not refund_line_items and shipping_amount <= 0:
             return  # nothing Shopify can act on
-        data = instance.graphql(REFUND_CREATE, {"input": refund_input})
+        data = instance.graphql(REFUND_CREATE, {
+            "input": refund_input,
+            "idempotencyKey": idempotency_key or str(uuid.uuid4())})
         result = data.get("refundCreate") or {}
         instance.check_user_errors(result, "refundCreate")
         refund_id = instance.gid_to_id((result.get("refund") or {}).get("id", ""))

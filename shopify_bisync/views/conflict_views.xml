@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="conflict_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.conflict.list</field>
+            <field name="model">shopify.bisync.conflict</field>
+            <field name="arch" type="xml">
+                <list decoration-warning="winner == 'shopify'">
+                    <field name="create_date" string="Resolved At"/>
+                    <field name="instance_id"/>
+                    <field name="record_name"/>
+                    <field name="field_names"/>
+                    <field name="winner" widget="badge"
+                           decoration-success="winner == 'odoo'"
+                           decoration-warning="winner == 'shopify'"/>
+                    <field name="policy" optional="show"/>
+                    <field name="odoo_write_date" optional="hide"/>
+                    <field name="external_updated_at" optional="hide"/>
+                    <field name="external_id" optional="hide"/>
+                    <button name="action_open_record" type="object"
+                            string="Open" icon="fa-external-link"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="conflict_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.conflict.search</field>
+            <field name="model">shopify.bisync.conflict</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="record_name"/>
+                    <field name="field_names"/>
+                    <field name="external_id"/>
+                    <filter name="filter_shopify_won" string="Shopify Overwrote Odoo"
+                            domain="[('winner', '=', 'shopify')]"/>
+                    <filter name="filter_odoo_won" string="Odoo Kept"
+                            domain="[('winner', '=', 'odoo')]"/>
+                    <separator/>
+                    <filter name="filter_last_month" string="Last 30 Days"
+                            domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                    <group name="group_by">
+                        <filter name="group_winner" string="Kept"
+                                context="{'group_by': 'winner'}"/>
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_policy" string="Policy"
+                                context="{'group_by': 'policy'}"/>
+                        <filter name="group_date" string="Month"
+                                context="{'group_by': 'create_date:month'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="conflict_action" model="ir.actions.act_window">
+            <field name="name">Conflict Log</field>
+            <field name="res_model">shopify.bisync.conflict</field>
+            <field name="view_mode">list</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No conflicts — both sides agree</p>
+                <p>When the same record changes in Odoo and Shopify between two syncs, the store's conflict policy picks a winner and the decision is recorded here: which fields differed, which side was kept, and both timestamps that produced the verdict.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_conflicts" name="Conflict Log" parent="menu_operations"
+                  action="conflict_action" sequence="35"/>
+
+    </data>
+</odoo>

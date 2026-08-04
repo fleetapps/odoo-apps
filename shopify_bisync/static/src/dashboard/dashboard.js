@@ -9,9 +9,11 @@ import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
+import { Layout } from "@web/search/layout";
 
 export class ShopifyDashboard extends Component {
     static template = "shopify_bisync.Dashboard";
+    static components = { Layout };
     static props = { "*": true };
 
     setup() {

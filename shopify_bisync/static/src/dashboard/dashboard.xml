@@ -1,108 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
 <templates xml:space="preserve">
 
+    <!-- Root carries o_action: the action manager is overflow:hidden and only
+         styles a direct child with that class (height:100%, column flex). The
+         Layout's <main class="o_content"> is then the scroll container - without
+         both, a dashboard taller than the viewport is simply clipped. Layout
+         also gives the client action the standard breadcrumb bar. -->
     <t t-name="shopify_bisync.Dashboard">
-        <div class="o_shopify_dashboard p-3">
-            <t t-if="state.loading">
-                <div class="text-center text-muted p-5">
-                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
-                    <p class="mt-2">Loading Shopify analytics…</p>
-                </div>
-            </t>
-            <t t-else="">
-                <!-- Setup panel. Shows only while a step is outstanding, and
-                     each tile reflects real configuration state, not whether
-                     the button was clicked. -->
-                <div t-if="showOnboarding" class="o_shopify_onboarding border rounded mb-4 p-3">
-                    <div class="d-flex align-items-center mb-3">
-                        <h5 class="mb-0 flex-grow-1">Finish setting up your Shopify sync</h5>
-                        <span class="badge text-bg-light">
-                            <t t-out="onboardingDoneCount"/>
-                            of
-                            <t t-out="onboardingSteps.length"/>
-                            done
-                        </span>
+        <div class="o_shopify_dashboard o_action">
+            <Layout display="{ controlPanel: {} }" className="'p-3'">
+                <t t-if="state.loading">
+                    <div class="text-center text-muted p-5">
+                        <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                        <p class="mt-2">Loading Shopify analytics…</p>
                     </div>
-                    <div class="d-flex flex-wrap gap-3">
-                        <div t-foreach="onboardingSteps" t-as="step" t-key="step.id"
-                             class="o_shopify_onboarding_step border rounded p-3 flex-grow-1"
-                             t-att-class="step.done ? 'bg-light' : ''"
-                             style="min-width: 190px; max-width: 260px;">
-                            <div class="d-flex align-items-center mb-1">
-                                <i class="fa me-2"
-                                   t-att-class="step.done ? 'fa-check-circle text-success' : 'fa-circle-o text-muted'"/>
-                                <strong t-out="step.title"/>
+                </t>
+                <t t-else="">
+                    <!-- Setup panel. Shows only while a step is outstanding, and
+                         each tile reflects real configuration state, not whether
+                         the button was clicked. -->
+                    <div t-if="showOnboarding" class="o_shopify_onboarding border rounded mb-4 p-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <h5 class="mb-0 flex-grow-1">Finish setting up your Shopify sync</h5>
+                            <span class="badge text-bg-light">
+                                <t t-out="onboardingDoneCount"/>
+                                of
+                                <t t-out="onboardingSteps.length"/>
+                                done
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div t-foreach="onboardingSteps" t-as="step" t-key="step.id"
+                                 class="o_shopify_onboarding_step border rounded p-3 flex-grow-1"
+                                 t-att-class="step.done ? 'bg-light' : ''"
+                                 style="min-width: 190px; max-width: 260px;">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fa me-2"
+                                       t-att-class="step.done ? 'fa-check-circle text-success' : 'fa-circle-o text-muted'"/>
+                                    <strong t-out="step.title"/>
+                                </div>
+                                <p class="text-muted small mb-2" t-out="step.description"/>
+                                <button class="btn btn-sm"
+                                        t-att-class="step.done ? 'btn-link p-0' : 'btn-primary'"
+                                        t-on-click="() => this.openStep(step)">
+                                    <t t-if="step.done" t-out="step.done_text"/>
+                                    <t t-else="" t-out="step.button_text"/>
+                                </button>
                             </div>
-                            <p class="text-muted small mb-2" t-out="step.description"/>
-                            <button class="btn btn-sm"
-                                    t-att-class="step.done ? 'btn-link p-0' : 'btn-primary'"
-                                    t-on-click="() => this.openStep(step)">
-                                <t t-if="step.done" t-out="step.done_text"/>
-                                <t t-else="" t-out="step.button_text"/>
-                            </button>
                         </div>
                     </div>
-                </div>
 
-                <div class="d-flex align-items-center mb-3">
-                    <h2 class="mb-0 flex-grow-1">Shopify Sales</h2>
-                    <button class="btn btn-primary" t-on-click="openOrders">
-                        <i class="fa fa-list me-1"/> All Shopify Orders
-                    </button>
-                </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <h2 class="mb-0 flex-grow-1">Shopify Sales</h2>
+                        <button class="btn btn-primary" t-on-click="openOrders">
+                            <i class="fa fa-list me-1"/> All Shopify Orders
+                        </button>
+                    </div>
 
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100"><div class="card-body">
-                            <div class="text-muted small text-uppercase">Revenue</div>
-                            <div class="fs-3 fw-bold" t-out="format(state.data.revenue)"/>
-                        </div></div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100"><div class="card-body">
-                            <div class="text-muted small text-uppercase">Orders</div>
-                            <div class="fs-3 fw-bold" t-out="state.data.orders"/>
-                        </div></div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100"><div class="card-body">
-                            <div class="text-muted small text-uppercase">Avg. Order</div>
-                            <div class="fs-3 fw-bold" t-out="format(state.data.avg_order)"/>
-                        </div></div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                        <div class="card h-100"><div class="card-body">
-                            <div class="text-muted small text-uppercase">Stores</div>
-                            <div class="fs-3 fw-bold" t-out="state.data.by_instance.length"/>
-                        </div></div>
-                    </div>
-                </div>
-
-                <div class="row g-3">
-                    <t t-foreach="panels" t-as="panel" t-key="panel.title">
-                        <div class="col-12 col-lg-6">
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-lg-3">
                             <div class="card h-100"><div class="card-body">
-                                <h5 t-out="panel.title"/>
-                                <t t-if="!panel.rows.length">
-                                    <p class="text-muted mb-0">No data yet.</p>
-                                </t>
-                                <t t-foreach="panel.rows" t-as="row" t-key="row_index">
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-between small">
-                                            <span t-out="row.name"/>
-                                            <span class="fw-bold" t-out="format(row.total)"/>
-                                        </div>
-                                        <div class="progress" style="height: 6px;">
-                                            <div class="progress-bar bg-success"
-                                                 t-att-style="'width: ' + barWidth(row.total, panel.rows)"/>
-                                        </div>
-                                    </div>
-                                </t>
+                                <div class="text-muted small text-uppercase">Revenue</div>
+                                <div class="fs-3 fw-bold" t-out="format(state.data.revenue)"/>
                             </div></div>
                         </div>
-                    </t>
-                </div>
-            </t>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small text-uppercase">Orders</div>
+                                <div class="fs-3 fw-bold" t-out="state.data.orders"/>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small text-uppercase">Avg. Order</div>
+                                <div class="fs-3 fw-bold" t-out="format(state.data.avg_order)"/>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-lg-3">
+                            <div class="card h-100"><div class="card-body">
+                                <div class="text-muted small text-uppercase">Stores</div>
+                                <div class="fs-3 fw-bold" t-out="state.data.by_instance.length"/>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <t t-foreach="panels" t-as="panel" t-key="panel.title">
+                            <div class="col-12 col-lg-6">
+                                <div class="card h-100"><div class="card-body">
+                                    <h5 t-out="panel.title"/>
+                                    <t t-if="!panel.rows.length">
+                                        <p class="text-muted mb-0">No data yet.</p>
+                                    </t>
+                                    <t t-foreach="panel.rows" t-as="row" t-key="row_index">
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between small">
+                                                <span t-out="row.name"/>
+                                                <span class="fw-bold" t-out="format(row.total)"/>
+                                            </div>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar bg-success"
+                                                     t-att-style="'width: ' + barWidth(row.total, panel.rows)"/>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div></div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+            </Layout>
         </div>
     </t>
 

@@ -3,6 +3,7 @@ from . import binding
 from . import sync_job
 from . import mapping
 from . import mismatch
+from . import conflict
 from . import product_sync
 from . import stock_sync
 from . import sale_order
