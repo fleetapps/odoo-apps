@@ -228,13 +228,27 @@ class OrderSync(models.AbstractModel):
                 [("barcode", "=", li["sku"])] + company_domain, limit=1)
         if product:
             return product, True
+        # Lines carrying no identifier at all are Shopify custom line items -
+        # a title and a price with no product behind them, which is what test
+        # and draft orders produce. Grouped by title so a repeated custom line
+        # is one row; a genuinely unknown SKU still gets its own, because that
+        # one is actionable per product.
+        has_identifier = bool(li.get("sku") or li.get("barcode")
+                              or li.get("variant_id"))
         self.env["shopify.bisync.mismatch"].log(
             self.env, instance, "line_unmatched",
-            _("No product matched line '%(title)s' (sku=%(sku)s, "
-              "variant=%(variant)s) of %(ref)s; fallback product used.",
-              title=li.get("title"), sku=li.get("sku"),
-              variant=li.get("variant_id"), ref=order_ref),
-            reference=order_ref)
+            _("No product in Odoo matches the line '%(title)s' "
+              "(SKU %(sku)s) on %(ref)s, so the fallback product was used "
+              "and the order still imported.%(hint)s",
+              title=li.get("title"), sku=li.get("sku") or _("none"),
+              ref=order_ref,
+              hint="" if has_identifier else _(
+                  " This line carries no SKU, barcode or variant at all - "
+                  "typical of a Shopify custom or test line - so there is "
+                  "nothing to match it on.")),
+            reference=order_ref,
+            group_key=(f"sku:{li.get('sku')}" if li.get("sku")
+                       else f"custom-line:{li.get('title')}"))
         return instance.fallback_product_id, False
 
     # --------------------------------------------------------------- orders --
@@ -416,9 +430,13 @@ class OrderSync(models.AbstractModel):
         if not pricelist:
             self.env["shopify.bisync.mismatch"].log(
                 self.env, instance, "currency_unmapped",
-                _("No pricelist in currency %(code)s for %(ref)s; company "
-                  "default used - totals will differ.", code=code, ref=ref),
-                reference=ref)
+                _("No pricelist in currency %(code)s; the company default was "
+                  "used instead, so imported totals will not match Shopify. "
+                  "Most recent order: %(ref)s. Create a %(code)s pricelist to "
+                  "fix this for every order at once.", code=code, ref=ref),
+                reference=ref,
+                # One missing pricelist is one problem, not one per order.
+                group_key=f"currency:{code}")
         return pricelist or default
 
     @api.model

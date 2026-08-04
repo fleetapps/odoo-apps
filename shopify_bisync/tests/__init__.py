@@ -1,5 +1,6 @@
 from . import test_webhook
 from . import test_oauth
+from . import test_prices_mismatch
 from . import test_order_import
 from . import test_conflict
 from . import test_product_sync

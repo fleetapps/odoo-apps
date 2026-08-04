@@ -36,7 +36,7 @@
                                 invisible="not connection_ok_on"/>
                         <button name="action_export_prices" type="object"
                                 string="Export Prices"
-                                invisible="sync_prices != 'export' or not connection_ok_on"/>
+                                invisible="sync_prices not in ['export', 'both'] or not connection_ok_on"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">

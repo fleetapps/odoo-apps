@@ -11,12 +11,16 @@
                         <button name="action_mark_resolved" type="object"
                                 string="Mark resolved"/>
                     </header>
-                    <field name="create_date"/>
+                    <field name="last_seen" string="Last Seen"/>
                     <field name="instance_id"/>
                     <field name="kind"/>
+                    <field name="occurrence_count" string="Times"
+                           decoration-warning="occurrence_count > 5"/>
                     <field name="reference"/>
                     <field name="message"/>
-                    <field name="sale_order_id"/>
+                    <field name="sale_order_id" optional="hide"/>
+                    <field name="create_date" string="First Seen"
+                           optional="hide"/>
                     <field name="resolved" widget="boolean_toggle"/>
                 </list>
             </field>

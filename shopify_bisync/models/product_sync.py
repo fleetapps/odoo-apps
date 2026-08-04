@@ -400,6 +400,11 @@ class ProductSync(models.AbstractModel):
             return
         vals = self._import_vals(instance, sp, tmpl)
         if tmpl:
+            # Price is added only here, on the update path. The create path
+            # sets it once from the first variant, and the adopt path must
+            # never reprice a product the merchant already prices - so this
+            # cannot live in _import_vals, which all three share.
+            vals.update(self._import_price_vals(instance, sp, tmpl))
             winner, changed = self._resolve_conflict(
                 instance, binding, tmpl, ext_updated, vals)
             if winner == "odoo":
@@ -470,6 +475,36 @@ class ProductSync(models.AbstractModel):
                 "weight": self._variant_weight_kg(variant),
             })
         return vals
+
+    @api.model
+    def _import_price_vals(self, instance, sp, tmpl):
+        """Shopify's price -> Odoo's sales price, when the store imports prices.
+
+        Odoo prices a template once and expresses variant differences as
+        ``price_extra`` on the attribute values, so a Shopify product whose
+        variants carry genuinely different prices has no faithful single
+        value. Rather than silently flatten it, the base price is taken from
+        the first variant and the divergence is logged for a human - the same
+        contract the order importer honours for unmatched lines.
+        """
+        if instance.sync_prices not in ("import", "both"):
+            return {}
+        variants = sp.get("variants") or []
+        if not variants:
+            return {}
+        prices = {float(v.get("price") or 0.0) for v in variants}
+        if len(prices) > 1:
+            self.env["shopify.bisync.mismatch"].log(
+                self.env, instance, "variant_price_spread",
+                _("'%(title)s' has variants priced differently on Shopify "
+                  "(%(prices)s). Odoo keeps one sales price per product, so "
+                  "%(kept)s was imported. Set the difference as an extra "
+                  "price on the variant's attribute value in Odoo.",
+                  title=sp.get("title") or tmpl.display_name,
+                  prices=", ".join(f"{p:.2f}" for p in sorted(prices)),
+                  kept=f"{float(variants[0].get('price') or 0.0):.2f}"),
+                reference=sp.get("title") or str(sp.get("id") or ""))
+        return {"list_price": float(variants[0].get("price") or 0.0)}
 
     @api.model
     def _tag_commands(self, model, tags_value):
@@ -1047,7 +1082,7 @@ class ProductSync(models.AbstractModel):
     # -------------------------------------------------------------- prices --
     @api.model
     def _export_prices(self, instance, job_payload):
-        if instance.sync_prices != "export":
+        if instance.sync_prices not in ("export", "both"):
             return
         tmpl = self.env["product.template"].browse(
             job_payload["res_id"]).exists()
@@ -1148,7 +1183,7 @@ class ProductTemplate(models.Model):
                 bound = Binding.get(self.env, instance, "product.template",
                                     record=tmpl)
                 if price_only:
-                    if instance.sync_prices == "export" and bound:
+                    if instance.sync_prices in ("export", "both") and bound:
                         Job.enqueue(instance, "out", "price",
                                     {"res_id": tmpl.id}, priority=30,
                                     lock_key=f"price:{tmpl.id}")

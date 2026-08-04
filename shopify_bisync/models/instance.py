@@ -239,8 +239,14 @@ class ShopifyInstance(models.Model):
          ("import", "Shopify → Odoo"), ("both", "Two-way")],
         default="export", required=True)
     sync_prices = fields.Selection(
-        [("off", "Off"), ("export", "Odoo → Shopify")],
-        default="export", required=True)
+        [("off", "Off"), ("export", "Odoo → Shopify"),
+         ("import", "Shopify → Odoo"), ("both", "Two-way")],
+        default="export", required=True,
+        help="Two-way applies this store's conflict rule when a price changed "
+             "on both sides, exactly as products do, and every resolution is "
+             "recorded in the conflict ledger. Odoo keeps one sales price per "
+             "product, so Shopify variants priced differently are imported at "
+             "the first variant's price and the difference is logged.")
     sync_orders = fields.Selection(
         [("off", "Off"), ("import", "Shopify → Odoo")],
         default="import", required=True)
