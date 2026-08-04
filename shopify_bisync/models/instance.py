@@ -305,22 +305,23 @@ class ShopifyInstance(models.Model):
         required=True, string="New Product Status",
         help="Shopify status given to products first exported from Odoo.")
     compare_at_policy = fields.Selection(
-        [("off", "Do not send"), ("list_price", "Sales price as compare-at")],
-        default="off", required=True, string="Compare-at Price",
+        [("off", "Do not show a was-price"),
+         ("list_price", "Show the Odoo sales price as the was-price")],
+        default="off", required=True, string="Was-Price",
         help="Optional mapping: when the pricelist price is below the "
              "product sales price, send the sales price as compare-at.")
 
     # ---------------------------------------------- order import policies ---
     tax_policy = fields.Selection(
-        [("odoo", "Odoo computes taxes (fiscal positions)"),
-         ("shopify", "Shopify amounts win (exact totals)")],
+        [("odoo", "Let Odoo work out the tax"),
+         ("shopify", "Use Shopify's figures exactly")],
         default="odoo", required=True,
         help="Odoo mode: lines carry Odoo taxes, Shopify tax lines are kept "
              "as a note. Shopify mode: lines carry no tax and adjustment "
              "lines force the order total to match Shopify to the cent.")
     discount_policy = fields.Selection(
-        [("line", "Per-line discount %"),
-         ("separate", "Single negative discount line")],
+        [("line", "As a discount % on each line"),
+         ("separate", "As one discount line at the bottom")],
         default="line", required=True)
     invoice_policy = fields.Selection(
         [("all", "Every order"), ("paid", "Only once paid"),
@@ -342,9 +343,9 @@ class ShopifyInstance(models.Model):
              "stores feed the same company, otherwise both show the same "
              "reference for their own order number 1001.")
     confirm_policy = fields.Selection(
-        [("draft", "Always import as quotation"),
-         ("confirm", "Confirm when paid / partially paid"),
-         ("confirm_invoice", "Confirm + invoice + register payment")],
+        [("draft", "Leave as a quotation for someone to check"),
+         ("confirm", "Confirm it once Shopify says it is paid"),
+         ("confirm_invoice", "Confirm, invoice and mark it paid")],
         default="draft", required=True, string="Order Confirmation")
     payment_journal_id = fields.Many2one(
         "account.journal", check_company=True,
@@ -378,7 +379,7 @@ class ShopifyInstance(models.Model):
         help="Ask Shopify to send its shipping-confirmation email when a "
              "fulfillment is pushed from Odoo.")
     import_fulfillment_status = fields.Boolean(
-        default=True, string="Import Fulfillment Status",
+        default=True, string="Follow Shipping Status From Shopify",
         help="Reflect Shopify fulfillments in Odoo: confirm the order and "
              "validate the matching delivery so Odoo shows it shipped.")
     tip_product_id = fields.Many2one(
@@ -429,11 +430,11 @@ class ShopifyInstance(models.Model):
 
     # -------------------------------------- Odoo -> Shopify order updates ---
     push_paid_status = fields.Boolean(
-        string="Mark Paid in Shopify",
+        string="Tell Shopify When Paid",
         help="When an imported order's invoice is fully paid in Odoo, mark "
              "the Shopify order as paid (orderMarkAsPaid).")
     push_cancellations = fields.Boolean(
-        string="Push Cancellations",
+        string="Tell Shopify When Cancelled",
         help="When a Shopify-origin order is cancelled in Odoo, cancel it on "
              "Shopify too (orderCancel). Off by default - cancelling on "
              "Shopify can refund/restock.")
@@ -441,18 +442,18 @@ class ShopifyInstance(models.Model):
         default=True, string="Restock on Cancel",
         help="Ask Shopify to restock items when pushing a cancellation.")
     refund_export_policy = fields.Selection(
-        [("off", "Do not push refunds to Shopify"),
-         ("record", "Record refund in Shopify (no gateway money movement)")],
-        default="off", required=True, string="Push Refunds",
+        [("off", "Do not send refunds to Shopify"),
+         ("record", "Record it in Shopify, without moving any money")],
+        default="off", required=True, string="Send Refunds Back",
         help="When a credit note is posted in Odoo for a Shopify order, "
              "optionally record a matching refund on Shopify. Gateway money "
              "movement is intentionally left to the merchant in Shopify.")
 
     # ------------------------------------------------ publishing / channels -
     publish_policy = fields.Selection(
-        [("manual", "Manual only"),
-         ("auto", "Publish exported products to mapped channels")],
-        default="manual", required=True, string="Publishing",
+        [("manual", "I will publish them myself"),
+         ("auto", "Put new products on sale automatically")],
+        default="manual", required=True, string="Putting Products On Sale",
         help="Whether exporting a product also publishes it to the sales "
              "channels mapped below.")
     publication_ids = fields.One2many(
@@ -460,7 +461,7 @@ class ShopifyInstance(models.Model):
 
     # --------------------------------------------------- scheduled import ---
     scheduled_import_orders = fields.Boolean(
-        string="Scheduled Order Pull",
+        string="Also Check Regularly For Missed Orders",
         help="Belt-and-suspenders: a cron pulls orders updated since the last "
              "run, so a missed webhook never means a missed order.")
 
@@ -503,6 +504,17 @@ class ShopifyInstance(models.Model):
     # buttons can reflect what has actually happened rather than guessing:
     # without them "connection tested" is unknowable after the notification
     # toast disappears.
+    shop_currency = fields.Char(
+        readonly=True, string="Store Currency",
+        help="Read from Shopify when the connection is checked.")
+    show_advanced = fields.Boolean(
+        string="Show advanced settings", default=False,
+        help="The settings below the line are ones most stores never change. "
+             "They are hidden by default so the handful that matter are easy "
+             "to find.")
+    setup_warnings = fields.Html(
+        compute="_compute_setup_warnings", sanitize=False,
+        help="What still needs doing before this store syncs correctly.")
     connection_ok_on = fields.Datetime(
         readonly=True, copy=False,
         help="Last time Test Connection succeeded against this store.")
@@ -656,6 +668,72 @@ class ShopifyInstance(models.Model):
                     for e in errors)[:500]))
 
     # -------------------------------------------------------------- actions -
+    # --------------------------------------------------------- setup checks -
+    @api.depends("access_token", "webhooks_registered_on", "shop_currency",
+                 "pricelist_id", "fallback_product_id", "location_map_ids",
+                 "location_map_ids.warehouse_id", "sync_stock", "sync_orders")
+    def _compute_setup_warnings(self):
+        """Everything that will go wrong later, said once, before it does.
+
+        Each of these used to be discovered the expensive way: an order lands
+        with the wrong total, a line falls back to a placeholder product, or
+        stock silently never leaves Odoo. All of them are knowable the moment
+        the store is configured, so they belong here rather than in the
+        mismatch log one affected record at a time.
+        """
+        for instance in self:
+            items = []
+            if not instance.is_connected:
+                instance.setup_warnings = False
+                continue  # the form already tells them to press Connect
+
+            if not instance.webhooks_registered_on:
+                items.append(_(
+                    "<b>Live updates are not on yet.</b> Press "
+                    "<i>Register Webhooks</i> above, or Shopify changes will "
+                    "only reach Odoo on the next scheduled import."))
+
+            if instance.sync_orders != "off" and instance.shop_currency:
+                currency = instance.shop_currency
+                if not self._pricelist_for_currency(instance, currency):
+                    items.append(_(
+                        "<b>No price list in %(cur)s.</b> Your Shopify store "
+                        "sells in %(cur)s and Odoo has no price list in that "
+                        "currency, so imported order totals will not match "
+                        "Shopify. Create one under Sales > Products > Price "
+                        "Lists.", cur=currency))
+
+            if instance.sync_orders != "off" and not instance.fallback_product_id:
+                items.append(_(
+                    "<b>No fallback product.</b> If a Shopify order arrives "
+                    "with a line Odoo cannot identify - a custom item, or a "
+                    "product with no SKU - the import has nowhere to put it "
+                    "and the order will fail instead of coming through."))
+
+            if instance.sync_stock in ("export", "both"):
+                mapped = instance.location_map_ids.filtered("warehouse_id")
+                if not mapped:
+                    items.append(_(
+                        "<b>No Shopify location is linked to a warehouse.</b> "
+                        "Stock will not leave Odoo until at least one is. "
+                        "Press <i>Fetch Locations</i> above, then set the "
+                        "warehouse on each row in the Locations tab."))
+
+            instance.setup_warnings = (
+                "<ul class='mb-0 ps-3'>"
+                + "".join(f"<li class='mb-1'>{i}</li>" for i in items)
+                + "</ul>") if items else False
+
+    @api.model
+    def _pricelist_for_currency(self, instance, currency_code):
+        if (instance.pricelist_id
+                and instance.pricelist_id.currency_id.name == currency_code):
+            return instance.pricelist_id
+        return self.env["product.pricelist"].search(
+            [("currency_id.name", "=", currency_code),
+             "|", ("company_id", "=", False),
+             ("company_id", "=", instance.company_id.id)], limit=1)
+
     # ------------------------------------------------------------- OAuth ----
     @api.depends("access_token")
     def _compute_is_connected(self):
@@ -737,6 +815,10 @@ class ShopifyInstance(models.Model):
         shop = self.api_call("GET", "shop.json").get("shop", {})
         # Only stamped on success: api_call raises before reaching this line.
         self.connection_ok_on = fields.Datetime.now()
+        # Knowing the store's currency turns "totals will differ" from a
+        # surprise found one order at a time into a setup warning shown once,
+        # before a single order is imported.
+        self.shop_currency = shop.get("currency") or False
         return {
             "type": "ir.actions.client", "tag": "display_notification",
             "params": {"type": "success", "sticky": False,

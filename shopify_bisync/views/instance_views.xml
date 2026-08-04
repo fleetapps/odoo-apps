@@ -50,6 +50,19 @@
                         <div class="oe_title">
                             <h1><field name="name" placeholder="My Shopify Store"/></h1>
                         </div>
+                        <!-- Everything here is knowable at setup time and used
+                             to be discovered the expensive way: a wrong total
+                             on an imported order, a line landing on a
+                             placeholder product, stock that silently never
+                             left Odoo. Said once, before it happens. -->
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not setup_warnings">
+                            <div class="fw-bold mb-1">
+                                <i class="fa fa-exclamation-triangle me-1"/>
+                                Worth fixing before you rely on this store
+                            </div>
+                            <field name="setup_warnings" nolabel="1"/>
+                        </div>
                         <group>
                             <group string="Connection">
                                 <field name="active" widget="boolean_toggle"/>
@@ -163,85 +176,120 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Sync Policies" name="policies">
+                            <page string="What Syncs" name="policies">
                                 <group>
-                                    <group string="Directions">
+                                    <group string="Choose a direction for each">
                                         <field name="sync_products"/>
                                         <field name="sync_stock"/>
                                         <field name="sync_prices"/>
                                         <field name="sync_orders"/>
                                     </group>
-                                    <group string="Conflicts &amp; Exports">
+                                    <group string="When both sides changed"
+                                           invisible="sync_products not in ['both'] and sync_stock not in ['both'] and sync_prices not in ['both']">
                                         <field name="conflict_policy"/>
+                                        <div colspan="2" class="text-muted small">
+                                            Only applies when the same thing was
+                                            edited in both places between syncs.
+                                            Every decision is recorded in the
+                                            Conflict Log, so nothing changes
+                                            without a trace.
+                                        </div>
+                                    </group>
+                                </group>
+
+                                <!-- One toggle, not a wall. Most stores change
+                                     none of what follows, and putting it all on
+                                     screen at once was the single biggest reason
+                                     this form felt like a developer tool. -->
+                                <separator/>
+                                <group>
+                                    <field name="show_advanced"
+                                           widget="boolean_toggle"/>
+                                </group>
+                                <group invisible="not show_advanced">
+                                    <group string="Sending products to Shopify"
+                                           invisible="sync_products not in ['export', 'both']">
                                         <field name="auto_export_new_products"/>
                                         <field name="export_only_in_stock"/>
                                         <field name="export_categories_as_collections"/>
                                         <field name="export_status_default"/>
                                         <field name="compare_at_policy"/>
-                                        <field name="notify_customer_on_fulfillment"/>
                                     </group>
-                                    <group string="Stock Levels"
+                                    <group string="Stock levels"
                                            invisible="sync_stock not in ['export', 'both']">
                                         <field name="stock_quantity_source"/>
                                         <field name="stock_target_name"/>
                                         <field name="stock_skip_zero"/>
                                     </group>
-                                    <group string="Metadata">
+                                    <group string="What else to copy across">
                                         <field name="sync_product_tags"/>
                                         <field name="sync_product_category"/>
                                         <field name="image_policy"/>
                                         <field name="product_match_policy"/>
                                     </group>
-                                    <group string="Scheduled Import">
+                                    <group string="Catching up on missed changes">
                                         <field name="scheduled_import_orders"/>
                                         <field name="import_fulfillment_status"/>
+                                        <field name="notify_customer_on_fulfillment"/>
                                     </group>
                                 </group>
                             </page>
-                            <page string="Order Import" name="orders">
+                            <page string="Orders &amp; Money" name="orders"
+                                  invisible="sync_orders == 'off'">
                                 <group>
-                                    <group string="Financial">
-                                        <field name="use_shopify_order_number"/>
-                                        <field name="order_ref_prefix"
-                                               invisible="use_shopify_order_number"/>
+                                    <group string="What happens to an order that arrives">
                                         <field name="confirm_policy"/>
                                         <field name="invoice_policy"
                                                invisible="confirm_policy != 'confirm_invoice'"/>
-                                        <field name="create_crm_lead"/>
                                         <field name="payment_journal_id"
                                                invisible="confirm_policy != 'confirm_invoice'"
                                                required="confirm_policy == 'confirm_invoice'"/>
-                                        <field name="risk_policy"/>
+                                        <field name="fallback_product_id"/>
+                                    </group>
+                                    <group string="How it is named">
+                                        <field name="use_shopify_order_number"/>
+                                        <field name="order_ref_prefix"
+                                               invisible="use_shopify_order_number"/>
+                                    </group>
+                                </group>
+
+                                <separator/>
+                                <group>
+                                    <field name="show_advanced"
+                                           widget="boolean_toggle"/>
+                                </group>
+                                <group invisible="not show_advanced">
+                                    <group string="Taxes and discounts">
                                         <field name="tax_policy"/>
                                         <field name="itemize_taxes"
                                                invisible="tax_policy != 'odoo'"/>
                                         <field name="discount_policy"/>
-                                    </group>
-                                    <group string="Fallbacks">
-                                        <field name="fallback_product_id"/>
                                         <field name="adjustment_product_id"
                                                required="tax_policy == 'shopify'"/>
                                         <field name="discount_product_id"
                                                invisible="discount_policy != 'separate'"
                                                required="discount_policy == 'separate'"/>
+                                    </group>
+                                    <group string="Products used for extras">
                                         <field name="tip_product_id"/>
                                         <field name="duties_product_id"/>
                                         <field name="fallback_carrier_id"/>
                                     </group>
-                                </group>
-                                <group string="Odoo → Shopify Order Updates">
-                                    <group>
+                                    <group string="Customers and risk">
+                                        <field name="create_crm_lead"/>
+                                        <field name="risk_policy"/>
+                                    </group>
+                                    <group string="Sending changes back to Shopify">
                                         <field name="push_paid_status"/>
                                         <field name="push_cancellations"/>
                                         <field name="cancel_restock"
                                                invisible="not push_cancellations"/>
-                                    </group>
-                                    <group>
                                         <field name="refund_export_policy"/>
                                     </group>
                                 </group>
                             </page>
-                            <page string="Publishing" name="publishing">
+                            <page string="Publishing" name="publishing"
+                                  invisible="not show_advanced">
                                 <group>
                                     <field name="publish_policy"/>
                                 </group>
@@ -253,7 +301,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Payouts" name="payouts">
+                            <page string="Payouts" name="payouts"
+                                  invisible="not show_advanced and not import_payouts">
                                 <group>
                                     <group>
                                         <field name="import_payouts"/>
@@ -280,7 +329,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Carriers" name="carriers">
+                            <page string="Carriers" name="carriers"
+                                  invisible="not show_advanced">
                                 <field name="carrier_map_ids">
                                     <list editable="bottom">
                                         <field name="shopify_code"/>
@@ -318,14 +368,22 @@
             <field name="name">shopify.bisync.instance.list</field>
             <field name="model">shopify.bisync.instance</field>
             <field name="arch" type="xml">
-                <list>
+                <!-- The first screen anyone opens. It used to answer "what are
+                     these stores set to" and not "are they working", which is
+                     the only question anyone actually arrives with. -->
+                <list decoration-muted="not active"
+                      decoration-warning="active and not is_connected">
                     <field name="name"/>
                     <field name="shop_url"/>
                     <field name="company_id" groups="base.group_multi_company"/>
-                    <field name="sync_products"/>
-                    <field name="sync_stock"/>
-                    <field name="sync_orders"/>
-                    <field name="conflict_policy" optional="show"/>
+                    <field name="is_connected" string="Connected"
+                           widget="boolean_toggle" readonly="1"/>
+                    <field name="connection_ok_on" string="Last Checked"
+                           optional="show"/>
+                    <field name="sync_products" optional="show"/>
+                    <field name="sync_stock" optional="show"/>
+                    <field name="sync_orders" optional="show"/>
+                    <field name="conflict_policy" optional="hide"/>
                     <field name="active" widget="boolean_toggle"/>
                 </list>
             </field>

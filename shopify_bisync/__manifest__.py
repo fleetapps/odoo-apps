@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "Shopify Connector - Two-Way Sync",
-    "version": "19.0.1.5.0",
+    "version": "19.0.1.6.0",
     "category": "Sales/Sales",
     "summary": "Bidirectional Shopify sync: products, stock, prices, customers, "
                "orders, fulfillments & refunds. Webhook-driven inbound, queued "
