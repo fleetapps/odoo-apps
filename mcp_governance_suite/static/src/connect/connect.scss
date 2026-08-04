@@ -3,8 +3,16 @@
 // dark mode) instead of hard-coding a palette that drifts from the backend.
 
 .o_mcp_connect {
-    overflow: auto;
+    // `height: 100%` + `overflow: auto` alone did not scroll: the action
+    // container lays its child out as a flex item, and a flex item defaults to
+    // `min-height: auto`, so it grows to fit its content instead of shrinking
+    // to the available space. The box therefore never overflows itself -
+    // the content spills past the container, which clips it, and the wheel
+    // has nothing to scroll. `min-height: 0` is what lets it shrink again.
+    flex: 1 1 auto;
+    min-height: 0;
     height: 100%;
+    overflow-y: auto;
     background: var(--gray-100, #f6f7f9);
 
     .o_mcp_loading {
