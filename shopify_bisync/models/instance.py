@@ -82,6 +82,12 @@ OAUTH_SCOPES = ",".join((
     "read_assigned_fulfillment_orders",
     "write_assigned_fulfillment_orders",        # 3PL-fulfilled stores
     "read_shopify_payments_payouts",            # payout reconciliation
+    # Sales-channel publishing: publishablePublish/Unpublish and the
+    # publications query behind Fetch Sales Channels.
+    "read_publications", "write_publications",
+    # Product images go up via stagedUploadsCreate, which needs write_files
+    # on top of write_products - without it image sync fails at upload.
+    "write_files",
 ))
 
 #: Shopify requires the shop parameter on the OAuth callback to match this
