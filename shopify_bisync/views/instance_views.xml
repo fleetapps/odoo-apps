@@ -72,11 +72,19 @@
                                     <div class="text-danger small mt-1"
                                          invisible="oauth_redirect_uri_ok">
                                         <i class="fa fa-exclamation-triangle me-1"/>
-                                        This address isn't reachable from the internet, so
-                                        Shopify can't send anyone back to it. Ask whoever
-                                        administers this Odoo to set its public web address
-                                        (the <code>web.base.url</code> setting) before you
-                                        copy this into Shopify.
+                                        Shopify only sends people back to a secure
+                                        <b>https</b> address, and this one isn't. Don't copy
+                                        it into Shopify yet — it won't work.
+                                        <br/>
+                                        To fix it, turn on developer mode, then in
+                                        <b>Settings → Technical → Parameters → System
+                                        Parameters</b> set <code>web.base.url</code> to this
+                                        Odoo's public https address (no trailing slash), and
+                                        add a second parameter
+                                        <code>web.base.url.freeze</code> set to
+                                        <code>True</code>. Without the freeze, Odoo rewrites
+                                        the address at the next sign-in and this breaks
+                                        again.
                                     </div>
                                 </div>
                                 <div colspan="2" class="alert alert-info mb-0" groups="shopify_bisync.group_connector_admin"
