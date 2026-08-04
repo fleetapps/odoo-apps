@@ -94,6 +94,25 @@ OAUTH_SCOPES = ",".join((
 #: before anything else is trusted (authorization-code-grant docs).
 SHOP_DOMAIN_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$")
 
+#: Webhook subscriptions are managed over GraphQL. REST ``webhooks.json`` is
+#: frozen legacy and does not know the newer topics - it answers 404 "Could
+#: not find the webhook topic" for orders/risk_assessment_changed, which IS a
+#: valid WebhookSubscriptionTopic on 2026-07. ``uri`` is the current field;
+#: ``callbackUrl`` is deprecated.
+WEBHOOK_LIST_QUERY = """
+query { webhookSubscriptions(first: 250) {
+  edges { node { id topic uri } }
+} }"""
+
+WEBHOOK_CREATE = """
+mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!,
+                                   $webhookSubscription: WebhookSubscriptionInput!) {
+  webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
+    webhookSubscription { id topic uri }
+    userErrors { field message }
+  }
+}"""
+
 GRAPHQL_MAX_RETRIES = 6
 REST_MAX_RETRIES = 5
 
@@ -674,25 +693,76 @@ class ShopifyInstance(models.Model):
     def action_register_webhooks(self):
         """Create/repair the inbound webhooks (idempotent, also run daily by
         :func:`cron_heal_webhooks` because Shopify deletes subscriptions that
-        keep failing)."""
-        base = self.get_base_url()
+        keep failing).
+
+        Registration goes through GraphQL, not REST ``webhooks.json``. The
+        legacy REST endpoint never gained the newer topics and answers 404
+        "Could not find the webhook topic" for ``orders/risk_assessment_changed``,
+        even though it is a valid ``WebhookSubscriptionTopic`` - so the REST
+        path could not register the full set at all.
+
+        A topic Shopify refuses is recorded and skipped rather than aborting
+        the run: one unavailable topic previously cost the store all its
+        remaining subscriptions and left webhooks_registered_on unset, so the
+        heal cron retried the same failure daily and never made progress.
+        """
+        failed = []
         for instance in self:
-            if base.startswith("http://"):
+            if not instance._oauth_redirect_uri().startswith("https://"):
                 raise UserError(_(
-                    "Shopify only delivers webhooks to HTTPS endpoints. Set "
-                    "web.base.url to your public https URL first."))
-            existing = instance.api_call("GET", "webhooks.json", params={
-                "limit": 250})["webhooks"]
-            have = {(w["topic"], w["address"]) for w in existing}
-            address = f"{base}/shopify_bisync/webhook/{instance.id}"
+                    "Shopify only delivers webhooks to a secure (https) "
+                    "address. Set the web.base.url system parameter to this "
+                    "Odoo's public https address first."))
+            address = f"{instance.get_base_url()}/shopify_bisync/webhook/{instance.id}"
+            existing = instance.graphql(WEBHOOK_LIST_QUERY)
+            have = {
+                (edge["node"]["topic"], edge["node"]["uri"])
+                for edge in ((existing.get("webhookSubscriptions") or {})
+                             .get("edges") or [])
+            }
+            failed = []
             for topic in WEBHOOK_TOPICS:
-                if (topic, address) not in have:
-                    instance.api_call("POST", "webhooks.json", {
-                        "webhook": {"topic": topic, "address": address,
-                                    "format": "json"}})
+                enum = topic.replace("/", "_").upper()
+                if (enum, address) in have:
+                    continue
+                try:
+                    data = instance.graphql(WEBHOOK_CREATE, {
+                        "topic": enum,
+                        "webhookSubscription": {"uri": address,
+                                                "format": "JSON"}})
+                    result = data.get("webhookSubscriptionCreate") or {}
+                    instance.check_user_errors(result, "webhookSubscriptionCreate")
+                except (UserError, ValidationError) as exc:
+                    _logger.warning("shopify_bisync: topic %s refused on %s: %s",
+                                    topic, instance.shop_url, exc)
+                    failed.append((topic, str(exc)))
+
+            # Stamped whenever the store has the subscriptions Shopify will
+            # accept, so a permanently unavailable topic does not read as
+            # "webhooks were never set up".
             instance.webhooks_registered_on = fields.Datetime.now()
-            instance.message_post(body=_("Webhooks verified/registered (%s topics).",
-                                         len(WEBHOOK_TOPICS)))
+            body = _("Live updates active: %(ok)s of %(total)s topics.",
+                     ok=len(WEBHOOK_TOPICS) - len(failed),
+                     total=len(WEBHOOK_TOPICS))
+            if failed:
+                body += "<br/>" + _(
+                    "Shopify would not accept these, so the matching updates "
+                    "will not arrive in real time:") + "<ul>" + "".join(
+                        f"<li><b>{t}</b> — {e}</li>" for t, e in failed) + "</ul>"
+            instance.message_post(body=body)
+
+        if len(self) == 1 and failed:
+            return {
+                "type": "ir.actions.client", "tag": "display_notification",
+                "params": {
+                    "type": "warning", "sticky": True,
+                    "title": _("Live updates partly set up"),
+                    "message": _(
+                        "%(ok)s of %(total)s topics are active. See the "
+                        "store's message history for the ones Shopify "
+                        "refused.", ok=len(WEBHOOK_TOPICS) - len(failed),
+                        total=len(WEBHOOK_TOPICS)),
+                }}
         return True
 
     def action_fetch_locations(self):
