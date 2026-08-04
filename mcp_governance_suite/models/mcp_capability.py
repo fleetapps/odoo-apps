@@ -52,10 +52,8 @@ class MCPCapability(models.Model):
     tool_ids = fields.One2many("mcp.tool", "capability_id")
     tool_count = fields.Integer(compute="_compute_tool_count")
 
-    _sql_constraints = [
-        ("technical_name_uniq", "unique(technical_name)",
-         "Capability technical name must be unique."),
-    ]
+    _technical_name_uniq = models.Constraint(
+        "UNIQUE (technical_name)", "Capability technical name must be unique.")
 
     def _compute_tool_count(self):
         for rec in self:
@@ -88,9 +86,8 @@ class MCPTool(models.Model):
         default="{}",
         help="JSON Schema advertised as the tool's inputSchema.")
 
-    _sql_constraints = [
-        ("name_uniq", "unique(name)", "Tool name must be unique."),
-    ]
+    _name_uniq = models.Constraint(
+        "UNIQUE (name)", "Tool name must be unique.")
 
     @api.depends("handler")
     def _compute_writes(self):

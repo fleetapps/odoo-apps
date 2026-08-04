@@ -42,9 +42,11 @@ class MCPApiKey(models.Model):
     last_used = fields.Datetime(readonly=True)
     call_count = fields.Integer(compute="_compute_call_count")
 
-    _sql_constraints = [
-        ("key_hash_uniq", "unique(key_hash)", "This API key already exists."),
-    ]
+    # Odoo 19 dropped _sql_constraints: it only logs "no longer supported" and
+    # the constraint never reaches the database, so this uniqueness was not
+    # actually being enforced. models.Constraint is the replacement.
+    _key_hash_uniq = models.Constraint(
+        "UNIQUE (key_hash)", "This API key already exists.")
 
     @api.depends("key_hash")
     def _compute_is_generated(self):

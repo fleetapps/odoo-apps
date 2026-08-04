@@ -139,10 +139,9 @@ class MCPScopeLine(models.Model):
         help="Extra Odoo domain ANDed to every read/search on this model, e.g. "
              "[('state','!=','draft')].")
 
-    _sql_constraints = [
-        ("model_uniq", "unique(scope_id, model_id)",
-         "Each model can appear only once per scope."),
-    ]
+    _model_uniq = models.Constraint(
+        "UNIQUE (scope_id, model_id)",
+        "Each model can appear only once per scope.")
 
     @api.constrains("can_call_methods", "allowed_methods")
     def _check_allowed_methods(self):

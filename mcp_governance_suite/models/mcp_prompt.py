@@ -37,9 +37,8 @@ class MCPPrompt(models.Model):
         help='JSON list of argument descriptors: '
              '[{"name": "period", "description": "...", "required": false}].')
 
-    _sql_constraints = [
-        ("name_uniq", "unique(name)", "Prompt name must be unique."),
-    ]
+    _name_uniq = models.Constraint(
+        "UNIQUE (name)", "Prompt name must be unique.")
 
     def arguments(self):
         self.ensure_one()

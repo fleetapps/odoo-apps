@@ -200,9 +200,8 @@ class MCPOAuthClient(models.Model):
     metadata_json = fields.Text(readonly=True, help="Last fetched CIMD document.")
     metadata_fetched_at = fields.Datetime(readonly=True)
 
-    _sql_constraints = [
-        ("client_id_uniq", "unique(client_id)", "client_id must be unique."),
-    ]
+    _client_id_uniq = models.Constraint(
+        "UNIQUE (client_id)", "client_id must be unique.")
 
     def _compute_token_count(self):
         data = self.env["mcp.oauth.token"].sudo()._read_group(

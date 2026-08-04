@@ -50,8 +50,13 @@ class MCPApprovalRequest(models.Model):
         group = self.env.ref("mcp_governance_suite.group_mcp_approver", raise_if_not_found=False)
         if not group:
             return
+        # Odoo 19 removed res.groups.users; all_user_ids is the right successor
+        # here because a user who only holds an *implying* group is still an
+        # approver and would otherwise never be notified.
+        members = group.all_user_ids if "all_user_ids" in group._fields \
+            else group.users
         for req in self:
-            req.message_subscribe(partner_ids=group.users.partner_id.ids)
+            req.message_subscribe(partner_ids=members.partner_id.ids)
             req.message_post(
                 body=_("AI requested a %s on %s. Awaiting approval.")
                 % (req.operation, req.model_name),
