@@ -19,7 +19,7 @@ import json
 import logging
 import uuid
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from odoo import _, api, fields, models
 
@@ -93,6 +93,76 @@ class SyncJob(models.Model):
         index=True,
         help="Concurrency guard: jobs sharing a key are processed strictly "
              "in id order, never within the same batch.")
+    # ------------------------------------------------- sync health dashboard
+    @api.model
+    def sync_dashboard_data(self, instance_id=None, limit=25):
+        """Operational view of the queue, for the sync health client action.
+
+        Deliberately separate from shopify.bisync.sale.report, which answers
+        "how is the shop trading". This one answers "is the connector doing
+        its job" - a different question asked by a different person on a
+        different day, and conflating them served neither.
+        """
+        base = [("instance_id", "=", instance_id)] if instance_id else []
+        counts = {
+            state: self.search_count(base + [("state", "=", state)])
+            for state in ("pending", "done", "failed", "skipped")
+        }
+        attempted = counts["done"] + counts["failed"]
+        # "Today" has to mean the reader's today. Midnight UTC would show a
+        # Nairobi user three hours of yesterday's work as today's, and hide
+        # the first three hours of their own morning.
+        local_now = fields.Datetime.context_timestamp(self,
+                                                      fields.Datetime.now())
+        today = fields.Datetime.to_datetime(
+            local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+            .astimezone(timezone.utc).replace(tzinfo=None))
+
+        rows = []
+        for job in self.search(
+                base + [("kind", "in", ("order", "refund", "fulfillment"))],
+                order="id desc", limit=limit):
+            payload = json.loads(job.payload_json or "{}")
+            rows.append({
+                "id": job.id,
+                "reference": (payload.get("name") or payload.get("order_number")
+                              or payload.get("id") or job.id),
+                "kind": dict(self._fields["kind"].selection).get(job.kind),
+                "date": job.create_date and fields.Datetime.to_string(
+                    job.create_date),
+                "state": job.state,
+                "attempt": job.attempt,
+                # Trimmed: the full trace belongs on the job, not in a KPI row.
+                "error": (job.error or "").strip().splitlines()[-1][:160]
+                         if job.error else "",
+            })
+
+        return {
+            "synced": counts["done"],
+            "failed": counts["failed"],
+            "pending": counts["pending"],
+            # No attempts yet is not a 0% success rate - it is no data. Saying
+            # 0% on a fresh store reads as "everything is broken".
+            "success_rate": round(counts["done"] * 100.0 / attempted)
+                            if attempted else None,
+            "synced_today": self.search_count(
+                base + [("state", "=", "done"), ("write_date", ">=", today)]),
+            "rows": rows,
+            "stores": [{"id": i.id, "name": i.name}
+                       for i in self.env["shopify.bisync.instance"].search([])],
+            "instance_id": instance_id,
+        }
+
+    @api.model
+    def action_retry_all_failed(self, instance_id=None):
+        """Requeue every quarantined job, from the dashboard's one button."""
+        domain = [("state", "=", "failed")]
+        if instance_id:
+            domain.append(("instance_id", "=", instance_id))
+        failed = self.search(domain)
+        failed.action_retry()
+        return len(failed)
+
     # ------------------------------------------------------------------ api -
     @api.model
     def enqueue(self, instance, direction, kind, payload, priority=10,

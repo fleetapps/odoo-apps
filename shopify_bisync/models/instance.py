@@ -250,6 +250,36 @@ class ShopifyInstance(models.Model):
     sync_orders = fields.Selection(
         [("off", "Off"), ("import", "Shopify → Odoo")],
         default="import", required=True)
+    stock_quantity_source = fields.Selection(
+        [("free_qty", "Available to sell"), ("qty_available", "On hand"),
+         ("virtual_available", "Forecasted")],
+        default="free_qty", required=True, string="Stock To Send",
+        help="Which Odoo number is sent to Shopify.\n"
+             "Available to sell: on hand minus what is already reserved for "
+             "other orders - the safest, and the default.\n"
+             "On hand: everything physically in the warehouse, including "
+             "units already promised to someone else.\n"
+             "Forecasted: on hand plus what is on the way in. Only sensible "
+             "if you are happy to sell stock you have not received.")
+    stock_target_name = fields.Selection(
+        [("available", "Available"), ("on_hand", "On hand")],
+        default="available", required=True, string="Update In Shopify",
+        help="Which of Shopify's own two figures to overwrite. Shopify "
+             "accepts no others.")
+    stock_skip_zero = fields.Boolean(
+        string="Never Send Zero", default=False,
+        help="Leave Shopify's number alone instead of setting it to zero when "
+             "Odoo runs out. Useful if you sell the same stock somewhere else "
+             "and do not want Odoo to take the product off sale - but it does "
+             "mean Shopify can sell what you do not have.")
+    export_only_in_stock = fields.Boolean(
+        string="Only Export Products In Stock", default=False,
+        help="Skip products with nothing available when exporting to Shopify. "
+             "They are exported later, automatically, once stock arrives.")
+    export_categories_as_collections = fields.Boolean(
+        string="Categories As Collections", default=False,
+        help="Create a Shopify collection for each Odoo product category and "
+             "put exported products in the matching one.")
     conflict_policy = fields.Selection(
         [("odoo_wins", "Odoo wins"), ("shopify_wins", "Shopify wins"),
          ("newest_wins", "Most recent edit wins")],
@@ -292,6 +322,19 @@ class ShopifyInstance(models.Model):
         [("line", "Per-line discount %"),
          ("separate", "Single negative discount line")],
         default="line", required=True)
+    invoice_policy = fields.Selection(
+        [("all", "Every order"), ("paid", "Only once paid"),
+         ("fulfilled", "Only once fulfilled")],
+        default="all", required=True, string="Create Invoices For",
+        help="Which imported orders get an Odoo invoice. Orders that do not "
+             "qualify yet are invoiced automatically when they later become "
+             "paid or fulfilled - nothing is missed, only deferred.")
+    use_shopify_order_number = fields.Boolean(
+        string="Use Shopify's Order Number", default=False,
+        help="Name the Odoo order exactly as Shopify does, so the two match "
+             "when someone reads a number down the phone. Leave off to use "
+             "the prefix below instead, which is safer when several stores "
+             "feed one company and their numbering can collide.")
     order_ref_prefix = fields.Char(
         default="SHOPIFY", required=True, string="Order Reference Prefix",
         help="Prefix of the imported order's Customer Reference, e.g. "
@@ -346,6 +389,11 @@ class ShopifyInstance(models.Model):
         "product.product", check_company=True, string="Duties Product",
         default=lambda self: self.env.ref(
             "shopify_bisync.product_duties", raise_if_not_found=False))
+    create_crm_lead = fields.Boolean(
+        string="Create CRM Leads", default=False,
+        help="Also open a CRM opportunity for each new Shopify customer. Only "
+             "worth it if someone actually follows these up - otherwise it "
+             "fills the pipeline with noise.")
     risk_policy = fields.Selection(
         [("off", "Do not check"),
          ("flag", "Tag risky orders and raise an activity")],

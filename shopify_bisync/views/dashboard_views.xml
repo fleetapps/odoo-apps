@@ -68,8 +68,19 @@
             <field name="tag">shopify_bisync_dashboard</field>
         </record>
 
+        <!-- Deliberately a second dashboard. The one above answers "how is the
+             shop trading"; this answers "is the connector working". They are
+             asked by different people on different days, and the merged
+             version served neither well. -->
+        <record id="sync_dashboard_action" model="ir.actions.client">
+            <field name="name">Sync Health</field>
+            <field name="tag">shopify_bisync_sync_dashboard</field>
+        </record>
+
         <menuitem id="menu_dashboard" name="Dashboard" parent="menu_root"
                   action="dashboard_action" sequence="1"/>
+        <menuitem id="menu_sync_dashboard" name="Sync Health" parent="menu_root"
+                  action="sync_dashboard_action" sequence="2"/>
         <menuitem id="menu_sale_report" name="Sales Analysis"
                   parent="menu_operations" action="sale_report_action"
                   sequence="50"/>

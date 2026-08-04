@@ -174,9 +174,17 @@
                                     <group string="Conflicts &amp; Exports">
                                         <field name="conflict_policy"/>
                                         <field name="auto_export_new_products"/>
+                                        <field name="export_only_in_stock"/>
+                                        <field name="export_categories_as_collections"/>
                                         <field name="export_status_default"/>
                                         <field name="compare_at_policy"/>
                                         <field name="notify_customer_on_fulfillment"/>
+                                    </group>
+                                    <group string="Stock Levels"
+                                           invisible="sync_stock not in ['export', 'both']">
+                                        <field name="stock_quantity_source"/>
+                                        <field name="stock_target_name"/>
+                                        <field name="stock_skip_zero"/>
                                     </group>
                                     <group string="Metadata">
                                         <field name="sync_product_tags"/>
@@ -193,8 +201,13 @@
                             <page string="Order Import" name="orders">
                                 <group>
                                     <group string="Financial">
-                                        <field name="order_ref_prefix"/>
+                                        <field name="use_shopify_order_number"/>
+                                        <field name="order_ref_prefix"
+                                               invisible="use_shopify_order_number"/>
                                         <field name="confirm_policy"/>
+                                        <field name="invoice_policy"
+                                               invisible="confirm_policy != 'confirm_invoice'"/>
+                                        <field name="create_crm_lead"/>
                                         <field name="payment_journal_id"
                                                invisible="confirm_policy != 'confirm_invoice'"
                                                required="confirm_policy == 'confirm_invoice'"/>

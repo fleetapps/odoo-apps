@@ -103,6 +103,28 @@ mutation productVariantsBulkUpdate(
   }
 }"""
 
+#: Odoo product category -> Shopify collection. Add is a separate, additive
+#: mutation on purpose; see _add_to_category_collection.
+COLLECTION_BY_TITLE = """
+query collectionByTitle($query: String!) {
+  collections(first: 1, query: $query) { nodes { id title } }
+}"""
+
+COLLECTION_CREATE = """
+mutation collectionCreate($input: CollectionInput!) {
+  collectionCreate(input: $input) {
+    collection { id title }
+    userErrors { field message }
+  }
+}"""
+
+COLLECTION_ADD_PRODUCTS = """
+mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
+  collectionAddProducts(id: $id, productIds: $productIds) {
+    userErrors { field message }
+  }
+}"""
+
 STAGED_UPLOADS = """
 mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
   stagedUploadsCreate(input: $input) {
@@ -875,11 +897,59 @@ class ProductSync(models.AbstractModel):
                 parse_shopify_dt(product_node.get("updatedAt"))
                 or fields.Datetime.now(),
         })
+        if instance.export_categories_as_collections and tmpl.categ_id:
+            self._add_to_category_collection(instance, tmpl, product_node)
         if instance.publish_policy == "auto":
             self.env["shopify.bisync.job"].enqueue(
                 instance, "out", "publish",
                 {"res_id": tmpl.id, "action": "publish"},
                 priority=26, lock_key=f"publish:{tmpl.id}")
+
+    # --------------------------------------------------------- collections --
+    @api.model
+    def _add_to_category_collection(self, instance, tmpl, product_node):
+        """Put an exported product in the collection named for its category.
+
+        Deliberately additive (``collectionAddProducts``) rather than sending
+        ``collections`` inside ``productSet``: that input field's
+        replace-versus-append behaviour is undocumented, and quietly dropping
+        a merchant's hand-curated collections because Odoo only knows about
+        one category would be a far worse failure than not adding them.
+
+        A failure here never fails the export - the product is already live on
+        Shopify by this point, and a missing collection is a merchandising
+        detail, not a broken sync.
+        """
+        title = tmpl.categ_id.name
+        try:
+            found = instance.graphql(
+                COLLECTION_BY_TITLE,
+                {"query": f'title:"{self._search_literal(title)}"'})
+            nodes = (found.get("collections") or {}).get("nodes") or []
+            collection_id = nodes[0]["id"] if nodes else None
+            if not collection_id:
+                created = instance.graphql(COLLECTION_CREATE,
+                                           {"input": {"title": title}})
+                result = created.get("collectionCreate") or {}
+                instance.check_user_errors(result, "collectionCreate")
+                collection_id = (result.get("collection") or {}).get("id")
+            if not collection_id:
+                return
+            added = instance.graphql(COLLECTION_ADD_PRODUCTS, {
+                "id": collection_id, "productIds": [product_node["id"]]})
+            instance.check_user_errors(
+                added.get("collectionAddProducts") or {},
+                "collectionAddProducts")
+        except Exception as exc:  # noqa: BLE001 - merchandising, not sync
+            _logger.warning(
+                "shopify_bisync: could not file %s under collection '%s': %s",
+                tmpl.display_name, title, exc)
+            self.env["shopify.bisync.mismatch"].log(
+                self.env, instance, "other",
+                _("Could not add products to the Shopify collection "
+                  "'%(title)s': %(err)s. The products exported normally; only "
+                  "the collection is missing.", title=title, err=exc),
+                reference=title, group_key=f"collection:{title}")
 
     # ------------------------------------------------------------- publish --
     @api.model
@@ -1189,6 +1259,13 @@ class ProductTemplate(models.Model):
                                     lock_key=f"price:{tmpl.id}")
                     continue
                 if instance.sync_products not in ("export", "both"):
+                    continue
+                # "Only export products in stock" holds back the FIRST export
+                # of an unstocked product. An already-bound product keeps
+                # syncing: silently freezing a live Shopify listing because
+                # Odoo hit zero would be a far worse surprise than listing it.
+                if (instance.export_only_in_stock and not bound
+                        and tmpl.qty_available <= 0):
                     continue
                 if bound or instance.auto_export_new_products:
                     Job.enqueue(instance, "out", "product",

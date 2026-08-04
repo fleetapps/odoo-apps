@@ -82,7 +82,11 @@ class StockSync(models.AbstractModel):
             # the same code backports to 17/18 unchanged.
             qty = product.with_context(
                 warehouse_id=row.warehouse_id.id,
-                warehouse=row.warehouse_id.id).free_qty
+                warehouse=row.warehouse_id.id)[instance.stock_quantity_source]
+            # "Never send zero" leaves Shopify's figure untouched rather than
+            # writing 0, for merchants who also sell this stock elsewhere.
+            if instance.stock_skip_zero and qty <= 0:
+                continue
             quantities.append({
                 "inventoryItemId": instance.gid(
                     "InventoryItem", binding.inventory_item_id),
@@ -100,7 +104,9 @@ class StockSync(models.AbstractModel):
             return
         data = instance.graphql(INVENTORY_SET, {
             "input": {
-                "name": "available",
+                # Shopify accepts only "available" or "on_hand" here; the
+                # field's selection is limited to those two for that reason.
+                "name": instance.stock_target_name,
                 "reason": "correction",
                 "quantities": quantities,
             },

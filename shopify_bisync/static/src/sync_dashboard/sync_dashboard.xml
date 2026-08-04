@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="shopify_bisync.SyncDashboard">
+    <Layout display="{ controlPanel: {} }" className="'o_shopify_sync_dash h-100 overflow-auto'">
+        <div class="p-3">
+
+            <div t-if="state.loading" class="text-center text-muted py-5">
+                <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
+            </div>
+
+            <t t-else="">
+                <!-- Store picker only appears when there is a choice to make. -->
+                <div class="d-flex align-items-center gap-2 mb-3"
+                     t-if="state.data.stores.length > 1">
+                    <label class="mb-0 text-muted">Store</label>
+                    <select class="form-select" style="max-width: 18rem;"
+                            t-on-change="setStore">
+                        <option value="">All stores</option>
+                        <t t-foreach="state.data.stores" t-as="store" t-key="store.id">
+                            <option t-att-value="store.id"
+                                    t-att-selected="store.id === state.instanceId">
+                                <t t-esc="store.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Synced</div>
+                                <div class="fs-3 fw-bold" t-esc="state.data.synced"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100"
+                             t-att-class="state.data.failed ? 'border-danger' : ''">
+                            <div class="card-body">
+                                <div class="text-muted small">Needs attention</div>
+                                <div class="fs-3 fw-bold"
+                                     t-att-class="state.data.failed ? 'text-danger' : ''"
+                                     t-esc="state.data.failed"/>
+                                <button t-if="state.data.failed"
+                                        class="btn btn-sm btn-link p-0"
+                                        t-on-click="openFailedJobs">
+                                    See them
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Success rate</div>
+                                <div class="fs-3 fw-bold" t-esc="successRate"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Synced today</div>
+                                <div class="fs-3 fw-bold" t-esc="state.data.synced_today"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div t-if="state.data.pending" class="alert alert-info py-2">
+                    <i class="fa fa-clock-o me-1"/>
+                    <t t-esc="state.data.pending"/> item(s) waiting. The queue runs
+                    every couple of minutes — this clears on its own.
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-secondary"
+                                    t-att-class="state.filter === 'all' ? 'active' : ''"
+                                    t-on-click="() => this.setFilter('all')">All</button>
+                            <button class="btn btn-outline-secondary"
+                                    t-att-class="state.filter === 'synced' ? 'active' : ''"
+                                    t-on-click="() => this.setFilter('synced')">Synced</button>
+                            <button class="btn btn-outline-secondary"
+                                    t-att-class="state.filter === 'not_synced' ? 'active' : ''"
+                                    t-on-click="() => this.setFilter('not_synced')">Not synced</button>
+                        </div>
+                        <div class="ms-auto">
+                            <button class="btn btn-sm btn-primary"
+                                    t-if="state.data.failed"
+                                    t-on-click="retryAllFailed">
+                                Retry all failed
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>What</th>
+                                    <th>When</th>
+                                    <th>Status</th>
+                                    <th>Why it failed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="row" t-key="row.id"
+                                    class="cursor-pointer"
+                                    t-on-click="() => this.openJob(row)">
+                                    <td t-esc="row.reference"/>
+                                    <td class="text-muted" t-esc="row.kind"/>
+                                    <td class="text-muted" t-esc="row.date"/>
+                                    <td>
+                                        <span class="badge"
+                                              t-att-class="stateClass(row)"
+                                              t-esc="stateLabel(row)"/>
+                                    </td>
+                                    <td class="text-muted small" t-esc="row.error"/>
+                                </tr>
+                                <tr t-if="!rows.length">
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        Nothing here yet. Orders appear as they arrive
+                                        from Shopify.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </Layout>
+</t>
+
+</templates>

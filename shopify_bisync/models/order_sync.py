@@ -149,6 +149,7 @@ class OrderSync(models.AbstractModel):
                            if v and not partner[k]})
         else:
             partner = Partner.create(vals)
+            self._maybe_create_lead(instance, partner)
         if customer.get("id") and not Binding.get(
                 self.env, instance, "res.partner", record=partner):
             Binding.create({
@@ -156,6 +157,35 @@ class OrderSync(models.AbstractModel):
                 "res_id": partner.id, "external_id": str(customer["id"])})
         self._apply_partner_tags(partner, customer)
         return partner
+
+    @api.model
+    def _maybe_create_lead(self, instance, partner):
+        """Open a CRM opportunity for a genuinely new Shopify customer.
+
+        Only for newly created partners: a returning shopper would otherwise
+        raise a fresh lead on every order, which is how a pipeline becomes
+        noise nobody reads.
+
+        CRM is not a dependency of this module - plenty of merchants run
+        Shopify without it - so this checks for the model rather than forcing
+        the install on everyone for an off-by-default feature.
+        """
+        if not instance.create_crm_lead:
+            return
+        Lead = self.env.get("crm.lead")
+        if Lead is None:
+            _logger.info("shopify_bisync: CRM leads requested on %s but the "
+                         "CRM app is not installed - skipping.", instance.name)
+            return
+        Lead.sudo().create({
+            "name": _("Shopify customer: %s", partner.display_name),
+            "partner_id": partner.id,
+            "type": "opportunity",
+            "company_id": instance.company_id.id,
+            "description": _("Created automatically from the first order "
+                             "imported for this customer from %s.",
+                             instance.name),
+        })
 
     @api.model
     def _apply_partner_tags(self, partner, customer):
@@ -257,6 +287,10 @@ class OrderSync(models.AbstractModel):
         """Human-facing order reference. The prefix is per store so two shops
         under one company do not both display 'SHOPIFY/1001'."""
         number = o.get("order_number") or o.get("id")
+        if instance.use_shopify_order_number:
+            # Shopify's own display name ("#1001") when it exists, so the two
+            # systems read identically down a phone line.
+            return o.get("name") or str(number)
         return f"{instance.order_ref_prefix or 'SHOPIFY'}/{number}"
 
     @api.model
@@ -609,6 +643,23 @@ class OrderSync(models.AbstractModel):
                    rec=recommendation, level=level))
 
     @api.model
+    def _invoice_due_now(self, instance, o):
+        """Does this Shopify order qualify for an invoice yet?
+
+        Previously hard-wired to 'paid'. Stores that invoice on dispatch, or
+        that invoice everything and chase payment afterwards, had no way to
+        say so and simply never got invoices for those orders.
+        """
+        policy = instance.invoice_policy
+        if policy == "all":
+            return True
+        if policy == "paid":
+            return o.get("financial_status") == "paid"
+        # "fulfilled": Shopify reports partial fulfilment separately, and a
+        # half-shipped order is not a completed sale to invoice.
+        return o.get("fulfillment_status") == "fulfilled"
+
+    @api.model
     def _apply_financial_gating(self, instance, so, o):
         """Per-instance policy; failures never lose the imported order."""
         if (instance.confirm_policy == "draft"
@@ -622,8 +673,12 @@ class OrderSync(models.AbstractModel):
             so.message_post(body=_("Automatic confirmation failed - order "
                                    "left as quotation."))
             return
-        if (instance.confirm_policy != "confirm_invoice"
-                or o.get("financial_status") != "paid"):
+        if instance.confirm_policy != "confirm_invoice":
+            return
+        if not self._invoice_due_now(instance, o):
+            # Not yet eligible under the store's invoice policy. Nothing is
+            # lost: the orders/updated and fulfillments webhooks re-run this
+            # path, so the invoice appears the moment the order qualifies.
             return
         try:
             invoices = so._create_invoices()
