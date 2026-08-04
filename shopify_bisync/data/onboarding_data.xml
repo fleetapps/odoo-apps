@@ -8,7 +8,7 @@
 
         <record id="onboarding_step_connect_store" model="onboarding.onboarding.step">
             <field name="title">Connect your store</field>
-            <field name="description">Paste the Admin API access token from your Shopify custom app.</field>
+            <field name="description">Add your store, then approve the connection on Shopify. No tokens to copy.</field>
             <field name="button_text">Connect</field>
             <field name="done_text">Store connected</field>
             <field name="done_icon">fa-plug</field>
@@ -18,7 +18,7 @@
 
         <record id="onboarding_step_test_connection" model="onboarding.onboarding.step">
             <field name="title">Test the connection</field>
-            <field name="description">Confirm Shopify accepts the token before anything syncs.</field>
+            <field name="description">Check Shopify is answering before anything syncs.</field>
             <field name="button_text">Test</field>
             <field name="done_text">Shopify answered</field>
             <field name="done_icon">fa-check-circle</field>
@@ -27,8 +27,8 @@
         </record>
 
         <record id="onboarding_step_webhooks" model="onboarding.onboarding.step">
-            <field name="title">Register webhooks</field>
-            <field name="description">Turns on real-time inbound sync. Needs a public HTTPS address.</field>
+            <field name="title">Turn on live updates</field>
+            <field name="description">Lets Shopify tell Odoo the moment something changes. Set up for you when you connect.</field>
             <field name="button_text">Register</field>
             <field name="done_text">Listening to Shopify</field>
             <field name="done_icon">fa-bolt</field>

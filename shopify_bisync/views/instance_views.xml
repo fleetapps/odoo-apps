@@ -13,9 +13,18 @@
                              untested store only ever produced a raw API error.
                              Test Connection is the only primary action: it is
                              the gate the rest of the setup hangs off. -->
+                        <button name="action_connect_shopify" type="object"
+                                string="Connect to Shopify"
+                                invisible="not id or is_connected"
+                                groups="shopify_bisync.group_connector_admin" class="btn-primary"/>
                         <button name="action_test_connection" type="object"
-                                string="Test Connection" invisible="not id"
+                                string="Check Connection"
+                                invisible="not is_connected"
                                 class="btn-primary"/>
+                        <button name="action_connect_shopify" type="object"
+                                string="Reconnect" invisible="not is_connected"
+                                groups="shopify_bisync.group_connector_admin"
+                                confirm="This sends you back to Shopify to approve the connection again. Your settings and synced records are not affected. Continue?"/>
                         <button name="action_register_webhooks" type="object"
                                 string="Register Webhooks"
                                 invisible="not connection_ok_on"/>
@@ -45,11 +54,84 @@
                             <group string="Connection">
                                 <field name="active" widget="boolean_toggle"/>
                                 <field name="shop_url"
-                                       placeholder="mystore.myshopify.com"/>
-                                <field name="access_token" password="True"/>
-                                <field name="webhook_secret" password="True"/>
+                                       placeholder="your-store.myshopify.com"/>
+                                <field name="client_id" password="True"
+                                       placeholder="paste from your Shopify app"
+                                       invisible="is_connected"/>
+                                <field name="client_secret" password="True"
+                                       placeholder="paste from your Shopify app"
+                                       invisible="is_connected"/>
+                                <field name="is_connected" invisible="1"/>
+                                <label for="oauth_redirect_uri"
+                                       invisible="is_connected" groups="shopify_bisync.group_connector_admin"/>
+                                <div invisible="is_connected" groups="shopify_bisync.group_connector_admin">
+                                    <field name="oauth_redirect_uri"
+                                           widget="CopyClipboardChar" readonly="1"
+                                           nolabel="1"/>
+                                    <field name="oauth_redirect_uri_ok" invisible="1"/>
+                                    <div class="text-danger small mt-1"
+                                         invisible="oauth_redirect_uri_ok">
+                                        <i class="fa fa-exclamation-triangle me-1"/>
+                                        This address isn't reachable from the internet, so
+                                        Shopify can't send anyone back to it. Ask whoever
+                                        administers this Odoo to set its public web address
+                                        (the <code>web.base.url</code> setting) before you
+                                        copy this into Shopify.
+                                    </div>
+                                </div>
+                                <div colspan="2" class="alert alert-info mb-0" groups="shopify_bisync.group_connector_admin"
+                                     role="alert" invisible="is_connected or not id">
+                                    <p class="mb-2">
+                                        <b>First time? Create your Shopify app — you only
+                                        do this once, then every store reuses it.</b>
+                                    </p>
+                                    <ol class="mb-2 ps-3">
+                                        <li>
+                                            Go to the
+                                            <a href="https://shopify.dev/dashboard"
+                                               target="_blank" rel="noreferrer">Shopify Dev
+                                            Dashboard</a>, sign in with the account that
+                                            owns your store, and create an app. Name it
+                                            anything — only you will see it.
+                                        </li>
+                                        <li>
+                                            In the app, open <b>Settings</b> and paste the
+                                            <b>Redirect URL</b> shown above into the allowed
+                                            redirection URLs. It must match exactly.
+                                        </li>
+                                        <li>
+                                            Under <b>Distribution</b>, choose
+                                            <b>Custom distribution</b> and pick your store.
+                                            This needs no review from Shopify.
+                                        </li>
+                                        <li>
+                                            Still in Settings, copy the app's
+                                            <b>Client ID</b> and <b>Client secret</b> into
+                                            the App Key and App Secret boxes above, and save.
+                                        </li>
+                                    </ol>
+                                    <p class="mb-0">
+                                        Then press <b>Connect to Shopify</b> at the top.
+                                        You'll approve the connection on Shopify's own
+                                        screen and come straight back here. Nothing syncs
+                                        until you approve, and you can change your mind
+                                        later by deactivating the store.
+                                    </p>
+                                </div>
+                                <div colspan="2" class="alert alert-info mb-0" groups="shopify_bisync.group_connector_admin"
+                                     role="alert" invisible="id">
+                                    Save this store first, then press
+                                    <b>Connect to Shopify</b>.
+                                </div>
+                                <div colspan="2" class="text-muted"
+                                     invisible="not is_connected">
+                                    <i class="fa fa-check text-success me-1"/>
+                                    Connected to Shopify. Nothing to fill in here —
+                                    use <b>Check Connection</b> if you think something
+                                    has stopped working.
+                                </div>
                             </group>
-                            <group string="Odoo Mapping">
+                            <group string="How Orders Land in Odoo">
                                 <field name="company_id"
                                        groups="base.group_multi_company"/>
                                 <field name="warehouse_id"/>
@@ -171,10 +253,22 @@
                                 </field>
                             </page>
                             <page string="Status" name="status">
-                                <group>
+                                <group string="Last activity">
                                     <field name="last_import_orders"/>
                                     <field name="last_export_stock"/>
                                     <field name="last_import_payouts"/>
+                                    <field name="connection_ok_on"/>
+                                    <field name="webhooks_registered_on"/>
+                                </group>
+                                <!-- Only relevant to stores connected before
+                                     the approval flow existed, or to older
+                                     Shopify apps that issued their own signing
+                                     secret. A merchant connecting today never
+                                     needs to look at this. -->
+                                <group string="Older setups"
+                                       groups="shopify_bisync.group_connector_admin">
+                                    <field name="webhook_secret" password="True"
+                                           string="Signing secret"/>
                                 </group>
                             </page>
                         </notebook>
@@ -207,9 +301,13 @@
             <field name="view_mode">list,form</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">Connect your first Shopify store</p>
-                <p>Create a custom app in Shopify admin (Settings → Apps), grant
-                   Admin API scopes for products, inventory, orders, customers and
-                   fulfillments, then paste the access token here.</p>
+                <p>Add your store, then press <b>Connect to Shopify</b>. You'll approve
+                   the connection on Shopify's own screen and come straight back — the
+                   same way you'd install any app on your store.</p>
+                <p>Before the first store, someone needs to create an app once in the
+                   <a href="https://shopify.dev/dashboard" target="_blank">Shopify Dev
+                   Dashboard</a> and copy its key and secret. Every store after that
+                   reuses the same two values, so it really is one click.</p>
             </field>
         </record>
 

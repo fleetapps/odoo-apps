@@ -23,7 +23,10 @@ Platform facts (VERIFY-ON-BUILD register: see DOCS_REGISTER.md):
   :func:`cron_heal_webhooks` re-registers missing topics daily (self-healing).
 """
 import logging
+import re
+import secrets
 import time
+from urllib.parse import urlencode
 
 import requests
 
@@ -60,6 +63,30 @@ WEBHOOK_TOPICS = (
     # the assessment over GraphQL.
     "orders/risk_assessment_changed",
 )
+
+#: Scopes requested at install. Shopify shows these to the merchant on the
+#: approval screen, so the list is exactly what the connector calls and no
+#: more - anything extra reads as overreach on that screen and is one more
+#: reason for a merchant to abandon the install.
+#: read_all_orders is deliberately absent: it needs Shopify's approval and is
+#: only required for orders older than 60 days.
+OAUTH_SCOPES = ",".join((
+    "read_products", "write_products",          # productSet, variants
+    "read_inventory", "write_inventory",        # inventorySetQuantities
+    "read_orders", "write_orders",              # order import/export
+    "read_customers", "write_customers",        # customer sync
+    "read_locations",                           # locations.json mapping
+    "read_fulfillments", "write_fulfillments",  # fulfillmentCreate
+    "read_merchant_managed_fulfillment_orders",
+    "write_merchant_managed_fulfillment_orders",
+    "read_assigned_fulfillment_orders",
+    "write_assigned_fulfillment_orders",        # 3PL-fulfilled stores
+    "read_shopify_payments_payouts",            # payout reconciliation
+))
+
+#: Shopify requires the shop parameter on the OAuth callback to match this
+#: before anything else is trusted (authorization-code-grant docs).
+SHOP_DOMAIN_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com$")
 
 GRAPHQL_MAX_RETRIES = 6
 REST_MAX_RETRIES = 5
@@ -100,29 +127,77 @@ class ShopifyInstance(models.Model):
     name = fields.Char(required=True, tracking=True)
     active = fields.Boolean(default=True)
     shop_url = fields.Char(
-        required=True, tracking=True,
-        help="myshopify domain, e.g. mystore.myshopify.com (no scheme).")
+        required=True, tracking=True, string="Store Address",
+        help="Your store's permanent Shopify address, ending in "
+             ".myshopify.com. In Shopify you'll find it under "
+             "Settings > Domains, listed as the one you can't remove. Use "
+             "that one here, not your own branded domain.")
+    client_id = fields.Char(
+        string="App Key", groups="shopify_bisync.group_connector_admin",
+        help="From your Shopify app's Settings page, where it may also be "
+             "called Client ID. It is not a password - it only identifies "
+             "which app is asking. Paste the same one for every store you "
+             "connect with this app.")
+    client_secret = fields.Char(
+        string="App Secret", groups="shopify_bisync.group_connector_admin",
+        help="The matching secret from the same page. Treat it like a "
+             "password: it is what proves the connection request really "
+             "came from your Odoo, and it is also how Odoo checks that "
+             "incoming updates genuinely came from Shopify.")
     access_token = fields.Char(
-        required=True, groups="shopify_bisync.group_connector_admin")
+        readonly=True, copy=False,
+        groups="shopify_bisync.group_connector_admin",
+        help="Filled in automatically when you approve the connection in "
+             "Shopify. There is nothing to type here.")
+    # Drives every show/hide on the form. The form must NOT key its modifiers
+    # off access_token directly: that field is groups-restricted, and
+    # ir.ui.view._postprocess_access_rights *removes* restricted nodes for
+    # non-members, leaving those modifiers pointing at a field that is no
+    # longer in the arch. This one carries no groups, so it survives.
+    is_connected = fields.Boolean(
+        compute="_compute_is_connected", string="Connected",
+        help="Whether this store has been approved in Shopify.")
+    oauth_redirect_uri_ok = fields.Boolean(
+        compute="_compute_oauth_redirect_uri",
+        help="False when this Odoo has no public https address configured, "
+             "which makes the Redirect URL above wrong before it is even used.")
+    oauth_redirect_uri = fields.Char(
+        compute="_compute_oauth_redirect_uri", string="Redirect URL",
+        help="Shopify will only send a merchant back to an address the app "
+             "already knows. Copy this into your Shopify app's allowed "
+             "redirection URLs, exactly as shown, before connecting.")
+    oauth_state = fields.Char(
+        readonly=True, copy=False,
+        groups="shopify_bisync.group_connector_admin",
+        help="One-time value that ties an approval in Shopify back to this "
+             "store, so someone else's reply cannot be accepted in its place.")
     webhook_secret = fields.Char(
         groups="shopify_bisync.group_connector_admin",
-        help="App's API secret used to verify webhook HMAC signatures.")
+        help="Set for you when you connect. Only fill this in by hand if "
+             "you are using an older Shopify app that issued a separate "
+             "signing secret.")
     company_id = fields.Many2one(
         "res.company", required=True, index=True,
         default=lambda self: self.env.company)
     warehouse_id = fields.Many2one(
         "stock.warehouse", required=True, check_company=True,
-        help="Default warehouse for orders and the stock source when no "
-             "location mapping line matches.")
+        string="Ships From",
+        default=lambda self: self.env["stock.warehouse"].search(
+            [("company_id", "=", self.env.company.id)], limit=1),
+        help="Where online orders are fulfilled from, and whose stock levels "
+             "are sent to Shopify. If you ship from more than one place, set "
+             "this to your main one - you can match each Shopify location to "
+             "its own warehouse later, on the Locations tab.")
     pricelist_id = fields.Many2one(
-        "product.pricelist", check_company=True,
-        help="Prices exported to Shopify are computed from this pricelist "
-             "(fallback: product sales price).")
+        "product.pricelist", check_company=True, string="Prices Come From",
+        help="Which price list Odoo uses when it sends prices to Shopify. "
+             "Leave empty to send each product's normal sales price.")
     admin_user_id = fields.Many2one(
-        "res.users", string="Connector Admin",
+        "res.users", string="Who To Notify",
         default=lambda self: self.env.user,
-        help="Receives escalation activities: quarantined jobs, risky orders, "
-             "edits on delivered orders.")
+        help="The person told when something needs a human: an order Shopify "
+             "flagged as risky, a change to an order that already shipped, or "
+             "a sync that kept failing and was set aside.")
 
     # ------- two-way sync policy (the differentiator: direction per entity) --
     sync_products = fields.Selection(
@@ -497,6 +572,81 @@ class ShopifyInstance(models.Model):
                     for e in errors)[:500]))
 
     # -------------------------------------------------------------- actions -
+    # ------------------------------------------------------------- OAuth ----
+    @api.depends("access_token")
+    def _compute_is_connected(self):
+        # sudo: access_token is admin-only, but every user of the form needs
+        # to know whether the store is connected in order to render it.
+        for instance in self:
+            instance.is_connected = bool(instance.sudo().access_token)
+
+    @api.depends("shop_url")
+    def _compute_oauth_redirect_uri(self):
+        # Same value for every store; shown per record so it can be copied
+        # from the screen where it is needed, without hunting for it.
+        for instance in self:
+            uri = instance._oauth_redirect_uri()
+            instance.oauth_redirect_uri = uri
+            # Catch the misconfiguration on the screen where the URL is copied,
+            # rather than after the merchant has already pasted it in Shopify.
+            instance.oauth_redirect_uri_ok = uri.startswith("https://")
+
+    def _oauth_redirect_uri(self):
+        """The one URL Shopify is allowed to send the merchant back to.
+
+        Must be listed verbatim as an allowed redirection URL on the app, and
+        must be https - Shopify refuses plain http.
+        """
+        return f"{self.get_base_url()}/shopify_bisync/oauth/callback"
+
+    def action_connect_shopify(self):
+        """Send the merchant to Shopify's approval screen.
+
+        This is the whole connection flow from the merchant's side: they see
+        Shopify's own consent page listing what the app may do, press Install,
+        and land back here connected. Nothing is typed or pasted.
+
+        Authorization code grant, offline access (``grant_options[]`` omitted
+        and no ``expiring=1``), which returns a token with no expiry - so
+        there is no refresh machinery to go wrong at 3am.
+        https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant
+        """
+        self.ensure_one()
+        if not self.client_id or not self.client_secret:
+            raise UserError(_(
+                "Add the App Key and App Secret from your Shopify app first, "
+                "then press Connect to Shopify."))
+        if not SHOP_DOMAIN_RE.match(self.shop_url or ""):
+            raise UserError(_(
+                "%(url)s is not a Shopify store address. It should look like "
+                "your-store.myshopify.com - check Settings > Domains in "
+                "Shopify for the address you cannot remove.",
+                url=self.shop_url or ""))
+        redirect_uri = self._oauth_redirect_uri()
+        if not redirect_uri.startswith("https://"):
+            raise UserError(_(
+                "Shopify only sends merchants back to a secure (https) "
+                "address, but this Odoo is configured as %(url)s. Set the "
+                "web.base.url system parameter to your public https address "
+                "and try again.", url=self.get_base_url()))
+        # Tied to this record and checked on the way back, so a reply meant
+        # for another store - or replayed by someone else - is rejected.
+        # Held in a local rather than re-read: the value must be exactly the
+        # one sent to Shopify, whatever happens to the record's cache next.
+        state = secrets.token_urlsafe(32)
+        self.sudo().oauth_state = state
+        query = urlencode({
+            "client_id": self.client_id,
+            "scope": OAUTH_SCOPES,
+            "redirect_uri": redirect_uri,
+            "state": state,
+        })
+        return {
+            "type": "ir.actions.act_url",
+            "target": "self",
+            "url": f"https://{self.shop_url}/admin/oauth/authorize?{query}",
+        }
+
     def action_test_connection(self):
         self.ensure_one()
         shop = self.api_call("GET", "shop.json").get("shop", {})
