@@ -163,6 +163,11 @@ class ShopifyInstance(models.Model):
     is_connected = fields.Boolean(
         compute="_compute_is_connected", string="Connected",
         help="Whether this store has been approved in Shopify.")
+    oauth_app_url = fields.Char(
+        compute="_compute_oauth_redirect_uri", string="App URL",
+        help="Shopify refuses the connection unless the app's own App URL is "
+             "on the same host as the Redirect URL below, so it has to be set "
+             "even though this connector never serves a page there.")
     oauth_redirect_uri_ok = fields.Boolean(
         compute="_compute_oauth_redirect_uri",
         help="False when this Odoo has no public https address configured, "
@@ -593,6 +598,7 @@ class ShopifyInstance(models.Model):
         for instance in self:
             uri = instance._oauth_redirect_uri()
             instance.oauth_redirect_uri = uri
+            instance.oauth_app_url = instance.get_base_url()
             # Catch the misconfiguration on the screen where the URL is copied,
             # rather than after the merchant has already pasted it in Shopify.
             instance.oauth_redirect_uri_ok = uri.startswith("https://")

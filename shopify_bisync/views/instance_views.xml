@@ -62,6 +62,13 @@
                                        placeholder="paste from your Shopify app"
                                        invisible="is_connected"/>
                                 <field name="is_connected" invisible="1"/>
+                                <label for="oauth_app_url"
+                                       invisible="is_connected" groups="shopify_bisync.group_connector_admin"/>
+                                <div invisible="is_connected" groups="shopify_bisync.group_connector_admin">
+                                    <field name="oauth_app_url"
+                                           widget="CopyClipboardChar" readonly="1"
+                                           nolabel="1"/>
+                                </div>
                                 <label for="oauth_redirect_uri"
                                        invisible="is_connected" groups="shopify_bisync.group_connector_admin"/>
                                 <div invisible="is_connected" groups="shopify_bisync.group_connector_admin">
@@ -103,9 +110,17 @@
                                             anything — only you will see it.
                                         </li>
                                         <li>
-                                            In the app, open <b>Settings</b> and paste the
-                                            <b>Redirect URL</b> shown above into the allowed
-                                            redirection URLs. It must match exactly.
+                                            In the app, open <b>Settings</b> and set its
+                                            <b>App URL</b> to the App URL shown above.
+                                            Shopify rejects the connection if this and the
+                                            Redirect URL are on different addresses —
+                                            <i>"the redirect_uri and application url must
+                                            have matching hosts"</i>.
+                                        </li>
+                                        <li>
+                                            On the same page, paste the <b>Redirect URL</b>
+                                            shown above into the allowed redirection URLs.
+                                            It must match exactly, path included.
                                         </li>
                                         <li>
                                             Under <b>Distribution</b>, choose
