@@ -8,9 +8,13 @@
         <field name="model">mcp.scope.line</field>
         <field name="arch" type="xml">
             <list editable="bottom" multi_edit="1"
+                  decoration-danger="write_bits_inert"
                   decoration-warning="can_call_methods"
                   decoration-muted="not active"
                   default_order="scope_id, model_name">
+                <field name="write_bits_inert" column_invisible="1"/>
+                <field name="scope_read_only" optional="hide"
+                       string="Scope Read-Only"/>
                 <field name="scope_id" optional="show"/>
                 <field name="model_id" string="Model"
                        options="{'no_create': True}"
@@ -44,6 +48,17 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
+                    <field name="write_bits_inert" invisible="1"/>
+                    <div class="alert alert-danger" role="alert"
+                         invisible="not write_bits_inert">
+                        <b>The write switches below are doing nothing.</b>
+                        The scope that owns this row has <b>Read Only</b>
+                        switched on, which overrides the whole row: no assistant
+                        using that scope can create, update or delete anything,
+                        however these toggles are set. Open the scope and turn
+                        Read Only off — keeping Require Approval on — to make
+                        them take effect.
+                    </div>
                     <div class="alert alert-info" role="alert">
                         <b>This can only ever take access away, never add it.</b>
                         Every call is executed as the signed-in Odoo user, so the

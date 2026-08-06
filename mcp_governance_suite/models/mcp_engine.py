@@ -54,19 +54,30 @@ class MCPEngine(models.AbstractModel):
 
     # ================================================================ tools/list
     @api.model
-    def list_tools(self, scope, granted_scopes=None):
+    def list_tools(self, scope):
+        """Advertise every tool this *governance scope* permits.
+
+        Deliberately not filtered by the token's OAuth scope. A tool the client
+        cannot see is a tool it can never be told to ask permission for, and
+        hiding write tools from a read-scoped token is what silently strands a
+        connection: the client pins the scope set from our 401 challenge, never
+        sees a write tool, and so never trips the step-up flow that MCP defines
+        for exactly this situation. Calling one without ``odoo:write`` answers
+        403 ``insufficient_scope`` naming the scope to request, which is how a
+        client is supposed to widen its authorization.
+
+        ``scope.read_only`` is a different thing: it is the administrator's
+        kill switch, no amount of re-authorization can satisfy it, so those
+        tools stay hidden rather than dangled.
+        """
         # Governance config is read with elevated rights (it is not sensitive
         # business data); actual record access below always runs as the user.
         scope = scope.sudo()
-        # Don't advertise what this connection cannot use: a token granted only
-        # odoo:read should not see write tools at all, or the model will keep
-        # trying them and collecting 403s.
-        writes_allowed = granted_scopes is None or SCOPE_WRITE in granted_scopes
         tools = []
         for cap in scope.allowed_capabilities():
             for tool in cap.tool_ids.filtered("active"):
-                if tool.writes and (scope.read_only or not writes_allowed):
-                    continue  # never advertise mutating tools we would refuse
+                if tool.writes and scope.read_only:
+                    continue  # no re-authorization can unlock these
                 tools.append({
                     "name": tool.name,
                     "title": tool.title or tool.name.replace("_", " ").title(),
@@ -99,8 +110,11 @@ class MCPEngine(models.AbstractModel):
             tool = self._resolve_tool(scope, name)
             self._check_oauth_scope(tool, audit_ctx)
             self._check_rate_limit(scope, audit_ctx)
-            # Carry the auth source so approval requests stay attributable.
-            engine = self.with_context(mcp_api_key_id=audit_ctx.get("api_key_id"))
+            # Carry the auth source so approval requests stay attributable, and
+            # the granted OAuth scopes so a handler can explain what is missing.
+            engine = self.with_context(
+                mcp_api_key_id=audit_ctx.get("api_key_id"),
+                mcp_granted_scopes=audit_ctx.get("granted_scopes"))
             payload = getattr(engine, f"_handler_{tool.handler}")(scope, args)
         except MCPInsufficientScope:
             # Audit the refusal, then let the controller turn it into a 403
@@ -146,8 +160,12 @@ class MCPEngine(models.AbstractModel):
         if tool.writes and SCOPE_WRITE not in granted:
             raise MCPInsufficientScope(
                 [SCOPE_WRITE],
-                _("'%s' modifies records and needs the %s scope.")
-                % (tool.name, SCOPE_WRITE))
+                _("'%(tool)s' changes records, so this connection needs the "
+                  "'%(scope)s' scope and was only granted %(granted)s. "
+                  "Re-authorize the connector and keep 'Let it create and "
+                  "update records' ticked on the Odoo consent screen.",
+                  tool=tool.name, scope=SCOPE_WRITE,
+                  granted=", ".join(granted) or "nothing"))
 
     # =============================================================== rate limit
     def _check_rate_limit(self, scope, audit_ctx):
@@ -247,17 +265,56 @@ class MCPEngine(models.AbstractModel):
 
     # ================================================================= handlers
     def _handler_list_capabilities(self, scope, args):
+        """Describe what this connection can do - and why anything is missing.
+
+        A capability that comes back with an empty tool list and no explanation
+        reads exactly like a broken connector, so every hidden or unusable tool
+        says which switch would restore it and who can flip it.
+        """
+        granted = self.env.context.get("mcp_granted_scopes")
+        write_granted = granted is None or SCOPE_WRITE in granted
         caps = []
         for cap in scope.allowed_capabilities():
-            tools = cap.tool_ids.filtered(
-                lambda t: t.active and not (scope.read_only and t.writes))
-            caps.append({
+            active = cap.tool_ids.filtered("active")
+            # Only the read-only kill switch actually removes tools; a missing
+            # OAuth scope leaves them listed but unusable until re-authorized.
+            hidden = active.filtered("writes") if scope.read_only else active.browse()
+            shown = active - hidden
+            entry = {
                 "name": cap.name,
                 "technical_name": cap.technical_name,
                 "description": cap.description,
-                "tools": [{"name": t.name, "description": t.description} for t in tools],
-            })
-        return {"read_only": scope.read_only, "capabilities": caps}
+                "tools": [{"name": t.name, "description": t.description}
+                          for t in shown],
+            }
+            # str() on purpose: these travel in structuredContent, and a lazy
+            # translation object there would only resolve via a serializer
+            # fallback.
+            if hidden:
+                entry["unavailable_reason"] = str(_(
+                    "%(count)s tool(s) in this capability are hidden because "
+                    "the '%(scope)s' governance scope has Read Only switched "
+                    "on. Only an Odoo administrator can change that, under "
+                    "Fleet AI > Configuration > Scopes; re-authorizing will "
+                    "not help.",
+                    count=len(hidden), scope=scope.name))
+            elif not write_granted and shown.filtered("writes"):
+                entry["needs_authorization"] = str(_(
+                    "These tools are listed but will answer "
+                    "'insufficient_scope' until this connection is "
+                    "re-authorized with the '%(scope)s' scope. Reconnect the "
+                    "connector and keep 'Let it create and update records' "
+                    "ticked on the Odoo consent screen.", scope=SCOPE_WRITE))
+            caps.append(entry)
+        return {
+            "scope": scope.name,
+            "read_only": scope.read_only,
+            # None means an API key connection, which carries no OAuth scope
+            # and is governed by the scope above alone.
+            "granted_scopes": granted,
+            "approval_required": scope.require_approval and not scope.read_only,
+            "capabilities": caps,
+        }
 
     def _handler_list_models(self, scope, args):
         return {"models": [{

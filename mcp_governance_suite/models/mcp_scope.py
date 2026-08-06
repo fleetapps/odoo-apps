@@ -138,6 +138,27 @@ class MCPScopeLine(models.Model):
         default="[]",
         help="Extra Odoo domain ANDed to every read/search on this model, e.g. "
              "[('state','!=','draft')].")
+    scope_read_only = fields.Boolean(
+        related="scope_id.read_only", string="Scope is Read Only", readonly=True)
+    write_bits_inert = fields.Boolean(
+        compute="_compute_write_bits_inert",
+        string="Write switches have no effect",
+        help="The owning scope's Read Only kill switch overrides this row, so "
+             "the Create/Update/Delete/Method switches below do nothing.")
+
+    @api.depends("scope_read_only", "can_create", "can_write", "can_unlink",
+                 "can_call_methods")
+    def _compute_write_bits_inert(self):
+        """Flag rows whose write switches are silently overridden.
+
+        Switching on Create here while the scope has Read Only on is the single
+        easiest way to misconfigure this module: the toggles save, look right,
+        and change nothing. The row has to say so.
+        """
+        for rec in self:
+            rec.write_bits_inert = rec.scope_read_only and any((
+                rec.can_create, rec.can_write, rec.can_unlink,
+                rec.can_call_methods))
 
     _model_uniq = models.Constraint(
         "UNIQUE (scope_id, model_id)",

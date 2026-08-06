@@ -39,6 +39,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from .mcp_engine import SCOPE_WRITE
 from .tools_crypto import (
     constant_time_equals,
     hash_secret,
@@ -408,11 +409,54 @@ class MCPOAuthToken(models.Model):
         required=True,
         help="RFC 8707 audience the token was issued for. Checked on every "
              "MCP request; a token minted for another resource is refused.")
-    scope = fields.Char()
+    scope = fields.Char(
+        string="Granted Scopes",
+        help="The OAuth scopes the user actually approved, frozen at consent "
+             "time. Without odoo:write the assistant cannot change anything, "
+             "however permissive the governance scope is.")
     access_expires_at = fields.Datetime(required=True, index=True)
     refresh_expires_at = fields.Datetime()
     revoked = fields.Boolean(default=False, index=True)
     last_used = fields.Datetime(readonly=True)
+    access_label = fields.Char(
+        string="Access", compute="_compute_access_state",
+        help="What this assistant can do right now.")
+    can_write = fields.Boolean(compute="_compute_access_state")
+    needs_reconnect = fields.Boolean(compute="_compute_access_state")
+    reconnect_reason = fields.Char(compute="_compute_access_state")
+
+    @api.depends("scope", "scope_id", "scope_id.read_only", "revoked",
+                 "access_expires_at", "user_id", "user_id.mcp_scope_id")
+    def _compute_access_state(self):
+        """Explain, per connection, what it can do and why it may be stale.
+
+        Both the governance scope and the granted OAuth scopes are frozen when
+        the user consents, so changing either in Odoo leaves live connections
+        untouched. That surprises everyone exactly once; saying so on the row
+        is cheaper than letting someone re-check their permission matrix.
+        """
+        for rec in self:
+            can_write = SCOPE_WRITE in (rec.scope or "").split()
+            rec.can_write = can_write
+            rec.access_label = _("Read & write") if can_write else _("Read only")
+            reason = False
+            if not rec.revoked and rec.is_access_valid():
+                effective = rec.user_id.mcp_effective_scope()
+                if effective and effective != rec.scope_id:
+                    reason = _(
+                        "Authorized under the '%(old)s' scope, but %(user)s is "
+                        "now governed by '%(new)s'. This connection keeps the "
+                        "old rules until it is reconnected.",
+                        old=rec.scope_id.name, user=rec.user_id.name,
+                        new=effective.name)
+                elif not can_write and not rec.scope_id.read_only:
+                    reason = _(
+                        "'%(scope)s' allows writes, but this connection was "
+                        "authorized read-only. Reconnect the assistant and "
+                        "keep 'Let it create and update records' ticked to "
+                        "grant it.", scope=rec.scope_id.name)
+            rec.reconnect_reason = reason
+            rec.needs_reconnect = bool(reason)
 
     @api.model
     def issue(self, access_token, refresh_token, vals):

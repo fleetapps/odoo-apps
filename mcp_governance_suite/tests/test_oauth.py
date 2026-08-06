@@ -6,6 +6,8 @@ from odoo.tests import TransactionCase, tagged
 from ..controllers.oauth import (
     SCOPE_READ,
     SCOPE_WRITE,
+    SCOPES_SUPPORTED,
+    grantable_scopes,
     is_valid_redirect,
     normalize_scopes,
 )
@@ -191,6 +193,42 @@ class TestOAuth(TransactionCase):
         self.assertEqual(normalize_scopes("admin:everything"), [SCOPE_READ])
         self.assertEqual(normalize_scopes(""), [SCOPE_READ])
         self.assertEqual(normalize_scopes(None), [SCOPE_READ])
+
+    def test_scope_default_is_opt_in_only(self):
+        """RFC 6749 §3.3 lets us pick the default when a client sends none.
+
+        It must stay read-only unless a caller deliberately widens it, so an
+        empty scope string can never fall open.
+        """
+        self.assertEqual(normalize_scopes("", default=SCOPES_SUPPORTED),
+                         [SCOPE_READ, SCOPE_WRITE])
+        # A default never overrides what was actually asked for.
+        self.assertEqual(
+            normalize_scopes("odoo:read", default=SCOPES_SUPPORTED), [SCOPE_READ])
+
+    def test_grantable_scopes_follow_governance(self):
+        read_only = self.env["mcp.scope"].create({
+            "name": "TEST ro", "read_only": True})
+        writable = self.env["mcp.scope"].create({
+            "name": "TEST rw", "read_only": False})
+        self.assertEqual(grantable_scopes(read_only), [SCOPE_READ])
+        self.assertEqual(grantable_scopes(writable), [SCOPE_READ, SCOPE_WRITE])
+        # No scope at all must not fall open either.
+        self.assertEqual(
+            grantable_scopes(self.env["mcp.scope"]), [SCOPE_READ])
+
+    def test_token_reports_access_and_drift(self):
+        """The UI has to be able to answer 'why can't it write?' at a glance."""
+        self.scope.write({"read_only": False})
+        self.user.mcp_scope_id = self.scope
+        token = self._token()
+        token.scope = SCOPE_READ
+        self.assertFalse(token.can_write)
+        self.assertTrue(token.needs_reconnect)
+        self.assertIn("read-only", token.reconnect_reason)
+        token.scope = "%s %s" % (SCOPE_READ, SCOPE_WRITE)
+        self.assertTrue(token.can_write)
+        self.assertFalse(token.needs_reconnect)
 
     # -------------------------------------------------------------------- CIMD
     def test_cimd_client_id_shape(self):

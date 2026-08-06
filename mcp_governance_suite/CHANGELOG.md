@@ -4,6 +4,54 @@ All notable changes to **Fleet AI — MCP Governance Suite** are documented here
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
 Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
 
+## [19.0.3.2.0] — 2026-08-05
+
+### Fixed
+- **Write access could never actually be granted.** Turning off Read Only,
+  ticking Create/Update in the permission matrix and reconnecting still
+  produced a read-only assistant. The 401 challenge named `odoo:read` as the
+  only scope; MCP clients treat that set as authoritative and request exactly
+  it, so every token was minted read-only — and because write tools were then
+  hidden from that token, the assistant never called one, never received the
+  403 that asks for more, and never stepped up. The challenge now also names
+  `odoo:write` whenever any active scope permits writes.
+- **Dynamic client registration pinned clients to read-only.** A client that
+  registered without declaring a scope was recorded as `odoo:read`, which it
+  then replayed on every authorization request. It is now registered with the
+  full supported set; the governance scope and consent screen still decide.
+- **The consent screen could not grant more than the client asked for.** It now
+  offers an explicit *"Let it create and update records"* checkbox whenever the
+  governance scope allows writes, ticked by default and capped by that scope
+  (RFC 6749 §3.3 lets the resource owner's instruction override the request).
+- **OAuth metadata advertised `http://` behind a TLS-terminating proxy**, which
+  OAuth 2.1 §1.5 forbids. The public address now wins over the scheme the WSGI
+  layer saw, as long as it names the same host. Tokens issued under the old
+  spelling keep validating.
+- **`resultType` was missing from every result but `server/discover`.** MCP
+  2026-07-28 requires it on all of them.
+
+### Changed
+- **Write tools stay listed when only the OAuth scope is missing.** Hiding them
+  is what made the step-up flow unreachable. They are still hidden — and now
+  explained — when the governance scope itself is Read Only, which no
+  re-authorization can fix.
+- **`list_capabilities` says why anything is missing.** An empty capability now
+  carries `unavailable_reason` (which switch hid it and who can flip it) or
+  `needs_authorization` (re-authorize with `odoo:write`), plus the connection's
+  scope name, granted scopes and whether approval is required.
+- **`insufficient_scope` errors** name the scope that was granted and the exact
+  step that fixes it.
+
+### Added
+- **Model Permissions warns when a row's write switches are inert.** Turning on
+  Create/Update for a model inside a scope that has Read Only on saves fine and
+  changes nothing — the easiest way to misconfigure the module. Those rows are
+  now flagged in the list and carry an explanation on the form.
+- **Connections now show what an assistant can actually do** — a Read only /
+  Read & write badge and the granted scope string, on both the Connect screen
+  and the backend list, plus a warning when a connection's frozen scope no
+  longer matches the user's current one and it needs reconnecting.
+
 ## [19.0.3.1.0] — 2026-08-03
 
 ### Added

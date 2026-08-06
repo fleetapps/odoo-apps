@@ -76,11 +76,16 @@
         <field name="name">mcp.oauth.token.list</field>
         <field name="model">mcp.oauth.token</field>
         <field name="arch" type="xml">
-            <list decoration-muted="revoked" create="false">
+            <list decoration-muted="revoked" decoration-warning="needs_reconnect"
+                  create="false">
+                <field name="needs_reconnect" column_invisible="1"/>
                 <field name="user_id"/>
                 <field name="client_name"/>
                 <field name="client_id" optional="hide"/>
                 <field name="scope_id"/>
+                <field name="access_label"/>
+                <field name="scope" optional="hide"/>
+                <field name="reconnect_reason" optional="show"/>
                 <field name="access_expires_at"/>
                 <field name="last_used"/>
                 <field name="revoked"/>
@@ -100,6 +105,11 @@
                             class="btn-primary" invisible="revoked"/>
                 </header>
                 <sheet>
+                    <field name="needs_reconnect" invisible="1"/>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not needs_reconnect">
+                        <field name="reconnect_reason" nolabel="1" readonly="1"/>
+                    </div>
                     <group>
                         <group>
                             <field name="user_id"/>
@@ -109,6 +119,8 @@
                             <field name="resource"/>
                         </group>
                         <group>
+                            <field name="access_label"/>
+                            <field name="scope"/>
                             <field name="access_expires_at"/>
                             <field name="refresh_expires_at"/>
                             <field name="last_used"/>

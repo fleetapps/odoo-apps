@@ -31,9 +31,11 @@ from ..models.tools_crypto import hash_secret, new_secret
 
 _logger = logging.getLogger(__name__)
 
-# Scopes advertised to clients. Deliberately minimal: RFC 9728 scopes_supported
-# is meant to be the least-privilege set needed for basic functionality, with
-# anything extra requested through the step-up flow.
+# The two scopes this resource understands. Reading is always available;
+# writing is gated on the governance scope, on the resource owner ticking the
+# consent box, and on the per-model permission matrix underneath. Both are
+# advertised so a client can request write up front rather than discovering it
+# only through a step-up round-trip.
 SCOPE_READ = "odoo:read"
 SCOPE_WRITE = "odoo:write"
 SCOPES_SUPPORTED = [SCOPE_READ, SCOPE_WRITE]
@@ -53,13 +55,36 @@ LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 # --------------------------------------------------------------------- helpers
-def _base_url():
+def _request_origin():
     return request.httprequest.host_url.rstrip("/")
+
+
+def base_url():
+    """The public origin clients actually reach.
+
+    ``host_url`` reports the scheme the WSGI layer saw, which is plain http
+    behind a TLS-terminating proxy unless Odoo runs with ``proxy_mode``. An
+    authorization server that advertises http endpoints on an https deployment
+    violates OAuth 2.1 §1.5 and is rejected by strict clients, so the
+    configured public address wins whenever it names this same host - that
+    fixes the scheme without ever letting a stale ``web.base.url`` redirect
+    metadata at a different server.
+    """
+    origin = _request_origin()
+    configured = request.env["ir.config_parameter"].sudo().get_param(
+        "web.base.url", "").strip().rstrip("/")
+    if configured.startswith(("http://", "https://")):
+        try:
+            if urlparse(configured).netloc == urlparse(origin).netloc:
+                return configured
+        except ValueError:
+            pass
+    return origin
 
 
 def canonical_resource():
     """RFC 8707 canonical URI of this MCP server - the audience we advertise."""
-    return _base_url() + "/mcp"
+    return base_url() + "/mcp"
 
 
 def accepted_resources():
@@ -69,19 +94,47 @@ def accepted_resources():
     use "the most specific URI it can", so a token may legitimately carry
     either. Both name the same resource, so both are accepted - and nothing
     else is (RFC 8707 audience binding).
+
+    The request origin is accepted alongside the canonical base so that tokens
+    minted before this server learned its own scheme keep validating; both
+    spellings are the same host, so this narrows nothing.
     """
-    base = _base_url()
-    return {base + path for path in MCP_ENDPOINT_PATHS}
+    bases = {base_url(), _request_origin()}
+    return {base + path for base in bases for path in MCP_ENDPOINT_PATHS}
 
 
-def normalize_scopes(raw):
-    """Parse a space-separated scope string into a validated, ordered list."""
+def normalize_scopes(raw, default=None):
+    """Parse a space-separated scope string into a validated, ordered list.
+
+    ``default`` covers the RFC 6749 §3.3 rule that an authorization server
+    receiving no scope MUST apply a pre-defined default. It stays read-only
+    unless a caller deliberately widens it, so an empty or unparseable scope
+    can never fall open.
+    """
     out = []
     for token in (raw or "").split():
         mapped = _LEGACY_SCOPE_ALIASES.get(token, token)
         if mapped in SCOPES_SUPPORTED and mapped not in out:
             out.append(mapped)
-    return out or [SCOPE_READ]
+    return out or list(default or [SCOPE_READ])
+
+
+def writes_enabled(env):
+    """True when this deployment has any scope that permits writes at all.
+
+    Used to decide what to advertise: offering ``odoo:write`` on a server whose
+    every governance scope is read-only would send clients through a step-up
+    flow that can never succeed.
+    """
+    return bool(env["mcp.scope"].sudo().search_count(
+        [("active", "=", True), ("read_only", "=", False)]))
+
+
+def grantable_scopes(governance):
+    """The most a given governance scope is allowed to hand to a token."""
+    if governance and not governance.read_only:
+        return [SCOPE_READ, SCOPE_WRITE]
+    return [SCOPE_READ]
 
 
 def param_enabled(env, suffix, default=True):
@@ -170,16 +223,16 @@ class MCPOAuthController(http.Controller):
         # canonical one at the bare well-known location.
         path = request.httprequest.path
         suffix = path[len("/.well-known/oauth-protected-resource"):]
-        resource = (_base_url() + suffix) if suffix in MCP_ENDPOINT_PATHS \
+        resource = (base_url() + suffix) if suffix in MCP_ENDPOINT_PATHS \
             else canonical_resource()
         return _json({
             "resource": resource,
-            "authorization_servers": [_base_url()],
+            "authorization_servers": [base_url()],
             "bearer_methods_supported": ["header"],
             # Deliberately excludes offline_access: refresh tokens are not a
             # resource requirement (MCP authorization, Refresh Tokens).
             "scopes_supported": SCOPES_SUPPORTED,
-            "resource_documentation": _base_url() + "/mcp/health",
+            "resource_documentation": base_url() + "/mcp/health",
         })
 
     @http.route(["/.well-known/oauth-authorization-server",
@@ -189,7 +242,7 @@ class MCPOAuthController(http.Controller):
     def authorization_server_metadata(self, **kw):
         if request.httprequest.method == "OPTIONS":
             return request.make_response("", headers=_cors(), status=204)
-        base = _base_url()
+        base = base_url()
         body = {
             # MUST string-match the `iss` we emit on authorization responses.
             "issuer": base,
@@ -264,7 +317,12 @@ class MCPOAuthController(http.Controller):
             "redirect_uris": "\n".join(redirect_uris),
             "grant_types": " ".join(meta.get("grant_types") or
                                     ["authorization_code", "refresh_token"]),
-            "scope": " ".join(normalize_scopes(meta.get("scope"))),
+            # A client that declares no scope at registration is telling us
+            # nothing about its intent, not asking to be read-only. Registering
+            # it as read-only would pin it there for good, because clients
+            # replay their registered scope on every authorization request.
+            "scope": " ".join(normalize_scopes(
+                meta.get("scope"), default=SCOPES_SUPPORTED)),
         }
         if auth_method == "client_secret_post":
             secret = new_secret(prefix="mcps-", nbytes=24)
@@ -318,17 +376,34 @@ class MCPOAuthController(http.Controller):
             return self._authorize_redirect_error(
                 redirect_uri, "invalid_target", kw.get("state"), res_error)
 
-        granted = normalize_scopes(kw.get("scope"))
         governance = request.env.user.mcp_effective_scope()
-        # A read-only governance scope cannot grant write, whatever was asked.
-        if governance.read_only and SCOPE_WRITE in granted:
-            granted = [s for s in granted if s != SCOPE_WRITE] or [SCOPE_READ]
+        if not governance:
+            return self._authorize_redirect_error(
+                redirect_uri, "server_error", kw.get("state"),
+                "No MCP governance scope is configured on this server.")
+        grantable = grantable_scopes(governance)
+        # RFC 6749 §3.3: a client that asks for nothing gets our default, which
+        # is everything this governance scope permits. Anything it does ask for
+        # is still capped by the scope - a read-only scope grants no write.
+        requested = normalize_scopes(kw.get("scope"), default=grantable)
+        granted = [s for s in requested if s in grantable] or [SCOPE_READ]
+        # Clients following the MCP scope-selection strategy pin the scope set
+        # from our 401 challenge and never widen it on their own. So the
+        # resource owner gets the say here: offer write whenever the governance
+        # scope allows it, even when the client only asked to read.
+        offer_write = SCOPE_WRITE in grantable
+        if offer_write and SCOPE_WRITE not in granted:
+            granted = granted + [SCOPE_WRITE]
+        # The ✓ list states what is granted outright; write is the one grant
+        # the user decides here, so it is rendered as the checkbox instead.
+        baseline = [s for s in granted if s != SCOPE_WRITE]
         return _render_page("mcp_governance_suite.oauth_consent", {
             "client": client,
             "user": request.env.user,
             "scope": governance,
             "granted_scopes": granted,
-            "scope_labels": self._scope_labels(granted),
+            "offer_write": offer_write,
+            "scope_labels": self._scope_labels(baseline),
             "access_ttl_hours": max(1, round(int(
                 request.env["ir.config_parameter"].sudo().get_param(
                     "mcp_governance_suite.access_token_ttl", 3600)) / 3600)),
@@ -347,7 +422,7 @@ class MCPOAuthController(http.Controller):
     def _scope_labels(self, granted):
         """Plain-language consent lines - never show raw scope tokens alone."""
         labels = {
-            SCOPE_READ: "Read your Odoo records that this connection's scope allows",
+            SCOPE_READ: "Read the Odoo records this connection's scope allows",
             SCOPE_WRITE: "Create and update records you already have rights to",
         }
         return [labels[s] for s in granted if s in labels]
@@ -379,9 +454,20 @@ class MCPOAuthController(http.Controller):
                 redirect_uri, "invalid_target", state, res_error)
 
         governance = request.env.user.mcp_effective_scope()
-        granted = normalize_scopes(kw.get("scope"))
-        if governance.read_only:
-            granted = [s for s in granted if s != SCOPE_WRITE] or [SCOPE_READ]
+        if not governance:
+            return self._authorize_redirect_error(
+                redirect_uri, "server_error", state,
+                "No MCP governance scope is configured on this server.")
+        grantable = grantable_scopes(governance)
+        granted = [s for s in normalize_scopes(kw.get("scope"), default=grantable)
+                   if s in grantable]
+        # The checkbox is authoritative for write: an unticked box posts
+        # nothing, so a user who declined it gets a read-only token even though
+        # the form carried odoo:write. A read-only governance scope has already
+        # dropped write from `grantable`, so there is nothing left to tick.
+        if not kw.get("grant_write"):
+            granted = [s for s in granted if s != SCOPE_WRITE]
+        granted = granted or [SCOPE_READ]
         code = new_secret(prefix="mcpac-", nbytes=24)
         request.env["mcp.oauth.authcode"].issue({
             "code_hash": hash_secret(code),
@@ -410,7 +496,7 @@ class MCPOAuthController(http.Controller):
     def _redirect_with(self, redirect_uri, query):
         # RFC 9207: `iss` goes on every authorization response, successes and
         # errors alike, so the client can detect a mix-up attack.
-        query = dict(query, iss=_base_url())
+        query = dict(query, iss=base_url())
         sep = "&" if "?" in redirect_uri else "?"
         return wz_redirect(redirect_uri + sep + urlencode(query), code=302)
 

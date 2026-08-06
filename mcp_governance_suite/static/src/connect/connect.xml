@@ -178,7 +178,14 @@
                         <tr t-foreach="state.data.connections" t-as="conn" t-key="conn.id">
                             <td><t t-esc="conn.user"/></td>
                             <td><t t-esc="conn.client"/></td>
-                            <td><t t-esc="conn.scope"/></td>
+                            <td>
+                                <t t-esc="conn.scope"/>
+                                <span class="badge ms-1"
+                                      t-att-class="conn.can_write ? 'text-bg-warning' : 'text-bg-light'"
+                                      t-esc="conn.access"/>
+                                <div t-if="conn.hint" class="small text-muted mt-1"
+                                     t-esc="conn.hint"/>
+                            </td>
                             <td>
                                 <t t-esc="conn.last_used"/>
                                 <span t-if="conn.expired" class="badge text-bg-light ms-1">

@@ -37,9 +37,12 @@ from odoo.http import request
 
 from .oauth import (
     SCOPE_READ,
+    SCOPE_WRITE,
+    base_url,
     accepted_resources,
     normalize_scopes,
     param_enabled,
+    writes_enabled,
 )
 from ..models.mcp_engine import MCPInsufficientScope
 from ..models.tools_crypto import hash_secret
@@ -51,7 +54,7 @@ LEGACY_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26")
 SUPPORTED_PROTOCOL_VERSIONS = MODERN_PROTOCOL_VERSIONS + LEGACY_PROTOCOL_VERSIONS
 LATEST_LEGACY_VERSION = LEGACY_PROTOCOL_VERSIONS[0]
 
-SERVER_INFO = {"name": "odoo-mcp-governance", "version": "19.0.3.1.0"}
+SERVER_INFO = {"name": "odoo-mcp-governance", "version": "19.0.3.2.0"}
 SERVER_INSTRUCTIONS = (
     "Odoo MCP Governance Suite. Every action runs as your Odoo user and is "
     "audited. Use list_capabilities to discover what you can do. Odoo "
@@ -143,8 +146,24 @@ class MCPController(http.Controller):
             headers=cors_headers(self._origin()) + (extra_headers or []))
 
     def _resource_metadata_url(self):
-        return request.httprequest.host_url.rstrip("/") + \
-            "/.well-known/oauth-protected-resource"
+        return base_url() + "/.well-known/oauth-protected-resource"
+
+    def _challenge_scopes(self):
+        """Scopes to name in the initial 401 challenge.
+
+        MCP 2026-07-28 "Scope Selection Strategy": a client MUST treat the
+        challenge scope set as authoritative and picks it ahead of
+        `scopes_supported`. Naming only `odoo:read` here therefore pins every
+        connection read-only for good - the client asks for exactly what we
+        challenged for, gets a read-only token, and then never sees a write
+        tool to trip the step-up flow with. So advertise write too, whenever
+        this deployment has a scope that could actually grant it; the consent
+        screen and the governance scope remain the real gates.
+        """
+        scopes = [SCOPE_READ]
+        if writes_enabled(request.env):
+            scopes.append(SCOPE_WRITE)
+        return scopes
 
     def _challenge(self, params):
         """Build a RFC 6750 Bearer challenge from ordered key/value pairs.
@@ -165,7 +184,7 @@ class MCPController(http.Controller):
         """
         challenge = self._challenge([
             ("resource_metadata", self._resource_metadata_url()),
-            ("scope", SCOPE_READ),
+            ("scope", " ".join(self._challenge_scopes())),
         ])
         return self._json({"error": "unauthorized"}, status=401,
                           extra_headers=[("WWW-Authenticate", challenge)])
@@ -313,6 +332,14 @@ class MCPController(http.Controller):
         except _RpcError as exc:
             return self._rpc_error(mid, exc.code, exc.message, status=exc.status)
 
+        # 2026-07-28 makes `resultType` mandatory on every result: it is the
+        # discriminator that tells a client whether this is the final answer or
+        # an input_required round-trip. Earlier eras never defined the field and
+        # their clients treat an absent one as "complete", so only modern
+        # responses carry it.
+        if modern and isinstance(result, dict):
+            result.setdefault("resultType", "complete")
+
         extra = []
         # Legacy clients track a session id; modern ones must never be given
         # one (protocol-level sessions were removed in 2026-07-28).
@@ -422,8 +449,7 @@ class MCPController(http.Controller):
         if method in ("ping", "notifications/initialized"):
             return {}
         if method == "tools/list":
-            return {"tools": engine.list_tools(
-                scope, audit_ctx.get("granted_scopes"))}
+            return {"tools": engine.list_tools(scope)}
         if method == "tools/call":
             return engine.call_tool(
                 scope, params.get("name"), params.get("arguments") or {}, audit_ctx)

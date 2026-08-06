@@ -328,6 +328,11 @@ class MCPConnect(models.TransientModel):
             "user": t.user_id.name,
             "client": t.client_name or t.client_id,
             "scope": t.scope_id.name,
+            # What it can actually do, not just which scope governs it: the two
+            # come apart whenever the scope was widened after connecting.
+            "access": t.access_label,
+            "can_write": t.can_write,
+            "hint": t.reconnect_reason or "",
             "connected": fields.Datetime.to_string(t.create_date),
             "last_used": self._ago(t.last_used) if t.last_used else _("not yet used"),
             "expired": t.access_expires_at < fields.Datetime.now(),

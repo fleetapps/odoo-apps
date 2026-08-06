@@ -8,6 +8,12 @@ import json
 
 from odoo.tests import TransactionCase, tagged
 
+from ..models.mcp_engine import (
+    SCOPE_READ,
+    SCOPE_WRITE,
+    MCPInsufficientScope,
+)
+
 
 @tagged("post_install", "-at_install")
 class TestEngineGovernance(TransactionCase):
@@ -87,6 +93,72 @@ class TestEngineGovernance(TransactionCase):
         self.assertIn("search_records", names)
         self.assertNotIn("create_record", names,
                          "read-only scope must not advertise writes")
+
+    def _write_scope(self):
+        return self.env["mcp.scope"].create({
+            "name": "TEST write partners",
+            "read_only": False,
+            "require_approval": False,
+            "rate_limit_per_hour": 0,
+            "line_ids": [(0, 0, {
+                "model_id": self.partner_model.id,
+                "can_read": True, "can_create": True})],
+        })
+
+    def test_write_tool_listed_even_without_oauth_write(self):
+        """A tool the client cannot see is one it can never ask permission for.
+
+        Hiding write tools from a read-scoped token used to strand connections:
+        the client pinned the challenged scopes, never saw a write tool, and so
+        never triggered the step-up flow that would have widened them.
+        """
+        names = {t["name"] for t in self.Engine.list_tools(self._write_scope())}
+        self.assertIn("create_record", names)
+
+    def test_write_without_oauth_scope_raises_challenge(self):
+        with self.assertRaises(MCPInsufficientScope) as caught:
+            self._call(self._write_scope(), "create_record",
+                       {"model": "res.partner", "values": {"name": "X"}},
+                       ctx={"granted_scopes": [SCOPE_READ]})
+        self.assertEqual(caught.exception.required, [SCOPE_WRITE])
+
+    def test_write_allowed_with_oauth_write_scope(self):
+        res = self._call(self._write_scope(), "create_record",
+                         {"model": "res.partner", "values": {"name": "AI Co"}},
+                         user=self.env.ref("base.user_admin"),
+                         ctx={"granted_scopes": [SCOPE_READ, SCOPE_WRITE]})
+        self.assertFalse(res["isError"])
+        self.assertTrue(self._payload(res)["id"])
+
+    def _write_capability(self, payload):
+        return next(c for c in payload["capabilities"]
+                    if c["technical_name"] == "data_write")
+
+    def test_list_capabilities_explains_read_only(self):
+        payload = self._payload(
+            self._call(self.read_scope, "list_capabilities", {}))
+        cap = self._write_capability(payload)
+        self.assertEqual(cap["tools"], [], "read-only hides mutating tools")
+        self.assertIn("Read Only", cap["unavailable_reason"],
+                      "an empty capability must say which switch hid it")
+
+    def test_list_capabilities_explains_missing_oauth_scope(self):
+        payload = self._payload(self._call(
+            self._write_scope(), "list_capabilities", {},
+            ctx={"granted_scopes": [SCOPE_READ]}))
+        cap = self._write_capability(payload)
+        self.assertTrue(cap["tools"], "tools stay listed so step-up can happen")
+        self.assertNotIn("unavailable_reason", cap)
+        self.assertIn(SCOPE_WRITE, cap["needs_authorization"])
+
+    def test_list_capabilities_clean_when_fully_granted(self):
+        payload = self._payload(self._call(
+            self._write_scope(), "list_capabilities", {},
+            ctx={"granted_scopes": [SCOPE_READ, SCOPE_WRITE]}))
+        cap = self._write_capability(payload)
+        self.assertTrue(cap["tools"])
+        self.assertNotIn("unavailable_reason", cap)
+        self.assertNotIn("needs_authorization", cap)
 
     def test_write_blocked_in_read_only(self):
         res = self._call(self.read_scope, "create_record", {

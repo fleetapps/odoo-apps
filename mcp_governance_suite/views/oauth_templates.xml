@@ -36,6 +36,12 @@
                 .grants li{font-size:13.5px;padding:7px 0 7px 24px;position:relative;color:#374151}
                 .grants li:before{content:"✓";position:absolute;left:4px;color:#1e7d46;
                                   font-weight:700}
+                .opt{display:flex;gap:10px;align-items:flex-start;margin:14px 0 0;
+                     background:#fbfbfd;border:1px solid #e6e8ee;border-radius:10px;
+                     padding:12px 14px;cursor:pointer}
+                .opt input{margin:2px 0 0;width:16px;height:16px;flex:none;cursor:pointer}
+                .opt .t{font-size:13.5px;font-weight:600;color:#1a1a2e}
+                .opt .d{font-size:12.5px;color:#6b7280;margin-top:3px}
                 .actions{display:flex;gap:12px;margin-top:22px}
                 button{flex:1;padding:12px;border-radius:10px;border:0;font-size:15px;
                        font-weight:600;cursor:pointer}
@@ -91,6 +97,23 @@
                     <input type="hidden" name="code_challenge_method" t-att-value="params['code_challenge_method']"/>
                     <input type="hidden" name="scope" t-att-value="params['scope']"/>
                     <input type="hidden" name="resource" t-att-value="params['resource']"/>
+                    <!-- The one grant the user actually decides here. Assistants
+                         pin the scopes our 401 challenge named and will not ask
+                         for more on their own, so without this checkbox a
+                         read-and-write scope could never produce a write token. -->
+                    <label t-if="offer_write" class="opt">
+                        <input type="checkbox" name="grant_write" value="1" checked="checked"/>
+                        <span>
+                            <span class="t">Let it create and update records</span>
+                            <span class="d">
+                                Limited to the models your <b t-esc="scope.name"/> scope
+                                allows, and to what you can already do yourself.<t
+                                t-if="scope.require_approval"> Every change waits for
+                                human approval before it is applied.</t>
+                                Untick to connect read-only.
+                            </span>
+                        </span>
+                    </label>
                     <div class="actions">
                         <button class="deny" type="submit" name="decision" value="deny">Deny</button>
                         <button class="allow" type="submit" name="decision" value="allow">Allow</button>
