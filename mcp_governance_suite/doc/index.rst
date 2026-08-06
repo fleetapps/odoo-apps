@@ -8,6 +8,13 @@ Odoo user — scoped, rate-limited, audited and optionally approval-gated. The
 MCP server runs inside Odoo: no extra process, no middleware, and no external
 Python dependencies.
 
+Live Demo
+=========
+
+A live instance is available for testing without installing anything:
+https://sandbox.odin.ist/odoo/settings#mcp_governance_suite — log in with
+username ``admin`` and password ``admin``.
+
 Installation
 ============
 
