@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "Access Manager Pro",
-    "version": "19.0.3.0.0",
+    "version": "19.0.3.1.0",
     "category": "Extra Tools/Access Rights",
     "summary": "No-code access control: hide or make read-only any menu, field, "
                "button, tab, report, record or export - per user, group and "
@@ -39,12 +39,12 @@ record domains and their aggregates, archive, chatter posting, activity
 scheduling, external API, login), with the view layer kept in sync so the UI
 never shows what the server would refuse.
 """,
-    "author": "YourCompany",
-    "website": "https://yourcompany.example",
+    "author": "Fleet",
+    "website": "https://fleet.ke",
     "license": "OPL-1",  # Odoo Proprietary License (paid App Store module)
-    "price": 399.00,
+    "price": 343.00,
     "currency": "USD",
-    "support": "info@yourcompany.example",
+    "support": "support@odin.ist,andrew@fleet.ke",
     "depends": ["base", "web", "mail"],
     "data": [
         "security/access_manager_groups.xml",
@@ -65,7 +65,21 @@ never shows what the server would refuse.
             "access_manager_pro/static/src/xml/access_dashboard.xml",
         ],
     },
-    "images": ["static/description/banner.png"],
+    "images": [
+        "static/description/banner.png",
+        "static/description/screenshot_profile_overview.png",
+        "static/description/screenshot_model_permissions.png",
+        "static/description/screenshot_field_permissions.png",
+        "static/description/screenshot_domain_access.png",
+        "static/description/screenshot_chatter_access.png",
+        "static/description/screenshot_user_session.png",
+        "static/description/screenshot_element_access.png",
+        "static/description/screenshot_menu_global.png",
+        "static/description/screenshot_profiles_list.png",
+        "static/description/screenshot_quick_actions.png",
+        "static/description/screenshot_import.png",
+        "static/description/screenshot_dashboard.png",
+    ],
     "installable": True,
     "application": True,
 }
