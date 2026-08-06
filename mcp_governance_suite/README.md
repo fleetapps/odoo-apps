@@ -1,4 +1,4 @@
-# Fleet AI — MCP Governance Suite
+# Odoo MCP
 
 **Connect Claude, ChatGPT, Gemini, Cursor, Copilot or any MCP client to Odoo —
 with one-click OAuth 2.1 — and let your team chat with their data, build reports
@@ -50,8 +50,8 @@ layer** that makes AI-over-ERP approvable:
 ## Installation
 
 1. Copy `mcp_governance_suite/` into your Odoo addons path.
-2. Update the apps list and install **Fleet AI — MCP Governance Suite**
-   (Apps → search "Fleet AI").
+2. Update the apps list and install **Odoo MCP**
+   (Apps → search "Odoo MCP").
 3. Confirm the base URL is correct: **Settings → Technical → System Parameters →
    `web.base.url`** must be the externally reachable HTTPS URL. OAuth redirect
    URIs and token audiences are derived from it. Behind a reverse proxy, also set
@@ -82,7 +82,7 @@ do CIMD; the MCP specification deprecated it.
 
 ## Configuration
 
-**Settings → Fleet AI.**
+**Settings → Odoo MCP.**
 
 | Setting | Default | Notes |
 |---|---|---|
@@ -102,7 +102,7 @@ The **Connect** block links to the Connect screen described below.
 
 ## Quick start — connect an assistant
 
-Open **Fleet AI → Connect your AI**. Everything you need is on that one page:
+Open **Odoo MCP → Connect your AI**. Everything you need is on that one page:
 
 1. **Before you start** — every precondition checked, in plain language, each
    with a button that opens the exact screen where it is fixed. You find out
@@ -121,7 +121,7 @@ Open **Fleet AI → Connect your AI**. Everything you need is on that one page:
 Real click count: copy the URL, paste it in your assistant, click Allow.
 
 ### API key (headless)
-Fleet AI → **API Keys** → New → *Generate Key* (copy it once).
+Odoo MCP → **API Keys** → New → *Generate Key* (copy it once).
 Send it as `Authorization: Bearer <key>`.
 
 ### Try it
@@ -148,7 +148,7 @@ read-only. If you cannot delete, neither can it.
 
 ### Model Permissions — the switchboard
 
-**Fleet AI → Permissions → Model Permissions** is the single most important
+**Odoo MCP → Permissions → Model Permissions** is the single most important
 screen: one row per model, one column per operation, every toggle switchable
 directly in the list. Use **Add Models** to bring in a whole set at once with
 one preset.
@@ -172,7 +172,7 @@ grants nothing: you must also name the exact methods. Private methods
 (leading underscore) and raw ORM verbs (`write`, `unlink`, `sudo`, `search`…)
 are refused at save time and again at call time.
 
-**Scopes** (Fleet AI → Permissions → Scopes) wrap the matrix:
+**Scopes** (Odoo MCP → Permissions → Scopes) wrap the matrix:
 
 - **Read Only** — global kill-switch; write tools are not even advertised.
 - **Require Approval** — writes and method calls become approval requests.
@@ -184,9 +184,9 @@ The shipped **Read-only (safe default)** scope grants read on `res.partner`,
 `sale.order`, `crm.lead`, `account.move`, `stock.picking`, etc.
 
 Assign scopes per user in **Settings → Users → (user) → MCP Scope**, or set the
-database-wide default in **Settings → Fleet AI**.
+database-wide default in **Settings → Odoo MCP**.
 
-**Approvals** (Fleet AI → Approvals) — a kanban of AI-requested writes. Approve
+**Approvals** (Odoo MCP → Approvals) — a kanban of AI-requested writes. Approve
 to execute *as the requesting user*; reject to discard. Approvers are notified
 via chatter/activities.
 
@@ -316,8 +316,8 @@ prevent cross-company leakage.
 | Redirect rejected | Redirect URIs must be `https://` or loopback and exactly match the registered value. |
 | Tool "not available in this scope" | The tool's capability isn't enabled on the scope, or the scope is read-only and the tool writes. |
 | "Scope denies read on X" | Add a Model Access line for model X to the scope. |
-| Writes never happen | The scope requires approval — check Fleet AI → Approvals. |
-| Everything 503 | The master switch (Settings → Fleet AI → Enable MCP Server) is off. |
+| Writes never happen | The scope requires approval — check Odoo MCP → Approvals. |
+| Everything 503 | The master switch (Settings → Odoo MCP → Enable MCP Server) is off. |
 
 ---
 

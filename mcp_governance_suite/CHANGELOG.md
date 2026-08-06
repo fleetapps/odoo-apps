@@ -1,8 +1,32 @@
 # Changelog
 
-All notable changes to **Fleet AI — MCP Governance Suite** are documented here.
+All notable changes to **Odoo MCP** are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
 Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
+
+## [19.0.3.4.0] — 2026-08-07
+
+### Changed
+- Full App Store description page (`static/description/index.html`) rebuilt
+  around real product screenshots — two live chat transcripts (a pie-chart
+  visualization and a totals query), Connect, mobile/QR connect, Scopes,
+  Model Permissions, Server Settings and Governance & Token Lifetimes —
+  replacing the placeholder single-page description.
+- New banner artwork; icon cropped from the same source, no third-party
+  logos.
+
+## [19.0.3.3.0] — 2026-08-06
+
+### Changed
+- **Renamed Fleet AI to Odoo MCP.** Same module, same technical name
+  (`mcp_governance_suite`); only the display name and listing copy changed —
+  menus, settings, security groups, cron jobs and the OAuth consent screen.
+- Support now also reachable at `support@odin.ist` and `andrew@fleet.ke`,
+  alongside the existing `developers@fleet.ke`.
+
+### Added
+- `doc/index.rst` — the App Store "Documentation" tab, covering installation,
+  upgrade, configuration and usage.
 
 ## [19.0.3.2.0] — 2026-08-05
 

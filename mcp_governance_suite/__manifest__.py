@@ -2,15 +2,15 @@
 # Manifest reference:
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
-    "name": "Fleet AI — MCP Governance Suite",
-    "version": "19.0.3.2.0",
+    "name": "Odoo MCP",
+    "version": "19.0.3.4.0",
     "category": "Extra Tools/AI",
     "summary": "Connect Claude, ChatGPT, Gemini, Cursor or any MCP client to Odoo "
                "with one-click OAuth 2.1 — every AI action runs as the real user, "
                "scoped, rate-limited, audited and optionally approval-gated.",
     "description": """
-Fleet AI — MCP Governance Suite
-===============================
+Odoo MCP
+========
 
 Let your team *chat with their Odoo data* from Claude, ChatGPT, Gemini, Cursor,
 Copilot, VS Code — any Model Context Protocol client — and get reports,
@@ -71,10 +71,10 @@ Provider-agnostic by design. Multi-company aware. Fully translatable.
 """,
     "author": "Fleet",
     "website": "https://fleet.ke",
-    "support": "developers@fleet.ke",
+    "support": "developers@fleet.ke,support@odin.ist,andrew@fleet.ke",
     "maintainer": "Fleet",
     "license": "OPL-1",  # Odoo Proprietary License (paid App Store module)
-    "price": 299.00,
+    "price": 199.00,
     "currency": "USD",
     "depends": ["base", "web", "mail"],
     "data": [
@@ -111,7 +111,17 @@ Provider-agnostic by design. Multi-company aware. Fully translatable.
     "demo": [
         "demo/mcp_demo.xml",
     ],
-    "images": ["static/description/banner.png"],
+    "images": [
+        "static/description/banner.png",
+        "static/description/screenshot_chat_pie.png",
+        "static/description/screenshot_chat_sales.png",
+        "static/description/screenshot_connect.png",
+        "static/description/screenshot_connect_qr.png",
+        "static/description/screenshot_scope.png",
+        "static/description/screenshot_model_access.png",
+        "static/description/screenshot_settings.png",
+        "static/description/screenshot_governance.png",
+    ],
     "installable": True,
     "application": True,
 }

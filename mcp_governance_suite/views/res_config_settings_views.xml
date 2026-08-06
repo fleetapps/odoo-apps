@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app string="Fleet AI" name="mcp_governance_suite">
+                <app string="Odoo MCP" name="mcp_governance_suite">
                     <block title="MCP Server" name="mcp_server_block">
                         <setting string="Enable MCP Server"
                                  help="Serve the MCP endpoint at /mcp for AI assistants.">

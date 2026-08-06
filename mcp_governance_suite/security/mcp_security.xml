@@ -3,7 +3,7 @@
     <data>
         <!-- ============================================ Groups ============= -->
         <record id="module_category_mcp" model="ir.module.category">
-            <field name="name">Fleet AI</field>
+            <field name="name">Odoo MCP</field>
             <field name="description">AI / MCP connector governance.</field>
             <field name="sequence">80</field>
         </record>
@@ -13,7 +13,7 @@
              privilege carries the ir.module.category. Setting category_id on a
              group here fails the install outright. -->
         <record id="privilege_mcp" model="res.groups.privilege">
-            <field name="name">Fleet AI</field>
+            <field name="name">Odoo MCP</field>
             <field name="category_id" ref="module_category_mcp"/>
             <field name="sequence">80</field>
             <field name="description">Who may connect AI assistants, approve their

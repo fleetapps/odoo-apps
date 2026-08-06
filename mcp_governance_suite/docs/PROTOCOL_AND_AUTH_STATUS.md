@@ -138,7 +138,7 @@ Not executed — no Odoo runtime in this environment:
 - Nothing has been deployed to `sandbox.odin.ist`.
 
 **Before trusting any of this: install the module, run the test suite, open
-Fleet AI → Connect your AI, then re-run the §7 phase gates against a live
+Odoo MCP → Connect your AI, then re-run the §7 phase gates against a live
 instance.**
 
 ---
