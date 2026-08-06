@@ -1,92 +1,480 @@
-<section style="max-width:960px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#2b3d4f;">
+<section class="oe_container">
+<div class="sy-listing">
+<style>
+.sy-listing{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;max-width:1120px;margin:0 auto;line-height:1.6;background:#fff}
+.sy-listing *{box-sizing:border-box}
+.sy-section{padding:56px 24px}
+.sy-inner{max-width:1040px;margin:0 auto}
+.sy-eyebrow{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5e8e3e;text-align:center;margin:0 0 8px}
+.sy-h2{font-size:27px;font-weight:800;text-align:center;letter-spacing:-.01em;margin:0 0 10px;color:#1f2937}
+.sy-lead{text-align:center;color:#5b6472;max-width:680px;margin:0 auto 34px;font-size:16px}
 
-    <div style="background:linear-gradient(135deg,#95bf47 0%,#5e8e3e 100%);border-radius:12px;padding:48px 32px;text-align:center;color:#fff;">
-        <h1 style="margin:0 0 12px;font-size:34px;">Shopify Connector — Two-Way Sync</h1>
-        <p style="margin:0;font-size:18px;opacity:.95;">
-            Products, stock, prices, customers, orders, fulfillments &amp; refunds.<br/>
-            Webhook-driven inbound. Queued, rate-limit-safe outbound. A conflict
-            engine that shows its work.
+/* Hero */
+.sy-hero{background:linear-gradient(135deg,#3a2e5c,#5e8e3e 130%);border-radius:22px;padding:52px 40px;color:#fff}
+.sy-hero-grid{display:flex;gap:36px;align-items:center;flex-wrap:wrap}
+.sy-hero-copy{flex:1 1 420px}
+.sy-hero h1{font-size:36px;margin:0 0 10px;font-weight:800;letter-spacing:-.02em}
+.sy-hero-sub{font-size:18px;margin:0 0 18px;opacity:.94;font-weight:500;color:#e3f0d4}
+.sy-hero p.sy-hero-desc{font-size:15px;line-height:1.65;opacity:.92;margin:0 0 20px;max-width:520px}
+.sy-badges{display:flex;flex-wrap:wrap;gap:8px}
+.sy-badge{display:inline-block;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);font-weight:600;font-size:13px}
+.sy-hero-img{flex:1 1 380px;text-align:center}
+.sy-hero-img img{max-width:100%;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.32)}
+
+/* Live demo callout */
+.sy-live{background:#eef6e4;border:1px solid #95bf47;border-radius:14px;padding:20px 24px;text-align:center}
+.sy-live h3{margin:0 0 8px;color:#2b3d4f;font-size:17px}
+.sy-live a{color:#5e8e3e;font-weight:700;font-size:15px;text-decoration:none}
+.sy-live p{margin:4px 0 0;font-size:14px;color:#556270}
+
+/* Chip cloud */
+.sy-cloud-group{margin-bottom:26px}
+.sy-cloud-label{font-size:12px;font-weight:800;color:#5e8e3e;text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px;text-align:center}
+.sy-chip-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.sy-chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e9ee;border-radius:999px;padding:9px 16px 9px 12px;font-size:14px;font-weight:700;color:#2b3d4f;box-shadow:0 1px 3px rgba(31,41,55,.05)}
+.sy-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block}
+.sy-dot-purple{background:#6d5aa8}
+.sy-dot-green{background:#5e8e3e}
+.sy-dot-navy{background:#2b3d4f}
+.sy-dot-amber{background:#d97706}
+.sy-dot-red{background:#dc2626}
+
+/* Feature / screen deep-dives */
+.sy-feat{padding:52px 24px;border-top:1px solid #eef1f4}
+.sy-feat-grid{display:flex;gap:32px;align-items:center;flex-wrap:wrap}
+.sy-feat-grid.sy-reverse{flex-direction:row-reverse}
+.sy-feat-media{flex:1 1 520px;min-width:280px}
+.sy-feat-media img{width:100%;border-radius:12px;border:1px solid #e5e9ee;box-shadow:0 8px 24px rgba(31,41,55,.08)}
+.sy-feat-copy{flex:1 1 320px;min-width:260px}
+.sy-tag{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:5px 12px 5px 9px;border-radius:999px;margin-bottom:14px;background:#f3f6ef;color:#3f6b28}
+.sy-feat-copy h2{font-size:23px;font-weight:800;color:#1f2937;margin:0 0 8px}
+.sy-feat-copy p{font-size:14.5px;color:#5b6472;margin:0 0 16px;line-height:1.6}
+.sy-cap-box{background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e5e9ee}
+.sy-cap{padding:12px 16px;border-bottom:1px solid #f2f4f6;font-size:14px;color:#2b3d4f;display:flex;align-items:center;gap:10px}
+.sy-cap:last-child{border-bottom:none}
+.sy-cap .sy-tick{color:#5e8e3e;font-weight:900;flex:0 0 auto}
+
+/* Differentiators */
+.sy-diff-band{background:#1f2937;border-radius:20px;padding:44px 36px}
+.sy-diff-band .sy-eyebrow{color:#a7d489}
+.sy-diff-band .sy-h2{color:#fff}
+.sy-diff-band .sy-lead{color:#c7ccd3}
+.sy-diff-grid{display:flex;flex-wrap:wrap;gap:14px}
+.sy-diff-card{flex:1 1 230px;background:rgba(255,255,255,.06);border:1px solid rgba(167,212,137,.28);border-radius:14px;padding:18px}
+.sy-diff-card .sy-ico{font-size:22px;display:block;margin-bottom:8px}
+.sy-diff-card h4{margin:0 0 4px;font-size:14.5px;font-weight:700;color:#fff}
+.sy-diff-card p{margin:0;font-size:12.5px;color:#c7ccd3;line-height:1.5}
+
+/* Sync table */
+.sy-table{width:100%;border-collapse:collapse;font-size:14px}
+.sy-table th{background:#2b3d4f;color:#fff;padding:10px;text-align:left;font-weight:700}
+.sy-table td{padding:10px;border-bottom:1px solid #eef1f4}
+.sy-table tr:last-child td{border-bottom:none}
+
+/* Benefits */
+.sy-benefit-grid{display:flex;flex-wrap:wrap;gap:28px}
+.sy-benefit-col{flex:1 1 380px}
+.sy-benefit{display:flex;gap:12px;margin-bottom:16px;font-size:14.5px;color:#2b3d4f;line-height:1.55}
+.sy-benefit .sy-tick{color:#5e8e3e;font-weight:800;flex:0 0 auto}
+
+/* FAQ */
+.sy-faq{background:#fff;border:1px solid #e5e9ee;border-radius:14px;padding:18px 22px;margin-bottom:12px}
+.sy-faq b{display:block;margin-bottom:4px;color:#1f2937}
+.sy-faq p{margin:0;color:#5b6472;font-size:14px}
+
+/* CTA / support */
+.sy-cta{background:linear-gradient(135deg,#2b3d4f,#3f6b28);border-radius:20px;padding:44px;text-align:center;color:#fff}
+.sy-cta h2{color:#fff;font-size:26px;margin:0 0 8px;font-weight:800}
+.sy-cta p{opacity:.9;margin:0 0 22px;font-size:15px}
+.sy-btn-row a{display:inline-block;padding:12px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14.5px;margin:0 6px 10px}
+.sy-btn-primary{background:#fff;color:#2b3d4f}
+.sy-btn-ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.sy-cta .sy-email{font-size:13px;opacity:.75;margin-top:14px}
+
+.sy-warn{background:#fef2f2;border:1px solid #fecaca;border-radius:14px;padding:20px 24px;font-size:13.5px;color:#991b1b;line-height:1.6;text-align:center}
+
+@media(max-width:640px){
+  .sy-hero{padding:34px 22px}
+  .sy-hero h1{font-size:28px}
+  .sy-section,.sy-feat{padding:40px 16px}
+}
+</style>
+
+<!-- ============================= HERO ============================= -->
+<div class="sy-section" style="padding-top:8px">
+  <div class="sy-inner sy-hero">
+    <div class="sy-hero-grid">
+      <div class="sy-hero-copy">
+        <h1>Odoo Shopify Sync</h1>
+        <p class="sy-hero-sub">Two-way sync that shows its work — never a silent guess.</p>
+        <p class="sy-hero-desc">
+          Products, stock, prices, customers, orders, fulfillments and
+          refunds — synced both ways over Shopify's GraphQL Admin API.
+          Webhook-driven inbound, queued outbound, and a conflict policy you
+          choose instead of one the connector assumes for you.
         </p>
+        <div class="sy-badges">
+          <span class="sy-badge">Two-Way Sync</span>
+          <span class="sy-badge">Webhook-Driven</span>
+          <span class="sy-badge">Multi-Store</span>
+          <span class="sy-badge">Runs Inside Your Odoo</span>
+        </div>
+      </div>
+      <div class="sy-hero-img">
+        <img src="banner.png" alt="Odoo Shopify Sync"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TRY IT LIVE ===================== -->
+<div class="sy-section" style="padding-top:0;padding-bottom:16px">
+  <div class="sy-inner sy-live">
+    <h3>🔗 Try it live — no install required</h3>
+    <p><a href="https://sandbox.odin.ist/odoo/shopify-sync">sandbox.odin.ist/odoo/shopify-sync</a></p>
+    <p>Login: <b>admin</b> · Password: <b>admin</b></p>
+  </div>
+</div>
+
+<!-- ======================= FEATURE CHIP CLOUD ======================== -->
+<div class="sy-section">
+  <div class="sy-inner">
+    <p class="sy-eyebrow">Everything that syncs</p>
+    <h2 class="sy-h2">One connector, every part of the order lifecycle</h2>
+    <p class="sy-lead">From the first product push to the last payout reconciled — configured from inside Odoo, no middleware.</p>
+
+    <div class="sy-cloud-group">
+      <p class="sy-cloud-label">What syncs</p>
+      <div class="sy-chip-row">
+        <span class="sy-chip"><span class="sy-dot sy-dot-purple"></span>Products (two-way)</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-green"></span>Prices</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-navy"></span>Inventory</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-purple"></span>Customers</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-green"></span>Orders</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-navy"></span>Fulfillments</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-purple"></span>Refunds</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-green"></span>Payouts</span>
+      </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:16px;margin:32px 0;">
-        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
-            <h3 style="margin:0 0 8px;">⚡ Real-time, both ways</h3>
-            <p style="margin:0;font-size:14px;color:#556270;">Webhooks push changes into a
-            durable job queue in milliseconds; Odoo edits flow back through the
-            GraphQL Admin API (<code>productSet</code>,
-            <code>inventorySetQuantities</code>) — the API Shopify commits to.</p>
-        </div>
-        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
-            <h3 style="margin:0 0 8px;">⚖️ Explicit conflict policy</h3>
-            <p style="margin:0;font-size:14px;color:#556270;">Same record edited on both
-            sides between syncs? You choose: Odoo wins, Shopify wins, or newest
-            wins — and every resolution is logged on the record's chatter.</p>
-        </div>
-        <div style="flex:1 1 280px;background:#f4f6f8;border-radius:8px;padding:20px;">
-            <h3 style="margin:0 0 8px;">🛡️ Nothing lost, ever</h3>
-            <p style="margin:0;font-size:14px;color:#556270;">Unmatched order lines land on
-            a fallback product with a mismatch log — never dropped. Failed jobs
-            back off, quarantine after 4 attempts and ping your admin.</p>
-        </div>
+    <div class="sy-cloud-group">
+      <p class="sy-cloud-label">How it behaves</p>
+      <div class="sy-chip-row">
+        <span class="sy-chip"><span class="sy-dot sy-dot-amber"></span>Explicit Conflict Policy</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-red"></span>Nothing Silently Dropped</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-navy"></span>Self-Healing Webhooks</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-green"></span>Rate-Limit Aware</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-purple"></span>Multi-Store &amp; Multi-Company</span>
+        <span class="sy-chip"><span class="sy-dot sy-dot-navy"></span>No Phone-Home</span>
+      </div>
     </div>
+  </div>
+</div>
 
-    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">What syncs, in which direction</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0 32px;">
-        <tr style="background:#2b3d4f;color:#fff;">
-            <th style="padding:10px;text-align:left;">Entity</th>
-            <th style="padding:10px;text-align:left;">Direction</th>
-            <th style="padding:10px;text-align:left;">Highlights</th>
-        </tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Products</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Two-way</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Multi-variant options both ways, images, status (active/draft/archived), SKU, barcode, weight, HS code</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Prices</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Pricelist per store, optional compare-at mapping</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Inventory</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export (two-way optional)</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Multi-location: Shopify locations ↔ Odoo warehouses mapping table, free qty as source</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Customers</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Import</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Email dedup, address hierarchy, country/state resolution. Marketing consent never leaves Shopify.</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Orders</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Import</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Tax policy (Odoo computes / Shopify totals to the cent), discounts, carrier mapping, auto-confirm &amp; invoice gating, fraud flagging, order-edit diffing, safe cancellations</td></tr>
-        <tr><td style="padding:10px;border-bottom:1px solid #e3e8ee;"><b>Fulfillments</b></td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Export</td>
-            <td style="padding:10px;border-bottom:1px solid #e3e8ee;">Modern FulfillmentOrders API, partial shipments per picking, tracking number + carrier</td></tr>
-        <tr><td style="padding:10px;"><b>Refunds</b></td>
-            <td style="padding:10px;">Import</td>
-            <td style="padding:10px;">Draft credit note mirroring the refund — accounting reviews, nothing auto-posts</td></tr>
+<!-- ==================== SCREEN 1 — WHAT SYNCS ==================== -->
+<div class="sy-feat" style="background:#fafbf8">
+  <div class="sy-inner sy-feat-grid">
+    <div class="sy-feat-media">
+      <img src="screenshot_what_syncs.png" alt="Choose a sync direction for each entity"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-purple"></span>Configuration</span>
+      <h2>Choose What Syncs, and Which Way</h2>
+      <p>One screen per store. Pick a direction for each entity, and a
+        conflict policy for when both sides disagree — nothing is decided
+        for you behind the scenes.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Products — two-way, or one direction only</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Stock, prices and orders — set independently</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Conflict policy — Odoo wins, Shopify wins, or newest edit wins</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Every resolution recorded, never silent</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 2 — STORES ==================== -->
+<div class="sy-feat">
+  <div class="sy-inner sy-feat-grid sy-reverse">
+    <div class="sy-feat-media">
+      <img src="screenshot_stores_list.png" alt="Shopify Stores list"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-green"></span>Stores</span>
+      <h2>Every Store, One List</h2>
+      <p>Connect as many Shopify stores as you sell through. Each one is an
+        independent binding — its own sync directions, its own conflict
+        policy, its own company.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Connection status and last check, at a glance</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Sync direction per entity, visible without opening the store</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Independent per-company record rules</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 3 — BACKFILL ==================== -->
+<div class="sy-feat" style="background:#fafbf8">
+  <div class="sy-inner sy-feat-grid">
+    <div class="sy-feat-media">
+      <img src="screenshot_backfill.png" alt="Backfill and initial import"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-navy"></span>Onboarding</span>
+      <h2>Import What's Already There</h2>
+      <p>Connecting a store with years of history doesn't mean starting
+        from zero. Count first, then bring it across.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Products, customers and orders — chosen independently</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Dry-run count before anything imports</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Optional order date window</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Resumable — survives a worker restart, 10,000-SKU catalogs welcome</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 4 — CONFLICT LOG ==================== -->
+<div class="sy-feat">
+  <div class="sy-inner sy-feat-grid sy-reverse">
+    <div class="sy-feat-media">
+      <img src="screenshot_conflict_log.png" alt="Conflict Log"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-amber"></span>Audit</span>
+      <h2>Every Conflict, on the Record</h2>
+      <p>When the same record changes in Odoo and Shopify between syncs,
+        your policy decides — and the decision is written here: which
+        fields differed, which side was kept, both timestamps.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>One row per resolved conflict</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Fields that differed, and which side won</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>An empty log is a real signal — both sides agree</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 5 — MISMATCH LOG ==================== -->
+<div class="sy-feat" style="background:#fafbf8">
+  <div class="sy-inner sy-feat-grid">
+    <div class="sy-feat-media">
+      <img src="screenshot_mismatch_log.png" alt="Mismatch Log"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-red"></span>Safety Net</span>
+      <h2>Nothing Silently Dropped</h2>
+      <p>An order line that can't be matched to a product, or a currency
+        with no pricelist — it still lands, with a fallback and a logged
+        reason instead of a failed sync.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Unmatched order lines land on a fallback product, not dropped</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Missing pricelists logged, not guessed at</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Every entry shows the exact order reference and reason</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 6 — PAYOUTS ==================== -->
+<div class="sy-feat">
+  <div class="sy-inner sy-feat-grid sy-reverse">
+    <div class="sy-feat-media">
+      <img src="screenshot_payout.png" alt="Payout reconciliation"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-green"></span>Finance</span>
+      <h2>Payouts, Reconciled</h2>
+      <p>Shopify payouts land as their own record — charges, refunds, fees
+        and adjustments broken out, matched line by line to the orders and
+        invoices behind them.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Charge, refund, fee and adjustment totals, separated</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Each transaction matched to its source order and invoice</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>A difference of zero means the payout is fully explained</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 7 — REPORTING ==================== -->
+<div class="sy-feat" style="background:#fafbf8">
+  <div class="sy-inner sy-feat-grid">
+    <div class="sy-feat-media">
+      <img src="screenshot_sales_analysis.png" alt="Sales Analysis pivot by store"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-navy"></span>Reporting</span>
+      <h2>It's Just Odoo Data</h2>
+      <p>Shopify orders land as real Odoo sale orders, so every report,
+        pivot and dashboard you already use — Sales Analysis included —
+        works on them without any extra setup.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Group and filter by store like any other dimension</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>No separate BI tool or export needed</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Pivot, graph and list views all just work</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 8 — SYNC HEALTH ==================== -->
+<div class="sy-feat">
+  <div class="sy-inner sy-feat-grid sy-reverse">
+    <div class="sy-feat-media">
+      <img src="screenshot_sync_health.png" alt="Sync Health monitoring"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-amber"></span>Monitoring</span>
+      <h2>Know It's Working, Without Checking</h2>
+      <p>A running success rate and a list of what synced and when, so a
+        problem shows up here first — not as a customer complaint.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Synced / needs-attention / success-rate, live</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Per-record sync status and timestamp</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Filter to just what needs a look</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SCREEN 9 — DASHBOARD ==================== -->
+<div class="sy-feat" style="background:#fafbf8">
+  <div class="sy-inner sy-feat-grid">
+    <div class="sy-feat-media">
+      <img src="screenshot_shopify_dashboard.png" alt="Shopify Dashboard"/>
+    </div>
+    <div class="sy-feat-copy">
+      <span class="sy-tag"><span class="sy-dot sy-dot-green"></span>Dashboard</span>
+      <h2>Revenue, at a Glance</h2>
+      <p>Revenue, order count, average order value, top products,
+        categories and countries — across every connected store, in one
+        place inside Odoo.</p>
+      <div class="sy-cap-box">
+        <div class="sy-cap"><span class="sy-tick">✓</span>Revenue, orders and average order value</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Top products, categories and countries</div>
+        <div class="sy-cap"><span class="sy-tick">✓</span>Broken out by store, for multi-store sellers</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== SYNC TABLE ========================= -->
+<div class="sy-section">
+  <div class="sy-inner">
+    <p class="sy-eyebrow">The full picture</p>
+    <h2 class="sy-h2">What syncs, in which direction</h2>
+    <table class="sy-table">
+      <tr><th>Entity</th><th>Direction</th><th>Highlights</th></tr>
+      <tr><td><b>Products</b></td><td>Two-way</td><td>Multi-variant options both ways, images, status, SKU, barcode, weight, HS code</td></tr>
+      <tr><td><b>Prices</b></td><td>Export</td><td>Pricelist per store, optional compare-at mapping</td></tr>
+      <tr><td><b>Inventory</b></td><td>Export (two-way optional)</td><td>Multi-location: Shopify locations ↔ Odoo warehouses, free qty as source</td></tr>
+      <tr><td><b>Customers</b></td><td>Import</td><td>Email dedup, address hierarchy. Marketing consent never leaves Shopify.</td></tr>
+      <tr><td><b>Orders</b></td><td>Import</td><td>Tax policy, discounts, carrier mapping, auto-confirm, fraud flagging, safe cancellations</td></tr>
+      <tr><td><b>Fulfillments</b></td><td>Export</td><td>Modern FulfillmentOrders API, partial shipments, tracking + carrier</td></tr>
+      <tr><td><b>Refunds</b></td><td>Import</td><td>Draft credit note mirroring the refund — nothing auto-posts</td></tr>
+      <tr><td><b>Payouts</b></td><td>Import</td><td>Charges, refunds, fees and adjustments, matched to source orders</td></tr>
     </table>
+  </div>
+</div>
 
-    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">Screenshots</h2>
-    <img src="screenshot_store.svg" alt="Store configuration with sync policies and location mapping" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
-    <img src="screenshot_jobs.svg" alt="Durable job queue with retry and quarantine" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
-    <img src="screenshot_conflict.svg" alt="Conflict resolutions audited in the chatter" style="width:100%;border:1px solid #e3e8ee;border-radius:8px;margin:12px 0;"/>
-
-    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">Built for operators</h2>
-    <ul style="font-size:14px;color:#556270;line-height:1.8;">
-        <li><b>Initial import wizard</b> — dry-run counts first, then a resumable, cursor-paginated backfill that survives worker restarts. 10,000-SKU catalogs welcome.</li>
-        <li><b>Self-healing webhooks</b> — Shopify silently deletes failing subscriptions; a daily cron re-registers anything missing.</li>
-        <li><b>Rate-limit aware</b> — REST leaky-bucket backoff and GraphQL cost tracking on every call. A 429 storm delays syncs; it never loses them.</li>
-        <li><b>Multi-store &amp; multi-company</b> — independent bindings per store, record rules per company.</li>
-        <li><b>No phone-home, no CDN</b> — everything runs inside your Odoo. Your token stays in your database, visible to connector admins only.</li>
-    </ul>
-
-    <h2 style="border-bottom:2px solid #95bf47;padding-bottom:8px;">FAQ</h2>
-    <p style="font-size:14px;"><b>Which Shopify plan do I need?</b><br/>
-    Any plan that allows custom apps (all current plans do). You create a custom app, grant Admin API scopes, paste the token — 5 minutes.</p>
-    <p style="font-size:14px;"><b>What happens when the same product is edited in both systems?</b><br/>
-    Your chosen conflict policy decides, and the decision is written to the product's chatter: "Conflict on name, price: kept Shopify version."</p>
-    <p style="font-size:14px;"><b>Will imported order totals match Shopify?</b><br/>
-    In "Shopify amounts win" mode, to the cent — tax and rounding adjustment lines guarantee it. In "Odoo computes" mode your fiscal positions rule and Shopify's tax lines are archived in a note.</p>
-    <p style="font-size:14px;"><b>Does it modify delivered orders when Shopify edits them?</b><br/>
-    Never silently. Un-delivered quantity changes are applied; anything touching delivered lines creates a review activity for a human.</p>
-
-    <div style="background:#2b3d4f;color:#fff;border-radius:12px;padding:24px 32px;margin-top:32px;text-align:center;">
-        <p style="margin:0;font-size:15px;">Support: <b>developers@fleet.ke</b> · Odoo 19 · License OPL-1</p>
+<!-- ======================== DIFFERENTIATORS ========================= -->
+<div class="sy-section">
+  <div class="sy-inner sy-diff-band">
+    <p class="sy-eyebrow">Built for operators</p>
+    <h2 class="sy-h2">The parts that show up after week one</h2>
+    <p class="sy-lead">The easy 80% is the same on every connector. This is what happens when Shopify starts misbehaving.</p>
+    <div class="sy-diff-grid">
+      <div class="sy-diff-card">
+        <span class="sy-ico">🔁</span>
+        <h4>Self-healing webhooks</h4>
+        <p>Shopify silently drops failing subscriptions; a daily cron re-registers anything missing.</p>
+      </div>
+      <div class="sy-diff-card">
+        <span class="sy-ico">🚦</span>
+        <h4>Rate-limit aware</h4>
+        <p>REST leaky-bucket backoff and GraphQL cost tracking. A 429 storm delays syncs — it never loses them.</p>
+      </div>
+      <div class="sy-diff-card">
+        <span class="sy-ico">🏢</span>
+        <h4>Multi-store &amp; multi-company</h4>
+        <p>Independent bindings per store, record rules per company.</p>
+      </div>
+      <div class="sy-diff-card">
+        <span class="sy-ico">🔒</span>
+        <h4>No phone-home, no CDN</h4>
+        <p>Everything runs inside your Odoo. Your access token stays in your database, visible to connector admins only.</p>
+      </div>
+      <div class="sy-diff-card">
+        <span class="sy-ico">🧩</span>
+        <h4>Built on the current API</h4>
+        <p>Shopify's GraphQL Admin API — the one Shopify is committing its future to, not the REST API on its way out.</p>
+      </div>
+      <div class="sy-diff-card">
+        <span class="sy-ico">📝</span>
+        <h4>Refunds stay a draft</h4>
+        <p>A mirrored credit note is created for accounting to review — nothing auto-posts on your books.</p>
+      </div>
     </div>
+  </div>
+</div>
 
+<!-- ============================= BENEFITS =========================== -->
+<div class="sy-section">
+  <div class="sy-inner">
+    <p class="sy-eyebrow">Why teams install it</p>
+    <h2 class="sy-h2">Everything two-way, nothing hand-waved</h2>
+    <div class="sy-benefit-grid">
+      <div class="sy-benefit-col">
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Real-time both ways — webhooks in, queued GraphQL out</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>You choose the conflict policy, not the connector</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Nothing dropped — mismatches land with a reason, not a failure</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Payouts reconciled to the order and invoice, line by line</div>
+      </div>
+      <div class="sy-benefit-col">
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Orders are real Odoo sale orders — every report just works</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>OAuth connect — no tokens to copy or paste</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Resumable backfill survives a worker restart</div>
+        <div class="sy-benefit"><span class="sy-tick">✓</span>Runs entirely inside your Odoo — no middleware, no phone-home</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== FAQ ============================== -->
+<div class="sy-section" style="padding-top:0">
+  <div class="sy-inner">
+    <h2 class="sy-h2">FAQ</h2>
+    <div class="sy-faq"><b>Which Shopify plan do I need?</b><p>Any plan that supports custom app installs (all current plans do). Connecting a store is OAuth: click Connect, approve on Shopify's own consent screen — no tokens to copy.</p></div>
+    <div class="sy-faq"><b>What happens when the same product is edited in both systems?</b><p>Your chosen conflict policy decides, and the decision is written to the product's chatter — and to the Conflict Log.</p></div>
+    <div class="sy-faq"><b>Will imported order totals match Shopify?</b><p>In "Shopify amounts win" mode, to the cent — tax and rounding adjustment lines guarantee it. In "Odoo computes" mode your fiscal positions rule and Shopify's tax lines are archived in a note.</p></div>
+    <div class="sy-faq"><b>Does it modify delivered orders when Shopify edits them?</b><p>Never silently. Un-delivered quantity changes are applied; anything touching delivered lines creates a review activity for a human.</p></div>
+    <div class="sy-faq"><b>Can I run more than one store?</b><p>Yes — each store is an independent binding with its own sync directions, conflict policy and company.</p></div>
+  </div>
+</div>
+
+<!-- ============================ SUPPORT / CTA ======================== -->
+<div class="sy-section">
+  <div class="sy-inner sy-cta">
+    <h2>Ready to stop reconciling by hand?</h2>
+    <p>Install Odoo Shopify Sync and connect your first store in minutes.</p>
+    <div class="sy-btn-row">
+      <a class="sy-btn-primary" href="mailto:support@odin.ist">Request a Demo</a>
+      <a class="sy-btn-ghost" href="mailto:support@odin.ist">Contact Support</a>
+    </div>
+    <p class="sy-email">support@odin.ist &nbsp;·&nbsp; andrew@fleet.ke &nbsp;·&nbsp; Odoo 19 · License OPL-1</p>
+  </div>
+</div>
+
+<!-- Duplicate-seller notice -->
+<div class="sy-section" style="padding-top:0">
+  <div class="sy-inner sy-warn">
+    <strong>Beware of duplicate listings and unofficial sellers.</strong><br/>
+    Download Odoo Shopify Sync only from this official listing on the Odoo
+    Apps Store to be sure you're getting genuine updates and support.
+  </div>
+</div>
+
+</div>
 </section>
