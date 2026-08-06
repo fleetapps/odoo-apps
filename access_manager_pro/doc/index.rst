@@ -7,6 +7,13 @@ users, groups and/or companies and control menus, models, fields, buttons,
 tabs, records and chatter — enforced on the server, not just hidden in the
 interface.
 
+Live Demo
+=========
+
+A live instance is available for testing without installing anything:
+https://sandbox.odin.ist/odoo/action-617 — log in with username ``admin``
+and password ``admin``.
+
 Installation
 ============
 
