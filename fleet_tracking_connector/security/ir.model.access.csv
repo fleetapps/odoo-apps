@@ -1,7 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_provider_mgr,provider manager,model_fleet_tracking_provider,fleet.fleet_group_manager,1,1,1,1
-access_tracker_mgr,tracker manager,model_fleet_vehicle_tracker,fleet.fleet_group_manager,1,1,1,1
-access_tracker_user,tracker user,model_fleet_vehicle_tracker,fleet.fleet_group_user,1,0,0,0
-access_position_mgr,position manager,model_fleet_vehicle_position,fleet.fleet_group_manager,1,1,1,1
-access_position_user,position user,model_fleet_vehicle_position,fleet.fleet_group_user,1,0,0,0
-access_geofence_mgr,geofence manager,model_fleet_tracking_geofence,fleet.fleet_group_manager,1,1,1,1
