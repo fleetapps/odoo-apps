@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Permission matrix, method allow-list and the bulk model picker."""
 import json
+from unittest.mock import patch
 
 from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -184,3 +185,55 @@ class TestModelPicker(TransactionCase):
         again = self._picker()
         self.assertEqual(again.new_count, 0)
         self.assertEqual(again.already_count, 3)
+
+
+@tagged("post_install", "-at_install")
+class TestHandlerClassification(TransactionCase):
+    """Every engine verb must be classified as reading or writing.
+
+    This is the one way a downstream module can silently punch through the
+    governance layer: ship a tool whose handler writes, forget to register it
+    in mcp.tool._write_handlers(), and `writes` computes False — so the tool is
+    advertised to read-only scopes, survives _resolve_tool's read-only check,
+    and executes for a connection that was never granted odoo:write.
+
+    Nothing else catches that. A downstream module's own tests pass, because
+    from inside that module everything works.
+    """
+
+    def test_every_registered_handler_is_classified(self):
+        Tool = self.env["mcp.tool"]
+        writers = Tool._write_handlers()
+        readers = {
+            "list_capabilities", "list_models", "get_schema",
+            "get_business_context", "search_records", "count_records",
+            "name_search", "read_group",
+        }
+        declared = {value for value, _label in
+                    Tool._fields["handler"].selection}
+        unclassified = declared - writers - readers
+        self.assertFalse(
+            unclassified,
+            "handler(s) %s are neither in mcp.tool._write_handlers() nor in "
+            "this test's read set. A writing handler left unclassified is "
+            "offered to read-only connections; a reading one only needs adding "
+            "to the set above." % sorted(unclassified))
+
+    def test_write_handlers_is_the_single_source_of_truth(self):
+        """_compute_writes must consult the method, not the module constant,
+        or overriding it downstream changes nothing."""
+        Tool = self.env["mcp.tool"]
+        tool = Tool.search([("handler", "=", "search_records")], limit=1)
+        self.assertTrue(tool, "the seeded search_records tool should exist")
+        self.assertFalse(tool.writes)
+
+        patched = set(Tool._write_handlers()) | {"search_records"}
+        with patch.object(type(Tool), "_write_handlers",
+                          lambda self: patched):
+            tool.invalidate_recordset(["writes"])
+            tool.modified(["handler"])
+            self.assertTrue(
+                tool.writes,
+                "overriding _write_handlers must change how writes computes")
+        tool.invalidate_recordset(["writes"])
+        tool.modified(["handler"])

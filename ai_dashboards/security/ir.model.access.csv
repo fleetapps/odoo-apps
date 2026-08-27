@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ai_dashboard_user,ai dashboard user,model_ai_dashboard,group_dashboard_user,1,1,1,1
+access_ai_dashboard_admin,ai dashboard admin,model_ai_dashboard,group_dashboard_admin,1,1,1,1
+access_ai_dashboard_version_user,ai dashboard version user,model_ai_dashboard_version,group_dashboard_user,1,0,0,0
+access_ai_dashboard_version_admin,ai dashboard version admin,model_ai_dashboard_version,group_dashboard_admin,1,0,1,1

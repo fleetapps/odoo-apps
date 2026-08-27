@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ========================================= The app landing ========== -->
+    <!-- A kanban of dashboards rather than a list: these are things you
+         recognise by name and open, not rows you compare. -->
+    <record id="ai_dashboard_view_kanban" model="ir.ui.view">
+        <field name="name">ai.dashboard.kanban</field>
+        <field name="model">ai.dashboard</field>
+        <field name="arch" type="xml">
+            <kanban highlight_color="color" class="o_ai_dashboard_kanban">
+                <field name="state"/>
+                <field name="is_shared"/>
+                <field name="built_by_ai"/>
+                <field name="is_pinned"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="fw-bold fs-5">
+                                <field name="name"/>
+                            </div>
+                            <field name="is_favorite" widget="boolean_favorite"
+                                   nolabel="1"/>
+                        </div>
+
+                        <div t-if="record.state.raw_value == 'draft'"
+                             class="mt-1">
+                            <span class="badge text-bg-warning">Preview — not saved yet</span>
+                        </div>
+
+                        <field name="description" class="text-muted mt-2 small"/>
+
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <span t-if="record.built_by_ai.raw_value"
+                                  class="badge text-bg-light" title="Built with an AI assistant">
+                                <i class="fa fa-comments-o me-1"/>AI
+                            </span>
+                            <span t-if="record.is_shared.raw_value"
+                                  class="badge text-bg-light">
+                                <i class="fa fa-users me-1"/>Shared
+                            </span>
+                            <span t-if="record.is_pinned.raw_value"
+                                  class="badge text-bg-light">
+                                <i class="fa fa-thumb-tack me-1"/>Pinned
+                            </span>
+                        </div>
+
+                        <footer class="pt-2 text-muted small">
+                            <field name="owner_id" widget="many2one_avatar_user"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ====================================== The dashboard itself ======== -->
+    <!-- A form view, not a client action: it is deep-linkable, breadcrumbed and
+         favouritable for free, and the light editor is simply the form's edit
+         mode acting on the spec field. -->
+    <record id="ai_dashboard_view_form" model="ir.ui.view">
+        <field name="name">ai.dashboard.form</field>
+        <field name="model">ai.dashboard</field>
+        <field name="arch" type="xml">
+            <form class="o_ai_dashboard_form">
+                <header>
+                    <button name="action_publish" type="object" string="Save it"
+                            class="btn-primary" invisible="state != 'draft'"
+                            help="Put this on your app tile."/>
+                    <button name="action_discard" type="object"
+                            string="Discard" invisible="state != 'draft'"
+                            confirm="Discard this preview? It has not been saved to your app tile."/>
+                    <button name="action_open_history" type="object"
+                            string="History" invisible="version_count &lt; 2"/>
+                    <button name="action_duplicate" type="object"
+                            string="Duplicate"
+                            invisible="state == 'draft'"/>
+                    <button name="action_pin_to_menu" type="object"
+                            string="Pin to menu"
+                            groups="ai_dashboards.group_dashboard_admin"
+                            invisible="state == 'draft' or is_pinned"/>
+                    <button name="action_unpin" type="object" string="Unpin"
+                            groups="ai_dashboards.group_dashboard_admin"
+                            invisible="not is_pinned"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state != 'draft'">
+                        <b>This is a preview.</b> Nobody else can see it and it
+                        is not on your app tile yet. Look it over, then click
+                        <b>Save it</b> — or Discard and ask for something
+                        different.
+                    </div>
+
+                    <div class="alert alert-info" role="alert"
+                         invisible="not is_slow">
+                        <b>This dashboard is slow to open.</b> One of its tiles
+                        is asking a large question. Narrowing a date filter or
+                        grouping by something coarser usually fixes it.
+                    </div>
+
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="e.g. P&amp;L"/></h1>
+                        <field name="description" class="text-muted"
+                               placeholder="What does this show?"/>
+                    </div>
+
+                    <!-- The dashboard. Renders in readonly; in edit mode it
+                         allows reordering, resizing and per-tile cosmetics. -->
+                    <field name="spec_json" widget="ai_dashboard_canvas"
+                           nolabel="1" options="{'no_label': true}"/>
+
+                    <group string="Sharing" name="sharing">
+                        <field name="owner_id" readonly="1"/>
+                        <field name="group_ids" widget="many2many_tags"
+                               placeholder="Leave empty to keep it private to you"
+                               help="Everyone in these groups can open it. Each of them still sees only the records their own Odoo permissions allow, so one dashboard shows each person their own figures."/>
+                    </group>
+
+                    <group string="What this dashboard reads" name="explains">
+                        <field name="explanation" nolabel="1" colspan="2"
+                               readonly="1" class="text-muted"/>
+                    </group>
+
+                    <field name="version_count" invisible="1"/>
+                    <field name="is_pinned" invisible="1"/>
+                    <field name="is_slow" invisible="1"/>
+                    <field name="built_by_ai" invisible="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="ai_dashboard_view_search" model="ir.ui.view">
+        <field name="name">ai.dashboard.search</field>
+        <field name="model">ai.dashboard</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="owner_id"/>
+                <filter name="f_favorites" string="My favourites"
+                        domain="[('is_favorite', '=', True)]"/>
+                <filter name="f_mine" string="Built by me"
+                        domain="[('owner_id', '=', uid)]"/>
+                <filter name="f_shared" string="Shared with me"
+                        domain="[('owner_id', '!=', uid)]"/>
+                <separator/>
+                <filter name="f_draft" string="Previews"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="f_ai" string="Built with AI"
+                        domain="[('built_by_ai', '=', True)]"/>
+                <separator/>
+                <filter name="f_archived" string="Archived"
+                        domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_owner" string="Owner"
+                            context="{'group_by': 'owner_id'}"/>
+                    <filter name="group_state" string="Status"
+                            context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dashboards" model="ir.actions.act_window">
+        <field name="name">Dashboards</field>
+        <field name="res_model">ai.dashboard</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="search_view_id" ref="ai_dashboard_view_search"/>
+        <field name="context">{'search_default_f_mine': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ask your assistant for a dashboard</p>
+            <p>
+                Open Claude, ChatGPT or whichever assistant you connected, and
+                describe what you want to see — <i>"a P&amp;L for this year"</i>,
+                <i>"sales by rep, monthly"</i>. It builds the dashboard and it
+                appears here.
+            </p>
+            <p>
+                Every figure is calculated when you open it, using your own Odoo
+                permissions. Nothing is copied out of your database, and a
+                dashboard you share shows each colleague their own numbers.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_dashboards_shared" model="ir.actions.act_window">
+        <field name="name">Shared with me</field>
+        <field name="res_model">ai.dashboard</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="search_view_id" ref="ai_dashboard_view_search"/>
+        <field name="domain">[('owner_id', '!=', uid)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing shared with you yet</p>
+            <p>When a colleague shares a dashboard with a group you belong to,
+               it appears here — showing your figures, not theirs.</p>
+        </field>
+    </record>
+
+    <!-- ============================================== History ============= -->
+    <record id="ai_dashboard_version_view_list" model="ir.ui.view">
+        <field name="name">ai.dashboard.version.list</field>
+        <field name="model">ai.dashboard.version</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false"
+                  decoration-bf="is_current">
+                <field name="create_date" string="When"/>
+                <field name="note" string="What changed"/>
+                <field name="author_id" string="By"/>
+                <field name="is_current" string="Current" widget="boolean"/>
+                <button name="action_restore" type="object" string="Restore"
+                        icon="fa-undo" invisible="is_current"
+                        confirm="Restore this version? The current one is kept in the history."/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ai_dashboard_version_view_form" model="ir.ui.view">
+        <field name="name">ai.dashboard.version.form</field>
+        <field name="model">ai.dashboard.version</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <header>
+                    <button name="action_restore" type="object"
+                            string="Restore this version" class="btn-primary"
+                            invisible="is_current"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="dashboard_id"/>
+                        <field name="create_date" string="Saved"/>
+                        <field name="author_id"/>
+                        <field name="note"/>
+                        <field name="is_current"/>
+                    </group>
+                    <field name="spec_json" widget="ace" options="{'mode': 'json'}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

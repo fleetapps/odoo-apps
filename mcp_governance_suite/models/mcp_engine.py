@@ -83,6 +83,7 @@ class MCPEngine(models.AbstractModel):
         # business data); actual record access below always runs as the user.
         scope = scope.sudo()
         hint = self._model_hint(scope)
+        model_aware = self._model_aware_handlers()
         tools = []
         for cap in scope.allowed_capabilities():
             for tool in cap.tool_ids.filtered("active"):
@@ -91,7 +92,7 @@ class MCPEngine(models.AbstractModel):
                 tools.append({
                     "name": tool.name,
                     "title": tool.title or tool.name.replace("_", " ").title(),
-                    "description": self._tool_description(tool, hint),
+                    "description": self._tool_description(tool, hint, model_aware),
                     "inputSchema": self._input_schema(tool),
                     "annotations": self._annotations(tool),
                 })
@@ -125,9 +126,20 @@ class MCPEngine(models.AbstractModel):
                 models=listed, more=len(names) - len(shown)))
         return str(_(" Models readable on this connection: %s.") % listed)
 
-    def _tool_description(self, tool, hint):
+    @api.model
+    def _model_aware_handlers(self):
+        """Verbs whose usefulness depends on which models are in scope.
+
+        Overridable so a downstream module's read verbs can carry the same
+        per-scope model hint instead of shipping a generic description.
+        """
+        return set(MODEL_AWARE_HANDLERS)
+
+    def _tool_description(self, tool, hint, model_aware=None):
         """The description as the client sees it: generic text plus this scope."""
-        if hint and tool.handler in MODEL_AWARE_HANDLERS:
+        if model_aware is None:
+            model_aware = self._model_aware_handlers()
+        if hint and tool.handler in model_aware:
             return "%s%s" % (tool.description, hint)
         return tool.description
 
@@ -340,6 +352,7 @@ class MCPEngine(models.AbstractModel):
         # The second place tool descriptions are emitted; it has to say the
         # same thing tools/list does or the two drift apart.
         hint = self._model_hint(scope)
+        model_aware = self._model_aware_handlers()
         caps = []
         for cap in scope.allowed_capabilities():
             active = cap.tool_ids.filtered("active")
@@ -352,7 +365,7 @@ class MCPEngine(models.AbstractModel):
                 "technical_name": cap.technical_name,
                 "description": cap.description,
                 "tools": [{"name": t.name,
-                           "description": self._tool_description(t, hint)}
+                           "description": self._tool_description(t, hint, model_aware)}
                           for t in shown],
             }
             # str() on purpose: these travel in structuredContent, and a lazy

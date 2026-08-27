@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- An app tile rather than a menu buried under something else: these are
+         the screens people open every morning, so they get their own app.
+
+         Note there is exactly ONE static menu here per destination. Dashboards
+         themselves are records reached through the kanban, never menu items —
+         creating an ir.ui.menu needs base.group_system, which an assistant
+         running as an ordinary employee does not have and should not be
+         granted. Pinning one to this menu is a separate, deliberate
+         administrator action (ai.dashboard.action_pin_to_menu). -->
+    <menuitem id="menu_dashboards_root" name="AI Dashboards"
+              web_icon="ai_dashboards,static/description/icon.png"
+              groups="ai_dashboards.group_dashboard_user"
+              sequence="81"/>
+
+    <menuitem id="menu_dashboards" name="Dashboards"
+              parent="menu_dashboards_root" action="action_dashboards"
+              groups="ai_dashboards.group_dashboard_user" sequence="1"/>
+
+    <menuitem id="menu_dashboards_shared" name="Shared with me"
+              parent="menu_dashboards_root" action="action_dashboards_shared"
+              groups="ai_dashboards.group_dashboard_user" sequence="5"/>
+
+    <!-- Straight to the parent module's Connect screen. Somebody who installs
+         this app and has not connected an assistant yet has no way to use it,
+         and sending them hunting through another app for the URL is exactly
+         the gap that makes an install feel broken. -->
+    <menuitem id="menu_dashboards_connect" name="Connect your AI"
+              parent="menu_dashboards_root"
+              action="mcp_governance_suite.mcp_connect_action"
+              groups="ai_dashboards.group_dashboard_user" sequence="10"/>
+</odoo>

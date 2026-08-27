@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="privilege_dashboards" model="res.groups.privilege">
+            <field name="name">AI Dashboards</field>
+            <field name="category_id" ref="mcp_governance_suite.module_category_mcp"/>
+            <field name="sequence">85</field>
+            <field name="description">Who may build dashboards with an AI
+                assistant, and who may share them with a team.</field>
+        </record>
+
+        <record id="group_dashboard_user" model="res.groups">
+            <field name="name">User</field>
+            <field name="privilege_id" ref="privilege_dashboards"/>
+            <field name="comment">Can build, open and share their own
+                dashboards. Every figure they see is still bounded by their own
+                Odoo access rights.</field>
+        </record>
+
+        <record id="group_dashboard_admin" model="res.groups">
+            <field name="name">Administrator</field>
+            <field name="privilege_id" ref="privilege_dashboards"/>
+            <field name="implied_ids" eval="[(4, ref('group_dashboard_user'))]"/>
+            <field name="comment">Can edit and delete anyone's dashboard, and
+                pin one to the main menu.</field>
+        </record>
+
+        <!-- Every employee who can already connect an assistant can build a
+             dashboard with it. Same reasoning as the MCP User role: this is
+             navigation rather than authority. A dashboard can only ever ask
+             questions its owner was already allowed to ask, and it is drawn
+             using the permissions of whoever opens it. -->
+        <record id="mcp_governance_suite.group_mcp_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_dashboard_user'))]"/>
+        </record>
+
+        <record id="mcp_governance_suite.group_mcp_admin" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_dashboard_admin'))]"/>
+        </record>
+
+        <!-- ====================================== Record Rules ============ -->
+        <!-- Your own dashboards, plus anything shared with a group you are in.
+             Sharing grants sight, never edit: ai.dashboard._check_owner keeps
+             writing with the owner, so one person's change cannot silently
+             rewrite what a whole team looks at each morning. -->
+        <record id="rule_dashboard_own_or_shared" model="ir.rule">
+            <field name="name">Dashboards: own or shared with me</field>
+            <field name="model_id" ref="model_ai_dashboard"/>
+            <field name="domain_force">
+                ['|', ('owner_id', '=', user.id),
+                      '&amp;', ('state', '=', 'published'),
+                               ('group_ids', 'in', user.all_group_ids.ids)]
+            </field>
+            <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
+        </record>
+
+        <record id="rule_dashboard_admin" model="ir.rule">
+            <field name="name">Dashboards: administrators see all</field>
+            <field name="model_id" ref="model_ai_dashboard"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_dashboard_admin'))]"/>
+        </record>
+
+        <!-- History follows the dashboard it belongs to. -->
+        <record id="rule_version_follows_dashboard" model="ir.rule">
+            <field name="name">Dashboard history: own only</field>
+            <field name="model_id" ref="model_ai_dashboard_version"/>
+            <field name="domain_force">[('dashboard_id.owner_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
+        </record>
+
+        <record id="rule_version_admin" model="ir.rule">
+            <field name="name">Dashboard history: administrators see all</field>
+            <field name="model_id" ref="model_ai_dashboard_version"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_dashboard_admin'))]"/>
+        </record>
+    </data>
+</odoo>

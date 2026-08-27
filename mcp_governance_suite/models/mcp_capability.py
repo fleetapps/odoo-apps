@@ -32,6 +32,11 @@ HANDLER_SELECTION = [
 # Mutating verbs: hidden from read-only scopes and from tokens without
 # odoo:write. call_method belongs here because an allow-listed business method
 # (confirm, post, send) almost always changes state.
+#
+# Read this through mcp.tool._write_handlers(), never directly: a module that
+# adds a writing verb has to be able to add it to this set, and the failure
+# mode if it cannot is that a read-only scope advertises and permits a write
+# tool. See _compute_writes.
 WRITE_HANDLERS = {"create_record", "write_record", "unlink_record", "call_method"}
 
 
@@ -89,7 +94,21 @@ class MCPTool(models.Model):
     _name_uniq = models.Constraint(
         "UNIQUE (name)", "Tool name must be unique.")
 
+    @api.model
+    def _write_handlers(self):
+        """Which engine verbs change data. The extension point for new tools.
+
+        A module adding a handler that writes MUST add it here by overriding
+        this method, or its tool is advertised to read-only scopes and executes
+        for connections that were never granted ``odoo:write``. That is the one
+        way a downstream module can silently punch through the governance
+        layer, so ``tests/test_permissions.py`` fails if any registered handler
+        is classified neither here nor in the read set.
+        """
+        return set(WRITE_HANDLERS)
+
     @api.depends("handler")
     def _compute_writes(self):
+        writers = self._write_handlers()
         for rec in self:
-            rec.writes = rec.handler in WRITE_HANDLERS
+            rec.writes = rec.handler in writers

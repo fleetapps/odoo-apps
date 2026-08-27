@@ -1,0 +1,192 @@
+// The dashboard canvas.
+// Uses Odoo's own CSS variables so a dashboard follows the active theme
+// (dark mode included) rather than carrying a palette that drifts from the
+// rest of the backend.
+
+.o_ai_dash {
+    --o-ai-gap: 1rem;
+
+    .o_ai_dash_loading,
+    .o_ai_dash_blank {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 12rem;
+        color: var(--gray-500, #8a8f98);
+    }
+
+    // ------------------------------------------------------------ filters
+    .o_ai_dash_filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: var(--o-ai-gap);
+    }
+
+    .o_ai_dash_filter {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+
+        label { margin: 0; font-size: .85rem; color: var(--gray-600, #6c757d); }
+        select { width: auto; text-transform: capitalize; }
+    }
+
+    .o_ai_dash_took {
+        margin-left: auto;
+        font-size: .75rem;
+    }
+
+    // --------------------------------------------------------------- grid
+    .o_ai_dash_grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: var(--o-ai-gap);
+    }
+
+    .o_ai_dash_tile {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;              // lets a wide table scroll instead of pushing
+        background: var(--white, #fff);
+        border: 1px solid var(--gray-300, #dee2e6);
+        border-radius: 10px;
+        padding: .9rem 1.1rem 1rem;
+    }
+
+    .o_ai_dash_tile_head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .5rem;
+        margin-bottom: .5rem;
+        min-height: 1.75rem;
+
+        h4 {
+            font-size: .95rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--gray-700, #495057);
+        }
+    }
+
+    // Editing controls stay out of the way until the tile is hovered, so a
+    // dashboard being read looks like a dashboard rather than a workbench.
+    .o_ai_dash_tools {
+        display: flex;
+        align-items: center;
+        gap: .05rem;
+        opacity: 0;
+        transition: opacity .12s ease;
+
+        .btn { padding: .1rem .3rem; font-size: .75rem; }
+    }
+    .o_ai_dash_tile:hover .o_ai_dash_tools,
+    .o_ai_dash_tools:focus-within { opacity: 1; }
+
+    // ---------------------------------------------------------------- kpi
+    .o_ai_dash_kpi {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: 1 1 auto;
+        min-height: 4.5rem;
+    }
+
+    .o_ai_dash_kpi_value {
+        font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+        font-weight: 600;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
+
+    .o_ai_dash_kpi_delta { font-size: .82rem; margin-top: .25rem; }
+
+    .o_ai_dash_clickable {
+        cursor: pointer;
+        border-radius: 6px;
+
+        &:hover { background: var(--gray-100, #f6f7f9); }
+    }
+
+    // -------------------------------------------------------------- chart
+    .o_ai_dash_chart {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 13rem;
+        height: 13rem;             // Chart.js needs a bounded box to size into
+    }
+
+    // -------------------------------------------------------------- table
+    .o_ai_dash_tablewrap {
+        overflow-x: auto;          // wide tables scroll themselves, never the page
+        max-height: 18rem;
+        overflow-y: auto;
+
+        table { margin: 0; font-size: .85rem; }
+        th {
+            position: sticky;
+            top: 0;
+            background: var(--white, #fff);
+            font-weight: 500;
+            color: var(--gray-600, #6c757d);
+            white-space: nowrap;
+        }
+        td { font-variant-numeric: tabular-nums; }
+    }
+
+    // ------------------------------------------------------------ messages
+    .o_ai_dash_msg {
+        display: flex;
+        align-items: center;
+        flex: 1 1 auto;
+        min-height: 5rem;
+        font-size: .85rem;
+        color: var(--gray-600, #6c757d);
+
+        &--error { color: var(--danger, #d9534f); }
+    }
+
+    .o_ai_dash_more {
+        margin-top: .4rem;
+        font-size: .75rem;
+        color: var(--warning-dark, #8a6d00);
+    }
+
+    // ----------------------------------------------------------- swatches
+    .o_ai_dash_swatches {
+        display: flex;
+        gap: .2rem;
+        margin-top: .5rem;
+        opacity: 0;
+        transition: opacity .12s ease;
+    }
+    .o_ai_dash_tile:hover .o_ai_dash_swatches { opacity: 1; }
+
+    .o_ai_dash_swatch {
+        width: .85rem;
+        height: .85rem;
+        border: 0;
+        border-radius: 50%;
+        padding: 0;
+        cursor: pointer;
+
+        &:hover { outline: 2px solid var(--gray-400, #ced4da); outline-offset: 1px; }
+    }
+
+    .o_ai_dash_foot {
+        margin: var(--o-ai-gap) 0 0;
+        font-size: .78rem;
+    }
+
+    // ------------------------------------------------------------- mobile
+    // One column below tablet: a 3-of-12 KPI is unreadable on a phone.
+    @media (max-width: 768px) {
+        .o_ai_dash_grid > .o_ai_dash_tile {
+            grid-column: span 12 !important;
+        }
+        .o_ai_dash_tools, .o_ai_dash_swatches { opacity: 1; }
+    }
+}
