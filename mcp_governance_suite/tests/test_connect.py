@@ -4,8 +4,13 @@
 The whole screen is rendered from get_state(), so testing that payload tests
 the screen's behaviour without touching the browser.
 """
+from datetime import timedelta
+
+from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
+from ..models.mcp_connect import STARTER_PROMPTS
+from ..models.mcp_scope import SUGGESTED_MODELS
 from ..models.tools_crypto import hash_secret, new_secret
 
 
@@ -93,8 +98,9 @@ class TestConnectState(TransactionCase):
 
     def test_revoke_removes_the_connection(self):
         token = self._token()
-        state = self.Connect.revoke(token.id)
-        self.assertFalse([c for c in state["connections"] if c["id"] == token.id])
+        result = self.Connect.revoke(token.id)
+        self.assertFalse([c for c in result["state"]["connections"]
+                          if c["id"] == token.id])
 
     def test_revoke_all_disconnects_everything(self):
         self._token()
@@ -124,11 +130,48 @@ class TestConnectState(TransactionCase):
         self.assertTrue(prompts)
         self.assertFalse([p for p in prompts if p.startswith("Create")])
 
-    def test_write_prompts_appear_when_a_writable_scope_exists(self):
-        self.env["mcp.scope"].create(
+    def test_read_prompts_are_limited_to_models_in_the_matrix(self):
+        """The seeded scope covers `base` models only, so the sales and
+        invoicing suggestions must not be offered on a fresh install."""
+        prompts = self.Connect.get_state()["prompts"]
+        readable = set(self.env["mcp.scope.line"].sudo().search(
+            [("can_read", "=", True)]).mapped("model_name"))
+        if "sale.order" not in readable:
+            self.assertFalse([p for p in prompts if "sales orders" in p])
+        if "account.move" not in readable:
+            self.assertFalse([p for p in prompts if "invoices" in p])
+
+    def test_write_prompts_appear_when_the_matrix_permits_that_model(self):
+        scope = self.env["mcp.scope"].create(
             {"name": "TEST writable", "read_only": False})
+        self.env["mcp.scope.line"].create({
+            "scope_id": scope.id,
+            "model_id": self.env["ir.model"]._get("res.partner").id,
+            "can_read": True, "can_create": True,
+        })
         self.assertTrue([p for p in self.Connect.get_state()["prompts"]
-                         if p.startswith("Create")])
+                         if p.startswith("Create partners")])
+
+    def test_write_prompt_stays_hidden_when_only_another_model_is_writable(self):
+        """A writable scope is not enough - it has to be writable *for that model*.
+
+        This is the chip that used to appear on any writable scope and then
+        fail in the assistant, which reads as the product being broken.
+        """
+        scope = self.env["mcp.scope"].create(
+            {"name": "TEST writable partners", "read_only": False})
+        self.env["mcp.scope.line"].create({
+            "scope_id": scope.id,
+            "model_id": self.env["ir.model"]._get("res.partner").id,
+            "can_read": True, "can_create": True,
+        })
+        prompts = self.Connect.get_state()["prompts"]
+        self.assertFalse([p for p in prompts if "sale order" in p])
+
+    def test_prompts_that_need_no_model_are_always_offered(self):
+        """However tight the scope, the screen must never show zero prompts."""
+        self.env["mcp.scope.line"].sudo().search([]).unlink()
+        self.assertTrue(self.Connect.get_state()["prompts"])
 
     def test_every_client_guide_has_steps(self):
         for guide in self.Connect.get_state()["clients"]:
@@ -149,3 +192,202 @@ class TestConnectState(TransactionCase):
             "key_hash": hash_secret(new_secret()),
         })
         self.assertEqual(self.Connect.get_state()["status"]["state"], "connected")
+
+    # -------------------------------------------------------------- payload
+    def test_get_state_can_skip_the_qr(self):
+        """The QR is rendered server-side and the URL cannot change between
+        two polls, so a poll must not pay for it."""
+        self.assertIn("qr", self.Connect.get_state())
+        self.assertNotIn("qr", self.Connect.get_state(with_qr=False))
+
+    def test_the_checklist_never_stops_early(self):
+        """A list that just ends reads as one that has not finished running."""
+        keys = {c["key"] for c in self.Connect.get_state()["checks"]}
+        self.assertIn("enabled", keys)
+
+    # ----------------------------------------------------- business models
+    def _strip_business_models(self):
+        """Reduce the effective scope to `base` models, as a pre-hook install
+        had, and report whether this database has anything to add back."""
+        scope = self.env.user.sudo().mcp_effective_scope()
+        scope.line_ids.filtered(
+            lambda l: l.model_name in SUGGESTED_MODELS).unlink()
+        return scope, [m for m in SUGGESTED_MODELS if m in self.env]
+
+    def test_a_base_only_scope_is_flagged_as_too_thin(self):
+        """Connected and useless is the failure this row exists to catch."""
+        _scope, installed = self._strip_business_models()
+        if not installed:
+            self.skipTest("no business app installed in this database")
+        check = self._checks(self.Connect.get_state()).get("models_thin")
+        self.assertTrue(check, "a scope with no business model must warn")
+        self.assertEqual(check["state"], "warn", "it warns, it does not block")
+        self.assertEqual(check["fix_method"], "add_suggested_models")
+
+    def test_the_warning_goes_away_once_business_models_are_readable(self):
+        scope, installed = self._strip_business_models()
+        if not installed:
+            self.skipTest("no business app installed in this database")
+        self.assertIn("models_thin", self._checks(self.Connect.get_state()))
+        self.Connect.add_suggested_models()
+        self.assertNotIn("models_thin", self._checks(self.Connect.get_state()))
+        self.assertTrue(set(scope.readable_model_names()) & set(installed))
+
+    def test_the_warning_is_silent_on_a_deliberately_narrow_scope(self):
+        """Once an administrator has opened the scope, a scope they then keep
+        narrow is their decision, not a defect to nag about every page view."""
+        _scope, installed = self._strip_business_models()
+        if not installed:
+            self.skipTest("no business app installed in this database")
+        self.Connect.add_suggested_models()
+        self.assertNotIn("models_thin", self._checks(self.Connect.get_state()))
+
+    def test_adding_suggested_models_is_re_runnable(self):
+        self._strip_business_models()
+        before = len(self.Connect.add_suggested_models()["checks"])
+        self.Connect.add_suggested_models()
+        self.assertEqual(len(self.Connect.get_state()["checks"]), before)
+
+    # ------------------------------------------------------ what it may do
+    def test_writes_block_describes_the_effective_scope(self):
+        writes = self.Connect.get_state()["writes"]
+        for key in ("enabled", "requires_approval", "scope_name", "can_toggle",
+                    "pending", "needs_reconnect"):
+            self.assertIn(key, writes)
+
+    def test_set_writes_flips_the_effective_scope(self):
+        scope = self.env.user.sudo().mcp_effective_scope()
+        self.Connect.set_writes(True)
+        self.assertFalse(scope.read_only)
+        self.assertTrue(self.Connect.get_state()["writes"]["enabled"])
+        self.Connect.set_writes(False)
+        self.assertTrue(scope.read_only)
+
+    def test_set_writes_leaves_the_approval_gate_alone(self):
+        """Turning writes on must not quietly turn the human gate off too."""
+        scope = self.env.user.sudo().mcp_effective_scope()
+        scope.require_approval = True
+        self.Connect.set_writes(True)
+        self.assertTrue(scope.require_approval)
+        self.Connect.set_writes(False)
+
+    def test_a_stale_connection_is_surfaced_as_needing_a_reconnect(self):
+        """A scope change never reaches a live connection; saying so on a
+        grey table row was not enough for anyone to notice."""
+        token = self._token()
+        token.scope_id.read_only = False
+        token.scope = "odoo:read"
+        writes = self.Connect.get_state()["writes"]
+        self.assertTrue(writes["needs_reconnect"])
+        self.assertIn("Reconnect", writes["reconnect_hint"])
+
+    # ------------------------------------------------------- reachability
+    def test_reachability_is_not_re_probed_inside_the_cache_window(self):
+        """Every mount calls this; an unconditional probe is an outbound round
+        trip and three parameter writes per page view, per user."""
+        Param = self.env["ir.config_parameter"].sudo()
+        Param.set_param("mcp_governance_suite.reachability_state", "ok")
+        Param.set_param("mcp_governance_suite.reachability_detail", "cached")
+        Param.set_param("mcp_governance_suite.reachability_checked_at",
+                        fields.Datetime.to_string(fields.Datetime.now()))
+        self.Connect.test_reachability()
+        self.assertEqual(
+            Param.get_param("mcp_governance_suite.reachability_detail"),
+            "cached", "a fresh verdict must be reused untouched")
+
+    def test_a_stale_verdict_is_re_probed(self):
+        Param = self.env["ir.config_parameter"].sudo()
+        Param.set_param("mcp_governance_suite.reachability_state", "ok")
+        Param.set_param("mcp_governance_suite.reachability_detail", "stale")
+        Param.set_param(
+            "mcp_governance_suite.reachability_checked_at",
+            fields.Datetime.to_string(
+                fields.Datetime.now() - timedelta(minutes=60)))
+        self.Connect.test_reachability()
+        self.assertNotEqual(
+            Param.get_param("mcp_governance_suite.reachability_detail"),
+            "stale")
+
+    def test_force_re_probes_even_when_fresh(self):
+        Param = self.env["ir.config_parameter"].sudo()
+        Param.set_param("mcp_governance_suite.reachability_state", "ok")
+        Param.set_param("mcp_governance_suite.reachability_detail", "cached")
+        Param.set_param("mcp_governance_suite.reachability_checked_at",
+                        fields.Datetime.to_string(fields.Datetime.now()))
+        self.Connect.test_reachability(force=True)
+        self.assertNotEqual(
+            Param.get_param("mcp_governance_suite.reachability_detail"),
+            "cached")
+
+    def test_a_corrupt_timestamp_does_not_break_the_page(self):
+        Param = self.env["ir.config_parameter"].sudo()
+        Param.set_param("mcp_governance_suite.reachability_state", "ok")
+        Param.set_param("mcp_governance_suite.reachability_checked_at",
+                        "not a date")
+        self.Connect.test_reachability()  # must not raise
+
+    # ---------------------------------------------------------- self test
+    def test_self_test_reads_real_records_through_the_engine(self):
+        result = self.Connect.run_self_test()
+        self.assertTrue(result["ok"], result.get("message"))
+        self.assertTrue(result["model"])
+
+    def test_self_test_is_audited_as_a_self_test(self):
+        """Audited honestly, so nobody later mistakes it for an assistant."""
+        self.Connect.run_self_test()
+        self.assertTrue(self.env["mcp.audit.log"].sudo().search_count(
+            [("transport", "=", "selftest")]))
+
+    def test_self_test_explains_a_scope_that_can_read_nothing(self):
+        self.env.user.sudo().mcp_effective_scope().line_ids.unlink()
+        result = self.Connect.run_self_test()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["message"])
+
+    # --------------------------------------------------------- disconnect
+    def test_revoke_reports_whether_it_actually_revoked(self):
+        """It used to announce success over a connection still very much
+        connected - not cosmetic, on a security control."""
+        token = self._token()
+        result = self.Connect.revoke(token.id)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["message"])
+        self.assertFalse(
+            [c for c in result["state"]["connections"] if c["id"] == token.id])
+
+    def test_revoking_something_that_is_gone_is_not_reported_as_success(self):
+        result = self.Connect.revoke(0)
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["message"])
+
+    # ------------------------------------------- the reader's own rights
+    def test_prompts_respect_the_users_own_access_rights(self):
+        """The matrix is only half the permission.
+
+        A scope opened onto the whole business lists models plenty of people
+        cannot see, so filtering on the matrix alone would offer a salesperson
+        a stock question that comes back refused.
+        """
+        employee = self.env["res.users"].create({
+            "name": "MCP Prompt Employee",
+            "login": "mcp_prompt_employee",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        for prompt in self.Connect.with_user(employee).get_state()["prompts"]:
+            for _needs_write, model, text in STARTER_PROMPTS:
+                if text == prompt and model:
+                    self.assertTrue(
+                        self.env[model].with_user(employee).has_access("read"),
+                        "offered '%s' but %s is not readable by them"
+                        % (text, model))
+
+    def test_self_test_picks_a_model_the_user_can_actually_read(self):
+        employee = self.env["res.users"].create({
+            "name": "MCP Selftest Employee",
+            "login": "mcp_selftest_employee",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        result = self.Connect.with_user(employee).run_self_test()
+        if result["ok"]:
+            self.assertTrue(
+                self.env[result["model"]].with_user(employee).has_access("read"))

@@ -10,15 +10,15 @@ twenty.
 Presets exist because the useful configurations are few: read, read+draft, and
 full. Offering five independent checkboxes up front invites mistakes; the
 matrix is there for fine-tuning afterwards.
+
+The actual writing lives on ``mcp.scope.add_models`` - the install hook and the
+Connect screen add models too, and three copies of that logic would drift.
 """
 from odoo import _, api, fields, models
 
-# label -> (read, create, write, unlink)
-PRESETS = {
-    "read": (True, False, False, False),
-    "draft": (True, True, True, False),
-    "full": (True, True, True, True),
-}
+# Re-exported: PRESETS moved to the scope model, but it was importable from
+# here first and downstream code may still reach for it.
+from ..models.mcp_scope import PRESETS  # noqa: F401
 
 
 class MCPModelPicker(models.TransientModel):
@@ -55,16 +55,8 @@ class MCPModelPicker(models.TransientModel):
             [("active", "=", True)], order="read_only desc, id", limit=1)
 
     def _existing_model_ids(self, scope):
-        """Models already on this scope, *including archived rows*.
-
-        The uniqueness constraint is enforced in the database, which does not
-        know about archiving. Reading scope.line_ids would silently hide an
-        archived row and the insert would then fail on the constraint.
-        """
-        if not scope:
-            return set()
-        return set(self.env["mcp.scope.line"].with_context(active_test=False)
-                   .search([("scope_id", "=", scope.id)]).mapped("model_id").ids)
+        """Models already on this scope, archived rows included."""
+        return scope.existing_model_ids() if scope else set()
 
     @api.depends("scope_id", "model_ids")
     def _compute_preview(self):
@@ -77,17 +69,8 @@ class MCPModelPicker(models.TransientModel):
 
     def action_add(self):
         self.ensure_one()
-        can_read, can_create, can_write, can_unlink = PRESETS[self.preset]
-        existing = self._existing_model_ids(self.scope_id)
-        to_add = [m for m in self.model_ids if m.id not in existing]
-        self.env["mcp.scope.line"].create([{
-            "scope_id": self.scope_id.id,
-            "model_id": model.id,
-            "can_read": can_read,
-            "can_create": can_create,
-            "can_write": can_write,
-            "can_unlink": can_unlink,
-        } for model in to_add])
+        to_add = self.scope_id.add_models(self.model_ids.mapped("model"),
+                                          preset=self.preset)
 
         if not to_add:
             message = _("Every model you picked was already in '%s'. Nothing "

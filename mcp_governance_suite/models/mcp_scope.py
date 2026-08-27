@@ -14,6 +14,38 @@ misconfigured scope cannot hand an AI more than the underlying user already has.
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+# Permission presets, as label -> (read, create, write, unlink). They live here
+# rather than on the wizard because the install hook and the Connect screen add
+# models too, and three copies of this tuple would drift.
+PRESETS = {
+    "read": (True, False, False, False),
+    "draft": (True, True, True, False),
+    "full": (True, True, True, True),
+}
+
+# The models a business actually asks questions about. Referencing any of these
+# from a data file would break installation on a database without that app, so
+# they are resolved at run time instead - ir.model._get returns an empty
+# recordset for a model that is not installed, and the absent ones are skipped.
+# Ordered deliberately: sales first, because that is what the first question is
+# almost always about.
+SUGGESTED_MODELS = (
+    "sale.order",
+    "sale.order.line",
+    "purchase.order",
+    "purchase.order.line",
+    "account.move",
+    "account.move.line",
+    "product.template",
+    "product.product",
+    "stock.quant",
+    "stock.picking",
+    "crm.lead",
+    "project.project",
+    "project.task",
+    "hr.employee",
+)
+
 # Never callable over MCP, whatever an admin types into the allow-list. These
 # are either raw ORM verbs (already covered by the governed read/write tools,
 # which audit and approval-gate) or privilege-escalation paths that would let a
@@ -86,8 +118,68 @@ class MCPScope(models.Model):
         return self.env["mcp.capability"].search([("active", "=", True)])
 
     def line_for_model(self, model_name):
+        """The matrix row governing this model, or an empty recordset.
+
+        Filtered on `active` explicitly rather than relying on the one2many to
+        do it: a caller running with ``active_test=False`` in context would
+        otherwise resolve an archived row and be granted access an
+        administrator believed they had suspended.
+        """
         self.ensure_one()
-        return self.line_ids.filtered(lambda l: l.model_name == model_name)[:1]
+        return self.line_ids.filtered(
+            lambda l: l.active and l.model_name == model_name)[:1]
+
+    # ------------------------------------------------------------ bulk adding
+    def existing_model_ids(self):
+        """Model ids already on this scope, *including archived rows*.
+
+        The uniqueness constraint is enforced in the database, which does not
+        know about archiving. Reading ``line_ids`` would silently hide an
+        archived row and the insert would then fail on that constraint.
+        """
+        self.ensure_one()
+        return set(self.env["mcp.scope.line"].with_context(active_test=False)
+                   .search([("scope_id", "=", self.id)]).mapped("model_id").ids)
+
+    def add_models(self, model_names, preset="read"):
+        """Add matrix rows for `model_names`, skipping what is already there.
+
+        Safe to re-run and safe to hand a model that is not installed: an
+        absent model resolves to an empty recordset and is skipped. Returns the
+        rows actually created, so a caller can report a count honestly.
+        """
+        self.ensure_one()
+        can_read, can_create, can_write, can_unlink = PRESETS[preset]
+        seen = self.existing_model_ids()
+        values = []
+        for name in model_names:
+            model = self.env["ir.model"]._get(name)
+            # `seen` also absorbs duplicates inside model_names itself, which
+            # would otherwise hit the constraint on the second row.
+            if not model or model.id in seen:
+                continue
+            seen.add(model.id)
+            values.append({
+                "scope_id": self.id,
+                "model_id": model.id,
+                "can_read": can_read,
+                "can_create": can_create,
+                "can_write": can_write,
+                "can_unlink": can_unlink,
+            })
+        Line = self.env["mcp.scope.line"]
+        return Line.create(values) if values else Line.browse()
+
+    def readable_model_names(self):
+        """Models this scope can currently read, deterministically ordered.
+
+        Sorted because MCP asks for a deterministic tool list, and these names
+        are spelled out in the read tools' descriptions.
+        """
+        self.ensure_one()
+        return sorted(set(self.line_ids
+                          .filtered(lambda l: l.active and l.can_read)
+                          .mapped("model_name")))
 
 
 class MCPScopeLine(models.Model):

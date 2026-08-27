@@ -56,7 +56,13 @@ class MCPApprovalRequest(models.Model):
         members = group.all_user_ids if "all_user_ids" in group._fields \
             else group.users
         for req in self:
-            req.message_subscribe(partner_ids=members.partner_id.ids)
+            # The requester is subscribed too. They are the one person who is
+            # certain to be waiting on the answer, and without this they are
+            # the only participant who never learns whether it was approved,
+            # rejected or failed - their assistant said "queued" and then the
+            # thread went silent for them alone.
+            partners = members.partner_id | req.user_id.partner_id
+            req.message_subscribe(partner_ids=partners.ids)
             req.message_post(
                 body=_("AI requested a %s on %s. Awaiting approval.")
                 % (req.operation, req.model_name),

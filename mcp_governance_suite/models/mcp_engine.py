@@ -28,6 +28,15 @@ from .mcp_scope import DENIED_METHODS
 _logger = logging.getLogger(__name__)
 MAX_ARGS_LOG = 4000
 
+# Read verbs whose usefulness depends on *which* models this connection can
+# reach, so their descriptions name them (see _tool_description).
+MODEL_AWARE_HANDLERS = {
+    "search_records", "count_records", "name_search", "read_group",
+}
+# How many model names to spell out before summarising the rest. Long enough to
+# cover a normal scope, short enough not to bloat every tool description.
+MODELS_IN_DESCRIPTION = 12
+
 # OAuth scope names, duplicated from the controller to keep the model layer
 # import-free of controllers.
 SCOPE_READ = "odoo:read"
@@ -73,6 +82,7 @@ class MCPEngine(models.AbstractModel):
         # Governance config is read with elevated rights (it is not sensitive
         # business data); actual record access below always runs as the user.
         scope = scope.sudo()
+        hint = self._model_hint(scope)
         tools = []
         for cap in scope.allowed_capabilities():
             for tool in cap.tool_ids.filtered("active"):
@@ -81,10 +91,64 @@ class MCPEngine(models.AbstractModel):
                 tools.append({
                     "name": tool.name,
                     "title": tool.title or tool.name.replace("_", " ").title(),
-                    "description": tool.description,
+                    "description": self._tool_description(tool, hint),
                     "inputSchema": self._input_schema(tool),
+                    "annotations": self._annotations(tool),
                 })
         return tools
+
+    # ------------------------------------------------- per-scope descriptions
+    def _model_hint(self, scope):
+        """Name the models this scope can read, for the read tools to carry.
+
+        Without it every connection is advertised the same generic description
+        and the assistant has to spend a ``list_capabilities`` (then usually a
+        ``list_models``) round trip before it can answer the first question -
+        which the user experiences as the connector being slow to wake up.
+
+        Varying *tool* output by the presented authorization is explicitly
+        permitted (MCP 2026-07-28 tools/list: "The set MAY vary by the
+        authorization presented on the request"), and the same section asks for
+        a deterministic order, which the sort below provides. Note this must
+        never move into ``server/discover``: that result is returned with
+        ``cacheScope: "public"`` and would be shared across users.
+        """
+        names = scope.readable_model_names()
+        if not names:
+            return ""
+        shown = names[:MODELS_IN_DESCRIPTION]
+        listed = ", ".join(shown)
+        if len(names) > len(shown):
+            return str(_(
+                " Models readable on this connection include %(models)s and "
+                "%(more)s more — call list_models for the full set.",
+                models=listed, more=len(names) - len(shown)))
+        return str(_(" Models readable on this connection: %s.") % listed)
+
+    def _tool_description(self, tool, hint):
+        """The description as the client sees it: generic text plus this scope."""
+        if hint and tool.handler in MODEL_AWARE_HANDLERS:
+            return "%s%s" % (tool.description, hint)
+        return tool.description
+
+    def _annotations(self, tool):
+        """MCP tool behaviour hints (2026-07-28 ToolAnnotations).
+
+        Clients use these to decide when to put a human in the loop, which is
+        this module's entire pitch, so getting them right is on-brand rather
+        than cosmetic. ``destructiveHint`` and ``idempotentHint`` are defined
+        as meaningful only when ``readOnlyHint`` is false, so they are omitted
+        for read tools rather than sent as noise. ``openWorldHint`` is false
+        throughout: every tool here acts on this one Odoo database and nothing
+        outside it.
+        """
+        read_only = not tool.writes
+        annotations = {"readOnlyHint": read_only, "openWorldHint": False}
+        if not read_only:
+            annotations["destructiveHint"] = tool.handler in (
+                "unlink_record", "call_method")
+            annotations["idempotentHint"] = tool.handler == "write_record"
+        return annotations
 
     def _input_schema(self, tool):
         try:
@@ -209,13 +273,13 @@ class MCPEngine(models.AbstractModel):
             raise AccessError(_(
                 "'%(model)s' is not in the '%(scope)s' permission matrix, so "
                 "no AI access to it is configured. An administrator can add it "
-                "under Odoo MCP > Model Permissions.",
+                "under Odoo MCP → Permissions → Model Permissions.",
                 model=model, scope=scope.name))
         if not line["can_%s" % op]:
             raise AccessError(_(
                 "The '%(scope)s' matrix does not allow %(op)s on '%(model)s'. "
                 "An administrator can enable the '%(op)s' switch for that model "
-                "under Odoo MCP > Model Permissions.",
+                "under Odoo MCP → Permissions → Model Permissions.",
                 scope=scope.name, op=label, model=model))
         return line
 
@@ -273,6 +337,9 @@ class MCPEngine(models.AbstractModel):
         """
         granted = self.env.context.get("mcp_granted_scopes")
         write_granted = granted is None or SCOPE_WRITE in granted
+        # The second place tool descriptions are emitted; it has to say the
+        # same thing tools/list does or the two drift apart.
+        hint = self._model_hint(scope)
         caps = []
         for cap in scope.allowed_capabilities():
             active = cap.tool_ids.filtered("active")
@@ -284,7 +351,8 @@ class MCPEngine(models.AbstractModel):
                 "name": cap.name,
                 "technical_name": cap.technical_name,
                 "description": cap.description,
-                "tools": [{"name": t.name, "description": t.description}
+                "tools": [{"name": t.name,
+                           "description": self._tool_description(t, hint)}
                           for t in shown],
             }
             # str() on purpose: these travel in structuredContent, and a lazy
@@ -295,8 +363,8 @@ class MCPEngine(models.AbstractModel):
                     "%(count)s tool(s) in this capability are hidden because "
                     "the '%(scope)s' governance scope has Read Only switched "
                     "on. Only an Odoo administrator can change that, under "
-                    "Odoo MCP > Configuration > Scopes; re-authorizing will "
-                    "not help.",
+                    "Odoo MCP → Permissions → Scopes; re-authorizing "
+                    "will not help.",
                     count=len(hidden), scope=scope.name))
             elif not write_granted and shown.filtered("writes"):
                 entry["needs_authorization"] = str(_(
@@ -317,12 +385,27 @@ class MCPEngine(models.AbstractModel):
         }
 
     def _handler_list_models(self, scope, args):
-        return {"models": [{
-            "model": l.model_name,
-            "name": l.model_id.name,
-            "read": l.can_read, "create": l.can_create,
-            "write": l.can_write, "unlink": l.can_unlink,
-        } for l in scope.line_ids]}
+        """What the matrix currently permits, per model.
+
+        Archived rows are excluded: ``line_for_model`` already ignores them at
+        call time, so advertising one here would promise the AI access that
+        every subsequent call refuses. Method calls are reported too, with the
+        allow-list, because guessing a method name and being refused is a
+        round trip the assistant should never have to spend.
+        """
+        models_out = []
+        for line in scope.line_ids.filtered("active"):
+            entry = {
+                "model": line.model_name,
+                "name": line.model_id.name,
+                "read": line.can_read, "create": line.can_create,
+                "write": line.can_write, "unlink": line.can_unlink,
+                "call_methods": line.can_call_methods,
+            }
+            if line.can_call_methods:
+                entry["allowed_methods"] = sorted(line.allowed_method_set())
+            models_out.append(entry)
+        return {"models": models_out}
 
     def _handler_get_schema(self, scope, args):
         model = args["model"]
@@ -358,6 +441,16 @@ class MCPEngine(models.AbstractModel):
         return {"context": ctx.as_payload()}
 
     def _handler_search_records(self, scope, args):
+        """Read records, and say plainly when there are more of them.
+
+        The row cap is a real protection - it is what stops an AI query on a
+        100k-record model from taking the database with it - but a silent cap
+        is worse than no cap: the assistant receives a full page, has nothing
+        to tell it the page was full, and reports partial data to the user as
+        if it were the whole answer. So fetch one row past the cap, return the
+        cap's worth, and hand back `has_more` so the assistant knows to
+        paginate, narrow the domain, or aggregate with read_group instead.
+        """
         model = args["model"]
         line = self._require_line(scope, model, "read")
         blacklist = line.blacklisted_fields()
@@ -367,8 +460,12 @@ class MCPEngine(models.AbstractModel):
         limit = self._clamp_limit(scope, args.get("limit"))
         offset = max(0, int(args.get("offset") or 0))
         records = self.env[model].with_context(**self._company_ctx(args)).search_read(
-            domain, field_list, limit=limit, offset=offset, order=args.get("order"))
-        return {"model": model, "count": len(records), "records": records}
+            domain, field_list, limit=limit + 1, offset=offset,
+            order=args.get("order"))
+        has_more = len(records) > limit
+        records = records[:limit]
+        return {"model": model, "count": len(records), "limit": limit,
+                "offset": offset, "has_more": has_more, "records": records}
 
     def _handler_count_records(self, scope, args):
         model = args["model"]
@@ -382,9 +479,19 @@ class MCPEngine(models.AbstractModel):
         line = self._require_line(scope, model, "read")
         domain = self._parse_domain(args.get("domain")) + self._scope_domain(line)
         limit = self._clamp_limit(scope, args.get("limit"))
+        # `domain=`, not the pre-19 `args=`: Odoo 19 renamed the parameter and
+        # kept no alias, so the old spelling raised TypeError and this tool -
+        # the one the business context tells the AI to use before every
+        # filter-by-name - failed with an opaque internal error every time.
         res = self.env[model].with_context(**self._company_ctx(args)).name_search(
-            name=args.get("name", ""), args=domain, limit=limit)
-        return {"model": model, "results": [{"id": i, "name": n} for i, n in res]}
+            name=args.get("name", ""), domain=domain, limit=limit + 1)
+        has_more = len(res) > limit
+        res = res[:limit]
+        # has_more matters here too: a truncated match list is how an assistant
+        # picks "the wrong Acme" and writes to it with complete confidence.
+        return {"model": model, "count": len(res), "limit": limit,
+                "has_more": has_more,
+                "results": [{"id": i, "name": n} for i, n in res]}
 
     def _handler_read_group(self, scope, args):
         model = args["model"]
@@ -407,7 +514,11 @@ class MCPEngine(models.AbstractModel):
         limit = self._clamp_limit(scope, args.get("limit"))
         rows = self.env[model].with_context(**self._company_ctx(args))._read_group(
             domain, groupby=groupby, aggregates=aggregates,
-            order=args.get("order"), limit=limit)
+            order=args.get("order"), limit=limit + 1)
+        # Same trap as search_records, and worse here: a report silently missing
+        # its last groups still totals up and still looks complete.
+        has_more = len(rows) > limit
+        rows = rows[:limit]
         groups = []
         for row in rows:
             entry, idx = {}, 0
@@ -416,8 +527,9 @@ class MCPEngine(models.AbstractModel):
             for key in aggregates:
                 entry[key] = self._jsonify(row[idx]); idx += 1
             groups.append(entry)
-        return {"model": model, "group_by": groupby,
-                "measures": aggregates, "groups": groups}
+        return {"model": model, "group_by": groupby, "measures": aggregates,
+                "count": len(groups), "limit": limit, "has_more": has_more,
+                "groups": groups}
 
     # ---------------------------------------------------------- writes (gated)
     def _handler_create_record(self, scope, args):
@@ -468,8 +580,8 @@ class MCPEngine(models.AbstractModel):
             raise AccessError(_(
                 "Method calls are enabled for '%(model)s' but no method names "
                 "are allow-listed, so nothing can be called. An administrator "
-                "must list the exact methods under Odoo MCP > Model "
-                "Permissions.", model=model))
+                "must list the exact methods under Odoo MCP → "
+                "Permissions → Model Permissions.", model=model))
         if method not in allowed:
             raise AccessError(_(
                 "'%(method)s' is not allow-listed on '%(model)s'. Permitted "
@@ -539,8 +651,16 @@ class MCPEngine(models.AbstractModel):
             "values_json": json.dumps(values, default=str),
         })
         req._notify_approvers()
+        # str() on purpose: this travels in structuredContent, where a lazy
+        # translation object would only resolve via a serializer fallback.
+        # Name where the request went, too - "queued for approval" with no
+        # destination is how a request sits untouched for a week.
         return {"approval_required": True, "approval_id": req.id,
-                "message": _("Queued for human approval.")}
+                "message": str(_(
+                    "Nothing has changed yet. This is waiting for a person to "
+                    "approve it in Odoo — request #%(id)s, under Odoo MCP → "
+                    "Approvals. Tell the user it needs that sign-off before "
+                    "anything happens.", id=req.id))}
 
     # ============================================================ prompts (MCP)
     @api.model

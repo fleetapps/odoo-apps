@@ -28,7 +28,7 @@ class TestEngineGovernance(TransactionCase):
         cls.user = cls.env["res.users"].create({
             "name": "MCP Test User",
             "login": "mcp_test_user",
-            "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id])],
         })
 
         cls.read_scope = cls.env["mcp.scope"].create({
@@ -69,9 +69,16 @@ class TestEngineGovernance(TransactionCase):
             self.assertNotIn("email", row, "blacklisted field must be stripped")
 
     def test_search_denied_model_not_in_scope(self):
+        """A refusal has to name the model and where the switch lives.
+
+        An opaque "access denied" is the most common complaint about ERP MCP
+        servers: the assistant cannot act on it and the user cannot either.
+        """
         res = self._call(self.read_scope, "search_records", {"model": "res.users"})
         self.assertTrue(res["isError"])
-        self.assertIn("denies", self._payload(res)["message"])
+        message = self._payload(res)["message"]
+        self.assertIn("res.users", message)
+        self.assertIn("Model Permissions", message)
 
     def test_get_schema_hides_blacklist(self):
         res = self._call(self.read_scope, "get_schema", {"model": "res.partner"})
@@ -218,3 +225,195 @@ class TestEngineGovernance(TransactionCase):
         self._call(self.read_scope, "count_records", {"model": "res.partner"})
         after = self.env["mcp.audit.log"].search_count([])
         self.assertEqual(after, before + 1)
+
+    # ------------------------------------------------------------ truncation
+    def _capped_scope(self, cap):
+        return self.env["mcp.scope"].create({
+            "name": "TEST capped %s" % cap,
+            "read_only": True,
+            "rate_limit_per_hour": 0,
+            "max_records": cap,
+            "line_ids": [(0, 0, {
+                "model_id": self.partner_model.id, "can_read": True})],
+        })
+
+    def test_search_never_returns_more_than_the_cap(self):
+        """Fetching limit+1 to detect truncation must not leak the extra row."""
+        self.env["res.partner"].create(
+            [{"name": "MCP Cap %s" % i} for i in range(3)])
+        payload = self._payload(self._call(
+            self._capped_scope(2), "search_records", {"model": "res.partner"}))
+        self.assertEqual(len(payload["records"]), 2)
+        self.assertEqual(payload["count"], 2)
+        self.assertEqual(payload["limit"], 2)
+
+    def test_search_says_when_rows_were_cut_off(self):
+        """The whole point: a capped page must not read as a complete answer.
+
+        Without has_more the assistant receives a full page, has nothing to
+        tell it the page was full, and reports partial data as the total.
+        """
+        self.env["res.partner"].create(
+            [{"name": "MCP More %s" % i} for i in range(3)])
+        payload = self._payload(self._call(
+            self._capped_scope(2), "search_records", {"model": "res.partner"}))
+        self.assertTrue(payload["has_more"])
+
+    def test_search_says_when_the_page_is_the_whole_answer(self):
+        self.env["res.partner"].create({"name": "MCP Sole Match Qx"})
+        payload = self._payload(self._call(self.read_scope, "search_records", {
+            "model": "res.partner",
+            "domain": "[('name','=','MCP Sole Match Qx')]"}))
+        self.assertEqual(payload["count"], 1)
+        self.assertFalse(payload["has_more"])
+
+    def test_read_group_says_when_groups_were_cut_off(self):
+        """Worse here than on a search: a short report still totals up."""
+        self.env["res.partner"].create([
+            {"name": "MCP Group Co", "is_company": True},
+            {"name": "MCP Group Person", "is_company": False}])
+        payload = self._payload(self._call(
+            self._capped_scope(1), "read_group",
+            {"model": "res.partner", "group_by": ["is_company"]}))
+        self.assertEqual(len(payload["groups"]), 1)
+        self.assertTrue(payload["has_more"])
+
+    def test_name_search_actually_runs(self):
+        """Odoo 19 renamed name_search's domain parameter and kept no alias,
+        so the old spelling failed with an opaque internal error on every
+        call - on the one tool the business context tells the AI to use
+        before filtering by any name."""
+        res = self._call(self.read_scope, "name_search",
+                         {"model": "res.partner", "name": "a"})
+        self.assertFalse(res["isError"], self._payload(res))
+        self.assertIn("results", self._payload(res))
+
+    def test_name_search_applies_the_scope_record_domain(self):
+        scope = self.env["mcp.scope"].create({
+            "name": "TEST name_search domain", "read_only": True,
+            "rate_limit_per_hour": 0,
+            "line_ids": [(0, 0, {
+                "model_id": self.partner_model.id, "can_read": True,
+                "record_domain": "[('is_company','=',True)]"})],
+        })
+        self.env["res.partner"].create(
+            {"name": "MCP Domain Person", "is_company": False})
+        payload = self._payload(self._call(
+            scope, "name_search",
+            {"model": "res.partner", "name": "MCP Domain Person"}))
+        self.assertEqual(payload["results"], [],
+                         "the scope domain must narrow name_search too")
+
+    def test_name_search_says_when_matches_were_cut_off(self):
+        """A truncated match list is how an assistant picks the wrong Acme."""
+        self.env["res.partner"].create(
+            [{"name": "MCP Namesearch %s" % i} for i in range(3)])
+        payload = self._payload(self._call(
+            self._capped_scope(2), "name_search",
+            {"model": "res.partner", "name": "MCP Namesearch"}))
+        self.assertEqual(len(payload["results"]), 2)
+        self.assertTrue(payload["has_more"])
+
+    # ------------------------------------------------------------ list_models
+    def test_list_models_hides_archived_rows(self):
+        """An archived row is refused at call time, so advertising it lies."""
+        scope = self.env["mcp.scope"].create({
+            "name": "TEST archived rows", "read_only": True,
+            "rate_limit_per_hour": 0})
+        scope.add_models(["res.partner", "res.country"])
+        scope.line_ids.filtered(
+            lambda l: l.model_name == "res.country").active = False
+        payload = self._payload(self._call(scope, "list_models", {}))
+        names = {m["model"] for m in payload["models"]}
+        self.assertIn("res.partner", names)
+        self.assertNotIn("res.country", names)
+
+    def test_list_models_reports_the_method_allow_list(self):
+        """Guessing a method name and being refused is a wasted round trip."""
+        scope = self.env["mcp.scope"].create({
+            "name": "TEST methods listed", "read_only": False,
+            "require_approval": False, "rate_limit_per_hour": 0,
+            "line_ids": [(0, 0, {
+                "model_id": self.partner_model.id, "can_read": True,
+                "can_call_methods": True,
+                "allowed_methods": "action_archive"})],
+        })
+        row = self._payload(self._call(scope, "list_models", {}))["models"][0]
+        self.assertTrue(row["call_methods"])
+        self.assertEqual(row["allowed_methods"], ["action_archive"])
+
+    # ------------------------------------------------------------ tools/list
+    def test_tools_carry_behaviour_annotations(self):
+        """Clients use these to decide when to put a human in the loop."""
+        tools = {t["name"]: t["annotations"]
+                 for t in self.Engine.list_tools(self._write_scope())}
+        self.assertTrue(tools["search_records"]["readOnlyHint"])
+        # Meaningful only when readOnlyHint is false, so absent on read tools.
+        self.assertNotIn("destructiveHint", tools["search_records"])
+        self.assertFalse(tools["create_record"]["readOnlyHint"])
+        self.assertFalse(tools["create_record"]["destructiveHint"],
+                         "creating is additive, not destructive")
+        self.assertTrue(tools["unlink_record"]["destructiveHint"])
+        self.assertTrue(tools["write_record"]["idempotentHint"])
+        for name, annotations in tools.items():
+            self.assertFalse(annotations["openWorldHint"],
+                             "%s acts on this database and nothing else" % name)
+
+    def test_read_tool_descriptions_name_this_scopes_models(self):
+        """So the assistant can answer without a discovery round trip first."""
+        tools = {t["name"]: t["description"]
+                 for t in self.Engine.list_tools(self.read_scope)}
+        self.assertIn("res.partner", tools["search_records"])
+        self.assertIn("res.partner", tools["read_group"])
+        self.assertNotIn("res.partner", tools["get_schema"],
+                         "only the model-parameterised read verbs carry it")
+
+    def test_tools_list_is_deterministic(self):
+        """MCP 2026-07-28 asks for a stable order so clients can cache it."""
+        first = self.Engine.list_tools(self.read_scope)
+        second = self.Engine.list_tools(self.read_scope)
+        self.assertEqual([(t["name"], t["description"]) for t in first],
+                         [(t["name"], t["description"]) for t in second])
+
+    def test_list_capabilities_matches_tools_list(self):
+        """Two places emit tool descriptions; they must not drift apart."""
+        tools = {t["name"]: t["description"]
+                 for t in self.Engine.list_tools(self.read_scope)}
+        payload = self._payload(
+            self._call(self.read_scope, "list_capabilities", {}))
+        seen = 0
+        for cap in payload["capabilities"]:
+            for tool in cap["tools"]:
+                self.assertEqual(tool["description"], tools[tool["name"]])
+                seen += 1
+        self.assertTrue(seen, "the read scope must advertise some tools")
+
+    # ---------------------------------------------------------- approvals
+    def test_approval_message_says_where_to_approve(self):
+        """A queued approval with no destination sits untouched for a week."""
+        scope = self.env["mcp.scope"].create({
+            "name": "TEST approval message", "read_only": False,
+            "require_approval": True, "rate_limit_per_hour": 0,
+            "line_ids": [(0, 0, {
+                "model_id": self.partner_model.id,
+                "can_read": True, "can_create": True})],
+        })
+        payload = self._payload(self._call(
+            scope, "create_record",
+            {"model": "res.partner", "values": {"name": "MCP Queued Co"}},
+            user=self.env.ref("base.user_admin")))
+        self.assertTrue(payload["approval_required"])
+        self.assertIn("Approvals", payload["message"])
+        # Plain str, not a lazy translation: this travels in structuredContent.
+        self.assertIsInstance(payload["message"], str)
+
+    def test_the_requester_is_told_the_outcome(self):
+        """They are the one person certain to be waiting on the answer."""
+        request = self.env["mcp.approval.request"].create({
+            "user_id": self.user.id,
+            "scope_id": self.read_scope.id,
+            "operation": "create",
+            "model_name": "res.partner",
+        })
+        request._notify_approvers()
+        self.assertIn(self.user.partner_id, request.message_partner_ids)

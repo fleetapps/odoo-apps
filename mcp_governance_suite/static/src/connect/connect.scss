@@ -3,16 +3,13 @@
 // dark mode) instead of hard-coding a palette that drifts from the backend.
 
 .o_mcp_connect {
-    // `height: 100%` + `overflow: auto` alone did not scroll: the action
-    // container lays its child out as a flex item, and a flex item defaults to
-    // `min-height: auto`, so it grows to fit its content instead of shrinking
-    // to the available space. The box therefore never overflows itself -
-    // the content spills past the container, which clips it, and the wheel
-    // has nothing to scroll. `min-height: 0` is what lets it shrink again.
-    flex: 1 1 auto;
-    min-height: 0;
-    height: 100%;
-    overflow-y: auto;
+    // Scrolling is deliberately NOT declared here. Odoo's layout sets
+    // `.o_web_client > .o_action_manager > .o_action { overflow: hidden }`
+    // (webclient_layout.scss), and that three-class selector outranks anything
+    // this single class can say - so an `overflow: auto` on this element is
+    // dropped on the floor and the page clips at the fold with no scrollbar.
+    // The inner `.o_content` is the element Odoo scrolls, on desktop and (with
+    // the roles reversed) on mobile. See connect.xml.
     background: var(--gray-100, #f6f7f9);
 
     .o_mcp_loading {
@@ -64,6 +61,14 @@
         margin-bottom: .5rem;
     }
 
+    .o_mcp_card_actions {
+        display: flex;
+        align-items: center;
+        gap: .25rem;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+
     // -------------------------------------------------------- readiness
     .o_mcp_blocker {
         background: var(--danger-light, #fdeceb);
@@ -100,6 +105,7 @@
 
     .o_mcp_check--ok .o_mcp_check_icon { background: var(--success, #28a745); }
     .o_mcp_check--fail .o_mcp_check_icon { background: var(--danger, #d9534f); }
+    .o_mcp_check--warn .o_mcp_check_icon { background: var(--warning, #e0a800); }
     .o_mcp_check--unknown .o_mcp_check_icon { background: var(--gray-500, #8a8f98); }
 
     .o_mcp_check_body { flex: 1 1 auto; min-width: 0; }
@@ -108,6 +114,34 @@
         font-size: .85rem;
         color: var(--gray-600, #6c757d);
         overflow-wrap: anywhere;
+    }
+
+    // --------------------------------------------------------- self test
+    .o_mcp_selftest {
+        margin-top: .9rem;
+        border-radius: 8px;
+        padding: .7rem .9rem;
+        font-size: .9rem;
+
+        &--ok {
+            background: var(--success-light, #e7f5ec);
+            color: var(--success-dark, #1e7d46);
+        }
+        &--fail {
+            background: var(--danger-light, #fdeceb);
+            color: var(--danger, #d9534f);
+        }
+    }
+
+    .o_mcp_selftest_head { font-weight: 500; }
+
+    .o_mcp_selftest_rows {
+        margin: .5rem 0 0;
+        padding-left: 1.2rem;
+        font-size: .85rem;
+        opacity: .85;
+
+        li { padding: .1rem 0; overflow-wrap: anywhere; }
     }
 
     // ------------------------------------------------------------- hero
@@ -175,6 +209,61 @@
     }
 
     .o_mcp_status_detail { opacity: .8; font-size: .85rem; }
+
+    // --------------------------------------------------------- advanced
+    .o_mcp_advanced {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: .25rem;
+        font-size: .8rem;
+        color: var(--gray-600, #6c757d);
+        margin: 0 0 .75rem;
+    }
+
+    .o_mcp_advanced_link {
+        border: 0;
+        background: none;
+        padding: 0;
+        font: inherit;
+        color: var(--primary, #714b67);
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    // ----------------------------------------------------------- writes
+    .o_mcp_writes_row {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-top: .75rem;
+    }
+
+    .o_mcp_writes_body { flex: 1 1 auto; min-width: 0; font-size: .9rem; }
+    .o_mcp_writes_label { margin-bottom: .15rem; }
+    .o_mcp_writes_action { flex: 0 0 auto; }
+
+    .o_mcp_reconnect,
+    .o_mcp_pending {
+        display: flex;
+        align-items: flex-start;
+        gap: .25rem;
+        border-radius: 8px;
+        padding: .7rem .9rem;
+        font-size: .875rem;
+        margin-top: .5rem;
+    }
+
+    .o_mcp_reconnect {
+        background: var(--warning-light, #fdf5e2);
+        color: var(--warning-dark, #8a6d00);
+    }
+
+    .o_mcp_pending {
+        background: var(--gray-100, #f6f7f9);
+        color: var(--gray-700, #495057);
+        align-items: center;
+    }
 
     // ----------------------------------------------------------- picker
     .o_mcp_picker {
@@ -279,5 +368,7 @@
         .o_mcp_hero { flex-direction: column; }
         .o_mcp_qr { align-self: center; }
         .o_mcp_url_row { flex-direction: column; }
+        .o_mcp_writes_row { flex-direction: column; }
+        .o_mcp_card_head { flex-wrap: wrap; }
     }
 }

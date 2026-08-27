@@ -74,7 +74,7 @@
         <field name="capability_id" ref="cap_data_read"/>
         <field name="handler">search_records</field>
         <field name="sequence">1</field>
-        <field name="description">Search a model with an Odoo domain and read fields back. The domain is a list-of-tuples given as a string. Results respect the user permissions and the scope row cap.</field>
+        <field name="description">Search a model with an Odoo domain and read fields back. The domain is a list-of-tuples given as a string. Results respect the user permissions and the scope row cap. The reply carries count, limit and has_more: when has_more is true there are further matching records beyond this page — page with offset, narrow the domain, or aggregate with read_group instead, and never present a capped page as the complete answer.</field>
         <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "domain": {"type": "string", "description": "Odoo domain as a list-of-tuples string, e.g. [(\"state\",\"=\",\"sale\")]"}, "fields": {"type": "array", "items": {"type": "string"}}, "limit": {"type": "integer"}, "offset": {"type": "integer"}, "order": {"type": "string"}, "company_ids": {"type": "array", "items": {"type": "integer"}}}, "required": ["model"]}</field>
     </record>
 
@@ -94,7 +94,7 @@
         <field name="capability_id" ref="cap_data_read"/>
         <field name="handler">name_search</field>
         <field name="sequence">3</field>
-        <field name="description">Resolve a text query to record ids and display names — the reliable way to turn a customer or product name into an id before searching or writing.</field>
+        <field name="description">Resolve a text query to record ids and display names — the reliable way to turn a customer or product name into an id before searching or writing. When has_more is true the match list was truncated, so confirm with the user rather than assuming the first hit is the one they meant.</field>
         <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "name": {"type": "string"}, "domain": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["model"]}</field>
     </record>
 
@@ -104,7 +104,7 @@
         <field name="capability_id" ref="cap_data_read"/>
         <field name="handler">read_group</field>
         <field name="sequence">4</field>
-        <field name="description">Aggregate a model by one or more fields and compute measures (sum, avg, count). This powers reports and dashboards, e.g. revenue by month or open leads by salesperson. Date fields accept a granularity suffix like create_date:month.</field>
+        <field name="description">Aggregate a model by one or more fields and compute measures (sum, avg, count). This powers reports and dashboards, e.g. revenue by month or open leads by salesperson. Date fields accept a granularity suffix like create_date:month. The reply carries count, limit and has_more: when has_more is true some groups were cut off, so the totals shown are not the whole picture.</field>
         <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string"}, "domain": {"type": "string"}, "group_by": {"type": "array", "items": {"type": "string"}, "description": "Fields to group by; use field:granularity for dates"}, "measures": {"type": "array", "items": {"type": "string"}, "description": "Aggregates like amount_total:sum, or __count"}, "limit": {"type": "integer"}}, "required": ["model", "group_by"]}</field>
     </record>
 

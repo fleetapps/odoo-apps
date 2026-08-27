@@ -23,7 +23,12 @@ class MCPAuditLog(models.Model):
     tool = fields.Char(index=True)
     model_name = fields.Char(string="Model", index=True)
     transport = fields.Selection(
-        [("http", "Streamable HTTP"), ("apikey", "API Key"), ("oauth", "OAuth")],
+        [("http", "Streamable HTTP"), ("apikey", "API Key"), ("oauth", "OAuth"),
+         # A call the user made from the Connect screen to prove the chain
+         # works. It runs through the real engine and every real gate, so it is
+         # audited like any other call - and labelled honestly, so nobody
+         # mistakes it later for something an assistant did.
+         ("selftest", "Self-test")],
         default="http")
     remote_addr = fields.Char(string="Client IP")
     args_json = fields.Text(string="Arguments")

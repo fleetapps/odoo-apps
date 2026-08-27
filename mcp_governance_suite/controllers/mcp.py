@@ -34,6 +34,7 @@ import secrets
 
 from odoo import fields, http
 from odoo.http import request
+from odoo.modules.module import get_manifest
 
 from .oauth import (
     SCOPE_READ,
@@ -45,6 +46,7 @@ from .oauth import (
     writes_enabled,
 )
 from ..models.mcp_engine import MCPInsufficientScope
+from ..models.mcp_url import public_base_url
 from ..models.tools_crypto import hash_secret
 
 _logger = logging.getLogger(__name__)
@@ -54,7 +56,13 @@ LEGACY_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26")
 SUPPORTED_PROTOCOL_VERSIONS = MODERN_PROTOCOL_VERSIONS + LEGACY_PROTOCOL_VERSIONS
 LATEST_LEGACY_VERSION = LEGACY_PROTOCOL_VERSIONS[0]
 
-SERVER_INFO = {"name": "odoo-mcp-governance", "version": "19.0.3.2.0"}
+# Read from the manifest rather than restated here: this is the version every
+# connected client sees, and a hand-maintained copy silently goes stale on the
+# release it matters most for.
+SERVER_INFO = {
+    "name": "odoo-mcp-governance",
+    "version": get_manifest("mcp_governance_suite").get("version", ""),
+}
 SERVER_INSTRUCTIONS = (
     "Odoo MCP Governance Suite. Every action runs as your Odoo user and is "
     "audited. Use list_capabilities to discover what you can do. Odoo "
@@ -102,11 +110,25 @@ def _allowed_origins(env):
 
 
 def _origin_allowed(env, origin):
+    """Is this browser Origin allowed to drive the endpoint?
+
+    Compared against the *public* origin, not ``host_url``. Behind a
+    TLS-terminating proxy those two disagree on the scheme, so matching on
+    ``host_url`` alone rejects the server's own web client with
+    ``forbidden_origin`` - a 403 whose text gives no hint that the cause is a
+    missing X-Forwarded header. Both spellings of our own host are treated as
+    ours; an origin is still only ever echoed back if it matched here.
+    """
     if not origin:
         return True  # non-browser client: no Origin header to validate
     origin = origin.rstrip("/")
-    return origin == request.httprequest.host_url.rstrip("/") or \
-        origin in _allowed_origins(env)
+    ours = {request.httprequest.host_url.rstrip("/"), public_base_url(env)}
+    for known in list(ours):
+        if known.startswith("https://"):
+            ours.add("http://" + known[len("https://"):])
+        elif known.startswith("http://"):
+            ours.add("https://" + known[len("http://"):])
+    return origin in ours or origin in _allowed_origins(env)
 
 
 def cors_headers(origin=None):

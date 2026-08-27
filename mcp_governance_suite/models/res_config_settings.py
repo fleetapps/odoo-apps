@@ -7,6 +7,8 @@ they survive upgrades and are easy to set from data or the shell.
 """
 from odoo import api, fields, models
 
+from .mcp_url import PARAM_PUBLIC_BASE_URL, public_base_url
+
 
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
@@ -56,15 +58,27 @@ class ResConfigSettings(models.TransientModel):
         string="Audit retention (months)",
         config_parameter="mcp_governance_suite.retention_months", default=12)
 
-    # -- read-only connection info (computed from the base URL) -------------
+    mcp_public_base_url = fields.Char(
+        string="Public address override",
+        config_parameter=PARAM_PUBLIC_BASE_URL,
+        help="Leave empty unless this server cannot work out its own public "
+             "address. It normally can: it reads the proxy's forwarded "
+             "headers, so a TLS-terminating reverse proxy is handled without "
+             "configuration. Set this only for a front end that announces "
+             "nothing at all, e.g. https://erp.example.com — it then wins over "
+             "everything, including web.base.url.")
+
+    # -- read-only connection info (the address clients actually reach) -----
     mcp_base_url = fields.Char(compute="_compute_mcp_urls")
     mcp_endpoint_url = fields.Char(compute="_compute_mcp_urls")
     mcp_metadata_url = fields.Char(compute="_compute_mcp_urls")
 
     @api.depends_context("uid")
     def _compute_mcp_urls(self):
-        base = self.env["ir.config_parameter"].sudo().get_param(
-            "web.base.url", "").rstrip("/")
+        # Not web.base.url: behind a proxy that routinely holds an http://
+        # spelling of the right host, and an http:// URL copied from here is
+        # one every AI client refuses. See models/mcp_url.py.
+        base = public_base_url(self.env)
         for rec in self:
             rec.mcp_base_url = base
             rec.mcp_endpoint_url = f"{base}/mcp"

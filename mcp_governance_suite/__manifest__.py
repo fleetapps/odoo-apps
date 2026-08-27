@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "Odoo MCP",
-    "version": "19.0.3.4.0",
+    "version": "19.0.3.6.0",
     "category": "Extra Tools/AI",
     "summary": "Connect Claude, ChatGPT, Gemini, Cursor or any MCP client to Odoo "
                "with one-click OAuth 2.1 — every AI action runs as the real user, "
@@ -122,6 +122,7 @@ Provider-agnostic by design. Multi-company aware. Fully translatable.
         "static/description/screenshot_settings.png",
         "static/description/screenshot_governance.png",
     ],
+    "post_init_hook": "post_init_hook",
     "installable": True,
     "application": True,
 }

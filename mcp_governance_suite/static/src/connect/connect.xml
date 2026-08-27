@@ -2,7 +2,17 @@
 <templates xml:space="preserve">
 
 <t t-name="mcp_governance_suite.Connect">
+    <!-- The `o_content` wrapper is what scrolls, and it is not optional.
+         Odoo's own layout sets `.o_web_client > .o_action_manager > .o_action`
+         to `overflow: hidden` (webclient_layout.scss) at a higher specificity
+         than any single class a module can put on that root, so an
+         `overflow: auto` there is silently overridden and a long page simply
+         clips at the fold. Every core view scrolls its `.o_content` instead -
+         and on small screens Odoo inverts the pair, scrolling the action and
+         setting `.o_content` to `overflow: initial`, so this markup is the one
+         shape that scrolls on both. -->
     <div class="o_mcp_connect o_action">
+      <div class="o_content">
         <div t-if="state.loading" class="o_mcp_loading">
             <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
         </div>
@@ -32,11 +42,20 @@
                         <span t-else="" class="fa fa-exclamation-triangle text-danger"/>
                         Before you start
                     </h2>
-                    <button class="btn btn-sm btn-link" t-on-click="() => this.testReachability()"
-                            t-att-disabled="state.testing">
-                        <span t-if="state.testing" class="fa fa-circle-o-notch fa-spin me-1"/>
-                        Re-test
-                    </button>
+                    <div class="o_mcp_card_actions">
+                        <button class="btn btn-sm btn-outline-primary"
+                                t-on-click="() => this.runSelfTest()"
+                                t-att-disabled="state.selfTesting">
+                            <span t-if="state.selfTesting" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <span t-else="" class="fa fa-flask me-1"/>
+                            Run a test question as me
+                        </button>
+                        <button class="btn btn-sm btn-link" t-on-click="() => this.testReachability(true)"
+                                t-att-disabled="state.testing">
+                            <span t-if="state.testing" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            Re-test
+                        </button>
+                    </div>
                 </div>
 
                 <p t-if="blockingChecks.length" class="o_mcp_blocker">
@@ -51,6 +70,7 @@
                         <span class="o_mcp_check_icon">
                             <span t-if="check.state === 'ok'" class="fa fa-check"/>
                             <span t-elif="check.state === 'fail'" class="fa fa-times"/>
+                            <span t-elif="check.state === 'warn'" class="fa fa-exclamation"/>
                             <span t-else="" class="fa fa-question"/>
                         </span>
                         <div class="o_mcp_check_body">
@@ -59,12 +79,34 @@
                                 <t t-esc="check.detail"/>
                             </div>
                         </div>
-                        <button t-if="check.fix_action" class="btn btn-sm btn-outline-primary"
+                        <button t-if="check.fix_method" class="btn btn-sm btn-primary"
+                                t-att-disabled="state.fixing"
+                                t-on-click="() => this.runFix(check)">
+                            <span t-if="state.fixing" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <t t-esc="check.fix_label"/>
+                        </button>
+                        <button t-elif="check.fix_action" class="btn btn-sm btn-outline-primary"
                                 t-on-click="() => this.openFix(check.fix_action)">
                             <t t-esc="check.fix_label"/>
                         </button>
                     </li>
                 </ul>
+
+                <!-- The one thing on this card that is proof rather than
+                     precondition: a real tool call, through every real gate. -->
+                <div t-if="state.selfTest"
+                     t-att-class="'o_mcp_selftest o_mcp_selftest--' + (state.selfTest.ok ? 'ok' : 'fail')">
+                    <div class="o_mcp_selftest_head">
+                        <span t-if="state.selfTest.ok" class="fa fa-check-circle me-1"/>
+                        <span t-else="" class="fa fa-times-circle me-1"/>
+                        <t t-esc="state.selfTest.message"/>
+                    </div>
+                    <ul t-if="state.selfTest.names.length" class="o_mcp_selftest_rows">
+                        <li t-foreach="state.selfTest.names" t-as="row" t-key="row_index">
+                            <t t-esc="row"/>
+                        </li>
+                    </ul>
+                </div>
             </section>
 
             <!-- ================================ Region 2 — the URL, big -->
@@ -78,6 +120,24 @@
                                 t-on-click="() => this.copy(state.data.urls.mcp, 'Server URL copied')">
                             <span class="fa fa-clipboard me-1"/> Copy
                         </button>
+                    </div>
+
+                    <!-- The two addresses support asks for, kept out of the
+                         way: a user pasting into Claude needs neither, and a
+                         user on the phone to support needs both. -->
+                    <div class="o_mcp_advanced">
+                        <span class="fa fa-cog me-1 opacity-50"/>
+                        <span>Also serving</span>
+                        <button class="o_mcp_advanced_link"
+                                t-on-click="() => this.copy(state.data.urls.metadata, 'Metadata URL copied')">
+                            sign-in metadata
+                        </button>
+                        <span>and</span>
+                        <button class="o_mcp_advanced_link"
+                                t-on-click="() => this.copy(state.data.urls.health, 'Health URL copied')">
+                            a health check
+                        </button>
+                        <span>— click either to copy.</span>
                     </div>
 
                     <!-- Region 3 — live status, right under the URL -->
@@ -100,7 +160,82 @@
                 </div>
             </section>
 
-            <!-- ================================== Region 4 — client picker -->
+            <!-- =============================== Region 4 — what it may do -->
+            <section class="o_mcp_card o_mcp_writes">
+                <h2>What your assistant may do</h2>
+
+                <!-- Promoted from a grey aside on a table row: a scope change
+                     never reaches a live connection, because both the
+                     governance scope and the granted OAuth scopes are frozen
+                     at consent. Somebody who ticks the box below and does not
+                     reconnect concludes the toggle does nothing. -->
+                <div t-if="state.data.writes.needs_reconnect" class="o_mcp_reconnect">
+                    <span class="fa fa-refresh me-2"/>
+                    <div>
+                        <b>Reconnect to apply this.</b>
+                        <div><t t-esc="state.data.writes.reconnect_hint"/></div>
+                    </div>
+                </div>
+
+                <div class="o_mcp_writes_row">
+                    <div class="o_mcp_writes_body">
+                        <div class="o_mcp_writes_label">
+                            <span t-if="state.data.writes.enabled" class="fa fa-pencil-square-o me-1 text-warning"/>
+                            <span t-else="" class="fa fa-eye me-1 text-success"/>
+                            <b t-if="state.data.writes.enabled">Read and write</b>
+                            <b t-else="">Read only</b>
+                            <span t-if="state.data.writes.scope_name" class="text-muted ms-1">
+                                · governed by "<t t-esc="state.data.writes.scope_name"/>"
+                            </span>
+                        </div>
+                        <div class="text-muted">
+                            <t t-if="state.data.writes.enabled">
+                                Your assistant can create and update records — always as
+                                you, never beyond your own Odoo access rights.
+                            </t>
+                            <t t-else="">
+                                Your assistant can read and report, and can change nothing
+                                at all. This is the safe default.
+                            </t>
+                        </div>
+                        <div t-if="state.data.writes.requires_approval" class="o_mcp_note mt-2">
+                            <span class="fa fa-user-o me-1"/>
+                            Every change waits for a person to approve it before it happens.
+                        </div>
+                    </div>
+
+                    <div class="o_mcp_writes_action">
+                        <button t-if="state.data.writes.can_toggle"
+                                t-att-class="'btn btn-sm ' + (state.data.writes.enabled ? 'btn-outline-secondary' : 'btn-outline-primary')"
+                                t-att-disabled="state.savingWrites"
+                                t-on-click="() => this.setWrites(!state.data.writes.enabled)">
+                            <span t-if="state.savingWrites" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <t t-if="state.data.writes.enabled">Make it read-only</t>
+                            <t t-else="">Let it make changes</t>
+                        </button>
+                        <span t-else="" class="text-muted small">
+                            Only an administrator can change this.
+                        </span>
+                    </div>
+                </div>
+
+                <div t-if="state.data.writes.pending" class="o_mcp_pending">
+                    <span class="fa fa-clock-o me-2"/>
+                    <div>
+                        <b><t t-esc="state.data.writes.pending"/> change(s) waiting for approval.</b>
+                        <t t-if="!state.data.writes.can_approve">
+                            Someone has to approve them before anything happens.
+                        </t>
+                    </div>
+                    <button t-if="state.data.writes.can_approve"
+                            class="btn btn-sm btn-outline-primary ms-auto"
+                            t-on-click="() => this.openFix('mcp_governance_suite.mcp_approval_action')">
+                        Review them
+                    </button>
+                </div>
+            </section>
+
+            <!-- ================================== Region 5 — client picker -->
             <section class="o_mcp_card">
                 <h2>Add it to your assistant</h2>
                 <div class="o_mcp_picker">
@@ -135,7 +270,7 @@
                 </t>
             </section>
 
-            <!-- ============================== Region 5 — starter prompts -->
+            <!-- ============================== Region 6 — starter prompts -->
             <section class="o_mcp_card">
                 <h2>Try one of these</h2>
                 <p class="text-muted">
@@ -151,16 +286,25 @@
                 </div>
             </section>
 
-            <!-- ========================== Region 6 — connected assistants -->
+            <!-- ========================== Region 7 — connected assistants -->
             <section class="o_mcp_card">
                 <div class="o_mcp_card_head">
                     <h2>Connected assistants</h2>
-                    <button t-if="state.data.connections.length"
-                            class="btn btn-sm btn-outline-danger"
-                            t-on-click="() => this.revokeAll()">
-                        <t t-if="state.data.can_admin">Disconnect all</t>
-                        <t t-else="">Disconnect all of mine</t>
-                    </button>
+                    <div class="o_mcp_card_actions">
+                        <!-- The API Keys menu is admin-only now; this is how a
+                             user still reaches their own keys for a headless
+                             client. The record rule keeps it to their own. -->
+                        <button class="btn btn-sm btn-link"
+                                t-on-click="() => this.openFix('mcp_governance_suite.mcp_api_key_action')">
+                            Manage API keys
+                        </button>
+                        <button t-if="state.data.connections.length"
+                                class="btn btn-sm btn-outline-danger"
+                                t-on-click="() => this.revokeAll()">
+                            <t t-if="state.data.can_admin">Disconnect all</t>
+                            <t t-else="">Disconnect all of mine</t>
+                        </button>
+                    </div>
                 </div>
 
                 <p t-if="!state.data.connections.length" class="text-muted">
@@ -203,6 +347,7 @@
                 </table>
             </section>
         </div>
+      </div>
     </div>
 </t>
 

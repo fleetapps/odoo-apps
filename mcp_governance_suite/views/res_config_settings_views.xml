@@ -56,6 +56,10 @@
                                  help="OAuth is discovered automatically from here (RFC 9728).">
                             <field name="mcp_metadata_url" widget="CopyClipboardChar" readonly="1"/>
                         </setting>
+                        <setting string="Public address override"
+                                 help="Only needed when this server cannot work out its own public address — it reads the proxy's forwarded headers, so TLS-terminating proxies normally need nothing here.">
+                            <field name="mcp_public_base_url" placeholder="https://erp.example.com"/>
+                        </setting>
                         <setting string="Guided setup"
                                  help="Readiness checks, the URL to paste, a QR code for mobile, per-client steps and live connection status.">
                             <button name="action_open_connect" type="object"

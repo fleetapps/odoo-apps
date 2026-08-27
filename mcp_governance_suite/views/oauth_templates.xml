@@ -14,6 +14,7 @@
                 :root{color-scheme:light dark}
                 body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
                      background:#f5f6f8;margin:0;display:flex;min-height:100vh;
+                     padding:24px 0;box-sizing:border-box;
                      align-items:center;justify-content:center;color:#1a1a2e}
                 .card{background:#fff;max-width:460px;width:92%;border-radius:14px;
                       box-shadow:0 10px 40px rgba(0,0,0,.12);padding:34px;box-sizing:border-box}
@@ -52,7 +53,7 @@
         </head>
         <body>
             <div class="card">
-                <div class="brand">Odoo MCP · MCP</div>
+                <div class="brand">Odoo MCP</div>
                 <h1>Authorize <t t-esc="client.name"/></h1>
                 <div class="sub">This AI assistant is requesting access to your Odoo data.</div>
 

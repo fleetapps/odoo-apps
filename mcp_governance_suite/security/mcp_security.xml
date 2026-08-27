@@ -48,6 +48,32 @@
             <field name="implied_ids" eval="[(4, ref('group_mcp_admin'))]"/>
         </record>
 
+        <!-- Every employee gets the MCP User role.
+
+             Without this nothing implies group_mcp_user, so menu_mcp_root -
+             which is gated on it - is invisible to every internal user, and
+             the product's whole promise ("open Odoo MCP, copy the URL, paste
+             it into Claude") is unreachable for anyone an administrator has
+             not hand-picked. Nobody finds a group they were never told about.
+
+             This is navigation, not security. The three real gates are
+             untouched: the read-only default governance scope, the per-model
+             permission matrix, and - underneath both - the user's own
+             ir.model.access and record rules, which an MCP call can only ever
+             narrow, never widen. A user reaching this menu can connect an
+             assistant that sees exactly what they can already see.
+
+             Deliberately not noupdate, so it also applies on every -u of an
+             existing database. That is also why there is no Settings toggle
+             for it: a switch an administrator turned off here would be
+             silently switched back on by the next module update, which is
+             worse than not offering the switch at all. To exclude someone,
+             remove the group from that user (or revoke their Odoo access to
+             the underlying models, which is the gate that actually matters). -->
+        <record id="base.group_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_mcp_user'))]"/>
+        </record>
+
         <!-- ======================================= Record Rules =========== -->
         <!-- API keys: a user sees only their own; admins see all. -->
         <record id="rule_api_key_own" model="ir.rule">

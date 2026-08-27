@@ -11,10 +11,12 @@ The plaintext key is shown to a human exactly once, through a reveal wizard;
 only its SHA-256 digest is stored at rest.
 """
 from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 
 from .tools_crypto import hash_secret, new_secret
 
 KEY_PREFIX = "mcp-"
+GROUP_ADMIN = "mcp_governance_suite.group_mcp_admin"
 
 
 class MCPApiKey(models.Model):
@@ -31,7 +33,12 @@ class MCPApiKey(models.Model):
              "ir.model.access + ir.rule apply on top of the MCP scope.")
     scope_id = fields.Many2one(
         "mcp.scope", required=True, ondelete="restrict",
+        default=lambda self: self.env.user.sudo().mcp_effective_scope(),
         help="Governance scope: which models/operations this connection may use.")
+    can_choose_scope = fields.Boolean(
+        compute="_compute_can_choose_scope",
+        help="Only an Odoo MCP administrator picks a scope other than the one "
+             "the key's user is already governed by.")
     company_id = fields.Many2one(
         "res.company", default=lambda self: self.env.company,
         help="Used for record-rule filtering of keys in multi-company setups.")
@@ -47,6 +54,39 @@ class MCPApiKey(models.Model):
     # actually being enforced. models.Constraint is the replacement.
     _key_hash_uniq = models.Constraint(
         "UNIQUE (key_hash)", "This API key already exists.")
+
+    @api.depends_context("uid")
+    def _compute_can_choose_scope(self):
+        allowed = self.env.su or self.env.user.has_group(GROUP_ADMIN)
+        for rec in self:
+            rec.can_choose_scope = allowed
+
+    @api.constrains("scope_id", "user_id")
+    def _check_scope_is_the_users_own(self):
+        """A non-administrator may only key the scope they are already governed by.
+
+        Every employee holds the MCP User role, so anyone can mint a key for
+        themselves - which is the point, it is how a headless client connects.
+        But the scope is chosen on this form, and mcp.scope is readable by that
+        same role, so without this an employee could bind their key to whatever
+        permissive scope happens to exist in the database and step around the
+        approval gate an administrator configured for them.
+
+        It is not a privilege escalation either way: the key still runs as its
+        user and can never exceed that user's own Odoo rights. It is the
+        governance controls - read-only, and require-approval - that this
+        protects, and those are the whole reason the module exists.
+        """
+        if self.env.su or self.env.user.has_group(GROUP_ADMIN):
+            return
+        for rec in self:
+            effective = rec.user_id.sudo().mcp_effective_scope()
+            if rec.scope_id != effective:
+                raise ValidationError(_(
+                    "This key has to use the scope you are already governed "
+                    "by%(named)s. Ask an Odoo MCP administrator if you need a "
+                    "different one.",
+                    named=(" (\"%s\")" % effective.name) if effective else ""))
 
     @api.depends("key_hash")
     def _compute_is_generated(self):

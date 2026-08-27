@@ -15,12 +15,16 @@
     <menuitem id="menu_mcp_my_activity" name="My AI Activity"
               parent="menu_mcp_root" action="mcp_audit_own_action"
               groups="mcp_governance_suite.group_mcp_user" sequence="5"/>
+    <!-- Admin-only, and not because a user may not reach them: Connect already
+         lists and revokes their connections, and offers a button through to
+         their own API keys. Two menu items an employee understands beat four
+         that make an onboarding screen look like a technical console. -->
     <menuitem id="menu_mcp_connections" name="Connections"
               parent="menu_mcp_root" action="mcp_oauth_token_action"
-              groups="mcp_governance_suite.group_mcp_user" sequence="10"/>
+              groups="mcp_governance_suite.group_mcp_admin" sequence="10"/>
     <menuitem id="menu_mcp_keys" name="API Keys"
               parent="menu_mcp_root" action="mcp_api_key_action"
-              groups="mcp_governance_suite.group_mcp_user" sequence="15"/>
+              groups="mcp_governance_suite.group_mcp_admin" sequence="15"/>
     <menuitem id="menu_mcp_approvals" name="Approvals"
               parent="menu_mcp_root" action="mcp_approval_action"
               groups="mcp_governance_suite.group_mcp_approver" sequence="20"/>

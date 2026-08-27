@@ -27,6 +27,7 @@ from odoo import http
 from odoo.exceptions import UserError
 from odoo.http import request
 
+from ..models.mcp_url import public_base_url
 from ..models.tools_crypto import hash_secret, new_secret
 
 _logger = logging.getLogger(__name__)
@@ -62,24 +63,10 @@ def _request_origin():
 def base_url():
     """The public origin clients actually reach.
 
-    ``host_url`` reports the scheme the WSGI layer saw, which is plain http
-    behind a TLS-terminating proxy unless Odoo runs with ``proxy_mode``. An
-    authorization server that advertises http endpoints on an https deployment
-    violates OAuth 2.1 §1.5 and is rejected by strict clients, so the
-    configured public address wins whenever it names this same host - that
-    fixes the scheme without ever letting a stale ``web.base.url`` redirect
-    metadata at a different server.
+    Resolved in ``models/mcp_url.py``, which explains at length why neither
+    ``host_url`` nor ``web.base.url`` can be believed on its own.
     """
-    origin = _request_origin()
-    configured = request.env["ir.config_parameter"].sudo().get_param(
-        "web.base.url", "").strip().rstrip("/")
-    if configured.startswith(("http://", "https://")):
-        try:
-            if urlparse(configured).netloc == urlparse(origin).netloc:
-                return configured
-        except ValueError:
-            pass
-    return origin
+    return public_base_url(request.env)
 
 
 def canonical_resource():
@@ -98,8 +85,23 @@ def accepted_resources():
     The request origin is accepted alongside the canonical base so that tokens
     minted before this server learned its own scheme keep validating; both
     spellings are the same host, so this narrows nothing.
+
+    Both schemes of each host are accepted for the same reason: a deployment
+    that advertised ``http://`` before its proxy configuration was corrected
+    minted tokens bound to that spelling, and audience-checking them against
+    the https spelling alone would disconnect every existing client on
+    upgrade. Same host, same server, same governance - only the spelling of a
+    scheme this server never actually served differs.
     """
-    bases = {base_url(), _request_origin()}
+    bases = set()
+    for origin in (base_url(), _request_origin()):
+        if not origin:
+            continue
+        bases.add(origin)
+        if origin.startswith("https://"):
+            bases.add("http://" + origin[len("https://"):])
+        elif origin.startswith("http://"):
+            bases.add("https://" + origin[len("http://"):])
     return {base + path for base in bases for path in MCP_ENDPOINT_PATHS}
 
 

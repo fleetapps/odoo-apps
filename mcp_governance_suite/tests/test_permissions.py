@@ -17,7 +17,7 @@ class TestModelPermissions(TransactionCase):
         cls.user = cls.env["res.users"].create({
             "name": "MCP Perm User",
             "login": "mcp_perm_user",
-            "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
+            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id])],
         })
         cls.scope = cls.env["mcp.scope"].create({
             "name": "TEST method scope",

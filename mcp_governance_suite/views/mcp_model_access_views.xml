@@ -165,7 +165,7 @@
                 later.
             </p>
             <p>
-                Use <b>Add Models</b> in the Configuration menu to add a whole
+                Use <b>Odoo MCP → Permissions → Add Models</b> to add a whole
                 set at once.
             </p>
         </field>
