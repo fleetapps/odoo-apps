@@ -1,6 +1,6 @@
-=========
-Odoo MCP
-=========
+======
+AI MCP
+======
 
 Connect Claude, ChatGPT, Gemini, Cursor, Copilot or any Model Context Protocol
 client to Odoo with one-click OAuth 2.1. Every AI action runs as the signed-in
@@ -20,7 +20,7 @@ Installation
 
 Download the module and add it to your Odoo addons folder. Log on to your
 Odoo server, go to the Apps menu, enable developer mode and click
-"Update Apps List". Search for "Odoo MCP" and click Install.
+"Update Apps List". Search for "AI MCP" and click Install.
 
 After install, confirm **Settings → Technical → System Parameters →
 ``web.base.url``** is your externally reachable HTTPS URL — OAuth redirect
@@ -41,11 +41,11 @@ migration is required between minor versions.
 Configuration
 =============
 
-Go to **Settings → Odoo MCP** to enable the server and choose a connect
+Go to **Settings → AI MCP** to enable the server and choose a connect
 method (OAuth 2.1 is the default and recommended path; API keys remain
 available for headless/CI use).
 
-Then, under **Odoo MCP → Permissions**:
+Then, under **AI MCP → Permissions**:
 
 * **Model Permissions** — one row per model, one column per operation
   (read/create/update/delete), plus an allow-list of callable methods and an
@@ -58,7 +58,7 @@ Every call still runs through Odoo's own ``ir.model.access`` and record rules
 as the connected user — a scope can only narrow what a user can already do,
 never widen it.
 
-Users connect from **Odoo MCP → Connect your AI**: copy the server URL,
+Users connect from **AI MCP → Connect your AI**: copy the server URL,
 paste it into their MCP client, sign in with their normal Odoo credentials
 and click Allow.
 

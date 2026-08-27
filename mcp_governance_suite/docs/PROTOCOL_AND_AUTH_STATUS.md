@@ -138,7 +138,7 @@ Not executed — no Odoo runtime in this environment:
 - Nothing has been deployed to `sandbox.odin.ist`.
 
 **Before trusting any of this: install the module, run the test suite, open
-Odoo MCP → Connect your AI, then re-run the §7 phase gates against a live
+AI MCP → Connect your AI, then re-run the §7 phase gates against a live
 instance.**
 
 ---
@@ -149,7 +149,7 @@ Phases 1–4 of the v2 spec are complete. Untouched:
 
 | Phase | Work | Note |
 |---|---|---|
-| 5 | `search_records` / `get_schema` / `create_record` / `call_method` exist | Missing: "smart fields" auto-selection, `mcp_max_smart_fields`. This is the top complaint from Odoo MCP practitioners — models with hundreds of fields produce poor answers. |
+| 5 | `search_records` / `get_schema` / `create_record` / `call_method` exist | Missing: "smart fields" auto-selection, `mcp_max_smart_fields`. This is the top complaint from AI MCP practitioners — models with hundreds of fields produce poor answers. |
 | 6 | Dashboards (§5.3), document ingestion, CRM | Reuse `ai_bill_ocr_community` / `po_so_ai_capture` for extraction rather than reimplementing. |
 | 7 | Permission proposals (§5.4) | Highest risk; behind approvals. |
 | 8 | DCR | Already built (it predates the CIMD work). Now correctly labelled deprecated. |

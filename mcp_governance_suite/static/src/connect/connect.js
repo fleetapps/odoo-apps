@@ -212,7 +212,7 @@ export class MCPConnect extends Component {
             );
         } catch {
             this.notification.add(
-                _t("Could not change that — only an Odoo MCP administrator can."),
+                _t("Could not change that — only an AI MCP administrator can."),
                 { type: "danger" }
             );
         } finally {

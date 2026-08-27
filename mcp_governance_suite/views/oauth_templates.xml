@@ -53,7 +53,7 @@
         </head>
         <body>
             <div class="card">
-                <div class="brand">Odoo MCP</div>
+                <div class="brand">AI MCP</div>
                 <h1>Authorize <t t-esc="client.name"/></h1>
                 <div class="sub">This AI assistant is requesting access to your Odoo data.</div>
 
@@ -86,7 +86,7 @@
                 <div class="note">
                     Every action this assistant takes will run <b>as you</b>, obey your
                     Odoo permissions, and be recorded in the MCP audit log. You can revoke
-                    access at any time from Odoo MCP · Connections.
+                    access at any time from AI MCP · Connections.
                 </div>
 
                 <form action="/oauth/authorize/decision" method="post">

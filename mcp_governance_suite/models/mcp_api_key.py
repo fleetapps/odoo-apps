@@ -37,7 +37,7 @@ class MCPApiKey(models.Model):
         help="Governance scope: which models/operations this connection may use.")
     can_choose_scope = fields.Boolean(
         compute="_compute_can_choose_scope",
-        help="Only an Odoo MCP administrator picks a scope other than the one "
+        help="Only an AI MCP administrator picks a scope other than the one "
              "the key's user is already governed by.")
     company_id = fields.Many2one(
         "res.company", default=lambda self: self.env.company,
@@ -84,7 +84,7 @@ class MCPApiKey(models.Model):
             if rec.scope_id != effective:
                 raise ValidationError(_(
                     "This key has to use the scope you are already governed "
-                    "by%(named)s. Ask an Odoo MCP administrator if you need a "
+                    "by%(named)s. Ask an AI MCP administrator if you need a "
                     "different one.",
                     named=(" (\"%s\")" % effective.name) if effective else ""))
 

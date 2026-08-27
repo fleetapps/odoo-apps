@@ -2,7 +2,7 @@
 """Who can see and use the app at all.
 
 The module shipped for several versions with nothing implying group_mcp_user,
-so the Odoo MCP menu was invisible to every internal user and the product's
+so the AI MCP menu was invisible to every internal user and the product's
 whole promise was unreachable for anyone an administrator had not hand-picked.
 These tests pin the fix down, and pin down that it granted navigation only.
 """

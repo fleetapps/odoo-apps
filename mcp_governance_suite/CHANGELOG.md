@@ -4,6 +4,22 @@ All notable changes to **Odoo MCP** are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
 Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
 
+## [19.0.3.7.0] — 2026-08-27
+
+### Changed
+- **Renamed to "AI MCP".** Odoo's Apps Vendor Guidelines ask for an explicit
+  name under 25 characters, and the partnership terms bar using "Odoo" in a
+  product name — so "Odoo MCP" was a store-review risk as well as the longest
+  of the candidates. Applied everywhere a person reads it: the App Store
+  listing, the top-level menu, the Settings tile, the consent screen, the two
+  cron jobs, the access-rights category, and every "under Odoo MCP → …"
+  navigation path in a refusal message — those name a menu, and a refusal that
+  sends an administrator to a menu that no longer exists is worse than one that
+  says nothing. The description prose is untouched apart from its heading.
+- **New app icon**: a flat teal (#14B8A6) chat bubble, replacing the Odoo
+  wordmark in Odoo purple. Drawn at 4× and downsampled, 256×256, so it stays
+  crisp in the apps grid and on the listing page.
+
 ## [19.0.3.6.0] — 2026-08-27
 
 Everything between "connected" and "useful". 19.0.3.5.0 fixed the connection

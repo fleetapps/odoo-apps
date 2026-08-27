@@ -675,7 +675,7 @@ class MCPConnect(models.TransientModel):
         """
         if not self.env.user.has_group("mcp_governance_suite.group_mcp_admin"):
             raise AccessError(_(
-                "Only an Odoo MCP administrator can change what assistants "
+                "Only an AI MCP administrator can change what assistants "
                 "are allowed to do."))
         scope = self.env.user.sudo().mcp_effective_scope()
         if scope:
@@ -693,7 +693,7 @@ class MCPConnect(models.TransientModel):
         """
         if not self.env.user.has_group("mcp_governance_suite.group_mcp_admin"):
             raise AccessError(_(
-                "Only an Odoo MCP administrator can add models to the "
+                "Only an AI MCP administrator can add models to the "
                 "permission matrix."))
         scope = self.env.user.sudo().mcp_effective_scope()
         if scope:
@@ -719,7 +719,7 @@ class MCPConnect(models.TransientModel):
         if not scope:
             return self._self_test_result(False, _(
                 "No permissions apply to you yet, so there is nothing to "
-                "test. An administrator sets those up under Odoo MCP → "
+                "test. An administrator sets those up under AI MCP → "
                 "Permissions."))
         readable = scope.line_ids.filtered("can_read")
         if not readable:

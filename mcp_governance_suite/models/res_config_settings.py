@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""One-click setup surface (Settings -> Odoo MCP).
+"""One-click setup surface (Settings -> AI MCP).
 
 Everything the administrator needs to turn the connector on and hand a URL to
 Claude/ChatGPT/Cursor lives here. Persisted values use ir.config_parameter so

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_mcp_root" name="Odoo MCP"
+    <menuitem id="menu_mcp_root" name="AI MCP"
               web_icon="mcp_governance_suite,static/description/icon.png"
               groups="mcp_governance_suite.group_mcp_user"
               sequence="80"/>

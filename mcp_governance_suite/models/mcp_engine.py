@@ -273,13 +273,13 @@ class MCPEngine(models.AbstractModel):
             raise AccessError(_(
                 "'%(model)s' is not in the '%(scope)s' permission matrix, so "
                 "no AI access to it is configured. An administrator can add it "
-                "under Odoo MCP → Permissions → Model Permissions.",
+                "under AI MCP → Permissions → Model Permissions.",
                 model=model, scope=scope.name))
         if not line["can_%s" % op]:
             raise AccessError(_(
                 "The '%(scope)s' matrix does not allow %(op)s on '%(model)s'. "
                 "An administrator can enable the '%(op)s' switch for that model "
-                "under Odoo MCP → Permissions → Model Permissions.",
+                "under AI MCP → Permissions → Model Permissions.",
                 scope=scope.name, op=label, model=model))
         return line
 
@@ -363,7 +363,7 @@ class MCPEngine(models.AbstractModel):
                     "%(count)s tool(s) in this capability are hidden because "
                     "the '%(scope)s' governance scope has Read Only switched "
                     "on. Only an Odoo administrator can change that, under "
-                    "Odoo MCP → Permissions → Scopes; re-authorizing "
+                    "AI MCP → Permissions → Scopes; re-authorizing "
                     "will not help.",
                     count=len(hidden), scope=scope.name))
             elif not write_granted and shown.filtered("writes"):
@@ -580,7 +580,7 @@ class MCPEngine(models.AbstractModel):
             raise AccessError(_(
                 "Method calls are enabled for '%(model)s' but no method names "
                 "are allow-listed, so nothing can be called. An administrator "
-                "must list the exact methods under Odoo MCP → "
+                "must list the exact methods under AI MCP → "
                 "Permissions → Model Permissions.", model=model))
         if method not in allowed:
             raise AccessError(_(
@@ -658,7 +658,7 @@ class MCPEngine(models.AbstractModel):
         return {"approval_required": True, "approval_id": req.id,
                 "message": str(_(
                     "Nothing has changed yet. This is waiting for a person to "
-                    "approve it in Odoo — request #%(id)s, under Odoo MCP → "
+                    "approve it in Odoo — request #%(id)s, under AI MCP → "
                     "Approvals. Tell the user it needs that sign-off before "
                     "anything happens.", id=req.id))}
 

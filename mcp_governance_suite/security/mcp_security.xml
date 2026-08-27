@@ -3,7 +3,7 @@
     <data>
         <!-- ============================================ Groups ============= -->
         <record id="module_category_mcp" model="ir.module.category">
-            <field name="name">Odoo MCP</field>
+            <field name="name">AI MCP</field>
             <field name="description">AI / MCP connector governance.</field>
             <field name="sequence">80</field>
         </record>
@@ -13,7 +13,7 @@
              privilege carries the ir.module.category. Setting category_id on a
              group here fails the install outright. -->
         <record id="privilege_mcp" model="res.groups.privilege">
-            <field name="name">Odoo MCP</field>
+            <field name="name">AI MCP</field>
             <field name="category_id" ref="module_category_mcp"/>
             <field name="sequence">80</field>
             <field name="description">Who may connect AI assistants, approve their
@@ -52,7 +52,7 @@
 
              Without this nothing implies group_mcp_user, so menu_mcp_root -
              which is gated on it - is invisible to every internal user, and
-             the product's whole promise ("open Odoo MCP, copy the URL, paste
+             the product's whole promise ("open AI MCP, copy the URL, paste
              it into Claude") is unreachable for anyone an administrator has
              not hand-picked. Nobody finds a group they were never told about.
 

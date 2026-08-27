@@ -64,7 +64,7 @@ SERVER_INFO = {
     "version": get_manifest("mcp_governance_suite").get("version", ""),
 }
 SERVER_INSTRUCTIONS = (
-    "Odoo MCP Governance Suite. Every action runs as your Odoo user and is "
+    "AI MCP Governance Suite. Every action runs as your Odoo user and is "
     "audited. Use list_capabilities to discover what you can do. Odoo "
     "conventions: filters are domains (lists of ('field','operator',value) "
     "triples with '&'/'|' prefix operators); read with search_records rather "
