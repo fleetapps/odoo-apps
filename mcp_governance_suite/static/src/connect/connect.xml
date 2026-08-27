@@ -247,6 +247,23 @@
                 </div>
 
                 <t t-if="guide">
+                    <!-- Only VS Code and Cursor have a real install link. The
+                         client shows its own approval dialog before writing
+                         anything, so this saves typing, not consent. Claude and
+                         ChatGPT have no such link at all - offering a fake one
+                         that opened a chat window would be worse than the
+                         three steps below. -->
+                    <div t-if="guide.install_url" class="o_mcp_install">
+                        <a class="btn btn-primary" t-att-href="guide.install_url">
+                            <span class="fa fa-bolt me-1"/>
+                            <t t-esc="guide.install_label"/>
+                        </a>
+                        <span class="text-muted">
+                            Opens <t t-esc="guide.name"/> and fills in the server for
+                            you — you still approve it there. Or follow the steps:
+                        </span>
+                    </div>
+
                     <ol class="o_mcp_steps">
                         <li t-foreach="guide.steps" t-as="step" t-key="step_index">
                             <t t-out="step"/>
@@ -278,11 +295,25 @@
                     your current permissions can actually satisfy are shown.
                 </p>
                 <div class="o_mcp_chips">
-                    <button t-foreach="state.data.prompts" t-as="prompt" t-key="prompt_index"
-                            class="o_mcp_chip"
-                            t-on-click="() => this.copy(prompt, 'Prompt copied')">
-                        <span class="fa fa-clipboard me-1 opacity-50"/><t t-esc="prompt"/>
-                    </button>
+                    <div t-foreach="state.data.prompts" t-as="prompt" t-key="prompt_index"
+                         class="o_mcp_chip">
+                        <button class="o_mcp_chip_text"
+                                t-on-click="() => this.copy(prompt.text, 'Prompt copied')">
+                            <span class="fa fa-clipboard me-1 opacity-50"/>
+                            <t t-esc="prompt.text"/>
+                        </button>
+                        <!-- Honest here in a way it would not be on setup: a
+                             connection already exists, so the assistant can
+                             actually answer this. Canned text only — never put
+                             record data in a query string. -->
+                        <a t-foreach="prompt.ask" t-as="ask" t-key="ask.key"
+                           class="o_mcp_chip_ask" t-att-href="ask.url"
+                           target="_blank" rel="noopener noreferrer"
+                           t-att-title="'Ask this in ' + ask.name">
+                            <t t-esc="ask.name"/>
+                            <span class="fa fa-external-link ms-1"/>
+                        </a>
+                    </div>
                 </div>
             </section>
 

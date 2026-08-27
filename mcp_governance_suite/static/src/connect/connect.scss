@@ -337,18 +337,56 @@
     }
 
     .o_mcp_chip {
+        display: flex;
+        align-items: stretch;
         border: 1px solid var(--gray-300, #dee2e6);
-        background: var(--white, #fff);
         border-radius: 8px;
-        padding: .45rem .75rem;
+        background: var(--white, #fff);
+        overflow: hidden;
         font-size: .875rem;
+
+        &:hover { border-color: var(--primary, #714b67); }
+    }
+
+    .o_mcp_chip_text {
+        border: 0;
+        background: none;
+        padding: .45rem .75rem;
+        font: inherit;
         text-align: left;
         cursor: pointer;
 
+        &:hover { background: var(--gray-100, #f6f7f9); }
+    }
+
+    // "Ask in Claude / ChatGPT". Quiet by default - the chip is the prompt,
+    // these are a shortcut to somewhere else.
+    .o_mcp_chip_ask {
+        display: flex;
+        align-items: center;
+        padding: 0 .6rem;
+        border-left: 1px solid var(--gray-200, #eef0f2);
+        color: var(--gray-600, #6c757d);
+        font-size: .8rem;
+        white-space: nowrap;
+        text-decoration: none;
+
         &:hover {
-            border-color: var(--primary, #714b67);
             background: var(--gray-100, #f6f7f9);
+            color: var(--primary, #714b67);
         }
+    }
+
+    // ---------------------------------------------------------- install
+    .o_mcp_install {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .75rem;
+        margin-bottom: 1rem;
+        font-size: .85rem;
+
+        span { flex: 1 1 16rem; min-width: 0; }
     }
 
     // ------------------------------------------------------------ table

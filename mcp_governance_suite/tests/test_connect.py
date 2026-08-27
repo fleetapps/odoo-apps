@@ -4,7 +4,10 @@
 The whole screen is rendered from get_state(), so testing that payload tests
 the screen's behaviour without touching the browser.
 """
+import base64
+import json
 from datetime import timedelta
+from urllib.parse import parse_qs, unquote, urlparse
 
 from odoo import fields
 from odoo.tests import TransactionCase, tagged
@@ -26,6 +29,10 @@ class TestConnectState(TransactionCase):
 
     def _checks(self, state):
         return {c["key"]: c for c in state["checks"]}
+
+    def _prompt_texts(self, user=None):
+        connect = self.Connect.with_user(user) if user else self.Connect
+        return [p["text"] for p in connect.get_state()["prompts"]]
 
     # -------------------------------------------------------------- payload
     def test_state_has_everything_the_screen_renders(self):
@@ -126,14 +133,14 @@ class TestConnectState(TransactionCase):
         """Never advertise a prompt the current permissions would refuse."""
         self.env["mcp.scope"].sudo().search(
             [("read_only", "=", False)]).write({"read_only": True})
-        prompts = self.Connect.get_state()["prompts"]
+        prompts = self._prompt_texts()
         self.assertTrue(prompts)
         self.assertFalse([p for p in prompts if p.startswith("Create")])
 
     def test_read_prompts_are_limited_to_models_in_the_matrix(self):
         """The seeded scope covers `base` models only, so the sales and
         invoicing suggestions must not be offered on a fresh install."""
-        prompts = self.Connect.get_state()["prompts"]
+        prompts = self._prompt_texts()
         readable = set(self.env["mcp.scope.line"].sudo().search(
             [("can_read", "=", True)]).mapped("model_name"))
         if "sale.order" not in readable:
@@ -149,7 +156,7 @@ class TestConnectState(TransactionCase):
             "model_id": self.env["ir.model"]._get("res.partner").id,
             "can_read": True, "can_create": True,
         })
-        self.assertTrue([p for p in self.Connect.get_state()["prompts"]
+        self.assertTrue([p for p in self._prompt_texts()
                          if p.startswith("Create partners")])
 
     def test_write_prompt_stays_hidden_when_only_another_model_is_writable(self):
@@ -165,13 +172,13 @@ class TestConnectState(TransactionCase):
             "model_id": self.env["ir.model"]._get("res.partner").id,
             "can_read": True, "can_create": True,
         })
-        prompts = self.Connect.get_state()["prompts"]
+        prompts = self._prompt_texts()
         self.assertFalse([p for p in prompts if "sale order" in p])
 
     def test_prompts_that_need_no_model_are_always_offered(self):
         """However tight the scope, the screen must never show zero prompts."""
         self.env["mcp.scope.line"].sudo().search([]).unlink()
-        self.assertTrue(self.Connect.get_state()["prompts"])
+        self.assertTrue(self._prompt_texts())
 
     def test_every_client_guide_has_steps(self):
         for guide in self.Connect.get_state()["clients"]:
@@ -373,7 +380,7 @@ class TestConnectState(TransactionCase):
             "login": "mcp_prompt_employee",
             "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
         })
-        for prompt in self.Connect.with_user(employee).get_state()["prompts"]:
+        for prompt in self._prompt_texts(employee):
             for _needs_write, model, text in STARTER_PROMPTS:
                 if text == prompt and model:
                     self.assertTrue(
@@ -391,3 +398,65 @@ class TestConnectState(TransactionCase):
         if result["ok"]:
             self.assertTrue(
                 self.env[result["model"]].with_user(employee).has_access("read"))
+
+    # ------------------------------------------------------- quick setup
+    def _guides(self):
+        return {g["key"]: g for g in self.Connect.get_state()["clients"]}
+
+    def test_vscode_install_link_carries_the_real_server_config(self):
+        """VS Code documents vscode:mcp/install?<url-encoded JSON>."""
+        guide = self._guides()["vscode"]
+        self.assertTrue(guide["install_url"].startswith("vscode:mcp/install?"))
+        payload = json.loads(unquote(guide["install_url"].split("?", 1)[1]))
+        self.assertEqual(payload["type"], "http")
+        self.assertTrue(payload["url"].endswith("/mcp"))
+        self.assertTrue(payload["name"])
+
+    def test_cursor_install_link_carries_the_real_server_config(self):
+        """Cursor takes the name as a parameter and the server base64-encoded."""
+        guide = self._guides()["cursor"]
+        self.assertTrue(guide["install_url"].startswith(
+            "cursor://anysphere.cursor-deeplink/mcp/install?"))
+        query = parse_qs(urlparse(guide["install_url"]).query)
+        self.assertTrue(query["name"][0])
+        config = json.loads(base64.urlsafe_b64decode(query["config"][0] + "==="))
+        self.assertTrue(config["url"].endswith("/mcp"))
+
+    def test_no_install_link_is_invented_where_none_exists(self):
+        """Claude and ChatGPT have no connector-install deep link.
+
+        A button that opened a chat saying "connect this MCP server" would
+        produce an assistant explaining it cannot, under a label promising
+        one-click setup - worse than the honest steps.
+        """
+        guides = self._guides()
+        for key in ("claude", "chatgpt", "other"):
+            self.assertNotIn("install_url", guides[key])
+
+    def test_install_link_points_at_the_public_address(self):
+        """The same address the hero shows, not web.base.url."""
+        state = self.Connect.get_state()
+        payload = json.loads(unquote(
+            {g["key"]: g for g in state["clients"]}["vscode"]
+            ["install_url"].split("?", 1)[1]))
+        self.assertEqual(payload["url"], state["urls"]["mcp"])
+
+    def test_every_prompt_can_be_opened_in_an_assistant(self):
+        for prompt in self.Connect.get_state()["prompts"]:
+            self.assertTrue(prompt["ask"], prompt["text"])
+            for ask in prompt["ask"]:
+                self.assertTrue(ask["url"].startswith("https://"))
+                self.assertIn("q=", ask["url"])
+
+    def test_the_ask_link_round_trips_the_prompt_text(self):
+        prompt = self.Connect.get_state()["prompts"][0]
+        for ask in prompt["ask"]:
+            sent = unquote(urlparse(ask["url"]).query.split("=", 1)[1])
+            self.assertEqual(sent, prompt["text"])
+
+    def test_ask_links_carry_only_canned_text(self):
+        """These travel to a third party and land in their logs, so nothing
+        but the module's own constants may ever go into that query string."""
+        canned = {text for _w, _m, text in STARTER_PROMPTS}
+        for prompt in self.Connect.get_state()["prompts"]:
+            self.assertIn(prompt["text"], canned)

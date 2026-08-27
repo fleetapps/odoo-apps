@@ -4,6 +4,34 @@ All notable changes to **Odoo MCP** are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
 Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
 
+## [19.0.3.8.0] — 2026-08-27
+
+### Added
+- **One-click install for VS Code and Cursor.** "Add it to your assistant" now
+  leads with a real install link for the two clients that have one: VS Code's
+  documented `vscode:mcp/install?<url-encoded JSON>`, and Cursor's
+  `cursor://anysphere.cursor-deeplink/mcp/install?name=...&config=<base64>`.
+  The server URL and config travel in the link; the client shows its own
+  approval dialog before writing anything, so this saves typing, not consent.
+  The written steps stay underneath for anyone who prefers them.
+- **"Ask in Claude / ChatGPT" on every starter prompt**, opening a new chat
+  with the question already typed (`?q=`). Placed here rather than on setup
+  because this is where it is honest: a connection exists by then, so the
+  assistant can actually answer. Only the module's own canned prompts ever
+  reach that query string - never record data, which would travel to a third
+  party and land in their logs.
+
+### Notes
+- **There is deliberately no "one-click setup" for Claude or ChatGPT**, because
+  neither has a connector-install deep link. `claude://` resolves only `new`,
+  `chat/{id}`, `project/{id}`, `code/new` and `cowork/new`; ChatGPT's
+  connectors are added by hand under Developer Mode. A button that opened a
+  chat window saying "connect this MCP server" would produce an assistant
+  explaining that it cannot, under a label promising one click - the same
+  broken-first-minute failure the starter-prompt filtering exists to prevent.
+  If either ships a real install link, it drops into `_install_url` as one
+  more branch.
+
 ## [19.0.3.7.0] — 2026-08-27
 
 ### Changed

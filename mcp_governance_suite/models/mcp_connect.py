@@ -14,7 +14,7 @@ import datetime
 import io
 import json
 import logging
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError
@@ -78,6 +78,7 @@ CLIENT_STEPS = {
             "Sign in when the browser window opens.",
         ],
         "config": True,
+        "install": "vscode",
     },
     "cursor": {
         "name": "Cursor",
@@ -87,6 +88,7 @@ CLIENT_STEPS = {
             "Paste the configuration below, then sign in when prompted.",
         ],
         "config": True,
+        "install": "cursor",
     },
     "other": {
         "name": "Any MCP client",
@@ -98,6 +100,26 @@ CLIENT_STEPS = {
         "note": "This server implements the open Model Context Protocol, so any "
                 "compliant client works. See modelcontextprotocol.io/clients.",
     },
+}
+
+# The name the server registers itself under inside the client's config.
+INSTALL_SERVER_NAME = "odoo"
+
+# Where a starter prompt can be opened, once a connection exists. Both take the
+# prompt as ?q= and only prefill the composer - the user still reads it and
+# presses send, which is the correct amount of automation for something that is
+# about to touch live ERP data.
+#
+# There is deliberately no equivalent for *setting up* Claude or ChatGPT.
+# Neither has a connector-install deep link: claude:// only opens new/chat/
+# project/code/cowork, and ChatGPT's connectors are added by hand under
+# Developer Mode. A button that opened a chat saying "connect this MCP server"
+# would produce an assistant explaining it cannot do that, under a label
+# promising one-click setup - the same broken-first-minute failure the starter
+# prompt filtering exists to prevent.
+ASK_URLS = {
+    "claude": ("Claude", "https://claude.ai/new?q=%s"),
+    "chatgpt": ("ChatGPT", "https://chatgpt.com/?q=%s"),
 }
 
 # Shown as one-click chips, as (needs_write, model, text). A prompt is only
@@ -790,7 +812,8 @@ class MCPConnect(models.TransientModel):
             ["&", ("scope_id.active", "=", True), ("scope_id.read_only", "=", False),
              "|", ("can_create", "=", True), ("can_write", "=", True)]
         ).mapped("model_name"))
-        return [text for needs_write, model, text in STARTER_PROMPTS
+        return [{"text": text, "ask": self._ask_links(text)}
+                for needs_write, model, text in STARTER_PROMPTS
                 if model is None
                 or (model in (writable if needs_write else readable)
                     and self._user_can_read(model))]
@@ -820,13 +843,60 @@ class MCPConnect(models.TransientModel):
                 entry["config"] = (
                     '{\n'
                     '  "mcpServers": {\n'
-                    '    "odoo": {\n'
+                    '    "%s": {\n'
                     '      "url": "%s"\n'
                     '    }\n'
                     '  }\n'
-                    '}' % url)
+                    '}' % (INSTALL_SERVER_NAME, url))
+            install = self._install_url(guide.get("install"), url)
+            if install:
+                entry["install_url"] = install
+                entry["install_label"] = _("Add to %s") % guide["name"]
             guides.append(entry)
         return guides
+
+    @api.model
+    def _install_url(self, kind, url):
+        """A real one-click install link, for the two clients that have one.
+
+        VS Code documents ``vscode:mcp/install?<url-encoded JSON>`` where the
+        JSON is the server object with its name folded in. Cursor's equivalent
+        is not in its own deeplink reference but is the de-facto format every
+        "Add to Cursor" button in the wild uses: the server object alone,
+        base64-encoded, with the name passed separately.
+
+        Both hand the config to the client, which shows its own approval
+        dialog before writing anything - so this saves typing, not consent.
+        Returns False for a client with no such link rather than inventing one.
+        """
+        if not kind or not url:
+            return False
+        if kind == "vscode":
+            # mcp.json's own remote-server shape, with the name folded in.
+            payload = {"name": INSTALL_SERVER_NAME, "type": "http", "url": url}
+            return "vscode:mcp/install?%s" % quote(
+                json.dumps(payload, separators=(",", ":")), safe="")
+        if kind == "cursor":
+            # Cursor documents a remote server as {"url": ...} with no type
+            # key, and the name travels as its own parameter.
+            blob = base64.urlsafe_b64encode(
+                json.dumps({"url": url}, separators=(",", ":")).encode()).decode()
+            return ("cursor://anysphere.cursor-deeplink/mcp/install"
+                    "?name=%s&config=%s" % (INSTALL_SERVER_NAME, blob))
+        return False
+
+    @api.model
+    def _ask_links(self, prompt):
+        """Open an assistant with this prompt already typed.
+
+        Offered on the starter prompts rather than on setup, because that is
+        the point at which it is honest: a connection exists by then, so the
+        assistant can actually answer. Canned module constants only - never put
+        record data in a query string, it travels to a third party and lands in
+        their logs.
+        """
+        return [{"key": key, "name": name, "url": pattern % quote(prompt, safe="")}
+                for key, (name, pattern) in ASK_URLS.items()]
 
     # --------------------------------------------------------------------- QR
     @api.model
