@@ -21,7 +21,9 @@ def run(env):
     lines.unlink()
     orders = env["sale.order"].search([("origin", "=", SEED_TAG)])
     print("  orders:       %s" % len(orders))
-    # Odoo will not delete a confirmed order; back to draft first.
+    # Odoo will not delete a confirmed order, and a locked one refuses writes
+    # altogether — so unlock, then draft, then delete.
+    orders.write({"locked": False})
     orders.write({"state": "draft"})
     orders.unlink()
     templates = env["product.template"].search(

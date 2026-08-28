@@ -56,6 +56,9 @@ def wipe(env):
         [("order_id.origin", "=", SEED_TAG)])
     lines.unlink()
     orders = env["sale.order"].search([("origin", "=", SEED_TAG)])
+    # Unlock first: a locked order refuses writes, so going straight to draft
+    # raises part-way through and leaves half a seed behind.
+    orders.write({"locked": False})
     orders.write({"state": "draft"})
     orders.unlink()
     templates = env["product.template"].search(
@@ -128,7 +131,9 @@ def make_products(env):
 def make_orders(env, partners, products):
     """Orders spread over MONTHS_BACK months, weighted so revenue has shape."""
     today = date.today()
-    states = ["sale"] * 6 + ["done"] * 2 + ["draft"] * 2 + ["sent"] + ["cancel"]
+    # Odoo 19 dropped the "done" state from sale.order — it is the `locked`
+    # boolean now. Writing 'done' raises ValueError on the selection field.
+    states = ["sale"] * 8 + ["draft"] * 2 + ["sent"] + ["cancel"]
     # A handful of customers get most of the volume, so "top 10" means
     # something. A flat distribution makes every ranking chart identical.
     heavy = random.sample(list(partners), min(12, len(partners)))
@@ -153,11 +158,14 @@ def make_orders(env, partners, products):
                     "price_unit": round(product.list_price *
                                         random.uniform(0.8, 1.2), 2),
                 }))
+            state = random.choice(states)
             pending.append({
                 "partner_id": partner.id,
                 "date_order": "%s 10:00:00" % when.isoformat(),
                 "origin": SEED_TAG,
-                "state": random.choice(states),
+                "state": state,
+                # What used to be "done": a confirmed order nobody may edit.
+                "locked": state == "sale" and random.random() < 0.25,
                 "order_line": lines,
             })
             if len(pending) >= BATCH:
@@ -178,9 +186,9 @@ def summarise(env):
     Order = env["sale.order"]
     total = Order.search_count([("origin", "=", SEED_TAG)])
     confirmed = Order.search_count(
-        [("origin", "=", SEED_TAG), ("state", "in", ["sale", "done"])])
+        [("origin", "=", SEED_TAG), ("state", "=", "sale")])
     rows = Order._read_group(
-        [("origin", "=", SEED_TAG), ("state", "in", ["sale", "done"])],
+        [("origin", "=", SEED_TAG), ("state", "=", "sale")],
         groupby=["date_order:year"], aggregates=["amount_total:sum"])
     log("")
     log("what you now have:")
