@@ -42,10 +42,17 @@ class AIDashboardRender(models.AbstractModel):
         spec = dashboard.spec()
         started = time.time()
 
+        filter_values = filter_values or {}
+        # View-time choice beats the spec's default, exactly like the period
+        # filter: "show me everything against last year" is a question somebody
+        # asks of a dashboard, not a property of it.
+        compare_mode = filter_values.get("__compare") or \
+            (spec.get("compare") or {}).get("to") or "none"
+
         widgets = []
         for widget in spec.get("widgets", []):
-            widgets.append(self._render_widget(widget, spec,
-                                               filter_values or {}))
+            widgets.append(self._render_widget(widget, spec, filter_values,
+                                               compare_mode))
 
         elapsed = int((time.time() - started) * 1000)
         # sudo for the timing only: it is telemetry about the dashboard, not
@@ -60,6 +67,7 @@ class AIDashboardRender(models.AbstractModel):
             "explanation": dashboard.explanation,
             "is_owner": dashboard.owner_id.id == self.env.uid,
             "filters": spec.get("filters", []),
+            "compare": compare_mode,
             "widgets": widgets,
             "took_ms": elapsed,
             "currency": self._currency(),
@@ -74,7 +82,7 @@ class AIDashboardRender(models.AbstractModel):
         """
         rows = []
         for widget in spec.get("widgets", [])[:limit]:
-            rendered = self._render_widget(widget, spec, {})
+            rendered = self._render_widget(widget, spec, {}, "none")
             rows.append({
                 "title": rendered["title"],
                 "type": rendered["type"],
@@ -85,8 +93,14 @@ class AIDashboardRender(models.AbstractModel):
         return rows
 
     # ------------------------------------------------------------- internals
-    def _render_widget(self, widget, spec, filter_values):
+    def _render_widget(self, widget, spec, filter_values, compare_mode="none"):
         """One widget. An error here degrades this tile, never the page."""
+        # A widget may override the dashboard's comparison, including turning
+        # it off for itself.
+        own = (widget.get("compare") or {}).get("to")
+        mode = own if own else compare_mode
+        if widget.get("type") not in spec_lib.COMPARABLE_TYPES:
+            mode = "none"
         base = {
             "id": widget.get("id"),
             "type": widget.get("type"),
@@ -101,6 +115,7 @@ class AIDashboardRender(models.AbstractModel):
             # Offering a switch that would need the query rewritten is how an
             # editor produces a spec the validator then refuses.
             "group_count": len((widget.get("query") or {}).get("group_by") or []),
+            "comparable": widget.get("type") in spec_lib.COMPARABLE_TYPES,
         }
         query = widget.get("query") or {}
         model_name = query.get("model")
@@ -122,6 +137,16 @@ class AIDashboardRender(models.AbstractModel):
         try:
             domain = self._effective_domain(query, spec, filter_values)
             rows = self._read(model, query, domain)
+            # The comparison is read from the *effective* domain, which is the
+            # bug this rewrite fixes: the old code looked at the widget's raw
+            # domain, so a dashboard whose period comes from a filter - which
+            # is every dashboard the schema example produces - silently never
+            # showed a trend at all.
+            previous = None
+            if mode != "none":
+                shifted = self._shift_window(domain, mode)
+                if shifted is not None:
+                    previous = self._read(model, query, shifted)
         except (AccessError, UserError) as exc:
             return dict(base, error=str(exc))
         except Exception as exc:  # noqa: BLE001 - one bad tile, not a dead page
@@ -130,7 +155,15 @@ class AIDashboardRender(models.AbstractModel):
             return dict(base, error=_("This tile could not be calculated (%s).")
                         % type(exc).__name__)
 
-        shaped = self._shape(widget, query, rows)
+        shaped = self._shape(widget, query, rows, previous)
+        if mode != "none":
+            shaped["compare_mode"] = mode
+            if previous is None:
+                # Say why rather than quietly showing nothing: without a date
+                # window there is no "previous" to compute.
+                shaped["compare_note"] = _(
+                    "No date range on this tile, so there is nothing to "
+                    "compare it against.")
         if not shaped.get("series") and shaped.get("value") is None:
             shaped["empty"] = _("No %s records match this tile's filters — for "
                                 "you. Someone with wider access may see more.") \
@@ -152,7 +185,7 @@ class AIDashboardRender(models.AbstractModel):
         return {"rows": rows[:limit], "has_more": has_more,
                 "group_by": group_by, "aggregates": aggregates}
 
-    def _shape(self, widget, query, read):
+    def _shape(self, widget, query, read, previous=None):
         """Turn ORM tuples into something Chart.js can draw."""
         rows, group_by = read["rows"], read["group_by"]
         aggregates = read["aggregates"]
@@ -164,8 +197,10 @@ class AIDashboardRender(models.AbstractModel):
                 # No grouping, so one row whose only entry is the aggregate.
                 value = self._number(rows[0][0]) if rows[0] else 0
             out["value"] = value
-            if widget.get("compare"):
-                out["compare"] = self._compare(widget, query)
+            if previous is not None:
+                prior = previous["rows"]
+                out["compare"] = (self._number(prior[0][0])
+                                  if prior and prior[0] else 0)
             return out
 
         series = []
@@ -179,6 +214,17 @@ class AIDashboardRender(models.AbstractModel):
                 "raw": self._raw(row[0]) if group_by else None,
             })
         out["series"] = series
+        if previous is not None and group_by:
+            # Aligned by position rather than by label: grouping by month puts
+            # "2025-08" against "2026-08", which share no label but are the
+            # points a reader wants side by side. Labelled as the comparison in
+            # the legend so nobody mistakes one for the other.
+            prior = previous["rows"]
+            out["compare_series"] = [
+                self._number(row[len(group_by)])
+                if len(row) > len(group_by) else 0
+                for row in prior
+            ]
         if widget.get("type") == "table":
             out["columns"] = group_by + aggregates
             out["rows"] = [
@@ -188,31 +234,56 @@ class AIDashboardRender(models.AbstractModel):
             ]
         return out
 
-    def _compare(self, widget, query):
-        """The previous period's figure, for a KPI's trend arrow."""
-        target = (widget.get("compare") or {}).get("to")
-        shift = relativedelta(years=1) if target == "previous_year" else None
-        window = self._domain_window(query.get("domain") or [])
+    def _shift_window(self, domain, mode):
+        """The same domain, moved back one period or one year.
+
+        Returns None when there is no date window to shift - a real answer
+        rather than a failure. "Compared to what?" has no answer for a tile
+        with no date range, and saying so beats showing a silent zero.
+
+        Only the *trailing* plain conditions are rewritten, and only when the
+        whole window sits inside them. A domain may contain prefix operators
+        ('&', '|', '!') that take a fixed number of operands, so removing a
+        condition from the middle of one would leave an operator short and
+        produce a domain the ORM cannot parse. Everything `_effective_domain`
+        appends lands at the end, unprefixed, which is exactly the case this
+        handles; anything more tangled declines to compare rather than guess.
+        """
+        window = self._domain_window(domain)
         if not window:
             return None
         field, start, end = window
-        if shift is None:
+
+        # The run of plain conditions at the end, which carry no operator.
+        tail_from = len(domain)
+        while tail_from and isinstance(domain[tail_from - 1], (list, tuple)) \
+                and len(domain[tail_from - 1]) == 3:
+            tail_from -= 1
+        head, tail = list(domain[:tail_from]), list(domain[tail_from:])
+
+        bounds = [t for t in tail
+                  if t[0] == field and t[1] in (">=", ">", "<", "<=")]
+        if len(bounds) != 2:
+            # Exactly two, because the rewrite removes what it finds and adds
+            # back two: that keeps the number of leaf conditions identical, so
+            # any prefix operator earlier in the domain still has the operand
+            # count it expects. Three bounds on one field would change that
+            # count and could leave an operator short, so decline instead.
+            return None
+
+        if mode == "previous_year":
+            start -= relativedelta(years=1)
+            end -= relativedelta(years=1)
+        else:
             span = end - start
             start, end = start - span, start
-        else:
-            start, end = start - shift, end - shift
-        domain = [t for t in (query.get("domain") or [])
-                  if not (isinstance(t, list) and t[0] == field)]
-        domain += [[field, ">=", fields.Date.to_string(start)],
-                   [field, "<", fields.Date.to_string(end)]]
-        try:
-            rows = self.env[query["model"]].with_context(
-                **self._company_context())._read_group(
-                domain, groupby=[], aggregates=query.get("measures")
-                or ["__count"])
-        except Exception:  # noqa: BLE001 - a missing comparison is cosmetic
-            return None
-        return self._number(rows[0][0]) if rows and rows[0] else 0
+
+        kept = [t for t in tail
+                if not (t[0] == field and t[1] in (">=", ">", "<", "<="))]
+        return head + kept + [
+            [field, ">=", fields.Date.to_string(start)],
+            [field, "<", fields.Date.to_string(end)],
+        ]
 
     # -------------------------------------------------------------- filters
     def _effective_domain(self, query, spec, filter_values):

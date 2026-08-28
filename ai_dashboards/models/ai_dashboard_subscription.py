@@ -158,6 +158,9 @@ class AIDashboardSubscription(models.Model):
         # the figures they would have seen, not the owner's.
         rendered = self.env["ai.dashboard.render"].with_user(user).render(
             self.dashboard_id.id)
+        # No filter overrides: the email shows the dashboard as its owner
+        # defined it, including any comparison, so the numbers in the inbox
+        # match the numbers on the screen it links to.
 
         body = self.env["ir.qweb"]._render(
             "ai_dashboards.dashboard_email", {

@@ -21,6 +21,17 @@ const PALETTE = [
 ];
 
 const CHART_TYPES = ["bar", "line", "pie", "donut"];
+// A comparison is a question you ask of a whole dashboard — "how does all of
+// this look against last year?" — so it lives beside the period rather than
+// per tile. A tile can still opt out in its spec.
+const COMPARE_MODES = [
+    ["none", "No comparison"],
+    ["previous_period", "vs previous period"],
+    ["previous_year", "vs last year"],
+];
+// Drawn in the same hue as the series it sits beside, at reduced strength, so
+// which is "now" and which is "then" reads without consulting the legend.
+const COMPARE_ALPHA = "44";
 const FORMAT_KINDS = ["plain", "integer", "monetary", "percent"];
 // Named for a person, not for the schema: nobody reading a dashboard thinks
 // "monetary".
@@ -118,6 +129,19 @@ export class AIDashboardCanvas extends Component {
         await this.load();
     }
 
+    get compareModes() {
+        return COMPARE_MODES;
+    }
+
+    get compareMode() {
+        return (this.state.data && this.state.data.compare) || "none";
+    }
+
+    /** Applies to every tile that can carry one, in one action. */
+    async setCompare(mode) {
+        await this.setFilter("__compare", mode);
+    }
+
     // ------------------------------------------------------------- drawing
     destroyCharts() {
         for (const chart of this.charts.values()) {
@@ -151,11 +175,28 @@ export class AIDashboardCanvas extends Component {
         const isCircular = widget.type === "pie" || widget.type === "donut";
         const base = widget.color != null ? widget.color : 0;
 
+        const datasets = [];
+        if (widget.compare_series) {
+            // Behind the current series, not in front of it: the point of
+            // comparison is to read *this* period against a backdrop.
+            datasets.push({
+                label: this.compareLabel,
+                data: widget.compare_series,
+                backgroundColor: PALETTE[base % PALETTE.length] + COMPARE_ALPHA,
+                borderColor: PALETTE[base % PALETTE.length] + COMPARE_ALPHA,
+                borderWidth: widget.type === "line" ? 2 : 0,
+                borderDash: widget.type === "line" ? [4, 4] : undefined,
+                fill: false,
+                tension: 0.25,
+            });
+        }
+
         return {
             type: widget.type === "donut" ? "doughnut" : widget.type,
             data: {
                 labels,
                 datasets: [
+                    ...datasets,
                     {
                         label: widget.title,
                         data: values,
@@ -173,7 +214,10 @@ export class AIDashboardCanvas extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: isCircular, position: "right" },
+                    legend: {
+                        display: isCircular || Boolean(widget.compare_series),
+                        position: isCircular ? "right" : "top",
+                    },
                     tooltip: {
                         callbacks: {
                             label: (ctx) =>
@@ -232,22 +276,42 @@ export class AIDashboardCanvas extends Component {
         return fmt.suffix ? `${number}${fmt.suffix}` : number;
     }
 
-    /** The trend against the comparison period, as a signed percentage. */
+    get compareLabel() {
+        const found = COMPARE_MODES.find((m) => m[0] === this.compareMode);
+        return found ? _t(found[1]) : _t("comparison");
+    }
+
+    /**
+     * The trend against the comparison period.
+     *
+     * A percentage against a previous value of zero is infinity, which is
+     * true and useless — so that case reports the movement in absolute terms
+     * instead of hiding the tile's only interesting fact behind a dash.
+     */
     delta(widget) {
-        if (widget.compare == null || !widget.compare) {
+        if (widget.compare == null) {
             return null;
         }
         const previous = widget.compare;
+        const current = widget.value || 0;
         if (!previous) {
-            return null;
+            if (!current) {
+                return null;
+            }
+            return {
+                value: this.format(current, widget),
+                up: current > 0,
+                absolute: true,
+            };
         }
-        const change = ((widget.value - previous) / Math.abs(previous)) * 100;
+        const change = ((current - previous) / Math.abs(previous)) * 100;
         if (!isFinite(change)) {
             return null;
         }
         return {
             value: `${change > 0 ? "+" : ""}${change.toFixed(1)}%`,
             up: change >= 0,
+            previous: this.format(previous, widget),
         };
     }
 

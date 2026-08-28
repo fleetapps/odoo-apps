@@ -35,6 +35,12 @@
                         <div style="font-size: 24px; font-weight: 600;">
                             <t t-esc="fmt(w.get('value'), w, data['currency'])"/>
                         </div>
+                        <t t-if="w.get('compare') is not None">
+                            <t t-set="up" t-value="(w.get('value') or 0) >= w['compare']"/>
+                            <div t-att-style="'font-size: 12px; margin-top: 2px; color: ' + ('#1c7a5e' if up else '#a0362f')">
+                                <t t-esc="fmt(w['compare'], w, data['currency'])"/> previously
+                            </div>
+                        </t>
                     </td>
                 </tr>
             </table>

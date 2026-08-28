@@ -52,7 +52,8 @@ FILTER_TYPES = {"date_range", "selection", "many2one"}
 # The 12-column grid the renderer lays out against.
 GRID_COLUMNS = 12
 
-TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets"}
+TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets",
+                  "compare"}
 WIDGET_KEYS = {"id", "type", "title", "span", "query", "format", "compare",
                "drill", "color"}
 QUERY_KEYS = {"model", "domain", "group_by", "measures", "order", "limit"}
@@ -61,7 +62,15 @@ FORMAT_KEYS = {"kind", "decimals", "suffix"}
 COMPARE_KEYS = {"to"}
 
 FORMAT_KINDS = {"plain", "monetary", "percent", "integer", "duration"}
-COMPARE_TARGETS = {"previous_period", "previous_year"}
+# "none" is a real value, not an absence: a dashboard-wide comparison has to
+# be switchable off for one tile without deleting the key, and a widget whose
+# comparison is meaningless (a pie of two periods) should be able to say so.
+COMPARE_TARGETS = {"none", "previous_period", "previous_year"}
+
+# Only these can carry a comparison. A pie or donut of two periods is not a
+# chart anybody can read, and a table's rows do not align across windows, so
+# offering it there would produce something confidently wrong.
+COMPARABLE_TYPES = {"kpi", "bar", "line"}
 
 # Domain operators we accept. Anything outside this list is refused rather than
 # passed to the ORM - not because the ORM would break, but because an operator
@@ -440,17 +449,28 @@ def _validate_widget(widget, index, seen_ids, env=None, scope=None):
         clean["format"] = clean_fmt
 
     if "compare" in widget and widget["compare"] is not None:
-        cmp_ = _require_dict(widget["compare"],
-                             _("Widget '%s' compare") % widget_id)
-        _reject_unknown(cmp_, COMPARE_KEYS, _("Widget '%s' compare") % widget_id)
-        target = cmp_.get("to")
-        if target not in COMPARE_TARGETS:
+        cmp_ = _validate_compare(widget["compare"],
+                                 _("Widget '%s' compare") % widget_id)
+        if cmp_["to"] != "none" and widget_type not in COMPARABLE_TYPES:
             _fail(_(
-                "Widget '%(w)s': compare.to must be one of: %(ok)s.",
-                w=widget_id, ok=", ".join(sorted(COMPARE_TARGETS))))
-        clean["compare"] = {"to": target}
+                "Widget '%(w)s' is a %(t)s, which cannot show a comparison. "
+                "Only %(ok)s can — a pie of two periods is unreadable, and a "
+                "table's rows do not line up across windows.",
+                w=widget_id, t=widget_type,
+                ok=", ".join(sorted(COMPARABLE_TYPES))))
+        clean["compare"] = cmp_
 
     return clean
+
+
+def _validate_compare(payload, what):
+    cmp_ = _require_dict(payload, what)
+    _reject_unknown(cmp_, COMPARE_KEYS, what)
+    target = cmp_.get("to")
+    if target not in COMPARE_TARGETS:
+        _fail(_("%(what)s: `to` must be one of: %(ok)s.",
+                what=what, ok=", ".join(sorted(COMPARE_TARGETS))))
+    return {"to": target}
 
 
 # --------------------------------------------------------------------- filter
@@ -535,8 +555,12 @@ def validate(spec, env=None, scope=None):
 
     seen_keys = set()
     seen_ids = set()
+    compare = None
+    if spec.get("compare") is not None:
+        compare = _validate_compare(spec["compare"], _("The comparison"))
     return {
         "schema": SCHEMA_ID,
+        "compare": compare or {"to": "none"},
         "title": _text(spec.get("title"), _("The dashboard title")),
         "description": _text(spec.get("description"), _("The description"),
                              limit=500, required=False),

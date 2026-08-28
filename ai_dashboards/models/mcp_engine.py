@@ -82,7 +82,19 @@ class MCPEngine(models.AbstractModel):
             "periods": sorted(spec_lib.PERIODS),
             "filter_types": sorted(spec_lib.FILTER_TYPES),
             "format_kinds": sorted(spec_lib.FORMAT_KINDS),
-            "compare_targets": sorted(spec_lib.COMPARE_TARGETS),
+            "compare": {
+                "targets": sorted(spec_lib.COMPARE_TARGETS),
+                "comparable_types": sorted(spec_lib.COMPARABLE_TYPES),
+                "note": _(
+                    "Set `compare` at the top level to give the whole "
+                    "dashboard a comparison — the person reading it can change "
+                    "or switch it off without editing anything. A widget's own "
+                    "`compare` overrides that for one tile, including "
+                    "\"none\" to opt out. Only %(ok)s can show one, and only "
+                    "when the tile has a date range: a pie of two periods is "
+                    "unreadable and a table's rows do not line up.",
+                    ok=", ".join(sorted(spec_lib.COMPARABLE_TYPES))),
+            },
             "limits": {
                 "max_widgets": spec_lib.MAX_WIDGETS,
                 "max_domain_terms": spec_lib.MAX_DOMAIN_TERMS,
@@ -96,6 +108,9 @@ class MCPEngine(models.AbstractModel):
                   "refused."),
                 _("A measure must be \"__count\" or \"field:aggregate\" over a "
                   "numeric field."),
+                _("Prefer a top-level `compare` over setting it per widget: "
+                  "one dashboard-wide comparison is what a person means when "
+                  "they ask to see something against last year."),
                 _("You can only build over models this connection may already "
                   "read. Call list_models to see them."),
             ],
@@ -107,6 +122,7 @@ class MCPEngine(models.AbstractModel):
             "schema": spec_lib.SCHEMA_ID,
             "title": "Sales overview",
             "description": "Order intake and top customers for the period.",
+            "compare": {"to": "previous_year"},
             "filters": [{"key": "period", "type": "date_range",
                          "label": "Period", "default": "this_year"}],
             "widgets": [
@@ -115,8 +131,7 @@ class MCPEngine(models.AbstractModel):
                  "query": {"model": "sale.order",
                            "domain": [["state", "in", ["sale", "done"]]],
                            "measures": ["amount_total:sum"]},
-                 "format": {"kind": "monetary"},
-                 "compare": {"to": "previous_year"}},
+                 "format": {"kind": "monetary"}},
                 {"id": "count", "type": "kpi", "title": "Orders", "span": 3,
                  "query": {"model": "sale.order",
                            "domain": [["state", "in", ["sale", "done"]]],

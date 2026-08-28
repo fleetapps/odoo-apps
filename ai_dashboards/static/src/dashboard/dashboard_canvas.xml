@@ -34,6 +34,18 @@
                         </option>
                     </select>
                 </div>
+                <div class="o_ai_dash_filter">
+                    <label>Compare</label>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.setCompare(ev.target.value)">
+                        <option t-foreach="compareModes" t-as="mode" t-key="mode[0]"
+                                t-att-value="mode[0]"
+                                t-att-selected="compareMode === mode[0] ? 'selected' : undefined">
+                            <t t-esc="mode[1]"/>
+                        </option>
+                    </select>
+                </div>
+
                 <div class="o_ai_dash_took text-muted">
                     calculated in <t t-esc="state.data.took_ms"/>ms, as you
                 </div>
@@ -99,7 +111,12 @@
                                  t-att-class="delta(widget).up ? 'text-success' : 'text-danger'">
                                 <i t-att-class="'fa me-1 ' + (delta(widget).up ? 'fa-arrow-up' : 'fa-arrow-down')"/>
                                 <t t-esc="delta(widget).value"/>
-                                <span class="text-muted ms-1">vs previous</span>
+                                <span t-if="delta(widget).absolute" class="text-muted ms-1">
+                                    — nothing in the comparison period
+                                </span>
+                                <span t-else="" class="text-muted ms-1">
+                                    <t t-esc="compareLabel"/> (<t t-esc="delta(widget).previous"/>)
+                                </span>
                             </div>
                         </div>
                     </t>
@@ -134,6 +151,10 @@
                             <canvas t-att-data-widget="widget.id"/>
                         </div>
                     </t>
+
+                    <div t-if="widget.compare_note" class="o_ai_dash_more">
+                        <t t-esc="widget.compare_note"/>
+                    </div>
 
                     <div t-if="widget.has_more" class="o_ai_dash_more">
                         Showing the top rows only — there are more.
