@@ -60,9 +60,7 @@ class AIDashboardRender(models.AbstractModel):
                 (offsets or {}).get(widget.get("id")) or {}))
 
         elapsed = int((time.time() - started) * 1000)
-        # sudo for the timing only: it is telemetry about the dashboard, not
-        # about the person, and a reader with no write access still generates it.
-        dashboard.sudo().last_render_ms = elapsed
+        self._record_timing(dashboard, elapsed)
 
         return {
             "id": dashboard.id,
@@ -77,6 +75,35 @@ class AIDashboardRender(models.AbstractModel):
             "took_ms": elapsed,
             "currency": self._currency(),
         }
+
+    def _record_timing(self, dashboard, elapsed):
+        """Persist how long this took — but rarely.
+
+        Writing on every render turned opening a dashboard into a write
+        transaction for every viewer, and two people opening the same one at
+        once produced
+
+            ERROR: could not serialize access due to concurrent update
+
+        on `last_render_ms`. Odoo retries and the render still succeeds, so it
+        looks like noise rather than a fault — but it is a needless write
+        amplified by exactly the thing the product encourages, which is several
+        people looking at one shared dashboard.
+
+        The stored value only feeds an "is this slow" badge, so it needs to be
+        roughly right, not current. Written only when it moves enough to change
+        that answer; in steady state that is almost never.
+        """
+        previous = dashboard.last_render_ms or 0
+        threshold = int(self.env["ir.config_parameter"].sudo().get_param(
+            "ai_dashboards.slow_ms", "4000"))
+        crossed = (previous > threshold) != (elapsed > threshold)
+        moved = abs(elapsed - previous) > max(250, previous * 0.5)
+        if not previous or crossed or moved:
+            # sudo for the timing only: it is telemetry about the dashboard,
+            # not about the person, and a reader with no write access still
+            # generates it.
+            dashboard.sudo().last_render_ms = elapsed
 
     @api.model
     def sample(self, spec, limit=3):
@@ -235,9 +262,21 @@ class AIDashboardRender(models.AbstractModel):
         aggregates = ["__count" if m == "__count" else m for m in measures]
         limit = min(int(query.get("limit") or WIDGET_ROW_CAP), WIDGET_ROW_CAP)
 
-        rows = model.with_context(**self._company_context())._read_group(
-            domain, groupby=group_by, aggregates=aggregates,
-            order=query.get("order"), limit=limit + 1)
+        context = self._company_context()
+        try:
+            rows = model.with_context(**context)._read_group(
+                domain, groupby=group_by, aggregates=aggregates,
+                order=query.get("order"), limit=limit + 1)
+        except ValueError:
+            # An order term the ORM will not resolve should degrade, not kill
+            # the tile. Specs saved before the validator learned to check this
+            # carry `"amount_total desc"` — a bare field, which _read_group
+            # refuses — and a dashboard somebody already relies on should keep
+            # drawing while they fix it. The pivot has always done this; the
+            # main read path had not.
+            rows = model.with_context(**context)._read_group(
+                domain, groupby=group_by, aggregates=aggregates,
+                limit=limit + 1)
         # Same truncation discipline the MCP engine uses: never hand back a
         # full page that reads as a complete answer.
         has_more = len(rows) > limit
@@ -550,6 +589,44 @@ class AIDashboardRender(models.AbstractModel):
                            if ":" in group_by[0] else None)
             domain += self._segment_domain(field, granularity, raw_value)
 
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("%(widget)s — %(dashboard)s",
+                      widget=widget["title"], dashboard=dashboard.name),
+            "res_model": query["model"],
+            "view_mode": "list,form",
+            "domain": domain,
+            "context": {"create": False},
+            "target": "current",
+        }
+
+    @api.model
+    def drillCell(self, dashboard_id, widget_id, row_value=None,
+                  col_value=None, filter_values=None):
+        """Open the records behind one pivot cell.
+
+        Both coordinates, so the list is exactly the intersection the reader
+        clicked — not the whole row, which is what a single-axis drill would
+        give and would quietly answer a different question.
+        """
+        dashboard = self.env["ai.dashboard"].browse(int(dashboard_id))
+        dashboard.check_access("read")
+        spec = dashboard.spec()
+        widget = next((w for w in spec.get("widgets", [])
+                       if w.get("id") == widget_id), None)
+        if not widget or widget.get("type") != "pivot":
+            raise UserError(_("That tile is no longer a pivot."))
+        if not widget.get("drill", True):
+            raise UserError(_("This tile does not open its records."))
+
+        query = widget["query"]
+        domain = self._effective_domain(query, spec, filter_values or {})
+        for spec_name, value in zip(query.get("group_by") or [],
+                                    (row_value, col_value)):
+            field = spec_lib._field_root(spec_name)
+            granularity = (spec_name.split(":", 1)[1]
+                           if ":" in spec_name else None)
+            domain += self._segment_domain(field, granularity, value)
         return {
             "type": "ir.actions.act_window",
             "name": _("%(widget)s — %(dashboard)s",

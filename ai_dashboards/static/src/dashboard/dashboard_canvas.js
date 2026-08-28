@@ -398,6 +398,30 @@ export class AIDashboardCanvas extends Component {
         }
     }
 
+    /**
+     * Open the records behind one pivot cell.
+     *
+     * The most specific figure on any dashboard — one row value and one column
+     * value — and until now the only one you could not get behind.
+     */
+    async drillCell(widget, row, col) {
+        try {
+            const act = await this.orm.call("ai.dashboard.render", "drillCell", [
+                this.dashboardId,
+                widget.id,
+                row.raw === undefined ? null : row.raw,
+                col.raw === undefined ? null : col.raw,
+                this.state.filters,
+            ]);
+            await this.action.doAction(act);
+        } catch {
+            this.notification.add(
+                _t("The records behind this cell could not be opened."),
+                { type: "warning" }
+            );
+        }
+    }
+
     // -------------------------------------------------------------- editing
     /** Write the spec back through the form's own record, so the usual
      *  dirty-state, discard and save machinery keeps working. */
@@ -533,6 +557,16 @@ export class AIDashboardCanvas extends Component {
         return FORMAT_KINDS;
     }
 
+    /** The colour this tile is currently drawn in. */
+    paletteFor(widget) {
+        return PALETTE[(widget.color || 0) % PALETTE.length];
+    }
+
+    async nextColor(widget) {
+        await this.setColor(widget.id,
+            ((widget.color || 0) + 1) % PALETTE.length);
+    }
+
     /**
      * Everything you can do to a tile that is not moving or resizing it.
      *
@@ -573,11 +607,6 @@ export class AIDashboardCanvas extends Component {
                 ? _t("Stop clicks opening records")
                 : _t("Let clicks open the records"),
             onSelected: () => this.toggleDrill(widget.id),
-        });
-        items.push({
-            label: _t("Next colour"),
-            onSelected: () =>
-                this.setColor(widget.id, ((widget.color || 0) + 1) % PALETTE.length),
         });
         items.push({
             label: _t("Remove this tile"),

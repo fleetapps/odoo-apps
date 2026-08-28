@@ -83,6 +83,15 @@
                                     t-on-click="() => this.resize(widget.id, 3)">
                                 <i class="fa fa-expand"/>
                             </button>
+                            <!-- Colour earns a control of its own rather than
+                                 a menu line. "Next colour" buried in a menu is
+                                 not something anyone finds, and a swatch that
+                                 shows the current colour explains itself
+                                 without a label. -->
+                            <button class="o_ai_dash_swatch"
+                                    t-att-style="'background:' + paletteFor(widget)"
+                                    title="Change this tile's colour"
+                                    t-on-click="() => this.nextColor(widget)"/>
                             <!-- Everything you do once, rather than while
                                  arranging, lives behind this. -->
                             <Dropdown items="tileMenu(widget)">
@@ -145,8 +154,10 @@
                                                 <t t-esc="row.label"/>
                                             </th>
                                             <td t-foreach="widget.pivot.cols.values" t-as="col"
-                                                t-key="col.key" class="text-end"
-                                                t-att-class="cell(widget.pivot, row.key, col.key) === undefined ? 'text-end opacity-25' : 'text-end'">
+                                                t-key="col.key"
+                                                t-att-class="(cell(widget.pivot, row.key, col.key) === undefined ? 'text-end opacity-25' : 'text-end') + (widget.drill ? ' o_ai_dash_clickable' : '')"
+                                                t-att-title="widget.drill ? 'Open these records' : undefined"
+                                                t-on-click="() => widget.drill ? this.drillCell(widget, row, col) : null">
                                                 <t t-if="cell(widget.pivot, row.key, col.key) === undefined">·</t>
                                                 <t t-else="" t-esc="format(cell(widget.pivot, row.key, col.key), widget)"/>
                                             </td>
@@ -221,7 +232,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr t-foreach="widget.rows" t-as="row" t-key="row_index">
+                                    <tr t-foreach="widget.rows" t-as="row" t-key="row_index"
+                                        t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
+                                        t-att-title="widget.drill ? 'Open these records' : undefined"
+                                        t-on-click="() => widget.drill ? this.drill(widget, widget.series[row_index] and widget.series[row_index].raw) : null">
                                         <td t-foreach="row" t-as="cell" t-key="cell_index"
                                             t-esc="cell"/>
                                     </tr>

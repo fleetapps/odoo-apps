@@ -90,6 +90,11 @@ UNSUPPORTED_PROTOCOL_VERSION = -32022
 # this code just gives the body something honest to carry.
 INSUFFICIENT_SCOPE = -32003
 
+# How stale `last_used` may get before it is rewritten. The field answers
+# "is this connection still in use", so a minute is ample, and stamping every
+# request makes concurrent tool calls fight over one row.
+LAST_USED_SECONDS = 60
+
 # Methods whose Mcp-Name header mirrors a body value.
 NAME_HEADER_SOURCES = {
     "tools/call": "name",
@@ -241,7 +246,7 @@ class MCPController(http.Controller):
             key = env["mcp.api.key"].mcp_authenticate(token)
             if key:
                 self._become(key.user_id.id)
-                key.sudo().last_used = fields.Datetime.now()
+                self._touch(key)
                 return key.scope_id, {
                     "api_key_id": key.id, "transport": "apikey",
                     # API keys predate OAuth scopes; the governance scope is
@@ -255,13 +260,33 @@ class MCPController(http.Controller):
                 [("access_token_hash", "=", hash_secret(token))], limit=1)
             if tok and tok.is_access_valid(accepted_resources=accepted_resources()):
                 self._become(tok.user_id.id)
-                tok.sudo().last_used = fields.Datetime.now()
+                self._touch(tok)
                 scope = tok.scope_id or tok.user_id.mcp_effective_scope()
                 return scope, {
                     "oauth_token_id": tok.id, "transport": "oauth",
                     "granted_scopes": normalize_scopes(tok.scope),
                     "remote_addr": request.httprequest.remote_addr}
         return None
+
+    def _touch(self, credential):
+        """Stamp last_used, but not on literally every request.
+
+        An assistant answering one question makes several tool calls in quick
+        succession, and stamping each one turned every read into a write on the
+        same row — which under concurrency produces
+
+            ERROR: could not serialize access due to concurrent update
+
+        Odoo retries and the call still succeeds, so it reads as log noise
+        rather than a fault, but it is a self-inflicted write conflict on the
+        hottest row in the module. The field answers "is this connection still
+        in use", which minute-level accuracy satisfies completely.
+        """
+        now = fields.Datetime.now()
+        previous = credential.last_used
+        if previous and (now - previous).total_seconds() < LAST_USED_SECONDS:
+            return
+        credential.sudo().last_used = now
 
     def _become(self, uid):
         """Run the rest of the request as the principal, with all their companies

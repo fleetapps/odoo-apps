@@ -243,3 +243,51 @@ class TestSpecAgainstDatabase(TransactionCase):
 
     def test_describe_survives_an_empty_spec(self):
         self.assertTrue(spec_lib.describe({}, self.env))
+
+
+@tagged("post_install", "-at_install")
+class TestStoredFields(TransactionCase):
+    """A field that is computed on the fly has no column to group on.
+
+    Odoo raises "Cannot convert ... to SQL because it is not stored" at render
+    time, long after anything could connect it to the spec — so it has to be
+    caught here, where the message can name the field and the fix.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.scope = cls.env["mcp.scope"].create({
+            "name": "TEST stored", "read_only": True,
+            "line_ids": [(0, 0, {
+                "model_id": cls.env["ir.model"]._get("res.partner").id,
+                "can_read": True})],
+        })
+
+    def _unstored_numeric(self):
+        """Find a non-stored numeric field to test with, whatever exists."""
+        for name, field in self.env["res.partner"]._fields.items():
+            if field.type in ("integer", "float", "monetary") \
+                    and not field.store and not name.startswith("_"):
+                return name
+        return None
+
+    def test_a_non_stored_measure_is_refused(self):
+        name = self._unstored_numeric()
+        if not name:
+            self.skipTest("res.partner has no non-stored numeric field here")
+        spec = minimal()
+        spec["widgets"][0]["query"]["measures"] = ["%s:sum" % name]
+        with self.assertRaises(spec_lib.SpecError) as caught:
+            spec_lib.validate(spec, self.env, self.scope)
+        message = str(caught.exception)
+        self.assertIn(name, message)
+        self.assertIn("stored", message.lower())
+
+    def test_a_stored_measure_is_accepted(self):
+        spec = minimal()
+        spec["widgets"][0]["query"]["measures"] = ["credit_limit:sum"]
+        spec_lib.validate(spec, self.env, self.scope)   # must not raise
+
+    def test_count_is_always_allowed(self):
+        spec_lib.validate(minimal(), self.env, self.scope)

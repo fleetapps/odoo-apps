@@ -181,6 +181,21 @@
         }
     }
 
+    // A swatch showing the tile's current colour, clicked to cycle. Sits in
+    // the hover toolbar so it is found where every other tile control is.
+    .o_ai_dash_swatch {
+        width: 1rem;
+        height: 1rem;
+        flex: 0 0 auto;
+        border: 1px solid rgba(0, 0, 0, .15);
+        border-radius: 50%;
+        padding: 0;
+        margin: 0 .15rem;
+        cursor: pointer;
+
+        &:hover { outline: 2px solid var(--gray-400, #ced4da); outline-offset: 1px; }
+    }
+
     .o_ai_dash_pager {
         display: flex;
         flex-wrap: wrap;

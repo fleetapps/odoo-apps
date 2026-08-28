@@ -376,6 +376,23 @@ def _validate_against_database(query, widget_id, env, scope):
                 "'%(model)s'. Call get_schema to see the real field names.",
                 w=widget_id, role=role, f=root, model=model_name))
 
+    # Grouping and aggregating both become SQL, so the field has to be a real
+    # column. A computed field that is not stored has no column to group on —
+    # Odoo raises "Cannot convert ... to SQL because it is not stored" at
+    # render time, long after anything could connect it to the spec. Domains
+    # are left alone: a non-stored field can still be searchable.
+    for spec_name, role in (
+            [(g, _("group_by")) for g in query["group_by"]]
+            + [(m, _("measure")) for m in query["measures"] if m != "__count"]):
+        root = _field_root(spec_name)
+        if not fields_meta.get(root, {}).get("store"):
+            _fail(_(
+                "Widget '%(w)s': '%(f)s' is calculated on the fly and is not "
+                "held in the database, so it cannot be used as a %(role)s. "
+                "Pick a stored field — get_schema shows which — or count "
+                "records with __count.",
+                w=widget_id, f=root, role=role))
+
     for measure in query["measures"]:
         if measure == "__count":
             continue
