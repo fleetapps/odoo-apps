@@ -177,3 +177,46 @@ class TestDashboardTools(TransactionCase):
         before = self.env["mcp.audit.log"].search_count([])
         self._call("get_dashboard_schema", {})
         self.assertEqual(self.env["mcp.audit.log"].search_count([]), before + 1)
+
+    # ------------------------------------------------------ preview samples
+    def test_the_preview_sample_reports_every_widget_type(self):
+        """A summary that only looked for `series` and `value` told the model
+        its pivot was empty — and the likeliest response to that is "fixing" a
+        dashboard that was working."""
+        spec = minimal()
+        spec["widgets"] = [
+            {"id": "k", "type": "kpi", "title": "Count", "span": 3,
+             "query": {"model": "res.partner", "measures": ["__count"]}},
+            {"id": "b", "type": "bar", "title": "By country", "span": 6,
+             "query": {"model": "res.partner", "group_by": ["country_id"],
+                       "measures": ["__count"]}},
+            {"id": "t", "type": "table", "title": "Rows", "span": 12,
+             "query": {"model": "res.partner", "group_by": ["is_company"],
+                       "measures": ["__count"]}},
+            {"id": "p", "type": "pivot", "title": "Grid", "span": 12,
+             "query": {"model": "res.partner",
+                       "group_by": ["country_id", "is_company"],
+                       "measures": ["__count"]}},
+        ]
+        sample = self.env["ai.dashboard.render"].sample(spec, limit=4)
+        by_id = {row["type"]: row for row in sample}
+
+        self.assertIn("value", by_id["kpi"])
+        self.assertIn("series", by_id["bar"])
+        self.assertIn("sample_rows", by_id["table"])
+        # The pivot must describe itself rather than looking empty.
+        pivot = by_id["pivot"]
+        self.assertIn("rows_shown", pivot)
+        self.assertIn("grand_total", pivot)
+        self.assertNotIn("series", pivot,
+                         "a pivot reporting an empty series reads as broken")
+
+    def test_a_sample_distinguishes_empty_from_broken(self):
+        spec = minimal()
+        spec["widgets"] = [{
+            "id": "e", "type": "kpi", "title": "None", "span": 3,
+            "query": {"model": "res.partner", "measures": ["__count"],
+                      "domain": [["name", "=", "nothing at all here"]]},
+        }]
+        row = self.env["ai.dashboard.render"].sample(spec)[0]
+        self.assertNotIn("error", row, "an empty result is not an error")

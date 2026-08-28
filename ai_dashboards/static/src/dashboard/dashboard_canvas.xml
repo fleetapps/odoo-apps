@@ -34,7 +34,7 @@
                         </option>
                     </select>
                 </div>
-                <div class="o_ai_dash_filter">
+                <div t-if="anyComparable" class="o_ai_dash_filter">
                     <label>Compare</label>
                     <select class="form-select form-select-sm"
                             t-on-change="(ev) => this.setCompare(ev.target.value)">
@@ -252,7 +252,8 @@
             <p class="o_ai_dash_foot text-muted">
                 <i class="fa fa-lock me-1"/>
                 Every figure here was calculated just now, using your own Odoo
-                permissions. Click a bar, slice or number to see the records behind it.
+                permissions.<t t-if="anyDrillable"> Click a bar, slice or number
+                to see the records behind it.</t>
             </p>
         </t>
     </div>

@@ -181,6 +181,19 @@ export class AIDashboardCanvas extends Component {
         return pivot.cells[`${rowKey}|${colKey}`];
     }
 
+    /** Whether any tile on this dashboard can carry a comparison at all. */
+    get anyComparable() {
+        const widgets = (this.state.data && this.state.data.widgets) || [];
+        return widgets.some((w) => w.comparable);
+    }
+
+    /** Whether any tile answers a click, so the footer does not promise one
+     *  that nothing delivers. */
+    get anyDrillable() {
+        const widgets = (this.state.data && this.state.data.widgets) || [];
+        return widgets.some((w) => w.drill && !w.error);
+    }
+
     get compareModes() {
         return COMPARE_MODES;
     }

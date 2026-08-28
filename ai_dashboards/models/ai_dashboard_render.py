@@ -83,18 +83,49 @@ class AIDashboardRender(models.AbstractModel):
         """Render a spec that has not been saved yet.
 
         Used by ``preview_dashboard`` so an assistant can check its own numbers
-        look sane before it asks a person to come and look at them.
+        look sane before it asks a person to come and look at them — which
+        only works if every tile type reports something. A pivot has neither
+        `series` nor `value`, so a summary that only looked for those told the
+        model its pivot was empty, and the likeliest response to that is
+        "fixing" a dashboard that was working.
         """
         rows = []
         for widget in spec.get("widgets", [])[:limit]:
             rendered = self._render_widget(widget, spec, {}, "none")
-            rows.append({
+            row = {
                 "title": rendered["title"],
                 "type": rendered["type"],
-                "error": rendered.get("error"),
-                "series": rendered.get("series", [])[:5],
-                "value": rendered.get("value"),
-            })
+            }
+            if rendered.get("error"):
+                row["error"] = rendered["error"]
+                rows.append(row)
+                continue
+            if rendered.get("empty"):
+                # Worked, found nothing. A different thing from broken, and
+                # the model has to be able to tell them apart.
+                row["empty"] = rendered["empty"]
+
+            kind = rendered["type"]
+            if kind == "kpi":
+                row["value"] = rendered.get("value")
+                if rendered.get("compare") is not None:
+                    row["compare"] = rendered["compare"]
+            elif kind == "pivot":
+                grid = rendered.get("pivot") or {}
+                row["rows_shown"] = len(grid.get("rows", {}).get("values", []))
+                row["cols_shown"] = len(grid.get("cols", {}).get("values", []))
+                row["rows_total"] = grid.get("rows", {}).get("total")
+                row["cols_total"] = grid.get("cols", {}).get("total")
+                row["grand_total"] = grid.get("grand_total")
+                row["sample_rows"] = [
+                    v["label"] for v in
+                    grid.get("rows", {}).get("values", [])[:5]]
+            elif kind == "table":
+                row["columns"] = rendered.get("columns", [])
+                row["sample_rows"] = (rendered.get("rows") or [])[:5]
+            else:
+                row["series"] = (rendered.get("series") or [])[:5]
+            rows.append(row)
         return rows
 
     # ------------------------------------------------------------- internals
