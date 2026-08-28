@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards",
-    "version": "19.0.1.3.0",
+    "version": "19.0.2.0.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
@@ -51,6 +51,8 @@ What you get
 * **Share with people or teams.** Sharing grants sight, never edit.
 * **Compare against last year** — or the previous period — across the whole
   dashboard at once, switchable by whoever is reading it.
+* **Pivot tables** over two dimensions, with both axes paged independently, so
+  customers-by-month works on a real customer list rather than only a demo one.
 * **It explains itself.** A plain-English account of exactly which data each
   dashboard reads and whose permissions it runs under.
 

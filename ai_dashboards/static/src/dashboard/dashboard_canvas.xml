@@ -121,6 +121,93 @@
                         </div>
                     </t>
 
+                    <t t-elif="widget.type === 'pivot'">
+                        <div t-if="widget.empty" class="o_ai_dash_msg">
+                            <t t-esc="widget.empty"/>
+                        </div>
+                        <t t-else="">
+                            <div class="o_ai_dash_tablewrap o_ai_dash_pivot">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="o_ai_dash_pivot_corner"/>
+                                            <th t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key" class="text-end">
+                                                <t t-esc="col.label"/>
+                                            </th>
+                                            <th class="text-end o_ai_dash_pivot_total">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="widget.pivot.rows.values" t-as="row"
+                                            t-key="row.key">
+                                            <th class="o_ai_dash_pivot_rowhead">
+                                                <t t-esc="row.label"/>
+                                            </th>
+                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key" class="text-end"
+                                                t-att-class="cell(widget.pivot, row.key, col.key) === undefined ? 'text-end opacity-25' : 'text-end'">
+                                                <t t-if="cell(widget.pivot, row.key, col.key) === undefined">·</t>
+                                                <t t-else="" t-esc="format(cell(widget.pivot, row.key, col.key), widget)"/>
+                                            </td>
+                                            <td class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.row_totals[row.key] || 0, widget)"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th class="o_ai_dash_pivot_rowhead">Total</th>
+                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key" class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.col_totals[col.key] || 0, widget)"/>
+                                            </td>
+                                            <td class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.grand_total, widget)"/>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <!-- Both axes page independently: "the next fifty
+                                 customers" and "the next twelve months" are
+                                 different questions. -->
+                            <div class="o_ai_dash_pager">
+                                <div class="o_ai_dash_pager_axis">
+                                    <span class="text-muted">Rows —
+                                        <t t-esc="axisRange(widget.pivot.rows)"/>
+                                    </span>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.rows.has_previous"
+                                            t-on-click="() => this.pageAxis(widget.id, 'row', -1)">
+                                        <i class="fa fa-chevron-left"/> Previous
+                                    </button>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.rows.has_more"
+                                            t-on-click="() => this.pageAxis(widget.id, 'row', 1)">
+                                        Next <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                                <div class="o_ai_dash_pager_axis">
+                                    <span class="text-muted">Columns —
+                                        <t t-esc="axisRange(widget.pivot.cols)"/>
+                                    </span>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.cols.has_previous"
+                                            t-on-click="() => this.pageAxis(widget.id, 'col', -1)">
+                                        <i class="fa fa-chevron-left"/> Previous
+                                    </button>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.cols.has_more"
+                                            t-on-click="() => this.pageAxis(widget.id, 'col', 1)">
+                                        Next <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+
                     <t t-elif="widget.type === 'table'">
                         <div t-if="widget.empty" class="o_ai_dash_msg">
                             <t t-esc="widget.empty"/>

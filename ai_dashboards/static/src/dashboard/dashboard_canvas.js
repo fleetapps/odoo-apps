@@ -58,6 +58,11 @@ export class AIDashboardCanvas extends Component {
             error: null,
             data: null,
             filters: {},
+            // Per-pivot paging, keyed by widget id. Kept in view state rather
+            // than in the spec: which page you are looking at is not a
+            // property of the dashboard, and paging must never dirty the
+            // record or prompt anyone to save.
+            offsets: {},
             editing: null,   // widget id currently being renamed
         });
 
@@ -113,7 +118,7 @@ export class AIDashboardCanvas extends Component {
             this.state.data = await this.orm.call(
                 "ai.dashboard.render",
                 "render",
-                [this.dashboardId, this.state.filters]
+                [this.dashboardId, this.state.filters, this.state.offsets]
             );
         } catch (error) {
             this.state.error =
@@ -127,6 +132,53 @@ export class AIDashboardCanvas extends Component {
     async setFilter(key, value) {
         this.state.filters = { ...this.state.filters, [key]: value };
         await this.load();
+    }
+
+    /**
+     * Page one axis of one pivot.
+     *
+     * Both axes move independently, because "the next fifty customers" and
+     * "the next twelve months" are different questions and answering one
+     * should not reset the other.
+     */
+    async pageAxis(widgetId, axis, direction) {
+        const current = this.state.offsets[widgetId] || { row: 0, col: 0 };
+        const pivot = this.pivotOf(widgetId);
+        if (!pivot) {
+            return;
+        }
+        const cap = pivot[axis === "row" ? "rows" : "cols"].cap;
+        const next = Math.max(0, (current[axis] || 0) + direction * cap);
+        this.state.offsets = {
+            ...this.state.offsets,
+            [widgetId]: { ...current, [axis]: next },
+        };
+        await this.load();
+    }
+
+    pivotOf(widgetId) {
+        const widget = (this.state.data ? this.state.data.widgets : []).find(
+            (w) => w.id === widgetId
+        );
+        return widget && widget.pivot;
+    }
+
+    /** "Showing 51–100 of 2,143" — never a bare count that hides the rest. */
+    axisRange(axis) {
+        const from = axis.values.length ? axis.offset + 1 : 0;
+        const to = axis.offset + axis.values.length;
+        if (axis.total == null) {
+            return _t("Showing %(from)s–%(to)s", { from, to });
+        }
+        return _t("Showing %(from)s–%(to)s of %(total)s", {
+            from,
+            to,
+            total: axis.total.toLocaleString(),
+        });
+    }
+
+    cell(pivot, rowKey, colKey) {
+        return pivot.cells[`${rowKey}|${colKey}`];
     }
 
     get compareModes() {
@@ -455,6 +507,11 @@ export class AIDashboardCanvas extends Component {
         }
         if (widget.group_count === 1) {
             return [...CHART_TYPES, "table"];
+        }
+        if (widget.group_count === 2) {
+            // Exactly two groupings is the shape a pivot needs, so a table of
+            // that shape can become one and back without touching the query.
+            return ["table", "pivot"];
         }
         return ["table"];
     }

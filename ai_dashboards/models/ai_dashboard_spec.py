@@ -29,7 +29,7 @@ SCHEMA_ID = "ai-dashboards/1"
 # addition is a schema change plus a renderer branch plus a documentation
 # update, and a vocabulary that grows on request ends up with six ways to draw
 # a bar chart.
-WIDGET_TYPES = {"kpi", "bar", "line", "pie", "donut", "table"}
+WIDGET_TYPES = {"kpi", "bar", "line", "pie", "donut", "table", "pivot"}
 
 # Widgets that plot one grouping against one measure, so exactly one group_by
 # is meaningful. `table` and `kpi` are the exceptions, handled below.
@@ -51,6 +51,12 @@ FILTER_TYPES = {"date_range", "selection", "many2one"}
 
 # The 12-column grid the renderer lays out against.
 GRID_COLUMNS = 12
+
+# How many rows and columns a pivot shows at once, per axis. Grouping two real
+# dimensions routinely produces thousands of combinations - customers by
+# product is 2,000 x 500 - and a grid that large is not a table, it is a
+# denial-of-service on the reader and the database at once. Both axes page.
+PIVOT_AXIS_CAP = 50
 
 TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets",
                   "compare"}
@@ -267,14 +273,29 @@ def _validate_query(query, widget_id, env=None, scope=None):
     order = query.get("order")
     if order is not None:
         order = _text(order, _("Widget '%s' order") % widget_id, limit=200)
+        # An order term must be something _read_group can actually resolve:
+        # one of this query's own groupings, or one of its own aggregates in
+        # full "field:agg" form. A bare field name looks obviously right and
+        # is not — Odoo answers "Aggregate method is mandatory" at render
+        # time, long after anyone could connect it to the spec. Catching it
+        # here turns an opaque failure into a message the model can act on.
+        allowed = set(group_by) | set(measures)
         for chunk in order.split(","):
             parts = chunk.strip().split()
-            if not parts or parts[0].startswith("_"):
-                _fail(_("Widget '%s': order names an invalid field.") % widget_id)
+            if not parts:
+                _fail(_("Widget '%s': order is empty.") % widget_id)
             if len(parts) > 2 or (len(parts) == 2 and
                                   parts[1].lower() not in ("asc", "desc")):
-                _fail(_("Widget '%s': order must be \"field asc\" or "
-                        "\"field desc\".") % widget_id)
+                _fail(_("Widget '%s': order must be \"<term> asc\" or "
+                        "\"<term> desc\".") % widget_id)
+            term = parts[0]
+            if term not in allowed:
+                _fail(_(
+                    "Widget '%(w)s': cannot order by '%(term)s'. Order by one "
+                    "of this tile's own groupings or measures: %(ok)s. Note a "
+                    "measure needs its aggregate — \"amount_total:sum desc\", "
+                    "not \"amount_total desc\".",
+                    w=widget_id, term=term, ok=", ".join(sorted(allowed))))
 
     limit = query.get("limit")
     if limit is not None:
@@ -417,6 +438,18 @@ def _validate_widget(widget, index, seen_ids, env=None, scope=None):
     if widget_type == "table" and not group_count:
         _fail(_("Widget '%s' is a table, so it needs at least one group_by.")
               % widget_id)
+    if widget_type == "pivot":
+        if group_count != 2:
+            _fail(_(
+                "Widget '%(w)s' is a pivot, so it needs exactly two group_by: "
+                "the first becomes the rows, the second the columns. It has "
+                "%(n)s.", w=widget_id, n=group_count))
+        if len(clean["query"]["measures"]) != 1:
+            _fail(_(
+                "Widget '%(w)s' is a pivot, so it takes exactly one measure — "
+                "that is the number in each cell. It has %(n)s. Use a table if "
+                "you need several.", w=widget_id,
+                n=len(clean["query"]["measures"])))
 
     if "color" in widget:
         color = widget["color"]

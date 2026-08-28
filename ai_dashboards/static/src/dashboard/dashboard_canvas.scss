@@ -137,6 +137,67 @@
         td { font-variant-numeric: tabular-nums; }
     }
 
+    // -------------------------------------------------------------- pivot
+    .o_ai_dash_pivot {
+        max-height: 26rem;         // taller than a plain table: it has two axes
+
+        // The row header stays put while you scan right, and the column
+        // header while you scan down. Without both, a wide pivot is a grid of
+        // numbers with nothing to attach them to.
+        .o_ai_dash_pivot_rowhead {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background: var(--white, #fff);
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 16rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        // The corner cell sits at both intersections, so it needs to outrank
+        // each of them or one will scroll over it.
+        .o_ai_dash_pivot_corner {
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 3;
+            background: var(--white, #fff);
+        }
+
+        thead th { z-index: 2; }
+
+        .o_ai_dash_pivot_total {
+            font-weight: 600;
+            background: var(--gray-100, #f6f7f9);
+        }
+
+        tfoot td, tfoot th {
+            position: sticky;
+            bottom: 0;
+            background: var(--gray-100, #f6f7f9);
+            border-top: 2px solid var(--gray-300, #dee2e6);
+        }
+    }
+
+    .o_ai_dash_pager {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .25rem 1.5rem;
+        margin-top: .5rem;
+        font-size: .78rem;
+    }
+
+    .o_ai_dash_pager_axis {
+        display: flex;
+        align-items: center;
+        gap: .2rem;
+
+        .btn { padding: .1rem .35rem; font-size: .78rem; }
+        .btn:disabled { opacity: .3; }
+    }
+
     // ------------------------------------------------------------ messages
     .o_ai_dash_msg {
         display: flex;

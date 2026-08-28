@@ -71,6 +71,13 @@ class MCPEngine(models.AbstractModel):
                 "pie": _("Exactly one group_by. Best under about eight slices."),
                 "donut": _("As pie."),
                 "table": _("One or more group_by. Shows the rows."),
+                "pivot": _(
+                    "Exactly two group_by and exactly one measure. The first "
+                    "grouping becomes the rows, the second the columns, and "
+                    "the measure fills each cell. Both axes show %s at a time "
+                    "and the reader pages through the rest, so it is safe over "
+                    "high-cardinality fields like customers or products."
+                ) % spec_lib.PIVOT_AXIS_CAP,
             },
             "grid": {
                 "columns": spec_lib.GRID_COLUMNS,
@@ -108,6 +115,10 @@ class MCPEngine(models.AbstractModel):
                   "refused."),
                 _("A measure must be \"__count\" or \"field:aggregate\" over a "
                   "numeric field."),
+                _("An `order` term must be one of that tile's own groupings "
+                  "or one of its own measures in full — \"amount_total:sum "
+                  "desc\", never \"amount_total desc\". A bare field name "
+                  "looks right and is refused."),
                 _("Prefer a top-level `compare` over setting it per widget: "
                   "one dashboard-wide comparison is what a person means when "
                   "they ask to see something against last year."),
@@ -142,13 +153,21 @@ class MCPEngine(models.AbstractModel):
                            "domain": [["state", "in", ["sale", "done"]]],
                            "group_by": ["date_order:month"],
                            "measures": ["amount_total:sum"]}},
+                {"id": "grid", "type": "pivot",
+                 "title": "Customers by month", "span": 12,
+                 "query": {"model": "sale.order",
+                           "domain": [["state", "in", ["sale", "done"]]],
+                           "group_by": ["partner_id", "date_order:month"],
+                           "measures": ["amount_total:sum"],
+                           "order": "amount_total:sum desc"},
+                 "format": {"kind": "monetary"}},
                 {"id": "customers", "type": "bar", "title": "Top customers",
                  "span": 12,
                  "query": {"model": "sale.order",
                            "domain": [["state", "in", ["sale", "done"]]],
                            "group_by": ["partner_id"],
                            "measures": ["amount_total:sum"],
-                           "order": "amount_total desc", "limit": 10}},
+                           "order": "amount_total:sum desc", "limit": 10}},
             ],
         }
 

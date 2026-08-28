@@ -35,8 +35,12 @@ class AIDashboardRender(models.AbstractModel):
 
     # ------------------------------------------------------------ public API
     @api.model
-    def render(self, dashboard_id, filter_values=None):
-        """Everything the dashboard canvas needs, in one round trip."""
+    def render(self, dashboard_id, filter_values=None, offsets=None):
+        """Everything the dashboard canvas needs, in one round trip.
+
+        ``offsets`` carries per-widget paging, keyed by widget id — currently
+        only pivots use it, which page each axis independently.
+        """
         dashboard = self.env["ai.dashboard"].browse(int(dashboard_id))
         dashboard.check_access("read")
         spec = dashboard.spec()
@@ -51,8 +55,9 @@ class AIDashboardRender(models.AbstractModel):
 
         widgets = []
         for widget in spec.get("widgets", []):
-            widgets.append(self._render_widget(widget, spec, filter_values,
-                                               compare_mode))
+            widgets.append(self._render_widget(
+                widget, spec, filter_values, compare_mode,
+                (offsets or {}).get(widget.get("id")) or {}))
 
         elapsed = int((time.time() - started) * 1000)
         # sudo for the timing only: it is telemetry about the dashboard, not
@@ -93,7 +98,8 @@ class AIDashboardRender(models.AbstractModel):
         return rows
 
     # ------------------------------------------------------------- internals
-    def _render_widget(self, widget, spec, filter_values, compare_mode="none"):
+    def _render_widget(self, widget, spec, filter_values, compare_mode="none",
+                       offsets=None):
         """One widget. An error here degrades this tile, never the page."""
         # A widget may override the dashboard's comparison, including turning
         # it off for itself.
@@ -133,6 +139,28 @@ class AIDashboardRender(models.AbstractModel):
                 "You do not have access to %s, so this tile cannot be shown. "
                 "Everything on a dashboard runs with your own permissions.")
                 % self._model_label(model_name))
+
+        if widget.get("type") == "pivot":
+            try:
+                domain = self._effective_domain(query, spec, filter_values)
+                grid = self.env["ai.dashboard.pivot"].build(
+                    model.with_context(**self._company_context()),
+                    query, domain, offsets)
+            except (AccessError, UserError) as exc:
+                return dict(base, error=str(exc))
+            except Exception as exc:  # noqa: BLE001 - one tile, not the page
+                _logger.exception("AI Dashboards: pivot %s failed",
+                                  widget.get("id"))
+                return dict(base, error=_(
+                    "This pivot could not be calculated (%s).")
+                    % type(exc).__name__)
+            out = dict(base, pivot=grid, domain=domain, model=model_name)
+            if not grid["rows"]["values"]:
+                out["empty"] = _(
+                    "No %s records match this tile's filters — for you. "
+                    "Someone with wider access may see more.")\
+                    % self._model_label(model_name)
+            return out
 
         try:
             domain = self._effective_domain(query, spec, filter_values)
