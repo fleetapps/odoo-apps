@@ -239,7 +239,7 @@ class MCPEngine(models.AbstractModel):
             "built_by_ai": True,
         })
         dashboard._notify_ready(
-            _("\"%s\" is ready to preview.") % dashboard.name)
+            _("\"%s\" is ready — open it and take a look.") % dashboard.name)
         sample = self.env["ai.dashboard.render"].sample(dashboard.spec())
         return {
             "dashboard_id": dashboard.id,
@@ -248,10 +248,10 @@ class MCPEngine(models.AbstractModel):
             "url": self._dashboard_url(dashboard),
             "sample": sample,
             "message": str(_(
-                "Saved as a preview. It is not on their app tile yet. Tell the "
-                "user to open it and click Save if it looks right — check the "
-                "sample figures above first, and say so if anything looks "
-                "wrong.")),
+                "Saved as a draft. It is not on their app tile yet. Tell the "
+                "user to open it and click \"Keep it\" if it looks right — "
+                "check the sample figures above first, and say so if anything "
+                "looks wrong.")),
         }
 
     def _handler_save_dashboard(self, scope, args):

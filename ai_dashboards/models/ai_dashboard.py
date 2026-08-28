@@ -51,7 +51,7 @@ class AIDashboard(models.Model):
         help="A plain-English account of exactly what this dashboard reads.")
 
     state = fields.Selection(
-        [("draft", "Preview"), ("published", "Saved")],
+        [("draft", "Draft"), ("published", "Live")],
         default="draft", required=True, tracking=True,
         help="A preview is visible only to its owner and never appears on the "
              "app tile. Nothing an assistant builds is saved until a person "
@@ -275,14 +275,14 @@ class AIDashboard(models.Model):
 
     # -------------------------------------------------------------- actions
     def action_publish(self):
-        """Promote a preview onto the app tile."""
+        """Promote a draft onto the app tile."""
         self._check_owner(_("publish"))
         self.write({"state": "published"})
         return self.action_open()
 
     def action_discard(self):
-        """Throw a preview away. Published dashboards are archived instead, so
-        a shared one never vanishes from under a colleague."""
+        """Throw a draft away. Live dashboards are archived instead, so a
+        shared one never vanishes from under a colleague."""
         self._check_owner(_("discard"))
         drafts = self.filtered(lambda d: d.state == "draft")
         published = self - drafts

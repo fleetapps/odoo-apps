@@ -24,7 +24,7 @@
 
                         <div t-if="record.state.raw_value == 'draft'"
                              class="mt-1">
-                            <span class="badge text-bg-warning">Preview — not saved yet</span>
+                            <span class="badge text-bg-warning">Draft — not kept yet</span>
                         </div>
 
                         <field name="description" class="text-muted mt-2 small"/>
@@ -63,12 +63,12 @@
         <field name="arch" type="xml">
             <form class="o_ai_dashboard_form">
                 <header>
-                    <button name="action_publish" type="object" string="Save it"
+                    <button name="action_publish" type="object" string="Keep it"
                             class="btn-primary" invisible="state != 'draft'"
                             help="Put this on your app tile."/>
                     <button name="action_discard" type="object"
                             string="Discard" invisible="state != 'draft'"
-                            confirm="Discard this preview? It has not been saved to your app tile."/>
+                            confirm="Discard this draft? It was never added to your app tile."/>
                     <button name="action_open_history" type="object"
                             string="History" invisible="version_count &lt; 2"/>
                     <button name="action_duplicate" type="object"
@@ -92,9 +92,9 @@
                 <sheet>
                     <div class="alert alert-warning" role="alert"
                          invisible="state != 'draft'">
-                        <b>This is a preview.</b> Nobody else can see it and it
+                        <b>This is a draft.</b> Nobody else can see it and it
                         is not on your app tile yet. Look it over, then click
-                        <b>Save it</b> — or Discard and ask for something
+                        <b>Keep it</b> — or Discard and ask for something
                         different.
                     </div>
 
@@ -193,7 +193,7 @@
                 <filter name="f_shared" string="Shared with me"
                         domain="[('owner_id', '!=', uid)]"/>
                 <separator/>
-                <filter name="f_draft" string="Previews"
+                <filter name="f_draft" string="Drafts"
                         domain="[('state', '=', 'draft')]"/>
                 <filter name="f_ai" string="Built with AI"
                         domain="[('built_by_ai', '=', True)]"/>
@@ -346,7 +346,7 @@
                 <sheet>
                     <group>
                         <field name="dashboard_id"/>
-                        <field name="create_date" string="Saved"/>
+                        <field name="create_date" string="Created"/>
                         <field name="author_id"/>
                         <field name="note"/>
                         <field name="is_current"/>

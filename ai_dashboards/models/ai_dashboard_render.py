@@ -35,15 +35,33 @@ class AIDashboardRender(models.AbstractModel):
 
     # ------------------------------------------------------------ public API
     @api.model
-    def render(self, dashboard_id, filter_values=None, offsets=None):
+    def render(self, dashboard_id, filter_values=None, offsets=None,
+               spec_override=None):
         """Everything the dashboard canvas needs, in one round trip.
 
         ``offsets`` carries per-widget paging, keyed by widget id — currently
         only pivots use it, which page each axis independently.
+
+        ``spec_override`` is the spec the editor currently has on screen,
+        including changes the person has not saved yet. Without it the canvas
+        could only ever draw what is already in the database, so switching a
+        tile from a bar chart to a table would redraw the *old* shape and look
+        broken — you would be editing one document and looking at another.
+
+        It relaxes nothing. The override is put through the same validator as
+        anything an assistant writes, only somebody allowed to edit this
+        dashboard may supply one, and — as everywhere in this file — the
+        queries still run as the person asking, under their own permissions.
+        A spec is a question; being able to phrase a question you were always
+        allowed to ask grants you nothing new.
         """
         dashboard = self.env["ai.dashboard"].browse(int(dashboard_id))
         dashboard.check_access("read")
-        spec = dashboard.spec()
+        if spec_override:
+            dashboard._check_owner(_("edit"))
+            spec = spec_lib.validate(spec_override, self.env)
+        else:
+            spec = dashboard.spec()
         started = time.time()
 
         filter_values = filter_values or {}
@@ -60,7 +78,11 @@ class AIDashboardRender(models.AbstractModel):
                 (offsets or {}).get(widget.get("id")) or {}))
 
         elapsed = int((time.time() - started) * 1000)
-        self._record_timing(dashboard, elapsed)
+        # An unsaved variant is not this dashboard, so its timing is not this
+        # dashboard's timing — recording it would badge a dashboard as slow
+        # over an experiment somebody discarded a second later.
+        if not spec_override:
+            self._record_timing(dashboard, elapsed)
 
         return {
             "id": dashboard.id,

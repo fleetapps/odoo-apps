@@ -7,6 +7,7 @@ safe to share and impossible to leave stale. These tests hold that line.
 """
 import json
 
+from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
 from .test_spec import minimal
@@ -128,3 +129,82 @@ class TestRender(TransactionCase):
         board = self._board(spec)
         with self.assertRaises(Exception):
             self.Render.drill(board.id, "w1", None)
+
+
+@tagged("post_install", "-at_install")
+class TestUnsavedSpecOverride(TransactionCase):
+    """Drawing what is on screen, not what is in the database.
+
+    The editor changes a tile and the canvas has to show the result. Some of
+    those changes — a different chart shape, a different date grouping, a
+    smaller row limit — need figures the stored spec cannot produce, so the
+    canvas hands the renderer the spec it currently has. Without this, editing
+    a tile redrew the *saved* version and every edit looked like it had failed.
+
+    It is an extra door into the renderer, so it is tested like one.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Render = cls.env["ai.dashboard.render"]
+        cls.owner = cls.env["res.users"].create({
+            "name": "Board Owner", "login": "ai_dash_override_owner",
+            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id])],
+        })
+        cls.other = cls.env["res.users"].create({
+            "name": "Colleague", "login": "ai_dash_override_other",
+            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id])],
+        })
+        cls.board = cls.env["ai.dashboard"].create({
+            "name": "Override test",
+            "spec_json": json.dumps(minimal()),
+            "state": "published",
+            "owner_id": cls.owner.id,
+            "share_user_ids": [(6, 0, [cls.other.id])],
+        })
+
+    def _edited(self, **widget):
+        spec = minimal()
+        spec["widgets"][0].update(widget)
+        return spec
+
+    def test_the_override_is_what_gets_drawn(self):
+        out = self.Render.with_user(self.owner).render(
+            self.board.id, None, None, self._edited(title="Renamed live"))
+        self.assertEqual(out["widgets"][0]["title"], "Renamed live")
+
+    def test_the_override_is_never_written_to_the_record(self):
+        """It draws a proposal. Saving stays the Save button's job."""
+        self.Render.with_user(self.owner).render(
+            self.board.id, None, None, self._edited(title="Not saved"))
+        self.assertEqual(
+            json.loads(self.board.spec_json)["widgets"][0]["title"],
+            "By country")
+
+    def test_somebody_who_may_only_view_cannot_supply_one(self):
+        """Sharing lets people read a dashboard, not redefine it."""
+        with self.assertRaises(AccessError):
+            self.Render.with_user(self.other).render(
+                self.board.id, None, None, self._edited(title="Hijacked"))
+
+    def test_a_shared_viewer_can_still_open_it_normally(self):
+        out = self.Render.with_user(self.other).render(self.board.id)
+        self.assertEqual(out["widgets"][0]["title"], "By country")
+
+    def test_an_override_goes_through_the_validator(self):
+        """The editor is a client. It is not trusted any more than the AI is."""
+        with self.assertRaises(Exception):
+            self.Render.with_user(self.owner).render(
+                self.board.id, None, None,
+                self._edited(query={"model": "res.partner",
+                                    "group_by": ["country_id"],
+                                    "measures": ["__count"],
+                                    "context": {"active_test": False}}))
+
+    def test_timing_is_not_recorded_for_an_unsaved_variant(self):
+        """A dashboard should not be badged slow over an experiment."""
+        self.board.last_render_ms = 0
+        self.Render.with_user(self.owner).render(
+            self.board.id, None, None, self._edited(title="Experiment"))
+        self.assertEqual(self.board.last_render_ms, 0)

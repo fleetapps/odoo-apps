@@ -2,9 +2,30 @@
 <templates xml:space="preserve">
 
 <t t-name="ai_dashboards.Canvas">
-    <div class="o_ai_dash" t-ref="root">
+    <div class="o_ai_dash" t-ref="root"
+         t-att-class="state.loading ? 'o_ai_dash--busy' : ''">
 
-        <div t-if="state.loading" class="o_ai_dash_loading">
+        <!-- Direct manipulation needs somewhere that says what has and has
+             not been written down. The form's own save indicator is up in the
+             breadcrumb, far from the tile you just changed, and easy to walk
+             away from without noticing. -->
+        <div t-if="hasUnsavedEdits"
+             class="o_ai_dash_unsaved alert alert-warning d-flex align-items-center">
+            <i class="fa fa-pencil me-2"/>
+            <span class="flex-grow-1">
+                You have changed this dashboard. Only you can see the changes
+                until you save them.
+            </span>
+            <button class="btn btn-sm btn-primary me-1"
+                    t-on-click="() => this.saveEdits()">Save changes</button>
+            <button class="btn btn-sm btn-link"
+                    t-on-click="() => this.discardEdits()">Discard</button>
+        </div>
+
+        <!-- Only ever a blank spinner on the very first load. Replacing a
+             dashboard you are reading with a spinner every time a filter
+             moves loses your place for no reason. -->
+        <div t-if="state.loading and !state.data" class="o_ai_dash_loading">
             <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
         </div>
 
@@ -19,8 +40,9 @@
         </div>
 
         <t t-else="">
-            <!-- Filters. Applied to every tile that has a date field. -->
-            <div t-if="state.data.filters.length" class="o_ai_dash_filters">
+            <!-- Filters, provenance, and the switch between reading this
+                 dashboard and rearranging it. -->
+            <div class="o_ai_dash_filters">
                 <div t-foreach="state.data.filters" t-as="flt" t-key="flt.key"
                      class="o_ai_dash_filter">
                     <label t-esc="flt.label"/>
@@ -49,24 +71,44 @@
                 <div class="o_ai_dash_took text-muted">
                     calculated in <t t-esc="state.data.took_ms"/>ms, as you
                 </div>
+
+                <!-- Editing is a mode you choose, not the state a dashboard
+                     sits in. A dashboard you have finished building is for
+                     reading, and controls on every tile get in the way of
+                     that. -->
+                <button t-if="isEditable and !state.editMode"
+                        class="btn btn-sm btn-link o_ai_dash_editswitch"
+                        title="Rearrange the tiles, rename them, change how they look"
+                        t-on-click="() => this.setEditMode(true)">
+                    <i class="fa fa-pencil me-1"/>Edit
+                </button>
+                <button t-if="showTools"
+                        class="btn btn-sm btn-secondary o_ai_dash_editswitch"
+                        t-on-click="() => this.setEditMode(false)">
+                    <i class="fa fa-check me-1"/>Done
+                </button>
             </div>
 
             <!-- The grid. 12 columns; each tile takes its own span. -->
             <div class="o_ai_dash_grid">
-                <div t-foreach="state.data.widgets" t-as="widget" t-key="widget.id"
+                <div t-foreach="widgets" t-as="widget" t-key="widget.id"
                      class="o_ai_dash_tile"
                      t-att-style="'grid-column: span ' + Math.min(12, widget.span || 6)">
 
                     <div class="o_ai_dash_tile_head">
                         <input t-if="state.editing === widget.id"
+                               t-ref="renamer"
                                class="form-control form-control-sm"
                                t-att-value="widget.title"
-                               t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; this.rename(widget.id, ev.target.value)"
-                               t-on-blur="(ev) => this.rename(widget.id, ev.target.value)"/>
+                               aria-label="Tile name"
+                               t-on-keydown="(ev) => this.onRenameKey(ev, widget.id)"
+                               t-on-blur="(ev) => this.onRenameBlur(ev, widget.id)"/>
                         <h4 t-else="" t-esc="widget.title"
-                            t-on-dblclick="() => isEditable ? this.state.editing = widget.id : null"/>
+                            t-att-class="showTools ? 'o_ai_dash_renamable' : ''"
+                            t-att-title="showTools ? 'Double-click to rename' : undefined"
+                            t-on-dblclick="() => this.startRename(widget.id)"/>
 
-                        <div t-if="isEditable" class="o_ai_dash_tools">
+                        <div t-if="showTools" class="o_ai_dash_tools">
                             <button class="btn btn-sm btn-link" title="Move earlier"
                                     t-on-click="() => this.move(widget.id, -1)">
                                 <i class="fa fa-arrow-left"/>
@@ -103,9 +145,16 @@
                         </div>
                     </div>
 
+                    <!-- Its figures are being fetched for the shape it has
+                         just been changed into. -->
+                    <div t-if="widget.calculating" class="o_ai_dash_msg">
+                        <i class="fa fa-circle-o-notch fa-spin me-1"/>
+                        Calculating&#8230;
+                    </div>
+
                     <!-- A tile that failed says why, and does not take the
                          page down with it. -->
-                    <div t-if="widget.error" class="o_ai_dash_msg o_ai_dash_msg--error">
+                    <div t-elif="widget.error" class="o_ai_dash_msg o_ai_dash_msg--error">
                         <i class="fa fa-exclamation-triangle me-1"/>
                         <t t-esc="widget.error"/>
                     </div>

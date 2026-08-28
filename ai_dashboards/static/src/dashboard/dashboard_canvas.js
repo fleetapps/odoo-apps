@@ -4,6 +4,7 @@ import { Component, onWillStart, onWillUnmount, useRef, useState, useEffect } fr
 import { loadBundle } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
+import { useRecordObserver } from "@web/model/relational_model/utils";
 import { useService } from "@web/core/utils/hooks";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { _t } from "@web/core/l10n/translation";
@@ -21,6 +22,16 @@ const PALETTE = [
 ];
 
 const CHART_TYPES = ["bar", "line", "pie", "donut"];
+// Which figures a tile needs. Two types in the same family are drawn from the
+// same payload, so switching between them is instant and local; crossing
+// families needs the server to shape the data differently. This one table is
+// what lets the editor know when it may repaint on its own and when it has to
+// ask — instead of asking every time, which is what made every edit feel like
+// it had failed.
+const SHAPE_FAMILY = {
+    kpi: "kpi", table: "table", pivot: "pivot",
+    bar: "chart", line: "chart", pie: "chart", donut: "chart",
+};
 // A comparison is a question you ask of a whole dashboard — "how does all of
 // this look against last year?" — so it lives beside the period rather than
 // per tile. A tile can still opt out in its spec.
@@ -33,6 +44,16 @@ const COMPARE_MODES = [
 // which is "now" and which is "then" reads without consulting the legend.
 const COMPARE_ALPHA = "44";
 const FORMAT_KINDS = ["plain", "integer", "monetary", "percent"];
+// "Show me the top ten" and "by quarter, not by month" are the two things
+// people ask of a chart more than any other, and both used to mean going back
+// to the assistant. They change the question rather than its appearance, so
+// they are the only edits here that refetch.
+const ROW_LIMITS = [5, 10, 20, 50];
+const GRANULARITIES = ["day", "week", "month", "quarter", "year"];
+const GRANULARITY_LABELS = {
+    day: "by day", week: "by week", month: "by month",
+    quarter: "by quarter", year: "by year",
+};
 // Named for a person, not for the schema: nobody reading a dashboard thinks
 // "monetary".
 const FORMAT_LABELS = {
@@ -64,6 +85,15 @@ export class AIDashboardCanvas extends Component {
             // record or prompt anyone to save.
             offsets: {},
             editing: null,   // widget id currently being renamed
+            // Set the moment the spec on screen stops matching the database.
+            // Tracked explicitly rather than read off the record, because the
+            // record is also dirtied by the name and description fields, and
+            // those do not change a single figure.
+            pending: false,
+            // A saved dashboard is something you read. Arrows, handles and
+            // menus on every tile turn reading into operating, so they stay
+            // out of the way until you say you are editing.
+            editMode: false,
         });
 
         // One Chart instance per canvas element, torn down explicitly: Chart.js
@@ -76,15 +106,43 @@ export class AIDashboardCanvas extends Component {
             await this.load();
         });
 
-        // Redraw whenever the rendered data changes. Chart.js needs a live
-        // canvas element, so this has to run after the DOM exists.
+        // Redraw when the figures change *or* when the spec does. A chart is
+        // painted by Chart.js rather than by the template, so recolouring a
+        // tile or switching a bar to a line changes nothing on screen unless
+        // this runs — the second dependency is what makes those edits visible.
         useEffect(
             () => {
                 this.drawAll();
                 return () => this.destroyCharts();
             },
-            () => [this.state.data]
+            () => [this.state.data, this.props.record.data[this.props.name]]
         );
+
+        // Put the cursor in the title box the moment it opens, with the old
+        // name selected, so renaming is one gesture instead of three.
+        this.renamerRef = useRef("renamer");
+        useEffect(
+            (el) => {
+                if (el) {
+                    el.focus();
+                    el.select();
+                }
+            },
+            () => [this.renamerRef.el]
+        );
+
+        // One rule, and it replaces a pile of special cases: if the figures we
+        // are holding cannot draw the spec that is now on screen, fetch new
+        // ones. That covers a tile switched from a chart to a pivot, a tile the
+        // assistant has just added, and a discard that puts back a spec we no
+        // longer have the data for. Everything else — a title, a colour, a
+        // width, a number format — is drawn from the spec directly and needs no
+        // round trip at all.
+        useRecordObserver(() => {
+            if (this.staleFigures()) {
+                this.load();
+            }
+        });
 
         onWillUnmount(() => this.destroyCharts());
     }
@@ -106,6 +164,91 @@ export class AIDashboardCanvas extends Component {
         return !this.props.readonly && this.state.data && this.state.data.is_owner;
     }
 
+    /** Whether the tile controls are on screen.
+     *
+     *  Two separate questions, deliberately: *may* you edit this dashboard —
+     *  which is about who owns it — and are you editing it *right now*.
+     */
+    get showTools() {
+        return this.isEditable && this.state.editMode;
+    }
+
+    setEditMode(on) {
+        this.state.editMode = on;
+        if (!on) {
+            this.state.editing = null;
+        }
+    }
+
+    /** Edits made here and not yet written to the database.
+     *
+     *  Both halves matter. Our own flag alone would keep claiming there was
+     *  something to save after the form's own Save button had already saved
+     *  it; the record's dirty flag alone would claim it about a change to the
+     *  dashboard's name, which this bar cannot save any differently.
+     */
+    get hasUnsavedEdits() {
+        return this.state.pending && !!this.props.record.dirty;
+    }
+
+    /**
+     * The tiles to draw: the spec decides what exists, in what order and how
+     * it looks; the last render supplies the figures.
+     *
+     * This is the whole fix for "renaming a card does nothing". Presentation
+     * used to be read from the render payload, which comes from the database —
+     * so a rename updated the record, the canvas then redrew from the server,
+     * and the old title came straight back. Reading it from the spec instead
+     * means an edit appears the instant it is made, a discard puts the old one
+     * back just as fast, and neither costs a round trip.
+     */
+    get widgets() {
+        const drawn = new Map(
+            ((this.state.data && this.state.data.widgets) || [])
+                .map((w) => [w.id, w]));
+        return (this.spec.widgets || []).map((w) => {
+            const figures = drawn.get(w.id);
+            const usable =
+                figures && SHAPE_FAMILY[figures.type] === SHAPE_FAMILY[w.type];
+            return {
+                ...(usable ? figures : {}),
+                id: w.id,
+                // Everything below is what you see, and it comes from what is
+                // on screen rather than from what is stored.
+                type: w.type,
+                title: w.title,
+                span: Math.max(1, Math.min(12, w.span || 6)),
+                color: w.color,
+                format: w.format || { kind: "plain" },
+                drill: w.drill !== false,
+                // Computed here rather than taken from the payload so a tile
+                // the assistant has only just added still knows what it may
+                // become, before its first figures have arrived.
+                group_count: ((w.query || {}).group_by || []).length,
+                // Carried through so the tile menu can offer "top ten" and
+                // "by quarter" without a round trip to find out the shape.
+                query: w.query || {},
+                // A tile whose figures do not match its type is honest about
+                // it. The observer above is already fetching the right ones.
+                calculating: !usable && !(figures && figures.error),
+                error: (figures && figures.error) || undefined,
+            };
+        });
+    }
+
+    /** True when what we are holding cannot draw what is on screen. */
+    staleFigures() {
+        if (!this.state.data) {
+            return false;
+        }
+        const drawn = new Map(this.state.data.widgets.map((w) => [w.id, w]));
+        return (this.spec.widgets || []).some((w) => {
+            const figures = drawn.get(w.id);
+            return !figures ||
+                SHAPE_FAMILY[figures.type] !== SHAPE_FAMILY[w.type];
+        });
+    }
+
     async load() {
         this.state.loading = true;
         this.state.error = null;
@@ -118,7 +261,11 @@ export class AIDashboardCanvas extends Component {
             this.state.data = await this.orm.call(
                 "ai.dashboard.render",
                 "render",
-                [this.dashboardId, this.state.filters, this.state.offsets]
+                [this.dashboardId, this.state.filters, this.state.offsets,
+                 // Draw what the person is looking at, not what happens to be
+                 // stored. Without this, editing a tile into a shape the
+                 // stored spec does not have redraws the stored one.
+                 this.hasUnsavedEdits ? this.spec : null]
             );
         } catch (error) {
             this.state.error =
@@ -157,7 +304,7 @@ export class AIDashboardCanvas extends Component {
     }
 
     pivotOf(widgetId) {
-        const widget = (this.state.data ? this.state.data.widgets : []).find(
+        const widget = this.widgets.find(
             (w) => w.id === widgetId
         );
         return widget && widget.pivot;
@@ -183,15 +330,13 @@ export class AIDashboardCanvas extends Component {
 
     /** Whether any tile on this dashboard can carry a comparison at all. */
     get anyComparable() {
-        const widgets = (this.state.data && this.state.data.widgets) || [];
-        return widgets.some((w) => w.comparable);
+        return this.widgets.some((w) => w.comparable);
     }
 
     /** Whether any tile answers a click, so the footer does not promise one
      *  that nothing delivers. */
     get anyDrillable() {
-        const widgets = (this.state.data && this.state.data.widgets) || [];
-        return widgets.some((w) => w.drill && !w.error);
+        return this.widgets.some((w) => w.drill && !w.error);
     }
 
     get compareModes() {
@@ -220,8 +365,11 @@ export class AIDashboardCanvas extends Component {
         if (!this.state.data || !this.rootRef.el) {
             return;
         }
-        for (const widget of this.state.data.widgets) {
-            if (!CHART_TYPES.includes(widget.type) || widget.error) {
+        for (const widget of this.widgets) {
+            // `calculating` means the figures on hand were computed for a
+            // different shape — handing those to Chart.js draws nonsense.
+            if (!CHART_TYPES.includes(widget.type) || widget.error
+                    || widget.calculating) {
                 continue;
             }
             const canvas = this.rootRef.el.querySelector(
@@ -423,11 +571,19 @@ export class AIDashboardCanvas extends Component {
     }
 
     // -------------------------------------------------------------- editing
-    /** Write the spec back through the form's own record, so the usual
-     *  dirty-state, discard and save machinery keeps working. */
+    /**
+     * Apply a change to the spec on screen.
+     *
+     * The change goes into the form's own record, so Odoo's discard, its
+     * unsaved-changes guard and its Save button all keep working exactly as
+     * they do on any other field. Nothing is written to the database here —
+     * that is the Save button's job, and the bar at the top of the canvas
+     * says so plainly.
+     */
     async updateSpec(mutate) {
         const spec = this.spec;
         mutate(spec);
+        this.state.pending = true;
         await this.props.record.update({ [this.props.name]: JSON.stringify(spec) });
     }
 
@@ -435,69 +591,115 @@ export class AIDashboardCanvas extends Component {
         return (spec.widgets || []).find((w) => w.id === id);
     }
 
-    async rename(id, title) {
-        const clean = (title || "").trim();
-        if (!clean) {
-            return;
-        }
+    /** Change one tile in place. */
+    async patchWidget(id, mutate) {
         await this.updateSpec((spec) => {
             const widget = this.widgetInSpec(spec, id);
             if (widget) {
-                widget.title = clean;
+                mutate(widget);
             }
         });
+    }
+
+    async rename(id, title) {
+        const clean = (title || "").trim();
         this.state.editing = null;
-        await this.load();
+        if (!clean) {
+            // An empty title is a slip, not an instruction. Leave the old one.
+            return;
+        }
+        await this.patchWidget(id, (w) => (w.title = clean));
     }
 
     async resize(id, delta) {
-        await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
-            if (widget) {
-                widget.span = Math.max(1, Math.min(12, (widget.span || 6) + delta));
-            }
+        await this.patchWidget(id, (w) => {
+            w.span = Math.max(1, Math.min(12, (w.span || 6) + delta));
         });
-        await this.load();
     }
 
     async setType(id, type) {
-        await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
-            if (widget) {
-                widget.type = type;
-            }
-        });
-        await this.load();
+        await this.patchWidget(id, (w) => (w.type = type));
     }
 
     async setFormat(id, kind) {
-        await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
-            if (widget) {
-                widget.format = { ...(widget.format || {}), kind };
-            }
+        await this.patchWidget(id, (w) => {
+            w.format = { ...(w.format || {}), kind };
         });
-        await this.load();
     }
 
     async toggleDrill(id) {
+        await this.patchWidget(id, (w) => (w.drill = w.drill === false));
+    }
+
+    async setColor(id, color) {
+        await this.patchWidget(id, (w) => (w.color = color));
+    }
+
+    /**
+     * Change the question a tile asks, then fetch the answer.
+     *
+     * The only edits in this file that need the server. Everything else is
+     * presentation and is drawn straight from the spec.
+     */
+    async patchQuery(id, mutate) {
         await this.updateSpec((spec) => {
             const widget = this.widgetInSpec(spec, id);
-            if (widget) {
-                widget.drill = widget.drill === false;
+            if (widget && widget.query) {
+                mutate(widget.query);
             }
         });
         await this.load();
     }
 
-    async setColor(id, color) {
-        await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
-            if (widget) {
-                widget.color = color;
+    async setLimit(id, limit) {
+        await this.patchQuery(id, (q) => {
+            q.limit = limit;
+        });
+    }
+
+    /** Regroup a date axis. Only the first grouping is touched: on a pivot
+     *  that is the row axis, which is the one people mean. */
+    async setGranularity(id, granularity) {
+        await this.patchQuery(id, (q) => {
+            const groups = q.group_by || [];
+            if (groups.length) {
+                q.group_by = groups.map((g, i) =>
+                    i === 0 ? `${g.split(":")[0]}:${granularity}` : g);
             }
         });
-        await this.load();
+    }
+
+    /** The date granularity a tile is grouped by, or null if it is not a date
+     *  axis at all. Only date fields take a granularity, so the colon is a
+     *  reliable tell. */
+    granularityOf(widget) {
+        const first = ((widget.query || {}).group_by || [])[0] || "";
+        const parts = String(first).split(":");
+        return parts.length > 1 && GRANULARITIES.includes(parts[1])
+            ? parts[1] : null;
+    }
+
+    /** Copy a tile, so "the same thing but as a table" or "the same chart
+     *  filtered differently" starts from what is already right. */
+    async duplicate(id) {
+        await this.updateSpec((spec) => {
+            const widgets = spec.widgets || [];
+            const index = widgets.findIndex((w) => w.id === id);
+            if (index < 0) {
+                return;
+            }
+            const copy = JSON.parse(JSON.stringify(widgets[index]));
+            const taken = new Set(widgets.map((w) => w.id));
+            let suffix = 2;
+            while (taken.has(`${id}_${suffix}`)) {
+                suffix++;
+            }
+            copy.id = `${id}_${suffix}`;
+            copy.title = _t("%s (copy)", copy.title || "");
+            // Next to the original rather than at the end: you copied it to
+            // compare the two.
+            widgets.splice(index + 1, 0, copy);
+        });
     }
 
     async move(id, direction) {
@@ -510,12 +712,10 @@ export class AIDashboardCanvas extends Component {
             }
             [widgets[index], widgets[target]] = [widgets[target], widgets[index]];
         });
-        await this.load();
     }
 
     async remove(id) {
-        const spec = this.spec;
-        if ((spec.widgets || []).length <= 1) {
+        if ((this.spec.widgets || []).length <= 1) {
             this.notification.add(
                 _t("A dashboard needs at least one tile. Delete the whole dashboard instead."),
                 { type: "warning" }
@@ -525,7 +725,54 @@ export class AIDashboardCanvas extends Component {
         await this.updateSpec((s) => {
             s.widgets = (s.widgets || []).filter((w) => w.id !== id);
         });
+    }
+
+    // ------------------------------------------------------ keeping changes
+    /** Write the edits to the database, through the form's own record. */
+    async saveEdits() {
+        const saved = await this.props.record.save();
+        if (saved) {
+            this.state.pending = false;
+            this.notification.add(_t("Your changes are saved."),
+                                  { type: "success" });
+        }
+    }
+
+    /** Put back the last saved version, and redraw from it. */
+    async discardEdits() {
+        await this.props.record.discard();
+        this.state.pending = false;
         await this.load();
+    }
+
+    // ---------------------------------------------------------- the renamer
+    /** Open the title for editing, with the old one selected so typing over
+     *  it is one gesture rather than a select-all first. */
+    startRename(id) {
+        if (this.showTools) {
+            this.state.editing = id;
+        }
+    }
+
+    onRenameKey(ev, id) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.rename(id, ev.target.value);
+        } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            // Escape means "forget it", so close without committing — and
+            // without letting the blur that follows commit it anyway.
+            this.state.editing = null;
+            ev.target.blur();
+        }
+    }
+
+    onRenameBlur(ev, id) {
+        // Enter and Escape have both already closed the editor; this only
+        // fires for clicking away, which means "keep what I typed".
+        if (this.state.editing === id) {
+            this.rename(id, ev.target.value);
+        }
     }
 
     /**
@@ -580,7 +827,11 @@ export class AIDashboardCanvas extends Component {
         const items = [
             {
                 label: _t("Rename…"),
-                onSelected: () => (this.state.editing = widget.id),
+                onSelected: () => this.startRename(widget.id),
+            },
+            {
+                label: _t("Duplicate this tile"),
+                onSelected: () => this.duplicate(widget.id),
             },
         ];
         for (const type of this.switchableTypes(widget)) {
@@ -601,6 +852,33 @@ export class AIDashboardCanvas extends Component {
                 label: _t("Format as %s", FORMAT_LABELS[kind]),
                 onSelected: () => this.setFormat(widget.id, kind),
             });
+        }
+        // How many rows. Meaningless without a grouping; a KPI is one number
+        // by definition; and a pivot pages both of its axes with its own caps,
+        // so a row limit there would fight the pager.
+        if (!["kpi", "pivot"].includes(widget.type) && widget.group_count >= 1) {
+            for (const limit of ROW_LIMITS) {
+                if (limit === widget.query.limit) {
+                    continue;
+                }
+                items.push({
+                    label: _t("Show the top %s", limit),
+                    onSelected: () => this.setLimit(widget.id, limit),
+                });
+            }
+        }
+        // Only offered where there is a date axis to regroup.
+        const granularity = this.granularityOf(widget);
+        if (granularity) {
+            for (const step of GRANULARITIES) {
+                if (step === granularity) {
+                    continue;
+                }
+                items.push({
+                    label: _t("Group %s", GRANULARITY_LABELS[step]),
+                    onSelected: () => this.setGranularity(widget.id, step),
+                });
+            }
         }
         items.push({
             label: widget.drill

@@ -33,6 +33,34 @@
         select { width: auto; text-transform: capitalize; }
     }
 
+    // Unsaved work says so where the work happened, not only up in the
+    // breadcrumb.
+    .o_ai_dash_unsaved {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+    }
+
+    // A reload keeps what you are reading on screen and just dims it. Swapping
+    // a dashboard for a spinner every time a filter moves loses your place.
+    &.o_ai_dash--busy .o_ai_dash_grid {
+        opacity: 0.55;
+        pointer-events: none;
+        transition: opacity 120ms ease-out;
+    }
+
+    .o_ai_dash_editswitch {
+        margin-left: 8px;
+        white-space: nowrap;
+    }
+
+    // A title you can rename looks like one, but only while editing.
+    .o_ai_dash_renamable {
+        cursor: text;
+        border-bottom: 1px dashed transparent;
+
+        &:hover { border-bottom-color: var(--o-gray-400, #ced4da); }
+    }
+
     .o_ai_dash_took {
         margin-left: auto;
         font-size: .75rem;
