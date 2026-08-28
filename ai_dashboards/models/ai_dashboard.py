@@ -61,11 +61,21 @@ class AIDashboard(models.Model):
         "res.users", string="Owner", required=True, index=True,
         default=lambda self: self.env.user, ondelete="cascade")
     group_ids = fields.Many2many(
-        "res.groups", string="Shared with",
-        help="Leave empty to keep this dashboard private to you. Add a group "
-             "to share it - each person still sees only the records their own "
-             "Odoo permissions allow.")
+        "res.groups", string="Shared with groups",
+        help="Everyone in these groups can open it - useful for a whole team.")
+    share_user_ids = fields.Many2many(
+        "res.users", "ai_dashboard_share_rel", "dashboard_id", "user_id",
+        string="Shared with people",
+        help="Named colleagues who can open it. Each of them still sees only "
+             "the records their own Odoo permissions allow, so one dashboard "
+             "shows each person their own figures.")
     is_shared = fields.Boolean(compute="_compute_is_shared", store=True)
+    shared_count = fields.Integer(compute="_compute_is_shared", store=True)
+    subscription_ids = fields.One2many(
+        "ai.dashboard.subscription", "dashboard_id", string="Scheduled sends")
+    my_subscription_id = fields.Many2one(
+        "ai.dashboard.subscription", compute="_compute_my_subscription")
+    is_subscribed = fields.Boolean(compute="_compute_my_subscription")
 
     favorite_user_ids = fields.Many2many(
         "res.users", "ai_dashboard_favorite_rel", "dashboard_id", "user_id",
@@ -94,10 +104,20 @@ class AIDashboard(models.Model):
     is_pinned = fields.Boolean(compute="_compute_is_pinned")
 
     # ------------------------------------------------------------- computes
-    @api.depends("group_ids")
+    @api.depends("group_ids", "share_user_ids")
     def _compute_is_shared(self):
         for rec in self:
-            rec.is_shared = bool(rec.group_ids)
+            rec.shared_count = len(rec.group_ids) + len(rec.share_user_ids)
+            rec.is_shared = bool(rec.shared_count)
+
+    @api.depends_context("uid")
+    @api.depends("subscription_ids.user_id", "subscription_ids.active")
+    def _compute_my_subscription(self):
+        for rec in self:
+            mine = rec.sudo().subscription_ids.filtered(
+                lambda s: s.user_id.id == self.env.uid and s.active)[:1]
+            rec.my_subscription_id = mine.id if mine else False
+            rec.is_subscribed = bool(mine)
 
     @api.depends_context("uid")
     @api.depends("favorite_user_ids")
@@ -191,7 +211,7 @@ class AIDashboard(models.Model):
         if spec_changed:
             self._check_owner(_("edit"))
             vals["spec_json"] = self._validated_json(vals["spec_json"])
-        if {"owner_id", "group_ids"} & set(vals):
+        if {"owner_id", "group_ids", "share_user_ids"} & set(vals):
             self._check_owner(_("reshare"))
         result = super().write(vals)
         if spec_changed:
@@ -295,6 +315,8 @@ class AIDashboard(models.Model):
             "name": self._free_name(_("%s (copy)") % self.name),
             "owner_id": self.env.uid,
             "group_ids": [(5, 0, 0)],
+            "share_user_ids": [(5, 0, 0)],
+            "subscription_ids": [(5, 0, 0)],
             "state": "draft",
             "pinned_menu_id": False,
         })
@@ -365,6 +387,41 @@ class AIDashboard(models.Model):
         if self.pinned_menu_id:
             self.pinned_menu_id.sudo().unlink()
         return self.action_open()
+
+    # ------------------------------------------------------------ scheduling
+    def action_subscribe(self):
+        """Have this emailed to me on a schedule.
+
+        Anyone who can open a dashboard can schedule it for themselves - the
+        email is rendered with their own permissions, so it can never show
+        them more than opening it would.
+        """
+        self.ensure_one()
+        self.check_access("read")
+        existing = self.sudo().subscription_ids.filtered(
+            lambda s: s.user_id.id == self.env.uid)
+        if existing:
+            existing.write({"active": True})
+            subscription = existing[:1]
+        else:
+            subscription = self.env["ai.dashboard.subscription"].create({
+                "dashboard_id": self.id,
+                "user_id": self.env.uid,
+            })
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Email me this dashboard"),
+            "res_model": "ai.dashboard.subscription",
+            "res_id": subscription.id,
+            "view_mode": "form",
+            "target": "new",
+        }
+
+    def action_unsubscribe(self):
+        self.ensure_one()
+        self.sudo().subscription_ids.filtered(
+            lambda s: s.user_id.id == self.env.uid).write({"active": False})
+        return True
 
     # ------------------------------------------------------------ portability
     def action_export_spec(self):

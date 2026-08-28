@@ -3,3 +3,5 @@ access_ai_dashboard_user,ai dashboard user,model_ai_dashboard,group_dashboard_us
 access_ai_dashboard_admin,ai dashboard admin,model_ai_dashboard,group_dashboard_admin,1,1,1,1
 access_ai_dashboard_version_user,ai dashboard version user,model_ai_dashboard_version,group_dashboard_user,1,0,0,0
 access_ai_dashboard_version_admin,ai dashboard version admin,model_ai_dashboard_version,group_dashboard_admin,1,0,1,1
+access_ai_dashboard_subscription_user,ai dashboard subscription user,model_ai_dashboard_subscription,group_dashboard_user,1,1,1,1
+access_ai_dashboard_subscription_admin,ai dashboard subscription admin,model_ai_dashboard_subscription,group_dashboard_admin,1,1,1,1

@@ -22,6 +22,10 @@
               parent="menu_dashboards_root" action="action_dashboards_shared"
               groups="ai_dashboards.group_dashboard_user" sequence="5"/>
 
+    <menuitem id="menu_dashboards_scheduled" name="Scheduled sends"
+              parent="menu_dashboards_root" action="action_subscriptions"
+              groups="ai_dashboards.group_dashboard_user" sequence="7"/>
+
     <!-- Straight to the parent module's Connect screen. Somebody who installs
          this app and has not connected an assistant yet has no way to use it,
          and sending them hunting through another app for the URL is exactly

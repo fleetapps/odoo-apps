@@ -675,8 +675,21 @@ class MCPConnect(models.TransientModel):
         # mcp.oauth.token computes exactly why, so surface its words rather
         # than writing a second, drifting explanation here.
         hints = [c["hint"] for c in connections if c["hint"]]
+
+        # The dead end this reports: `read_only` is the kill switch, but the
+        # per-model matrix is what actually grants anything. Turn writing on
+        # without granting a single Create or Update row and the screen says
+        # "read and write" while every write is refused - the assistant reports
+        # itself locked read-only, the user believes the toggle did nothing,
+        # and the two statements are both true and irreconcilable from the UI.
+        writable = 0
+        if scope:
+            writable = len(scope.sudo().line_ids.filtered(
+                lambda l: l.can_create or l.can_write or l.can_unlink))
+
+        enabled = bool(scope) and not scope.read_only
         return {
-            "enabled": bool(scope) and not scope.read_only,
+            "enabled": enabled,
             "requires_approval": bool(scope) and scope.require_approval
                                  and not scope.read_only,
             "scope_name": scope.name if scope else "",
@@ -685,6 +698,9 @@ class MCPConnect(models.TransientModel):
             "pending": pending,
             "needs_reconnect": bool(hints),
             "reconnect_hint": hints[0] if hints else "",
+            "writable_models": writable,
+            # Writing is switched on and nothing is actually writable.
+            "inert": enabled and not writable,
         }
 
     @api.model
@@ -723,6 +739,12 @@ class MCPConnect(models.TransientModel):
             _logger.info("MCP: %s added %s suggested model(s) to '%s'",
                          self.env.user.login, len(added), scope.name)
         return self.get_state()
+
+    @api.model
+    def open_matrix(self):
+        """Send an administrator to the switches that actually grant writing."""
+        return self.env["ir.actions.actions"]._for_xml_id(
+            "mcp_governance_suite.mcp_scope_line_action")
 
     # -------------------------------------------------------------- self test
     @api.model

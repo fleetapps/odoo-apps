@@ -79,6 +79,19 @@
                                     t-on-click="() => this.setType(widget.id, type)">
                                 <t t-esc="type"/>
                             </button>
+                            <button t-foreach="formatKinds" t-as="kind" t-key="kind"
+                                    class="btn btn-sm btn-link"
+                                    t-att-class="(widget.format.kind || 'plain') === kind ? 'fw-bold' : ''"
+                                    t-att-title="'Format as ' + kind"
+                                    t-on-click="() => this.setFormat(widget.id, kind)">
+                                <t t-esc="kind.slice(0, 3)"/>
+                            </button>
+                            <button class="btn btn-sm btn-link"
+                                    t-att-class="widget.drill ? 'fw-bold' : 'opacity-50'"
+                                    t-att-title="widget.drill ? 'Clicking opens the records — turn off' : 'Clicking does nothing — turn on'"
+                                    t-on-click="() => this.toggleDrill(widget.id)">
+                                <i class="fa fa-hand-pointer-o"/>
+                            </button>
                             <button class="btn btn-sm btn-link text-danger" title="Remove this tile"
                                     t-on-click="() => this.remove(widget.id)">
                                 <i class="fa fa-trash-o"/>

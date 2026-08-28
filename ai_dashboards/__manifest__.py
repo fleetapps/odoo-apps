@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
@@ -44,6 +44,11 @@ What you get
 * **A light editor.** Drag to reorder, resize, rename, recolour — without
   going back to the chat for small things.
 * **Every version kept.** One-click revert when a change was wrong.
+* **Email it to yourself.** Every weekday, week or month — and each email is
+  calculated with *your* permissions at the moment it is sent, so a shared
+  dashboard mails each person their own figures rather than a copy of
+  somebody else's.
+* **Share with people or teams.** Sharing grants sight, never edit.
 * **It explains itself.** A plain-English account of exactly which data each
   dashboard reads and whose permissions it runs under.
 
@@ -66,6 +71,8 @@ URL, one sign-in, one log.
         "security/ai_dashboards_security.xml",
         "security/ir.model.access.csv",
         "data/mcp_capability_data.xml",
+        "data/mail_template.xml",
+        "data/ir_cron.xml",
         "views/ai_dashboard_views.xml",
         "views/ai_dashboard_menus.xml",
     ],

@@ -101,3 +101,26 @@ class TestDashboardAccess(TransactionCase):
         board = self._dashboard(self.alice)
         with self.assertRaises(AccessError):
             board.with_user(self.alice).action_pin_to_menu()
+
+    def test_sharing_with_a_named_person_grants_sight(self):
+        """"Share with Bob" is what anyone actually wants; group-only sharing
+        forces them to ask an administrator for a group containing Bob."""
+        board = self._dashboard(self.alice,
+                                share_user_ids=[(6, 0, [self.bob.id])])
+        found = self.env["ai.dashboard"].with_user(self.bob).search(
+            [("id", "=", board.id)])
+        self.assertTrue(found)
+
+    def test_person_sharing_still_grants_sight_and_not_edit(self):
+        board = self._dashboard(self.alice,
+                                share_user_ids=[(6, 0, [self.bob.id])])
+        with self.assertRaises(AccessError):
+            board.with_user(self.bob).write(
+                {"spec_json": json.dumps(minimal(title="Bob's"))})
+
+    def test_a_recipient_cannot_reshare(self):
+        board = self._dashboard(self.alice,
+                                share_user_ids=[(6, 0, [self.bob.id])])
+        with self.assertRaises(AccessError):
+            board.with_user(self.bob).write(
+                {"share_user_ids": [(4, self.alice.id)]})

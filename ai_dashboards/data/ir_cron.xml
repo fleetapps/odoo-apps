@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Hourly rather than daily: subscribers pick their own send hour in
+             their own timezone, so the job has to wake up often enough to hit
+             any of them. Each pass takes at most a batch and leaves the rest,
+             so a database with hundreds of subscriptions spreads the work
+             instead of holding a worker. -->
+        <record id="cron_dashboard_subscriptions" model="ir.cron">
+            <field name="name">AI Dashboards: send scheduled dashboards</field>
+            <field name="model_id" ref="model_ai_dashboard_subscription"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_send()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

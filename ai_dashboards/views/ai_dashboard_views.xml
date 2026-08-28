@@ -74,6 +74,16 @@
                     <button name="action_duplicate" type="object"
                             string="Duplicate"
                             invisible="state == 'draft'"/>
+                    <button name="action_subscribe" type="object"
+                            string="Email me this" icon="fa-envelope-o"
+                            invisible="state == 'draft' or is_subscribed"/>
+                    <button name="action_unsubscribe" type="object"
+                            string="Stop emailing me" icon="fa-envelope-open-o"
+                            invisible="not is_subscribed"/>
+                    <button name="action_export_spec" type="object"
+                            string="Export"
+                            invisible="state == 'draft'"
+                            help="Copy this dashboard's definition, to rebuild it on another database."/>
                     <button name="action_pin_to_menu" type="object"
                             string="Pin to menu"
                             groups="ai_dashboards.group_dashboard_admin"
@@ -112,9 +122,36 @@
 
                     <group string="Sharing" name="sharing">
                         <field name="owner_id" readonly="1"/>
+                        <field name="share_user_ids" widget="many2many_tags"
+                               placeholder="Add a colleague by name"
+                               options="{'no_create': True}"
+                               help="Named colleagues who can open it."/>
                         <field name="group_ids" widget="many2many_tags"
-                               placeholder="Leave empty to keep it private to you"
-                               help="Everyone in these groups can open it. Each of them still sees only the records their own Odoo permissions allow, so one dashboard shows each person their own figures."/>
+                               placeholder="Or share with a whole team"
+                               options="{'no_create': True}"
+                               help="Everyone in these groups can open it."/>
+                        <div colspan="2" class="text-muted small"
+                             invisible="not is_shared">
+                            <i class="fa fa-lock me-1"/>
+                            Sharing lets people <b>open</b> this dashboard, not
+                            change it. Each of them sees only the records their
+                            own Odoo permissions allow — so one dashboard shows
+                            each person their own figures.
+                        </div>
+                    </group>
+
+                    <group string="Scheduled sends" name="scheduled"
+                           invisible="not subscription_ids">
+                        <field name="subscription_ids" nolabel="1" colspan="2"
+                               readonly="1">
+                            <list>
+                                <field name="user_id"/>
+                                <field name="interval"/>
+                                <field name="next_send"/>
+                                <field name="last_sent"/>
+                                <field name="last_error" optional="show"/>
+                            </list>
+                        </field>
                     </group>
 
                     <group string="What this dashboard reads" name="explains">
@@ -126,6 +163,8 @@
                     <field name="is_pinned" invisible="1"/>
                     <field name="is_slow" invisible="1"/>
                     <field name="built_by_ai" invisible="1"/>
+                    <field name="is_shared" invisible="1"/>
+                    <field name="is_subscribed" invisible="1"/>
                 </sheet>
                 <chatter/>
             </form>
@@ -196,6 +235,75 @@
             <p class="o_view_nocontent_smiling_face">Nothing shared with you yet</p>
             <p>When a colleague shares a dashboard with a group you belong to,
                it appears here — showing your figures, not theirs.</p>
+        </field>
+    </record>
+
+    <!-- ========================================== Scheduled sends ======== -->
+    <record id="ai_dashboard_subscription_view_form" model="ir.ui.view">
+        <field name="name">ai.dashboard.subscription.form</field>
+        <field name="model">ai.dashboard.subscription</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Each email is calculated <b>with your own permissions</b>,
+                        at the moment it is sent — so it shows your figures, not
+                        the owner's, and it is never a stale copy.
+                    </div>
+                    <group>
+                        <field name="dashboard_id" readonly="1"/>
+                        <field name="user_id" readonly="1"/>
+                        <field name="interval"/>
+                        <field name="send_hour"
+                               help="Hour of the day in your own timezone."/>
+                        <field name="active"/>
+                    </group>
+                    <group string="History" invisible="not send_count">
+                        <field name="next_send" readonly="1"/>
+                        <field name="last_sent" readonly="1"/>
+                        <field name="send_count" readonly="1"/>
+                        <field name="last_error" readonly="1"
+                               invisible="not last_error"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_send_now" type="object" string="Send one now"
+                            class="btn-primary"
+                            help="So you can see what it looks like without waiting."/>
+                    <button string="Done" special="save" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="ai_dashboard_subscription_view_list" model="ir.ui.view">
+        <field name="name">ai.dashboard.subscription.list</field>
+        <field name="model">ai.dashboard.subscription</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="dashboard_id"/>
+                <field name="user_id" column_invisible="1"/>
+                <field name="interval"/>
+                <field name="next_send"/>
+                <field name="last_sent"/>
+                <field name="send_count"/>
+                <field name="last_error" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+                <button name="action_send_now" type="object" string="Send now"
+                        icon="fa-paper-plane"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_subscriptions" model="ir.actions.act_window">
+        <field name="name">Scheduled sends</field>
+        <field name="res_model">ai.dashboard.subscription</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing scheduled yet</p>
+            <p>Open a dashboard and click <b>Email me this</b> to have it
+               delivered every weekday, week or month — calculated with your own
+               permissions each time.</p>
         </field>
     </record>
 

@@ -219,6 +219,29 @@
                     </div>
                 </div>
 
+                <!-- Read Only is the kill switch; the matrix is what grants.
+                     With writing on and nothing writable, the card says "read
+                     and write" while every write is refused - and the assistant
+                     reports itself locked read-only. Both true, irreconcilable
+                     from the screen, so say it here. -->
+                <div t-if="state.data.writes.inert" class="o_mcp_reconnect">
+                    <span class="fa fa-exclamation-triangle me-2"/>
+                    <div>
+                        <b>Writing is on, but nothing is writable yet.</b>
+                        <div>
+                            Your assistant will still refuse every change: no model
+                            in "<t t-esc="state.data.writes.scope_name"/>" has
+                            Create or Update switched on. Turn them on for the
+                            models it should be able to change.
+                        </div>
+                    </div>
+                    <button t-if="state.data.can_admin"
+                            class="btn btn-sm btn-primary ms-auto flex-shrink-0"
+                            t-on-click="() => this.openFix('mcp_governance_suite.mcp_scope_line_action')">
+                        Open the matrix
+                    </button>
+                </div>
+
                 <div t-if="state.data.writes.pending" class="o_mcp_pending">
                     <span class="fa fa-clock-o me-2"/>
                     <div>

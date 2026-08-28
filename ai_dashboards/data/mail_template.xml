@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The scheduled email.
+
+         Deliberately no chart images. Rendering a chart server-side needs a
+         headless browser or an image service, which would break the promise
+         that this module adds nothing to host - so the email carries the
+         numbers, laid out to be read on a phone, and links back to the live
+         dashboard for the shapes. An email of figures that arrives is worth
+         more than an email of pictures that needs a rendering stack.
+
+         Inline styles throughout: email clients strip <style> blocks. -->
+    <template id="dashboard_email">
+        <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #1f2d30; max-width: 640px; margin: 0 auto;">
+
+            <h1 style="font-size: 20px; font-weight: 600; margin: 0 0 4px;">
+                <t t-esc="dashboard.name"/>
+            </h1>
+            <p style="margin: 0 0 20px; color: #6b7f82; font-size: 13px;">
+                <t t-if="dashboard.description"><t t-esc="dashboard.description"/><br/></t>
+                Calculated just now with your own Odoo permissions.
+            </p>
+
+            <!-- KPIs first: on a phone these are usually the whole reason the
+                 email gets opened. -->
+            <t t-set="kpis" t-value="[w for w in data['widgets'] if w['type'] == 'kpi' and not w.get('error')]"/>
+            <table t-if="kpis" role="presentation" cellpadding="0" cellspacing="0"
+                   style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                    <td t-foreach="kpis" t-as="w" t-key="w['id']"
+                        style="padding: 14px 16px; border: 1px solid #dde5e4; border-radius: 8px; vertical-align: top;">
+                        <div style="font-size: 12px; color: #6b7f82; margin-bottom: 4px;">
+                            <t t-esc="w['title']"/>
+                        </div>
+                        <div style="font-size: 24px; font-weight: 600;">
+                            <t t-esc="fmt(w.get('value'), w, data['currency'])"/>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Everything else as a table. A bar chart is a ranked list with
+                 a picture attached; without the picture the list still works. -->
+            <t t-foreach="[w for w in data['widgets'] if w['type'] != 'kpi']" t-as="w" t-key="w['id']">
+                <div style="margin-bottom: 22px;">
+                    <h2 style="font-size: 14px; font-weight: 600; margin: 0 0 8px;">
+                        <t t-esc="w['title']"/>
+                    </h2>
+
+                    <p t-if="w.get('error')" style="margin: 0; font-size: 13px; color: #a0362f;">
+                        <t t-esc="w['error']"/>
+                    </p>
+                    <p t-elif="w.get('empty')" style="margin: 0; font-size: 13px; color: #6b7f82;">
+                        <t t-esc="w['empty']"/>
+                    </p>
+
+                    <table t-elif="w.get('series')" role="presentation" cellpadding="0" cellspacing="0"
+                           style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr t-foreach="w['series'][:12]" t-as="point" t-key="point_index"
+                            style="border-bottom: 1px solid #eef3f2;">
+                            <td style="padding: 6px 0;"><t t-esc="point['label']"/></td>
+                            <td style="padding: 6px 0; text-align: right; font-variant-numeric: tabular-nums;">
+                                <t t-esc="fmt(point['value'], w, data['currency'])"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table t-elif="w.get('rows')" role="presentation" cellpadding="0" cellspacing="0"
+                           style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <tr>
+                            <th t-foreach="w.get('columns') or []" t-as="col" t-key="col_index"
+                                style="text-align: left; padding: 6px 0; color: #6b7f82; font-weight: 500; border-bottom: 1px solid #dde5e4;">
+                                <t t-esc="col"/>
+                            </th>
+                        </tr>
+                        <tr t-foreach="w['rows'][:12]" t-as="row" t-key="row_index"
+                            style="border-bottom: 1px solid #eef3f2;">
+                            <td t-foreach="row" t-as="cell" t-key="cell_index" style="padding: 6px 0;">
+                                <t t-esc="cell"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p t-if="w.get('has_more')" style="margin: 6px 0 0; font-size: 11px; color: #8a6d00;">
+                        Top rows only — there are more in the dashboard.
+                    </p>
+                </div>
+            </t>
+
+            <p style="margin: 28px 0 8px;">
+                <a t-att-href="url"
+                   style="background: #0e7c6b; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; display: inline-block;">
+                    Open the live dashboard
+                </a>
+            </p>
+
+            <p style="margin: 18px 0 0; font-size: 11px; color: #8fa3a5; border-top: 1px solid #eef3f2; padding-top: 12px;">
+                You asked for this
+                <t t-if="subscription.interval == 'daily'">every weekday morning</t>
+                <t t-elif="subscription.interval == 'weekly'">every Monday morning</t>
+                <t t-else="">on the first of each month</t>.
+                Turn it off from the dashboard's <b>Email me this</b> button.
+                Figures were calculated with your own permissions, so they may
+                differ from a colleague's copy.
+            </p>
+        </div>
+    </template>
+</odoo>

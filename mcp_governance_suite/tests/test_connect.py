@@ -460,3 +460,32 @@ class TestConnectState(TransactionCase):
         canned = {text for _w, _m, text in STARTER_PROMPTS}
         for prompt in self.Connect.get_state()["prompts"]:
             self.assertIn(prompt["text"], canned)
+
+    def test_writes_on_with_an_empty_matrix_is_reported_as_inert(self):
+        """The dead end: the kill switch is off, so the screen says "read and
+        write", but no matrix row grants anything and every write is refused.
+        The assistant reports itself read-only and the user believes the
+        toggle did nothing. Both true; only this row reconciles them."""
+        scope = self.env.user.sudo().mcp_effective_scope()
+        scope.line_ids.write({"can_create": False, "can_write": False,
+                              "can_unlink": False})
+        self.Connect.set_writes(True)
+        writes = self.Connect.get_state()["writes"]
+        self.assertTrue(writes["enabled"])
+        self.assertEqual(writes["writable_models"], 0)
+        self.assertTrue(writes["inert"])
+        self.Connect.set_writes(False)
+
+    def test_writes_are_not_inert_once_a_model_permits_them(self):
+        scope = self.env.user.sudo().mcp_effective_scope()
+        scope.line_ids[:1].write({"can_create": True})
+        self.Connect.set_writes(True)
+        writes = self.Connect.get_state()["writes"]
+        self.assertTrue(writes["writable_models"] >= 1)
+        self.assertFalse(writes["inert"])
+        self.Connect.set_writes(False)
+
+    def test_read_only_is_never_reported_as_inert(self):
+        """Inert means "on but useless", not "off"."""
+        self.Connect.set_writes(False)
+        self.assertFalse(self.Connect.get_state()["writes"]["inert"])

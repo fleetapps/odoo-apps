@@ -20,6 +20,7 @@ const PALETTE = [
 ];
 
 const CHART_TYPES = ["bar", "line", "pie", "donut"];
+const FORMAT_KINDS = ["plain", "integer", "monetary", "percent"];
 
 export class AIDashboardCanvas extends Component {
     static template = "ai_dashboards.Canvas";
@@ -306,6 +307,26 @@ export class AIDashboardCanvas extends Component {
         await this.load();
     }
 
+    async setFormat(id, kind) {
+        await this.updateSpec((spec) => {
+            const widget = this.widgetInSpec(spec, id);
+            if (widget) {
+                widget.format = { ...(widget.format || {}), kind };
+            }
+        });
+        await this.load();
+    }
+
+    async toggleDrill(id) {
+        await this.updateSpec((spec) => {
+            const widget = this.widgetInSpec(spec, id);
+            if (widget) {
+                widget.drill = widget.drill === false;
+            }
+        });
+        await this.load();
+    }
+
     async setColor(id, color) {
         await this.updateSpec((spec) => {
             const widget = this.widgetInSpec(spec, id);
@@ -344,11 +365,28 @@ export class AIDashboardCanvas extends Component {
         await this.load();
     }
 
-    /** Which chart types this widget may switch to.
-     *  A KPI has no grouping and a table may have several, so neither can
-     *  become a chart without changing the query — which is the AI's job. */
+    /**
+     * What this tile may safely become, decided by the shape of its query
+     * rather than by what it currently is.
+     *
+     * One grouping draws as any chart or as a table. Several groupings only
+     * make sense as a table. None at all is a KPI and nothing else. Offering
+     * a switch outside that would produce a spec the validator refuses — so
+     * anything structural stays the AI's job, and the editor only offers
+     * changes that are guaranteed to save.
+     */
     switchableTypes(widget) {
-        return CHART_TYPES.includes(widget.type) ? CHART_TYPES : [];
+        if (widget.type === "kpi" || widget.group_count === 0) {
+            return [];
+        }
+        if (widget.group_count === 1) {
+            return [...CHART_TYPES, "table"];
+        }
+        return ["table"];
+    }
+
+    get formatKinds() {
+        return FORMAT_KINDS;
     }
 
     get palette() {

@@ -95,6 +95,12 @@ class AIDashboardRender(models.AbstractModel):
             "color": widget.get("color"),
             "format": widget.get("format") or {"kind": "plain"},
             "drill": widget.get("drill", True),
+            # The editor needs the tile's shape to know what it may safely
+            # become: a single grouping can be drawn as any chart or a table,
+            # several groupings only as a table, and none at all only as a KPI.
+            # Offering a switch that would need the query rewritten is how an
+            # editor produces a spec the validator then refuses.
+            "group_count": len((widget.get("query") or {}).get("group_by") or []),
         }
         query = widget.get("query") or {}
         model_name = query.get("model")
