@@ -243,16 +243,31 @@ class AIDashboardRender(models.AbstractModel):
             })
         out["series"] = series
         if previous is not None and group_by:
-            # Aligned by position rather than by label: grouping by month puts
-            # "2025-08" against "2026-08", which share no label but are the
-            # points a reader wants side by side. Labelled as the comparison in
-            # the legend so nobody mistakes one for the other.
             prior = previous["rows"]
-            out["compare_series"] = [
-                self._number(row[len(group_by)])
-                if len(row) > len(group_by) else 0
-                for row in prior
-            ]
+            if ":" in group_by[0]:
+                # A date axis runs chronologically on both sides over windows
+                # of the same length, so position IS the correct pairing —
+                # "Aug 2025" under "Aug 2026". The labels legitimately differ,
+                # which is why the legend names the comparison.
+                out["compare_series"] = [
+                    self._number(row[len(group_by)])
+                    if len(row) > len(group_by) else 0
+                    for row in prior
+                ]
+            else:
+                # Everything else is ordered by the measure, so position 0 is
+                # "top customer now" against "top customer then" — often two
+                # different companies. Pairing those by position puts one
+                # firm's prior-year figure under another firm's name, which is
+                # wrong and looks entirely reasonable. Align by identity.
+                lookup = {}
+                for row in prior:
+                    if len(row) > len(group_by):
+                        lookup[self._group_key(row[0])] = \
+                            self._number(row[len(group_by)])
+                out["compare_series"] = [
+                    lookup.get(self._group_key(row[0]), 0) for row in rows
+                ]
         if widget.get("type") == "table":
             out["columns"] = group_by + aggregates
             out["rows"] = [
@@ -452,6 +467,15 @@ class AIDashboardRender(models.AbstractModel):
             return _("Unassigned")
         if isinstance(value, (date, datetime)):
             return fields.Date.to_string(value)
+        return str(value)
+
+    @staticmethod
+    def _group_key(value):
+        """A stable identity for a group value, for pairing across periods."""
+        if isinstance(value, models.BaseModel):
+            return "r%s" % (value.id or 0)
+        if value is False or value is None:
+            return "__none__"
         return str(value)
 
     @staticmethod

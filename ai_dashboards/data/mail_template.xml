@@ -60,6 +60,43 @@
                         <t t-esc="w['empty']"/>
                     </p>
 
+                    <!-- A pivot has neither `series` nor `rows`, so without
+                         this branch the tile silently rendered as blank space
+                         under its own heading. Narrowed for email: a phone
+                         cannot show fifty columns, and a grid that overflows
+                         is worse than one that says it was trimmed. -->
+                    <t t-elif="w.get('pivot')">
+                        <t t-set="pv" t-value="w['pivot']"/>
+                        <t t-set="ecols" t-value="pv['cols']['values'][:6]"/>
+                        <t t-set="erows" t-value="pv['rows']['values'][:12]"/>
+                        <table role="presentation" cellpadding="0" cellspacing="0"
+                               style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <tr>
+                                <th style="text-align: left; padding: 6px 4px; color: #6b7f82; font-weight: 500; border-bottom: 1px solid #dde5e4;"/>
+                                <th t-foreach="ecols" t-as="c" t-key="c['key']"
+                                    style="text-align: right; padding: 6px 4px; color: #6b7f82; font-weight: 500; border-bottom: 1px solid #dde5e4;">
+                                    <t t-esc="c['label']"/>
+                                </th>
+                                <th style="text-align: right; padding: 6px 4px; color: #6b7f82; font-weight: 600; border-bottom: 1px solid #dde5e4;">Total</th>
+                            </tr>
+                            <tr t-foreach="erows" t-as="r" t-key="r['key']"
+                                style="border-bottom: 1px solid #eef3f2;">
+                                <td style="padding: 6px 4px;"><t t-esc="r['label']"/></td>
+                                <td t-foreach="ecols" t-as="c" t-key="c['key']"
+                                    style="padding: 6px 4px; text-align: right;">
+                                    <t t-esc="fmt(pv['cells'].get(r['key'] + '|' + c['key']), w, data['currency']) if pv['cells'].get(r['key'] + '|' + c['key']) is not None else '·'"/>
+                                </td>
+                                <td style="padding: 6px 4px; text-align: right; font-weight: 600;">
+                                    <t t-esc="fmt(pv['row_totals'].get(r['key'], 0), w, data['currency'])"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p t-if="len(pv['rows']['values']) &gt; 12 or len(pv['cols']['values']) &gt; 6 or pv['rows']['has_more'] or pv['cols']['has_more']"
+                           style="margin: 6px 0 0; font-size: 11px; color: #8a6d00;">
+                            Trimmed to fit an email — open the dashboard for the full grid.
+                        </p>
+                    </t>
+
                     <table t-elif="w.get('series')" role="presentation" cellpadding="0" cellspacing="0"
                            style="width: 100%; border-collapse: collapse; font-size: 13px;">
                         <tr t-foreach="w['series'][:12]" t-as="point" t-key="point_index"

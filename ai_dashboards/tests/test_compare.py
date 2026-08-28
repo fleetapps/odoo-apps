@@ -179,3 +179,66 @@ class TestCompareRender(TransactionCase):
     def test_no_window_declines(self):
         self.assertIsNone(
             self.Render._shift_window([["state", "=", "x"]], "previous_year"))
+
+
+@tagged("post_install", "-at_install")
+class TestCompareAlignment(TransactionCase):
+    """Pairing the two periods.
+
+    A categorical axis is ordered by the measure, so position 0 is "top
+    customer now" against "top customer then" — often two different companies.
+    Pairing by position puts one firm's prior figure under another firm's name:
+    wrong, and it looks entirely reasonable on screen.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.Render = cls.env["ai.dashboard.render"]
+
+    def test_a_categorical_axis_pairs_by_identity(self):
+        group_by = ["partner_id"]
+        Partner = self.env["res.partner"]
+        acme = Partner.create({"name": "AID Acme"})
+        globex = Partner.create({"name": "AID Globex"})
+
+        # This period: Acme leads. Previous: Globex led. Position 0 is a
+        # different company on each side.
+        rows = [(acme, 100.0), (globex, 40.0)]
+        prior = [(globex, 90.0), (acme, 25.0)]
+        out = self.Render._shape(
+            {"type": "bar"}, {"group_by": group_by},
+            {"rows": rows, "has_more": False, "group_by": group_by,
+             "aggregates": ["x:sum"]},
+            {"rows": prior, "has_more": False, "group_by": group_by,
+             "aggregates": ["x:sum"]})
+
+        self.assertEqual([p["label"] for p in out["series"]],
+                         ["AID Acme", "AID Globex"])
+        self.assertEqual(out["compare_series"], [25.0, 90.0],
+                         "each company must be paired with its own prior "
+                         "figure, not with whatever sat in the same position")
+
+    def test_something_absent_last_period_compares_to_zero(self):
+        Partner = self.env["res.partner"]
+        newcomer = Partner.create({"name": "AID Newcomer"})
+        group_by = ["partner_id"]
+        out = self.Render._shape(
+            {"type": "bar"}, {"group_by": group_by},
+            {"rows": [(newcomer, 70.0)], "has_more": False,
+             "group_by": group_by, "aggregates": ["x:sum"]},
+            {"rows": [], "has_more": False, "group_by": group_by,
+             "aggregates": ["x:sum"]})
+        self.assertEqual(out["compare_series"], [0])
+
+    def test_a_date_axis_pairs_by_position(self):
+        """Both sides run chronologically over equal windows, so position is
+        the correct pairing — the labels differ by a year on purpose."""
+        group_by = ["date:month"]
+        out = self.Render._shape(
+            {"type": "line"}, {"group_by": group_by},
+            {"rows": [("2026-01-01", 10.0), ("2026-02-01", 20.0)],
+             "has_more": False, "group_by": group_by, "aggregates": ["x:sum"]},
+            {"rows": [("2025-01-01", 5.0), ("2025-02-01", 6.0)],
+             "has_more": False, "group_by": group_by, "aggregates": ["x:sum"]})
+        self.assertEqual(out["compare_series"], [5.0, 6.0])

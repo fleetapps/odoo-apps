@@ -97,21 +97,31 @@ class AIDashboardSubscription(models.Model):
         Timezone matters here in a way it does not elsewhere in this module: a
         "Monday morning" email that lands at 2am is worse than no email, and
         the subscriber's timezone is the only one that makes the promise true.
+
+        All the arithmetic happens on a **naive** local datetime, and the
+        result is localised exactly once at the end. This is not fussiness —
+        a pytz timezone attached to a datetime carries the UTC offset *for
+        that moment*, so adding days to an aware datetime keeps January's
+        offset on a July date. That ships as an email arriving at 08:00 for
+        half the year and 07:00 for the other half, with nothing in the logs
+        and no way for the recipient to describe the fault.
         """
         for rec in self:
             if not rec.active:
                 rec.next_send = False
                 continue
-            user_tz = rec.user_id.tz or "UTC"
-            now = fields.Datetime.context_timestamp(
-                rec.with_context(tz=user_tz), after or fields.Datetime.now())
-            nxt = now.replace(hour=rec.send_hour, minute=0, second=0,
-                              microsecond=0)
-            if nxt <= now:
+            tz = pytz.timezone(rec.user_id.tz or "UTC")
+            local = fields.Datetime.context_timestamp(
+                rec.with_context(tz=tz.zone), after or fields.Datetime.now())
+
+            nxt = local.replace(tzinfo=None, minute=0, second=0, microsecond=0)
+            nxt = nxt.replace(hour=rec.send_hour)
+            if nxt <= local.replace(tzinfo=None):
                 nxt += relativedelta(days=1)
+
             if rec.interval == "daily":
-                # Weekday mornings: a Saturday report nobody reads until Monday
-                # is just an unread email.
+                # Weekday mornings: a Saturday report nobody reads until
+                # Monday is just an unread email.
                 while nxt.weekday() >= 5:
                     nxt += relativedelta(days=1)
             elif rec.interval == "weekly":
@@ -120,7 +130,12 @@ class AIDashboardSubscription(models.Model):
             elif rec.interval == "monthly":
                 if nxt.day != 1:
                     nxt = (nxt + relativedelta(months=1)).replace(day=1)
-            rec.next_send = nxt.astimezone(pytz.utc).replace(tzinfo=None)
+
+            # localize() picks the offset that actually applies on that date.
+            # is_dst=False resolves the hour that occurs twice when the clocks
+            # go back, rather than raising on it.
+            rec.next_send = tz.localize(nxt, is_dst=False)\
+                .astimezone(pytz.utc).replace(tzinfo=None)
 
     # ----------------------------------------------------------------- cron
     @api.model

@@ -9,6 +9,9 @@ that would actually matter.
 """
 import json
 
+import pytz
+
+from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
@@ -112,3 +115,47 @@ class TestSubscriptions(TransactionCase):
         before = self.env["mail.mail"].sudo().search_count([])
         self.env["ai.dashboard.subscription"].sudo().cron_send()
         self.assertEqual(self.env["mail.mail"].sudo().search_count([]), before)
+
+
+@tagged("post_install", "-at_install")
+class TestScheduleTimezone(TransactionCase):
+    """The hour the email actually lands.
+
+    pytz attaches the offset in force at *that moment*, so arithmetic on an
+    aware datetime carries January's offset onto a July date. That shipped as
+    an email arriving at 08:00 for half the year and 07:00 for the other half,
+    with nothing in the logs and no way for a recipient to describe the fault.
+    """
+
+    def _sub_at(self, tz_name, hour=7):
+        user = self.env["res.users"].create({
+            "name": "TZ %s" % tz_name, "login": "ai_tz_%s" % abs(hash(tz_name)),
+            "email": "tz@example.com", "tz": tz_name,
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        board = self.env["ai.dashboard"].create({
+            "name": "TZ board %s" % tz_name,
+            "spec_json": json.dumps(minimal()),
+            "state": "published",
+        })
+        return self.env["ai.dashboard.subscription"].create({
+            "dashboard_id": board.id, "user_id": user.id, "send_hour": hour,
+            "interval": "daily",
+        })
+
+    def test_the_send_hour_survives_a_dst_boundary(self):
+        sub = self._sub_at("Europe/London")
+        for base in ("2026-01-15 12:00:00", "2026-07-15 12:00:00"):
+            sub._schedule_next(after=fields.Datetime.to_datetime(base))
+            landed = pytz.utc.localize(sub.next_send).astimezone(
+                pytz.timezone("Europe/London"))
+            self.assertEqual(
+                landed.hour, 7,
+                "scheduled from %s it lands at %s local, not 07:00"
+                % (base, landed.strftime("%H:%M")))
+
+    def test_a_user_with_no_timezone_falls_back_to_utc(self):
+        sub = self._sub_at("Europe/London")
+        sub.user_id.tz = False
+        sub._schedule_next()
+        self.assertTrue(sub.next_send, "no timezone must not mean no schedule")
