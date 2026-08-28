@@ -179,12 +179,20 @@ class AIDashboard(models.Model):
         except ValueError:
             return {}
 
-    def _check_owner(self, action=_("change")):
+    def _check_owner(self, action=None):
         """Sharing lets people *see* a dashboard, never edit it.
 
         Without this, one person's edit silently rewrites what a whole group
         looks at every morning. Editing stays with the owner (and admins).
+
+        ``action`` defaults inside the body rather than in the signature: a
+        default argument is evaluated once, when the class is defined, and at
+        that moment there is no environment and no language. Odoo notices and
+        logs a stack trace on every module load — and the string would be
+        frozen in whatever language import time happened to have, so it would
+        never translate for anyone.
         """
+        action = action or _("change")
         if self.env.su or self.env.user.has_group(GROUP_ADMIN):
             return
         for rec in self:

@@ -124,3 +124,28 @@ class TestDashboardAccess(TransactionCase):
         with self.assertRaises(AccessError):
             board.with_user(self.bob).write(
                 {"share_user_ids": [(4, self.alice.id)]})
+
+    def test_translations_are_not_frozen_at_import(self):
+        """A default argument is evaluated once, when the class is defined —
+        with no environment and no language. Odoo logs a stack trace for it on
+        every module load, and the string would never translate for anyone."""
+        import inspect
+        from ..models import ai_dashboard, ai_dashboard_render
+        from ..models import ai_dashboard_spec, ai_dashboard_subscription
+        for module in (ai_dashboard, ai_dashboard_render, ai_dashboard_spec,
+                       ai_dashboard_subscription):
+            for _name, obj in inspect.getmembers(module, inspect.isclass):
+                if obj.__module__ != module.__name__:
+                    continue
+                for meth_name, meth in inspect.getmembers(
+                        obj, inspect.isfunction):
+                    defaults = inspect.signature(meth).parameters
+                    for pname, param in defaults.items():
+                        default = param.default
+                        if default is inspect.Parameter.empty:
+                            continue
+                        self.assertNotIn(
+                            type(default).__name__, ("LazyTranslate", "lazy"),
+                            "%s.%s has a translated default for '%s' — resolve "
+                            "it inside the body instead"
+                            % (obj.__name__, meth_name, pname))
