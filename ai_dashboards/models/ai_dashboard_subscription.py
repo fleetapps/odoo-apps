@@ -15,10 +15,11 @@ would matter.
 """
 import logging
 
+import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -63,7 +64,9 @@ class AIDashboardSubscription(models.Model):
     def _check_send_hour(self):
         for rec in self:
             if not 0 <= rec.send_hour <= 23:
-                raise UserError(_("The hour must be between 0 and 23."))
+                raise ValidationError(_(
+                    "Pick an hour between 0 and 23 — %s is not one.")
+                    % rec.send_hour)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -117,9 +120,7 @@ class AIDashboardSubscription(models.Model):
             elif rec.interval == "monthly":
                 if nxt.day != 1:
                     nxt = (nxt + relativedelta(months=1)).replace(day=1)
-            rec.next_send = nxt.astimezone(
-                fields.Datetime.now().astimezone().tzinfo).replace(tzinfo=None) \
-                if nxt.tzinfo else nxt
+            rec.next_send = nxt.astimezone(pytz.utc).replace(tzinfo=None)
 
     # ----------------------------------------------------------------- cron
     @api.model

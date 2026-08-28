@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards",
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.2.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "

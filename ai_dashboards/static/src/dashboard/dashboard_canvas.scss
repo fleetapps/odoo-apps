@@ -155,27 +155,6 @@
         color: var(--warning-dark, #8a6d00);
     }
 
-    // ----------------------------------------------------------- swatches
-    .o_ai_dash_swatches {
-        display: flex;
-        gap: .2rem;
-        margin-top: .5rem;
-        opacity: 0;
-        transition: opacity .12s ease;
-    }
-    .o_ai_dash_tile:hover .o_ai_dash_swatches { opacity: 1; }
-
-    .o_ai_dash_swatch {
-        width: .85rem;
-        height: .85rem;
-        border: 0;
-        border-radius: 50%;
-        padding: 0;
-        cursor: pointer;
-
-        &:hover { outline: 2px solid var(--gray-400, #ced4da); outline-offset: 1px; }
-    }
-
     .o_ai_dash_foot {
         margin: var(--o-ai-gap) 0 0;
         font-size: .78rem;
@@ -187,6 +166,6 @@
         .o_ai_dash_grid > .o_ai_dash_tile {
             grid-column: span 12 !important;
         }
-        .o_ai_dash_tools, .o_ai_dash_swatches { opacity: 1; }
+        .o_ai_dash_tools { opacity: 1; }
     }
 }

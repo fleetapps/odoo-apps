@@ -71,31 +71,14 @@
                                     t-on-click="() => this.resize(widget.id, 3)">
                                 <i class="fa fa-expand"/>
                             </button>
-                            <button t-foreach="switchableTypes(widget)" t-as="type"
-                                    t-key="type"
-                                    class="btn btn-sm btn-link"
-                                    t-att-class="widget.type === type ? 'fw-bold' : ''"
-                                    t-att-title="'Show as ' + type"
-                                    t-on-click="() => this.setType(widget.id, type)">
-                                <t t-esc="type"/>
-                            </button>
-                            <button t-foreach="formatKinds" t-as="kind" t-key="kind"
-                                    class="btn btn-sm btn-link"
-                                    t-att-class="(widget.format.kind || 'plain') === kind ? 'fw-bold' : ''"
-                                    t-att-title="'Format as ' + kind"
-                                    t-on-click="() => this.setFormat(widget.id, kind)">
-                                <t t-esc="kind.slice(0, 3)"/>
-                            </button>
-                            <button class="btn btn-sm btn-link"
-                                    t-att-class="widget.drill ? 'fw-bold' : 'opacity-50'"
-                                    t-att-title="widget.drill ? 'Clicking opens the records — turn off' : 'Clicking does nothing — turn on'"
-                                    t-on-click="() => this.toggleDrill(widget.id)">
-                                <i class="fa fa-hand-pointer-o"/>
-                            </button>
-                            <button class="btn btn-sm btn-link text-danger" title="Remove this tile"
-                                    t-on-click="() => this.remove(widget.id)">
-                                <i class="fa fa-trash-o"/>
-                            </button>
+                            <!-- Everything you do once, rather than while
+                                 arranging, lives behind this. -->
+                            <Dropdown items="tileMenu(widget)">
+                                <button class="btn btn-sm btn-link"
+                                        title="More options for this tile">
+                                    <i class="fa fa-ellipsis-v"/>
+                                </button>
+                            </Dropdown>
                         </div>
                     </div>
 
@@ -154,13 +137,6 @@
 
                     <div t-if="widget.has_more" class="o_ai_dash_more">
                         Showing the top rows only — there are more.
-                    </div>
-                    <div t-if="isEditable" class="o_ai_dash_swatches">
-                        <button t-foreach="palette" t-as="swatch" t-key="swatch_index"
-                                class="o_ai_dash_swatch"
-                                t-att-style="'background:' + swatch"
-                                t-att-title="'Recolour'"
-                                t-on-click="() => this.setColor(widget.id, swatch_index)"/>
                     </div>
                 </div>
             </div>

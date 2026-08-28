@@ -80,10 +80,6 @@
                     <button name="action_unsubscribe" type="object"
                             string="Stop emailing me" icon="fa-envelope-open-o"
                             invisible="not is_subscribed"/>
-                    <button name="action_export_spec" type="object"
-                            string="Export"
-                            invisible="state == 'draft'"
-                            help="Copy this dashboard's definition, to rebuild it on another database."/>
                     <button name="action_pin_to_menu" type="object"
                             string="Pin to menu"
                             groups="ai_dashboards.group_dashboard_admin"
@@ -120,44 +116,55 @@
                     <field name="spec_json" widget="ai_dashboard_canvas"
                            nolabel="1" options="{'no_label': true}"/>
 
-                    <group string="Sharing" name="sharing">
-                        <field name="owner_id" readonly="1"/>
-                        <field name="share_user_ids" widget="many2many_tags"
-                               placeholder="Add a colleague by name"
-                               options="{'no_create': True}"
-                               help="Named colleagues who can open it."/>
-                        <field name="group_ids" widget="many2many_tags"
-                               placeholder="Or share with a whole team"
-                               options="{'no_create': True}"
-                               help="Everyone in these groups can open it."/>
-                        <div colspan="2" class="text-muted small"
-                             invisible="not is_shared">
-                            <i class="fa fa-lock me-1"/>
-                            Sharing lets people <b>open</b> this dashboard, not
-                            change it. Each of them sees only the records their
-                            own Odoo permissions allow — so one dashboard shows
-                            each person their own figures.
-                        </div>
-                    </group>
+                    <notebook>
+                        <page string="Sharing" name="sharing">
+                            <group>
+                                <field name="owner_id" readonly="1"/>
+                                <field name="share_user_ids" widget="many2many_tags"
+                                       placeholder="Add a colleague by name"
+                                       options="{'no_create': True}"/>
+                                <field name="group_ids" widget="many2many_tags"
+                                       placeholder="Or share with a whole team"
+                                       options="{'no_create': True}"/>
+                            </group>
+                            <div class="text-muted">
+                                <i class="fa fa-lock me-1"/>
+                                Sharing lets people <b>open</b> this dashboard, not
+                                change it. Each of them sees only the records their
+                                own Odoo permissions allow — so one dashboard shows
+                                each person their own figures.
+                            </div>
+                        </page>
 
-                    <group string="Scheduled sends" name="scheduled"
-                           invisible="not subscription_ids">
-                        <field name="subscription_ids" nolabel="1" colspan="2"
-                               readonly="1">
-                            <list>
-                                <field name="user_id"/>
-                                <field name="interval"/>
-                                <field name="next_send"/>
-                                <field name="last_sent"/>
-                                <field name="last_error" optional="show"/>
-                            </list>
-                        </field>
-                    </group>
+                        <page string="Scheduled sends" name="scheduled">
+                            <field name="subscription_ids" readonly="1">
+                                <list>
+                                    <field name="user_id"/>
+                                    <field name="interval"/>
+                                    <field name="next_send"/>
+                                    <field name="last_sent"/>
+                                    <field name="last_error" optional="show"/>
+                                </list>
+                            </field>
+                            <div class="text-muted mt-2">
+                                Each email is calculated with its recipient's own
+                                permissions at the moment it is sent — so one
+                                dashboard mails each person their own figures.
+                            </div>
+                        </page>
 
-                    <group string="What this dashboard reads" name="explains">
-                        <field name="explanation" nolabel="1" colspan="2"
-                               readonly="1" class="text-muted"/>
-                    </group>
+                        <page string="What it reads" name="about">
+                            <field name="explanation" nolabel="1" readonly="1"
+                                   class="text-muted"/>
+                            <div class="mt-3">
+                                <button name="action_export_spec" type="object"
+                                        string="Export this definition"
+                                        class="btn btn-link ps-0"
+                                        invisible="state == 'draft'"
+                                        help="Copy it, to rebuild this dashboard on another database."/>
+                            </div>
+                        </page>
+                    </notebook>
 
                     <field name="version_count" invisible="1"/>
                     <field name="is_pinned" invisible="1"/>

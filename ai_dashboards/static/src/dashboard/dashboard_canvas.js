@@ -5,6 +5,7 @@ import { loadBundle } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useService } from "@web/core/utils/hooks";
+import { Dropdown } from "@web/core/dropdown/dropdown";
 import { _t } from "@web/core/l10n/translation";
 
 // Chart.js ships with Odoo but is lazy-loaded rather than sitting in
@@ -21,9 +22,18 @@ const PALETTE = [
 
 const CHART_TYPES = ["bar", "line", "pie", "donut"];
 const FORMAT_KINDS = ["plain", "integer", "monetary", "percent"];
+// Named for a person, not for the schema: nobody reading a dashboard thinks
+// "monetary".
+const FORMAT_LABELS = {
+    plain: "a plain number",
+    integer: "a whole number",
+    monetary: "money",
+    percent: "a percentage",
+};
 
 export class AIDashboardCanvas extends Component {
     static template = "ai_dashboards.Canvas";
+    static components = { Dropdown };
     static props = { ...standardFieldProps };
 
     setup() {
@@ -387,6 +397,60 @@ export class AIDashboardCanvas extends Component {
 
     get formatKinds() {
         return FORMAT_KINDS;
+    }
+
+    /**
+     * Everything you can do to a tile that is not moving or resizing it.
+     *
+     * A menu rather than a row of buttons: reordering and resizing are the two
+     * things you do repeatedly while arranging a dashboard, so they stay under
+     * the cursor. Changing a chart type or a number format happens once and
+     * then never again, and fourteen buttons hovering over every tile turned
+     * reading a dashboard into looking at a toolbar.
+     */
+    tileMenu(widget) {
+        const items = [
+            {
+                label: _t("Rename…"),
+                onSelected: () => (this.state.editing = widget.id),
+            },
+        ];
+        for (const type of this.switchableTypes(widget)) {
+            if (type === widget.type) {
+                continue;
+            }
+            items.push({
+                label: _t("Show as %s", type),
+                onSelected: () => this.setType(widget.id, type),
+            });
+        }
+        const current = (widget.format && widget.format.kind) || "plain";
+        for (const kind of FORMAT_KINDS) {
+            if (kind === current || widget.type === "table") {
+                continue;
+            }
+            items.push({
+                label: _t("Format as %s", FORMAT_LABELS[kind]),
+                onSelected: () => this.setFormat(widget.id, kind),
+            });
+        }
+        items.push({
+            label: widget.drill
+                ? _t("Stop clicks opening records")
+                : _t("Let clicks open the records"),
+            onSelected: () => this.toggleDrill(widget.id),
+        });
+        items.push({
+            label: _t("Next colour"),
+            onSelected: () =>
+                this.setColor(widget.id, ((widget.color || 0) + 1) % PALETTE.length),
+        });
+        items.push({
+            label: _t("Remove this tile"),
+            class: "text-danger",
+            onSelected: () => this.remove(widget.id),
+        });
+        return items;
     }
 
     get palette() {
