@@ -2,15 +2,15 @@
 # Manifest reference:
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
-    "name": "AI MCP",
+    "name": "AI MCP Pro",
     "version": "19.0.4.1.0",
     "category": "Extra Tools/AI",
     "summary": "Connect Claude, ChatGPT, Gemini, Cursor or any MCP client to Odoo "
                "with one-click OAuth 2.1 — every AI action runs as the real user, "
                "scoped, rate-limited, audited and optionally approval-gated.",
     "description": """
-AI MCP
-======
+AI MCP Pro
+==========
 
 Let your team *chat with their Odoo data* from Claude, ChatGPT, Gemini, Cursor,
 Copilot, VS Code — any Model Context Protocol client — and get reports,

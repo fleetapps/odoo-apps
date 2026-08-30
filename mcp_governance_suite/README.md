@@ -1,4 +1,4 @@
-# AI MCP
+# AI MCP Pro
 
 **Connect Claude, ChatGPT, Gemini, Cursor, Copilot or any MCP client to Odoo —
 with one-click OAuth 2.1 — and let your team chat with their data, build reports

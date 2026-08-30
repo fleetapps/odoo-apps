@@ -2,15 +2,15 @@
 # Manifest reference:
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
-    "name": "AI Dashboards",
+    "name": "AI Dashboards Pro",
     "version": "19.0.3.0.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
                "key, no generated SQL, every query runs as the person looking.",
     "description": """
-AI Dashboards
-=============
+AI Dashboards Pro
+=================
 
 Ask your own AI assistant for a dashboard. Get a real one in Odoo.
 

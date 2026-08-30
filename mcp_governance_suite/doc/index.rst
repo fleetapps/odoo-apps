@@ -1,6 +1,6 @@
-======
-AI MCP
-======
+==========
+AI MCP Pro
+==========
 
 Connect Claude, ChatGPT, Gemini, Cursor, Copilot or any Model Context Protocol
 client to Odoo with one-click OAuth 2.1. Every AI action runs as the signed-in
