@@ -87,6 +87,7 @@ URL, one sign-in, one log.
             "ai_dashboards/static/src/dashboard/*.xml",
         ],
     },
+    "pre_init_hook": "pre_init_check",
     "installable": True,
     "application": True,
 }
