@@ -62,5 +62,5 @@ def _refuse_if_installed(env, other_module, other_name, this_name, advice):
 
 def pre_init_check(env):
     _refuse_if_installed(
-        env, 'ai_mcp', 'AI MCP', 'AI MCP Pro',
+        env, 'ai_mcp_free', 'AI MCP', 'AI MCP Pro',
         'Uninstall AI MCP first; AI MCP Pro is a superset of it and your scopes, connections and audit history are not carried over automatically, so export anything you need to keep.')
