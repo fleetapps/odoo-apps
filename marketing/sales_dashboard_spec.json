@@ -1,0 +1,44 @@
+{
+  "schema": "ai-dashboards/1",
+  "title": "Sales overview",
+  "description": "Order intake, pipeline and where it comes from.",
+  "filters": [
+    {"key": "period", "type": "date_range", "label": "Period",
+     "default": "this_year", "field": "date_order"}
+  ],
+  "widgets": [
+    {"id": "confirmed", "type": "kpi", "title": "Confirmed order value", "span": 3,
+     "query": {"model": "sale.order", "domain": [["state", "in", ["sale", "done"]]],
+               "measures": ["amount_total:sum"]},
+     "format": {"kind": "monetary"}, "compare": {"to": "previous_year"}},
+
+    {"id": "orders", "type": "kpi", "title": "Confirmed orders", "span": 3,
+     "query": {"model": "sale.order", "domain": [["state", "in", ["sale", "done"]]],
+               "measures": ["__count"]},
+     "format": {"kind": "integer"}},
+
+    {"id": "pipeline", "type": "kpi", "title": "Open quotations", "span": 3,
+     "query": {"model": "sale.order", "domain": [["state", "in", ["draft", "sent"]]],
+               "measures": ["amount_total:sum"]},
+     "format": {"kind": "monetary"}},
+
+    {"id": "avg", "type": "kpi", "title": "Average order", "span": 3,
+     "query": {"model": "sale.order", "domain": [["state", "in", ["sale", "done"]]],
+               "measures": ["amount_total:avg"]},
+     "format": {"kind": "monetary"}},
+
+    {"id": "customers", "type": "bar", "title": "By customer", "span": 6,
+     "query": {"model": "sale.order", "domain": [["state", "in", ["sale", "done"]]],
+               "group_by": ["partner_id"], "measures": ["amount_total:sum"],
+               "order": "amount_total desc", "limit": 10}},
+
+    {"id": "pipeline_split", "type": "donut", "title": "Value by stage", "span": 6,
+     "query": {"model": "sale.order", "group_by": ["state"],
+               "measures": ["amount_total:sum"]}},
+
+    {"id": "recent", "type": "table", "title": "Orders by day", "span": 12,
+     "query": {"model": "sale.order", "group_by": ["date_order:day"],
+               "measures": ["amount_total:sum", "__count"],
+               "order": "date_order desc", "limit": 30}}
+  ]
+}
