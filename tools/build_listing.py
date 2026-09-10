@@ -210,6 +210,299 @@ def apply_pseudo_rules(html, rules):
     return inner, failed
 
 
+# The store does not just strip <style>; it also filters inline style
+# declarations against a property whitelist. Anything outside it is dropped
+# silently, which is how a gradient hero with white text published as white
+# text on white. Derived empirically by diffing what we send against what
+# survives on the published pages.
+SAFE_PROPS = {
+    'background-color', 'border', 'border-bottom', 'border-collapse',
+    'border-radius', 'border-spacing', 'border-top', 'color', 'display',
+    'float', 'font-family', 'font-size', 'font-style', 'font-weight',
+    'height', 'letter-spacing', 'line-height', 'margin', 'margin-bottom',
+    'margin-left', 'margin-right', 'margin-top', 'max-width', 'min-height',
+    'min-width', 'opacity', 'padding', 'padding-bottom', 'padding-left',
+    'padding-right', 'padding-top', 'text-align', 'text-decoration',
+    'text-transform', 'vertical-align', 'white-space', 'width',
+}
+
+# Widths for n inline-block siblings, left short of an even split so the
+# whitespace between inline-blocks has somewhere to go.
+SPLIT = {1: '100%', 2: '48%', 3: '31.5%', 4: '23.5%', 5: '18.5%', 6: '15.5%'}
+
+# Usable content width of a listing, for turning a flex-basis back into columns.
+CONTENT_WIDTH = 1040.0
+
+
+def parse_colour(text):
+    """(r, g, b, a) for the first colour in `text`, or None."""
+    m = re.search(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)', text)
+    if m:
+        a = float(m.group(4)) if m.group(4) is not None else 1.0
+        return (int(m.group(1)), int(m.group(2)), int(m.group(3)), a)
+    m = re.search(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', text)
+    if m:
+        h = m.group(1)
+        if len(h) == 3:
+            h = ''.join(c * 2 for c in h)
+        return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (1.0,)
+    return None
+
+
+def _colours(value):
+    """Every colour in a value, in order, each as (r, g, b, a)."""
+    out = []
+    for tok in re.finditer(r'rgba?\([^)]*\)|#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', value):
+        c = parse_colour(tok.group(0))
+        if c:
+            out.append(c)
+    return out
+
+
+def composite(fg, bg):
+    """Flatten a translucent colour onto an opaque one.
+
+    Alpha cannot survive either - a translucent white pill on a dark hero
+    would otherwise flatten to solid white and swallow its own white text.
+    """
+    r, g, b, a = fg
+    return tuple(int(round(fg[i] * a + bg[i] * (1 - a))) for i in range(3)) + (1.0,)
+
+
+def _lum(c):
+    f = []
+    for v in c[:3]:
+        v /= 255.0
+        f.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]
+
+
+def _contrast(a, b):
+    la, lb = _lum(a), _lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def hexof(c):
+    return '#%02x%02x%02x' % tuple(c[:3])
+
+
+def flatten_background(value, parent_bg, text_colour=None):
+    """One opaque colour standing in for any background value.
+
+    The shorthand is not whitelisted and gradients cannot be expressed at all,
+    so every background collapses to a single background-color, composited
+    over whatever it actually sits on. For a gradient, take the stop that
+    reads best against the element's own text rather than the mean - averaging
+    a purple with a green just yields mud.
+    """
+    if re.search(r'\bnone\b|url\(', value):
+        return None
+    cols = [composite(c, parent_bg) for c in _colours(value)]
+    if not cols:
+        return None
+    if len(cols) == 1:
+        return hexof(cols[0])
+    fg = parse_colour(text_colour or '') or (255, 255, 255, 1.0)
+    return hexof(max(cols, key=lambda c: _contrast(c, fg)))
+
+
+def decls(style):
+    out = []
+    for d in style.split(';'):
+        if ':' in d:
+            k, _, v = d.partition(':')
+            out.append((k.strip().lower(), v.strip()))
+    return out
+
+
+def proof_element(el, dropped, parent_bg):
+    """Filter one element's declarations to the whitelist. Returns its
+    resolved opaque background, for its children to composite against."""
+    style = el.get('style')
+    if not style:
+        return parent_bg
+    own = dict(decls(style))
+    resolved = parent_bg
+    keep = []
+    for k, v in decls(style):
+        if k in ('background', 'background-color'):
+            c = flatten_background(v, parent_bg, own.get('color'))
+            if c:
+                keep.append(('background-color', c))
+                resolved = parse_colour(c)
+            continue
+        if k in ('border-left', 'border-right'):
+            # Side borders are not whitelisted; keep the accent as a top rule
+            # rather than losing it entirely.
+            keep.append(('border-top', v))
+            dropped[k] = dropped.get(k, 0) + 1
+            continue
+        if k in SAFE_PROPS:
+            keep.append((k, v))
+        else:
+            dropped[k] = dropped.get(k, 0) + 1
+    el.set('style', '; '.join('%s:%s' % kv for kv in keep))
+    return resolved
+
+
+INLINE_TAGS = {'span', 'a', 'b', 'strong', 'em', 'label', 'small', 'i'}
+
+
+def _px(value):
+    m = re.search(r'(\d+(?:\.\d+)?)px', value or '')
+    return float(m.group(1)) if m else None
+
+
+def unflex(root, dropped):
+    """Rebuild flex layouts as inline-block, which the whitelist does allow.
+
+    Leaving display:flex in place is worse than removing it: flex-wrap and gap
+    are both stripped, so a wrapping row of chips becomes one unwrappable line
+    that runs off the side of the page.
+    """
+    for el in root.xpath('.//*[@style]'):
+        d = dict(decls(el.get('style')))
+        disp = d.get('display', '')
+        if 'flex' not in disp:
+            continue
+        kids = [c for c in el if isinstance(c.tag, str)]
+        gap = _px(d.get('gap', '')) or 0
+
+        if kids and all('flex' in dict(decls(c.get('style') or '')) for c in kids):
+            # a row of columns: recover the column count from the flex-basis,
+            # since the row really wrapped rather than sitting on one line
+            va = 'middle' if d.get('align-items') == 'center' else 'top'
+            bases = [_px(dict(decls(c.get('style') or '')).get('flex', '')) for c in kids]
+            bases = [b for b in bases if b]
+            cols = len(kids)
+            if bases:
+                cols = max(1, min(len(kids), int(CONTENT_WIDTH // max(bases))))
+            w = SPLIT.get(cols, '%.4g%%' % (100.0 / cols - 2))
+            for c in kids:
+                cd = dict(decls(c.get('style') or ''))
+                cd.pop('flex', None)
+                cd['display'] = 'inline-block'
+                cd['vertical-align'] = va
+                cd.setdefault('width', w)
+                c.set('style', '; '.join('%s:%s' % kv for kv in cd.items()))
+        else:
+            # a row of items, or a chip aligning its own contents
+            for c in kids:
+                cd = dict(decls(c.get('style') or ''))
+                cd['display'] = ('inline-block'
+                                 if 'flex' in cd.get('display', '')
+                                 or c.tag in INLINE_TAGS
+                                 or cd.get('display') in (None, '', 'block')
+                                 else cd['display'])
+                cd.setdefault('vertical-align', 'middle')
+                if gap:
+                    cd['margin-right'] = '%gpx' % gap
+                    cd['margin-bottom'] = '%gpx' % gap
+                c.set('style', '; '.join('%s:%s' % kv for kv in cd.items()))
+
+        # a span or link was an inline chip; a div was a container
+        d['display'] = 'inline-block' if el.tag in INLINE_TAGS else 'block'
+        el.set('style', '; '.join('%s:%s' % kv for kv in d.items()))
+
+
+def _to_hls(c):
+    import colorsys
+    return colorsys.rgb_to_hls(*[v / 255.0 for v in c[:3]])
+
+
+def _from_hls(h, l, s):
+    import colorsys
+    return tuple(int(round(v * 255)) for v in colorsys.hls_to_rgb(h, l, s)) + (1.0,)
+
+
+def fix_contrast(colour, bg, need):
+    """Nudge `colour` along its own hue until it reads against `bg`.
+
+    Only the lightness moves, so a brand green stays a green - it just stops
+    being a 12px green that nobody can read on white.
+    """
+    if _contrast(colour, bg) >= need:
+        return None
+    h, l, sat = _to_hls(colour)
+    darker = _lum(bg) > 0.5          # light background -> darken the text
+    for step in range(1, 101):
+        nl = l - step * 0.01 if darker else l + step * 0.01
+        if not 0.0 <= nl <= 1.0:
+            break
+        cand = _from_hls(h, nl, sat)
+        if _contrast(cand, bg) >= need:
+            return cand
+    return (0, 0, 0, 1.0) if darker else (255, 255, 255, 1.0)
+
+
+def readable(root, fixes):
+    """Raise any text that would fail WCAG AA against its own background."""
+    def walk(el, bg, colour, size, weight):
+        d = dict(decls(el.get('style') or ''))
+        if 'background-color' in d:
+            c = parse_colour(d['background-color'])
+            if c:
+                bg = c
+        if 'color' in d:
+            c = parse_colour(d['color'])
+            if c:
+                colour = c
+        m = re.match(r'^\s*([\d.]+)px', d.get('font-size', ''))
+        if m:
+            size = float(m.group(1))
+        if d.get('font-weight', '').isdigit():
+            weight = int(d['font-weight'])
+
+        text = (el.text or '').strip()
+        text += ''.join((c.tail or '') for c in el).strip()
+        # one character counts: a tick or cross carries meaning and is
+        # coloured by this very property
+        if text and colour:
+            need = 3.0 if (size >= 24 or (size >= 18.66 and weight >= 700)) else 4.5
+            better = fix_contrast(colour, bg, need)
+            if better:
+                d['color'] = hexof(better)
+                el.set('style', '; '.join('%s:%s' % kv for kv in d.items()))
+                fixes.append((hexof(colour), hexof(better),
+                              round(_contrast(colour, bg), 2), text[:34]))
+                colour = better
+        for child in el:
+            if isinstance(child.tag, str):
+                walk(child, bg, colour, size, weight)
+
+    walk(root, (255, 255, 255, 1.0), (51, 51, 51, 1.0), 16.0, 400)
+
+
+def sanitizer_proof(html):
+    doc = LH.fragment_fromstring(html, create_parent='div')
+    dropped = {}
+    unflex(doc, dropped)
+
+    def walk(el, bg):
+        # top-down, so each element composites onto what it really sits on
+        for child in el:
+            if isinstance(child.tag, str):
+                walk(child, proof_element(child, dropped, bg))
+
+    walk(doc, (255, 255, 255, 1.0))
+
+    fixes = []
+    readable(doc, fixes)
+    inner = (doc.text or '') + ''.join(
+        LH.tostring(c, encoding='unicode') for c in doc)
+    return inner, dropped, fixes
+
+
+def audit(html):
+    """Any property here would be dropped by the store, silently."""
+    bad = {}
+    for m in re.finditer(r'style="([^"]*)"|style=\'([^\']*)\'', html):
+        for k, _ in decls(m.group(1) or m.group(2)):
+            if k not in SAFE_PROPS:
+                bad[k] = bad.get(k, 0) + 1
+    return bad
+
+
 def to_entities(html):
     """Escape every non-ASCII char so the file decodes identically anywhere."""
     named = {'—': '&mdash;', '–': '&ndash;', '·': '&middot;',
@@ -225,7 +518,8 @@ def process(path):
     src = open(path, encoding='utf-8').read()
     styles = re.findall(r'<style[^>]*>(.*?)</style>', src, re.S)
     rep = {'path': path, 'inline': 0, 'media': 0, 'vars': 0,
-           'pseudo_failed': [], 'unfolded': [], 'leftover': ''}
+           'pseudo_failed': [], 'unfolded': [], 'leftover': '',
+           'dropped_props': {}, 'unsafe': {}, 'contrast_fixes': []}
     html = re.sub(r'<style[^>]*>.*?</style>', '', src, flags=re.S)
 
     if styles:
@@ -267,7 +561,9 @@ def process(path):
     # pure ASCII, so it decodes identically whether the file is read as UTF-8,
     # latin-1 or ASCII. The meta tag added nothing.
     html = re.sub(r'^\s*<meta[^>]*charset[^>]*>\s*', '', html.strip(), flags=re.I)
+    html, rep['dropped_props'], rep['contrast_fixes'] = sanitizer_proof(html)
     html = to_entities(html)
+    rep['unsafe'] = audit(html)
 
     rep['inline'] = len(re.findall(r'style="', html))
     rep['stray_var'] = sorted(set(re.findall(r'var\(--[\w-]+', html)))
@@ -279,12 +575,26 @@ def process(path):
 if __name__ == '__main__':
     for path in sys.argv[1:]:
         r = process(path)
+        drops = ', '.join('%s x%d' % kv for kv in
+                          sorted(r['dropped_props'].items(), key=lambda x: -x[1])[:5])
+        if drops:
+            print("   converted/removed for the store: " + drops)
+        if r['contrast_fixes']:
+            seen = {}
+            for old, new, ratio_, _ in r['contrast_fixes']:
+                seen.setdefault((old, new, ratio_), 0)
+                seen[(old, new, ratio_)] += 1
+            print("   contrast raised: " + ', '.join(
+                '%s->%s (was %.2f:1) x%d' % (o, n, rr, c)
+                for (o, n, rr), c in sorted(seen.items(), key=lambda x: -x[1])[:6]))
         print("%-24s inline=%-4d media=%-2d vars=%-3d non_ascii=%d"
               % (r['path'].split('/')[-3], r['inline'], r['media'],
                  r['vars'], r['non_ascii']))
         for label, val in (('LEFTOVER CSS', r['leftover']),
                            ('UNRESOLVED var()', ', '.join(r['stray_var'])),
                            ('BAD SELECTOR', ', '.join(r['pseudo_failed'])),
-                           ('DROPPED @media', '; '.join(r['unfolded']))):
+                           ('DROPPED @media', '; '.join(r['unfolded'])),
+                           ('NOT WHITELISTED (store would strip)',
+                            ', '.join('%s x%d' % kv for kv in sorted(r['unsafe'].items())))):
             if val:
                 print("   !! %s: %s" % (label, val))
