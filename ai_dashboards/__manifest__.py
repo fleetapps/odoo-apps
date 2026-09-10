@@ -92,6 +92,7 @@ URL, one sign-in, one log.
     "images": [
         "static/description/banner.png",
         "static/description/screenshot_dashboard.png",
+        "static/description/screenshot_charts.png",
         "static/description/screenshot_ask.png",
         "static/description/screenshot_connect.png",
     ],

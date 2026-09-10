@@ -43,12 +43,18 @@ blank. This has happened once already.
 
 ```bash
 cp listing-src/shopify_bisync.html /tmp/index.html
-python3 tools/build_listing.py /tmp/index.html
+python3 tools/build_listing.py /tmp/index.html \
+        --assets=shopify_bisync/static/description
 cp /tmp/index.html shopify_bisync/static/description/index.html
 ```
 
-It rewrites in place, so build from a copy. Needs `premailer`, `lxml` and
-`cssselect`.
+It rewrites in place, so build from a copy. Needs `premailer`, `lxml`,
+`cssselect` and `pillow`.
+
+`--assets` points at the folder holding the screenshots. With it, each image
+is capped to its own natural width, so nothing is stretched past its pixels -
+the store renders these around 1000px wide and an 872px crop blown up to that
+just looks soft.
 
 **Read the warnings it prints.** They mean the published page will differ
 from the source.

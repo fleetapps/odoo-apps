@@ -466,12 +466,29 @@ def readable(root, fixes):
         if text and colour:
             need = 3.0 if (size >= 24 or (size >= 18.66 and weight >= 700)) else 4.5
             better = fix_contrast(colour, bg, need)
-            if better:
+            if better and _contrast(better, bg) >= need:
                 d['color'] = hexof(better)
                 el.set('style', '; '.join('%s:%s' % kv for kv in d.items()))
                 fixes.append((hexof(colour), hexof(better),
                               round(_contrast(colour, bg), 2), text[:34]))
                 colour = better
+            elif better and 'background-color' in d:
+                # White text on a mid-tone button cannot be fixed by touching
+                # the text - it is already at the extreme. Move the fill.
+                darker = _lum(colour) > 0.5
+                h, l, sat = _to_hls(bg)
+                for step in range(1, 101):
+                    nl = l - step * 0.01 if darker else l + step * 0.01
+                    if not 0.0 <= nl <= 1.0:
+                        break
+                    cand = _from_hls(h, nl, sat)
+                    if _contrast(colour, cand) >= need:
+                        fixes.append((hexof(bg), hexof(cand) + ' (fill)',
+                                      round(_contrast(colour, bg), 2), text[:34]))
+                        d['background-color'] = hexof(cand)
+                        el.set('style', '; '.join('%s:%s' % kv for kv in d.items()))
+                        bg = cand
+                        break
         for child in el:
             if isinstance(child.tag, str):
                 walk(child, bg, colour, size, weight)
@@ -479,7 +496,36 @@ def readable(root, fixes):
     walk(root, (255, 255, 255, 1.0), (51, 51, 51, 1.0), 16.0, 400)
 
 
-def sanitizer_proof(html):
+def cap_image_widths(root, assets, capped):
+    """Stop images being displayed above their natural width.
+
+    A screenshot stretched past its own pixels just looks soft, and the store
+    renders these at about 1000px. max-width is whitelisted, so the fix costs
+    one declaration.
+    """
+    import os
+    for img in root.xpath('.//img[@src]'):
+        src = img.get('src').split('?')[0]
+        path = os.path.join(assets, os.path.basename(src))
+        if not os.path.exists(path):
+            continue
+        try:
+            from PIL import Image
+            with Image.open(path) as im:
+                w = im.size[0]
+        except Exception:
+            continue
+        d = dict(decls(img.get('style') or ''))
+        if 'max-width' in d and d['max-width'].endswith('px'):
+            continue
+        d['max-width'] = '%dpx' % w
+        d.setdefault('margin', '0 auto')
+        d.setdefault('display', 'block')
+        img.set('style', '; '.join('%s:%s' % kv for kv in d.items()))
+        capped.append((os.path.basename(src), w))
+
+
+def sanitizer_proof(html, assets=None):
     doc = LH.fragment_fromstring(html, create_parent='div')
     dropped = {}
     unflex(doc, dropped)
@@ -492,11 +538,15 @@ def sanitizer_proof(html):
 
     walk(doc, (255, 255, 255, 1.0))
 
+    capped = []
+    if assets:
+        cap_image_widths(doc, assets, capped)
+
     fixes = []
     readable(doc, fixes)
     inner = (doc.text or '') + ''.join(
         LH.tostring(c, encoding='unicode') for c in doc)
-    return inner, dropped, fixes
+    return inner, dropped, fixes, capped
 
 
 def audit(html):
@@ -520,12 +570,12 @@ def to_entities(html):
     return ''.join(c if ord(c) < 128 else '&#%d;' % ord(c) for c in html)
 
 
-def process(path):
+def process(path, assets=None):
     src = open(path, encoding='utf-8').read()
     styles = re.findall(r'<style[^>]*>(.*?)</style>', src, re.S)
     rep = {'path': path, 'inline': 0, 'media': 0, 'vars': 0,
            'pseudo_failed': [], 'unfolded': [], 'leftover': '',
-           'dropped_props': {}, 'unsafe': {}, 'contrast_fixes': []}
+           'dropped_props': {}, 'unsafe': {}, 'contrast_fixes': [], 'capped': []}
     html = re.sub(r'<style[^>]*>.*?</style>', '', src, flags=re.S)
 
     if styles:
@@ -567,7 +617,8 @@ def process(path):
     # pure ASCII, so it decodes identically whether the file is read as UTF-8,
     # latin-1 or ASCII. The meta tag added nothing.
     html = re.sub(r'^\s*<meta[^>]*charset[^>]*>\s*', '', html.strip(), flags=re.I)
-    html, rep['dropped_props'], rep['contrast_fixes'] = sanitizer_proof(html)
+    html, rep['dropped_props'], rep['contrast_fixes'], rep['capped'] = \
+        sanitizer_proof(html, assets)
     html = to_entities(html)
     rep['unsafe'] = audit(html)
 
@@ -579,12 +630,18 @@ def process(path):
 
 
 if __name__ == '__main__':
-    for path in sys.argv[1:]:
-        r = process(path)
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    assets = next((a.split('=', 1)[1] for a in sys.argv[1:]
+                   if a.startswith('--assets=')), None)
+    for path in args:
+        r = process(path, assets)
         drops = ', '.join('%s x%d' % kv for kv in
                           sorted(r['dropped_props'].items(), key=lambda x: -x[1])[:5])
         if drops:
             print("   converted/removed for the store: " + drops)
+        if r['capped']:
+            print("   capped to natural width: " + ', '.join(
+                '%s@%dpx' % c for c in r['capped']))
         if r['contrast_fixes']:
             seen = {}
             for old, new, ratio_, _ in r['contrast_fixes']:
