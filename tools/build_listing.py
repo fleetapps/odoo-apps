@@ -368,22 +368,25 @@ def unflex(root, dropped):
         kids = [c for c in el if isinstance(c.tag, str)]
         gap = _px(d.get('gap', '')) or 0
 
-        if kids and all('flex' in dict(decls(c.get('style') or '')) for c in kids):
+        kid_bases = [_px(dict(decls(c.get('style') or '')).get('flex', '')) for c in kids]
+        is_grid = (len(kids) >= 2
+                   and all('flex' in dict(decls(c.get('style') or '')) for c in kids)
+                   and any(kid_bases))
+        if is_grid:
             # a row of columns: recover the column count from the flex-basis,
             # since the row really wrapped rather than sitting on one line
             va = 'middle' if d.get('align-items') == 'center' else 'top'
-            bases = [_px(dict(decls(c.get('style') or '')).get('flex', '')) for c in kids]
-            bases = [b for b in bases if b]
-            cols = len(kids)
-            if bases:
-                cols = max(1, min(len(kids), int(CONTENT_WIDTH // max(bases))))
+            bases = [b for b in kid_bases if b]
+            cols = max(1, min(len(kids), int(CONTENT_WIDTH // max(bases))))
             w = SPLIT.get(cols, '%.4g%%' % (100.0 / cols - 2))
-            for c in kids:
+            for c, basis in zip(kids, kid_bases):
                 cd = dict(decls(c.get('style') or ''))
                 cd.pop('flex', None)
                 cd['display'] = 'inline-block'
                 cd['vertical-align'] = va
-                cd.setdefault('width', w)
+                # flex:0 0 auto meant "size to content" - it is not a column
+                if basis:
+                    cd.setdefault('width', w)
                 c.set('style', '; '.join('%s:%s' % kv for kv in cd.items()))
         else:
             # a row of items, or a chip aligning its own contents
@@ -397,7 +400,10 @@ def unflex(root, dropped):
                 cd.setdefault('vertical-align', 'middle')
                 if gap:
                     cd['margin-right'] = '%gpx' % gap
-                    cd['margin-bottom'] = '%gpx' % gap
+                    # vertical gap only where the row can actually wrap;
+                    # on a single inline marker it just pads the line
+                    if len(kids) >= 3:
+                        cd['margin-bottom'] = '%gpx' % gap
                 c.set('style', '; '.join('%s:%s' % kv for kv in cd.items()))
 
         # a span or link was an inline chip; a div was a container
@@ -504,14 +510,14 @@ def audit(html):
 
 
 def to_entities(html):
-    """Escape every non-ASCII char so the file decodes identically anywhere."""
-    named = {'—': '&mdash;', '–': '&ndash;', '·': '&middot;',
-             '✓': '&check;', '✗': '&#10007;', '’': '&rsquo;',
-             '‘': '&lsquo;', '“': '&ldquo;', '”': '&rdquo;',
-             '…': '&hellip;', ' ': '&nbsp;', '→': '&rarr;',
-             '↔': '&harr;', '×': '&times;', '•': '&bull;'}
-    return ''.join(named.get(c, c) if ord(c) < 128 or c in named
-                   else '&#x%X;' % ord(c) for c in html)
+    """Escape every non-ASCII char so the file decodes identically anywhere.
+
+    Numeric references only. Named HTML5 entities such as &check; are not
+    understood by the store's parser, which escapes the ampersand instead and
+    prints the entity as literal text - the tick marks published as the word
+    "&check;". Numeric character references are universally understood.
+    """
+    return ''.join(c if ord(c) < 128 else '&#%d;' % ord(c) for c in html)
 
 
 def process(path):
