@@ -260,8 +260,14 @@ def process(path):
         html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.S)
         html, rep['pseudo_failed'] = apply_pseudo_rules(html, pseudo)
 
+    # No <meta charset> here, deliberately. It is head-only content, and the
+    # store's parser keeps everything after it inside <head>, so its body
+    # extraction returns nothing and the listing publishes blank. The entity
+    # escaping below is what actually guarantees the encoding: the output is
+    # pure ASCII, so it decodes identically whether the file is read as UTF-8,
+    # latin-1 or ASCII. The meta tag added nothing.
     html = re.sub(r'^\s*<meta[^>]*charset[^>]*>\s*', '', html.strip(), flags=re.I)
-    html = to_entities('<meta charset="utf-8">\n' + html)
+    html = to_entities(html)
 
     rep['inline'] = len(re.findall(r'style="', html))
     rep['stray_var'] = sorted(set(re.findall(r'var\(--[\w-]+', html)))
