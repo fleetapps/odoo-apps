@@ -88,6 +88,13 @@ URL, one sign-in, one log.
         ],
     },
     "pre_init_hook": "pre_init_check",
+    # First entry is the store banner; the rest form the gallery.
+    "images": [
+        "static/description/banner.png",
+        "static/description/screenshot_dashboard.png",
+        "static/description/screenshot_ask.png",
+        "static/description/screenshot_connect.png",
+    ],
     "installable": True,
     "application": True,
 }
