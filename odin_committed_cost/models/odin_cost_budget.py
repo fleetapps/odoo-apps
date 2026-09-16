@@ -234,7 +234,12 @@ class OdinCostBudgetLine(models.Model):
             )
         )
 
-        # Actuals. Two things to get right here.
+        # Actuals. Three things to get right here.
+        #
+        # Column: account.analytic.line does NOT keep every plan in account_id.
+        # Only the designated project plan uses it; every other plan gets its
+        # own column, x_plan<id>_id (analytic_plan._strict_column_name). Reading
+        # account_id alone silently returns zero for accounts on any other plan.
         #
         # Sign: analytic amounts are NEGATIVE for costs, because
         # account_move_line._prepare_analytic_distribution_line computes
@@ -243,16 +248,22 @@ class OdinCostBudgetLine(models.Model):
         # Scope: category is 'invoice' on a sale document, 'vendor_bill' on a
         # purchase one and 'other' for timesheets and expenses. Revenue is
         # excluded, so a project's own billing does not read as negative cost.
-        actuals = dict(
-            self.env["account.analytic.line"]._read_group(
+        actuals = {}
+        by_column = {}
+        for account in accounts:
+            column = account.root_plan_id._column_name()
+            by_column.setdefault(column, self.env["account.analytic.account"])
+            by_column[column] |= account
+        for column, plan_accounts in by_column.items():
+            for account, total in self.env["account.analytic.line"]._read_group(
                 [
-                    ("account_id", "in", accounts.ids),
+                    (column, "in", plan_accounts.ids),
                     ("category", "!=", "invoice"),
                 ],
-                groupby=["account_id"],
+                groupby=[column],
                 aggregates=["amount:sum"],
-            )
-        )
+            ):
+                actuals[account] = actuals.get(account, 0.0) + total
 
         for line in self:
             account = line.analytic_account_id
@@ -292,7 +303,12 @@ class OdinCostBudgetLine(models.Model):
             "res_model": "account.analytic.line",
             "view_mode": "list,form",
             "domain": [
-                ("account_id", "=", self.analytic_account_id.id),
+                # Same per-plan column as _compute_consumption above.
+                (
+                    self.analytic_account_id.root_plan_id._column_name(),
+                    "=",
+                    self.analytic_account_id.id,
+                ),
                 ("category", "!=", "invoice"),
             ],
         }

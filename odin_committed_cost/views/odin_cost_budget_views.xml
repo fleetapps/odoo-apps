@@ -138,7 +138,7 @@
                 <separator/>
                 <filter name="filter_current" string="Current Period"
                         domain="[('date_from', '&lt;=', context_today().strftime('%Y-%m-%d')), ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
                 </group>

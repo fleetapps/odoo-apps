@@ -93,7 +93,7 @@
                 <filter name="filter_open" string="Open" domain="[('state', '=', 'open')]"/>
                 <filter name="filter_unbilled" string="Not Yet Billed" domain="[('amount_open', '&gt;', 0)]"/>
                 <filter name="filter_manual" string="Recorded by Hand" domain="[('is_manual', '=', True)]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
                     <filter name="group_analytic" string="Analytic Account" context="{'group_by': 'analytic_account_id'}"/>
                     <filter name="group_partner" string="Vendor" context="{'group_by': 'partner_id'}"/>

@@ -33,7 +33,7 @@ class OdinLcDocument(models.Model):
         "for a compliant presentation.",
     )
     copies_required = fields.Integer(default=1)
-    is_received = fields.Boolean(string="Received", tracking=True)
+    is_received = fields.Boolean(string="Received")
     date_received = fields.Date(readonly=True, copy=False)
     reference = fields.Char(help="Document number, B/L number, certificate number.")
     issuer = fields.Char()

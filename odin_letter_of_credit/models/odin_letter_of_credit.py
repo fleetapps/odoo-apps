@@ -146,7 +146,7 @@ class OdinLetterOfCredit(models.Model):
     utilisation_count = fields.Integer(compute="_compute_counts")
     amendment_count = fields.Integer(compute="_compute_counts")
     move_count = fields.Integer(compute="_compute_counts")
-    charge_total = fields.Monetary(compute="_compute_counts", string="Bank Charges")
+    charge_total = fields.Monetary(compute="_compute_counts", string="Total Bank Charges")
 
     # ── Document control ────────────────────────────────────────────────────
     documents_required_count = fields.Integer(compute="_compute_documents", store=True)

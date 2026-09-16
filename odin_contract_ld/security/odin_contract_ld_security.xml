@@ -7,15 +7,21 @@
             different authorities. A quantity surveyor raises the charge; only a
             manager approves it, waives it, or closes the agreement.
         -->
+        <record id="res_groups_privilege_odin_ld" model="res.groups.privilege">
+            <field name="name">Liquidated Damages</field>
+            <field name="category_id" ref="base.module_category_accounting"/>
+            <field name="sequence">90</field>
+        </record>
+
         <record id="group_odin_ld_user" model="res.groups">
-            <field name="name">Liquidated Damages / User</field>
-            <field name="category_id" ref="base.module_category_accounting_accounting"/>
+            <field name="name">User</field>
+            <field name="privilege_id" ref="res_groups_privilege_odin_ld"/>
             <field name="comment">Record agreements, claim extensions of time and raise damages charges.</field>
         </record>
 
         <record id="group_odin_ld_manager" model="res.groups">
-            <field name="name">Liquidated Damages / Manager</field>
-            <field name="category_id" ref="base.module_category_accounting_accounting"/>
+            <field name="name">Manager</field>
+            <field name="privilege_id" ref="res_groups_privilege_odin_ld"/>
             <field name="implied_ids" eval="[Command.link(ref('group_odin_ld_user'))]"/>
             <field name="comment">Approve and waive charges, decide extensions of time, and close agreements.</field>
         </record>

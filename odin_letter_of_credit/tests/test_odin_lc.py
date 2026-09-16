@@ -14,6 +14,10 @@ class TestOdinLc(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # AccountTestInvoicingCommon's user is an accountant, not a project
+        # manager. Grant it explicitly rather than creating projects as sudo,
+        # so the tests exercise the same access path a real user would.
+        cls.env.user.group_ids |= cls.env.ref("project.group_project_manager")
         cls.today = fields.Date.context_today(cls.env["odin.letter.of.credit"])
         cls.supplier = cls.env["res.partner"].create({"name": "Inverter Supplier"})
         cls.bank = cls.env["res.partner"].create({"name": "First Bank"})
@@ -289,7 +293,16 @@ class TestOdinLc(AccountTestInvoicingCommon):
             self._lc(lc_type="usance", tenor_days=0)
 
     def test_expiry_cron_expires_and_warns(self):
-        lc = self._issue(self._lc(date_expiry=self.today - timedelta(days=1)))
+        # Issued normally, then aged. A credit cannot be ISSUED already expired —
+        # the date constraint refuses that, correctly — so the test has to age a
+        # live credit rather than create a dead one.
+        lc = self._issue(self._lc())
+        lc.write(
+            {
+                "date_issue": self.today - timedelta(days=30),
+                "date_expiry": self.today - timedelta(days=1),
+            }
+        )
         self.env["odin.letter.of.credit"]._cron_expiry_watch()
         self.assertEqual(lc.state, "expired")
 

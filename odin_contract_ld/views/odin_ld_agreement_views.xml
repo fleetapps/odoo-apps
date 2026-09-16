@@ -202,7 +202,7 @@
                 <separator/>
                 <filter name="filter_not_closed" string="Not Closed"
                         domain="[('state', 'not in', ('closed', 'cancelled'))]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
                     <filter name="group_partner" string="Counterparty" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_direction" string="Direction" context="{'group_by': 'direction'}"/>

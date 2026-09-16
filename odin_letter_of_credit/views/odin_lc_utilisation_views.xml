@@ -99,7 +99,7 @@
                 <filter name="filter_discrepant" string="Discrepant" domain="[('state', '=', 'discrepant')]"/>
                 <filter name="filter_due" string="Maturing This Month"
                         domain="[('date_maturity', '&lt;=', (context_today() + relativedelta(day=31)).strftime('%Y-%m-%d')), ('state', '=', 'accepted')]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_lc" string="Credit" context="{'group_by': 'lc_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
                     <filter name="group_maturity" string="Maturity Month" context="{'group_by': 'date_maturity:month'}"/>

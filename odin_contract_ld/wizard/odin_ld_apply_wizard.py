@@ -37,7 +37,7 @@ class OdinLdApplyWizard(models.TransientModel):
         "account.account",
         string="Damages Account",
         required=True,
-        domain="[('deprecated', '=', False)]",
+        domain="[('account_type', '!=', 'off_balance')]",
     )
     label = fields.Char(
         string="Line Description",

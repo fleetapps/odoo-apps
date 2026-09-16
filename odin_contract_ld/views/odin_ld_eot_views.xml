@@ -82,7 +82,7 @@
                 <field name="project_id"/>
                 <filter name="filter_pending" string="Awaiting Decision" domain="[('state', '=', 'submitted')]"/>
                 <filter name="filter_approved" string="Approved" domain="[('state', '=', 'approved')]"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_agreement" string="Agreement" context="{'group_by': 'agreement_id'}"/>
                     <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>

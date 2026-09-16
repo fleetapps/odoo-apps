@@ -15,13 +15,14 @@
                 </button>
             </div>
             <!--
-                Shown next to the totals rather than in a tab: a reader checking
-                the net payable needs to see what was deducted to get there.
+                Anchored on the payment term, not on amount_total: the 19 form
+                renders its totals through the account-tax-totals-field widget,
+                so there is no plain amount_total field to attach to.
             -->
-            <field name="amount_total" position="after">
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="after">
                 <field name="odin_ld_amount" invisible="odin_ld_amount == 0"
                        groups="odin_contract_ld.group_odin_ld_user"/>
-            </field>
+            </xpath>
         </field>
     </record>
 

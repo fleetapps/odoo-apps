@@ -12,6 +12,10 @@ class TestOdinCommittedCost(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # AccountTestInvoicingCommon's user is an accountant, not a project
+        # manager. Grant it explicitly rather than creating projects as sudo,
+        # so the tests exercise the same access path a real user would.
+        cls.env.user.group_ids |= cls.env.ref("project.group_project_manager")
         cls.today = fields.Date.context_today(cls.env["odin.cost.budget"])
         cls.vendor = cls.env["res.partner"].create({"name": "Civil Subcontractor"})
 
@@ -47,7 +51,7 @@ class TestOdinCommittedCost(AccountTestInvoicingCommon):
                             "price_unit": price,
                             "date_planned": fields.Datetime.now(),
                             "analytic_distribution": distribution,
-                            "taxes_id": [Command.clear()],
+                            "tax_ids": [Command.clear()],
                         }
                     )
                 ],

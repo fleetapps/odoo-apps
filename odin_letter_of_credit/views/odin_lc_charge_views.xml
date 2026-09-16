@@ -25,7 +25,7 @@
             <search string="Bank Charges">
                 <field name="lc_id"/>
                 <field name="partner_id"/>
-                <group expand="0" string="Group By">
+                <group>
                     <filter name="group_lc" string="Credit" context="{'group_by': 'lc_id'}"/>
                     <filter name="group_type" string="Charge Type" context="{'group_by': 'charge_type'}"/>
                     <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>

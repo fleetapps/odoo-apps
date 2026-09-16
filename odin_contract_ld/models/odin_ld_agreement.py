@@ -157,7 +157,7 @@ class OdinLdAgreement(models.Model):
     )
     is_capped = fields.Boolean(compute="_compute_accrual", store=True)
     charge_ids = fields.One2many("odin.ld.charge", "agreement_id", string="Charges")
-    charge_count = fields.Integer(compute="_compute_charge_totals")
+    charge_count = fields.Integer(compute="_compute_charge_count")
     amount_charged = fields.Monetary(
         compute="_compute_charge_totals",
         store=True,
@@ -174,7 +174,7 @@ class OdinLdAgreement(models.Model):
         string="Damages Account",
         required=True,
         tracking=True,
-        domain="[('deprecated', '=', False), ('company_ids', 'in', company_id)]",
+        domain="[('company_ids', 'in', company_id)]",
         help="Account the deduction line posts to. An expense account when we owe "
         "the damages, an other-income account when we recover them.",
     )
@@ -295,6 +295,12 @@ class OdinLdAgreement(models.Model):
             agreement.amount_open = agreement.currency_id.round(
                 max(0.0, agreement.amount_accrued - agreement.amount_charged)
             )
+
+    @api.depends("charge_ids")
+    def _compute_charge_count(self):
+        # Separate from the stored totals above: mixing a non-stored field into
+        # the same compute makes reading the count able to rewrite them.
+        for agreement in self:
             agreement.charge_count = len(agreement.charge_ids)
 
     # ── Constraints ─────────────────────────────────────────────────────────
