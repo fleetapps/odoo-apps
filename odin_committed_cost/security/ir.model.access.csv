@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_cost_budget_user,odin.cost.budget user,model_odin_cost_budget,group_odin_cost_user,1,0,0,0
+access_odin_cost_budget_manager,odin.cost.budget manager,model_odin_cost_budget,group_odin_cost_manager,1,1,1,1
+access_odin_cost_budget_line_user,odin.cost.budget.line user,model_odin_cost_budget_line,group_odin_cost_user,1,0,0,0
+access_odin_cost_budget_line_manager,odin.cost.budget.line manager,model_odin_cost_budget_line,group_odin_cost_manager,1,1,1,1
+access_odin_commitment_user,odin.commitment user,model_odin_commitment,group_odin_cost_user,1,0,0,0
+access_odin_commitment_manager,odin.commitment manager,model_odin_commitment,group_odin_cost_manager,1,1,1,1
+access_odin_cost_report_user,odin.cost.control.report user,model_odin_cost_control_report,group_odin_cost_user,1,0,0,0
+access_odin_commitment_purchase,odin.commitment purchase user,model_odin_commitment,purchase.group_purchase_user,1,0,0,0
+access_odin_cost_budget_account,odin.cost.budget accountant,model_odin_cost_budget,account.group_account_invoice,1,0,0,0

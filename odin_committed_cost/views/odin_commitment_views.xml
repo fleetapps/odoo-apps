@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_commitment_view_form" model="ir.ui.view">
+        <field name="name">odin.commitment.form</field>
+        <field name="model">odin.commitment</field>
+        <field name="arch" type="xml">
+            <form string="Commitment">
+                <header>
+                    <button name="action_open" type="object" string="Open" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_close" type="object" string="Close"
+                            invisible="state != 'open'"
+                            groups="odin_committed_cost.group_odin_cost_manager"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('cancelled',) or not is_manual"
+                            groups="odin_committed_cost.group_odin_cost_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,open,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_source" type="object" class="oe_stat_button"
+                                icon="fa-shopping-cart" invisible="is_manual">
+                            <div class="o_stat_info"><span class="o_stat_text">Purchase Order</span></div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not is_manual">
+                        Recorded by hand. Use this for an obligation that is real but has no
+                        purchase order yet — a signed subcontract, for instance.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="analytic_account_id" options="{'no_create': True}"/>
+                            <field name="project_id" options="{'no_create': True}"/>
+                            <field name="partner_id"/>
+                            <field name="date"/>
+                            <field name="description"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="is_manual" invisible="1"/>
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="purchase_line_id" invisible="is_manual" readonly="1"/>
+                            <field name="distribution_percent" invisible="is_manual"/>
+                            <field name="amount_manual" invisible="not is_manual"
+                                   required="is_manual"/>
+                            <field name="amount_manual_invoiced" invisible="not is_manual"/>
+                            <field name="amount_committed" readonly="1"/>
+                            <field name="amount_invoiced" readonly="1"/>
+                            <field name="amount_open" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_commitment_view_list" model="ir.ui.view">
+        <field name="name">odin.commitment.list</field>
+        <field name="model">odin.commitment</field>
+        <field name="arch" type="xml">
+            <list string="Commitments" decoration-muted="state in ('closed', 'cancelled')">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="project_id" optional="show"/>
+                <field name="analytic_account_id"/>
+                <field name="description" optional="hide"/>
+                <field name="amount_committed" sum="Committed"/>
+                <field name="amount_invoiced" sum="Invoiced" optional="show"/>
+                <field name="amount_open" sum="Open"/>
+                <field name="is_manual" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'open'"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_commitment_view_search" model="ir.ui.view">
+        <field name="name">odin.commitment.search</field>
+        <field name="model">odin.commitment</field>
+        <field name="arch" type="xml">
+            <search string="Commitments">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="project_id"/>
+                <field name="analytic_account_id"/>
+                <field name="purchase_order_id"/>
+                <filter name="filter_open" string="Open" domain="[('state', '=', 'open')]"/>
+                <filter name="filter_unbilled" string="Not Yet Billed" domain="[('amount_open', '&gt;', 0)]"/>
+                <filter name="filter_manual" string="Recorded by Hand" domain="[('is_manual', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_analytic" string="Analytic Account" context="{'group_by': 'analytic_account_id'}"/>
+                    <filter name="group_partner" string="Vendor" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_commitment_view_pivot" model="ir.ui.view">
+        <field name="name">odin.commitment.pivot</field>
+        <field name="model">odin.commitment</field>
+        <field name="arch" type="xml">
+            <pivot string="Commitments" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="analytic_account_id" type="row"/>
+                <field name="amount_open" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+</odoo>

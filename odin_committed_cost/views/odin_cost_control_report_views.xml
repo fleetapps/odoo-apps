@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_cost_control_report_view_pivot" model="ir.ui.view">
+        <field name="name">odin.cost.control.report.pivot</field>
+        <field name="model">odin.cost.control.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Cost Control" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="analytic_account_id" type="row"/>
+                <field name="kind" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="odin_cost_control_report_view_graph" model="ir.ui.view">
+        <field name="name">odin.cost.control.report.graph</field>
+        <field name="model">odin.cost.control.report</field>
+        <field name="arch" type="xml">
+            <graph string="Cost Control" type="bar" stacked="0" sample="1">
+                <field name="analytic_account_id"/>
+                <field name="kind"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="odin_cost_control_report_view_list" model="ir.ui.view">
+        <field name="name">odin.cost.control.report.list</field>
+        <field name="model">odin.cost.control.report</field>
+        <field name="arch" type="xml">
+            <list string="Cost Control" create="false">
+                <field name="date"/>
+                <field name="kind" widget="badge"
+                       decoration-info="kind == 'budget'"
+                       decoration-warning="kind == 'committed'"
+                       decoration-success="kind == 'actual'"/>
+                <field name="project_id"/>
+                <field name="analytic_account_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="amount" sum="Amount"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_cost_control_report_view_search" model="ir.ui.view">
+        <field name="name">odin.cost.control.report.search</field>
+        <field name="model">odin.cost.control.report</field>
+        <field name="arch" type="xml">
+            <search string="Cost Control">
+                <field name="project_id"/>
+                <field name="analytic_account_id"/>
+                <field name="partner_id"/>
+                <filter name="filter_budget" string="Budget" domain="[('kind', '=', 'budget')]"/>
+                <filter name="filter_committed" string="Committed" domain="[('kind', '=', 'committed')]"/>
+                <filter name="filter_actual" string="Actual" domain="[('kind', '=', 'actual')]"/>
+                <separator/>
+                <filter name="filter_year" string="This Year"
+                        domain="[('date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="1" string="Group By">
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_analytic" string="Analytic Account" context="{'group_by': 'analytic_account_id'}"/>
+                    <filter name="group_kind" string="Measure" context="{'group_by': 'kind'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_cost_budget_view_form" model="ir.ui.view">
+        <field name="name">odin.cost.budget.form</field>
+        <field name="model">odin.cost.budget</field>
+        <field name="arch" type="xml">
+            <form string="Cost Budget">
+                <header>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary"
+                            invisible="state != 'draft'"
+                            groups="odin_committed_cost.group_odin_cost_manager"/>
+                    <button name="action_refresh" type="object" string="Refresh Figures"
+                            invisible="state not in ('confirmed', 'draft')"/>
+                    <button name="action_create_revision" type="object" string="Create Revision"
+                            invisible="state != 'confirmed'"
+                            groups="odin_committed_cost.group_odin_cost_manager"
+                            confirm="This supersedes the current budget with a new draft revision. The original stays readable. Continue?"/>
+                    <button name="action_close" type="object" string="Close"
+                            invisible="state not in ('confirmed', 'revised')"
+                            groups="odin_committed_cost.group_odin_cost_manager"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state != 'confirmed'"
+                            groups="odin_committed_cost.group_odin_cost_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <div class="alert alert-danger" role="alert" invisible="not is_overrun">
+                        This budget is overspent once open commitments are counted.
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="project_id" options="{'no_create': True}"
+                                   readonly="state != 'draft'"/>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="revision_of_id" invisible="not revision_of_id"/>
+                            <field name="revision_number" invisible="revision_number == 0"/>
+                        </group>
+                    </group>
+
+                    <group string="Position" col="5">
+                        <field name="amount_budget"/>
+                        <field name="amount_committed"/>
+                        <field name="amount_actual"/>
+                        <field name="amount_consumed"/>
+                        <field name="amount_remaining"
+                               decoration-danger="amount_remaining &lt; 0"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Workstreams" name="lines">
+                            <field name="line_ids" readonly="state not in ('draft',)">
+                                <list editable="bottom" decoration-danger="is_overrun"
+                                      decoration-warning="percent_consumed &gt; 90 and not is_overrun">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="analytic_account_id" options="{'no_create_edit': True}"/>
+                                    <field name="amount_budget" sum="Budget"/>
+                                    <field name="amount_committed" sum="Committed" readonly="1"/>
+                                    <field name="amount_actual" sum="Actual" readonly="1"/>
+                                    <field name="amount_consumed" sum="Consumed" readonly="1" optional="show"/>
+                                    <field name="amount_remaining" sum="Remaining" readonly="1"/>
+                                    <field name="percent_consumed" widget="percentage" readonly="1"/>
+                                    <field name="is_overrun" column_invisible="True"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <button name="action_view_commitments" type="object"
+                                            icon="fa-shopping-cart" title="Open commitments"/>
+                                    <button name="action_view_actuals" type="object"
+                                            icon="fa-list" title="Actual costs"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Revisions" name="revisions" invisible="not revision_ids">
+                            <field name="revision_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="revision_number"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="amount_budget"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes" name="notes">
+                            <field name="note" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_cost_budget_view_list" model="ir.ui.view">
+        <field name="name">odin.cost.budget.list</field>
+        <field name="model">odin.cost.budget</field>
+        <field name="arch" type="xml">
+            <list string="Cost Budgets" decoration-danger="is_overrun"
+                  decoration-muted="state in ('closed', 'revised')">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="amount_budget" sum="Budget"/>
+                <field name="amount_committed" sum="Committed"/>
+                <field name="amount_actual" sum="Actual"/>
+                <field name="amount_remaining" sum="Remaining"/>
+                <field name="percent_consumed" widget="percentage"/>
+                <field name="state" widget="badge" decoration-success="state == 'confirmed'"/>
+                <field name="is_overrun" column_invisible="True"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_cost_budget_view_search" model="ir.ui.view">
+        <field name="name">odin.cost.budget.search</field>
+        <field name="model">odin.cost.budget</field>
+        <field name="arch" type="xml">
+            <search string="Cost Budgets">
+                <field name="name"/>
+                <field name="project_id"/>
+                <filter name="filter_confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="filter_overrun" string="Overspent" domain="[('is_overrun', '=', True)]"/>
+                <separator/>
+                <filter name="filter_current" string="Current Period"
+                        domain="[('date_from', '&lt;=', context_today().strftime('%Y-%m-%d')), ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_cost_budget_view_graph" model="ir.ui.view">
+        <field name="name">odin.cost.budget.graph</field>
+        <field name="model">odin.cost.budget</field>
+        <field name="arch" type="xml">
+            <graph string="Budget Position" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="amount_budget" type="measure"/>
+                <field name="amount_committed" type="measure"/>
+                <field name="amount_actual" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>

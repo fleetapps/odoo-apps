@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_project_view_form_odin_cost" model="ir.ui.view">
+        <field name="name">project.project.form.odin.cost</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_odin_budgets" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        invisible="odin_budget_count == 0"
+                        groups="odin_committed_cost.group_odin_cost_user">
+                    <field name="odin_budget_count" widget="statinfo" string="Budgets"/>
+                </button>
+                <button name="action_view_odin_cost_control" type="object"
+                        class="oe_stat_button" icon="fa-balance-scale"
+                        invisible="odin_budget_count == 0"
+                        groups="odin_committed_cost.group_odin_cost_user">
+                    <div class="o_stat_info">
+                        <field name="odin_amount_remaining" widget="monetary" class="o_stat_value"/>
+                        <span class="o_stat_text">Remaining</span>
+                    </div>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>
