@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_ld_eot_view_form" model="ir.ui.view">
+        <field name="name">odin.ld.eot.form</field>
+        <field name="model">odin.ld.eot</field>
+        <field name="arch" type="xml">
+            <form string="Extension of Time">
+                <header>
+                    <button name="action_submit" type="object" string="Submit" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state != 'submitted'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state != 'submitted'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state in ('draft', 'submitted')"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="agreement_id" options="{'no_create': True}"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="date_claim"/>
+                        </group>
+                        <group>
+                            <field name="days_requested"/>
+                            <field name="days_granted" readonly="1"
+                                   invisible="state not in ('approved', 'rejected')"/>
+                            <field name="date_decision" readonly="1" invisible="not date_decision"/>
+                            <field name="user_id" readonly="1" invisible="not user_id"/>
+                        </group>
+                    </group>
+                    <group string="Grounds">
+                        <field name="description" nolabel="1"
+                               placeholder="The event relied on, when it occurred, and how it delayed the critical path."/>
+                    </group>
+                    <group string="Decision" invisible="state not in ('approved', 'rejected')">
+                        <field name="decision_note" nolabel="1" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_ld_eot_view_list" model="ir.ui.view">
+        <field name="name">odin.ld.eot.list</field>
+        <field name="model">odin.ld.eot</field>
+        <field name="arch" type="xml">
+            <list string="Extensions of Time" decoration-success="state == 'approved'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="agreement_id"/>
+                <field name="project_id" optional="show"/>
+                <field name="date_claim"/>
+                <field name="days_requested" sum="Requested"/>
+                <field name="days_granted" sum="Granted"/>
+                <field name="date_decision" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'approved'"
+                       decoration-danger="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_ld_eot_view_search" model="ir.ui.view">
+        <field name="name">odin.ld.eot.search</field>
+        <field name="model">odin.ld.eot</field>
+        <field name="arch" type="xml">
+            <search string="Extensions of Time">
+                <field name="name"/>
+                <field name="agreement_id"/>
+                <field name="project_id"/>
+                <filter name="filter_pending" string="Awaiting Decision" domain="[('state', '=', 'submitted')]"/>
+                <filter name="filter_approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_agreement" string="Agreement" context="{'group_by': 'agreement_id'}"/>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_ld_agreement_action" model="ir.actions.act_window">
+        <field name="name">LD Agreements</field>
+        <field name="res_model">odin.ld.agreement</field>
+        <field name="view_mode">list,form,graph</field>
+        <field name="search_view_id" ref="odin_ld_agreement_view_search"/>
+        <field name="context">{'search_default_filter_not_closed': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a liquidated damages clause</p>
+            <p>
+                Capture the completion date, the rate and the cap once, and the
+                damages accrue by themselves. Extensions of time move the date;
+                the cap stops the accrual where the contract says it stops.
+            </p>
+        </field>
+    </record>
+
+    <record id="odin_ld_charge_action" model="ir.actions.act_window">
+        <field name="name">Damages Charges</field>
+        <field name="res_model">odin.ld.charge</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="odin_ld_charge_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No damages have been charged yet</p>
+            <p>A charge is raised from an agreement, approved, then deducted on an invoice or bill.</p>
+        </field>
+    </record>
+
+    <record id="odin_ld_eot_action" model="ir.actions.act_window">
+        <field name="name">Extensions of Time</field>
+        <field name="res_model">odin.ld.eot</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="odin_ld_eot_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No extension of time claimed</p>
+            <p>An approved extension moves the completion date, and with it the point damages start running.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_odin_ld_root" name="Liquidated Damages"
+              parent="account.menu_finance" sequence="92"
+              groups="odin_contract_ld.group_odin_ld_user"/>
+
+    <menuitem id="menu_odin_ld_agreement" name="Agreements"
+              parent="menu_odin_ld_root" action="odin_ld_agreement_action" sequence="10"/>
+
+    <menuitem id="menu_odin_ld_charge" name="Charges"
+              parent="menu_odin_ld_root" action="odin_ld_charge_action" sequence="20"/>
+
+    <menuitem id="menu_odin_ld_eot" name="Extensions of Time"
+              parent="menu_odin_ld_root" action="odin_ld_eot_action" sequence="30"/>
+
+</odoo>

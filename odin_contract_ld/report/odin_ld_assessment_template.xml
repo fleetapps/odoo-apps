@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<template id="report_odin_ld_assessment_document">
+    <t t-call="web.external_layout">
+        <t t-set="agreement" t-value="o.agreement_id"/>
+        <t t-set="o" t-value="o.with_context(lang=o.partner_id.lang)"/>
+        <t t-set="address">
+            <div t-field="o.partner_id"
+                 t-options='{"widget": "contact", "fields": ["address", "name", "vat"], "no_marker": True}'/>
+        </t>
+        <div class="page">
+            <h2 class="mt-0">Liquidated Damages Assessment</h2>
+            <h4 class="text-muted"><span t-field="o.name"/></h4>
+
+            <div class="row mt-4 mb-4">
+                <div class="col-6">
+                    <strong>Project</strong><br/>
+                    <span t-field="o.project_id.name"/><br/>
+                    <t t-if="agreement.contract_ref">
+                        <strong>Contract</strong>: <span t-field="agreement.contract_ref"/><br/>
+                    </t>
+                    <strong>Assessment date</strong>: <span t-field="o.date"/>
+                </div>
+                <div class="col-6">
+                    <strong>Period</strong><br/>
+                    <span t-field="o.date_from"/> to <span t-field="o.date_to"/><br/>
+                    <strong>Contract value</strong>:
+                    <span t-field="agreement.contract_value"
+                          t-options='{"widget": "monetary", "display_currency": agreement.currency_id}'/>
+                </div>
+            </div>
+
+            <h5>Programme</h5>
+            <table class="table table-sm">
+                <tbody>
+                    <tr>
+                        <td>Contractual completion</td>
+                        <td class="text-end"><span t-field="agreement.date_contractual_completion"/></td>
+                    </tr>
+                    <tr>
+                        <td>Extensions of time granted</td>
+                        <td class="text-end"><span t-field="agreement.eot_days_granted"/> days</td>
+                    </tr>
+                    <tr t-if="agreement.grace_days">
+                        <td>Grace period</td>
+                        <td class="text-end"><span t-field="agreement.grace_days"/> days</td>
+                    </tr>
+                    <tr class="fw-bold">
+                        <td>Adjusted completion date</td>
+                        <td class="text-end"><span t-field="agreement.date_adjusted_completion"/></td>
+                    </tr>
+                    <tr>
+                        <td>Actual completion</td>
+                        <td class="text-end">
+                            <span t-if="agreement.date_actual_completion"
+                                  t-field="agreement.date_actual_completion"/>
+                            <span t-else="">Works ongoing</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h5>Calculation</h5>
+            <table class="table table-sm">
+                <tbody>
+                    <tr>
+                        <td>Days in delay</td>
+                        <td class="text-end"><span t-field="o.days_charged"/></td>
+                    </tr>
+                    <tr>
+                        <td>Basis</td>
+                        <td class="text-end"><span t-field="agreement.basis"/></td>
+                    </tr>
+                    <tr t-if="agreement.basis in ('per_day', 'per_week')">
+                        <td>Rate</td>
+                        <td class="text-end">
+                            <span t-field="agreement.rate_amount"
+                                  t-options='{"widget": "monetary", "display_currency": agreement.currency_id}'/>
+                        </td>
+                    </tr>
+                    <tr t-else="">
+                        <td>Rate</td>
+                        <td class="text-end"><span t-field="agreement.rate_percent"/> % of contract value</td>
+                    </tr>
+                    <tr t-if="agreement.cap_amount">
+                        <td>Contractual cap (<span t-field="agreement.cap_percent"/>%)</td>
+                        <td class="text-end">
+                            <span t-field="agreement.cap_amount"
+                                  t-options='{"widget": "monetary", "display_currency": agreement.currency_id}'/>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h5>Amount</h5>
+            <table class="table table-sm">
+                <tbody>
+                    <tr>
+                        <td>Assessed</td>
+                        <td class="text-end">
+                            <span t-field="o.amount"
+                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+                    <tr t-if="o.amount_waived">
+                        <td>Less waived</td>
+                        <td class="text-end">
+                            <span t-field="o.amount_waived"
+                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+                    <tr class="fw-bold border-top">
+                        <td>Net damages charged</td>
+                        <td class="text-end">
+                            <span t-field="o.amount_net"
+                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div t-if="o.waiver_reason" class="mt-3">
+                <strong>Waiver</strong>
+                <p t-field="o.waiver_reason"/>
+            </div>
+
+            <div t-if="o.note" class="mt-3">
+                <strong>Notes</strong>
+                <p t-field="o.note"/>
+            </div>
+
+            <div t-if="agreement.is_capped" class="alert alert-warning mt-3" role="alert">
+                Damages under this agreement have reached the contractual cap.
+                No further damages accrue.
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-6">
+                    <div style="border-top: 1px solid #000; padding-top: 4px;">
+                        Assessed by<t t-if="o.create_uid">: <span t-field="o.create_uid.name"/></t>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="border-top: 1px solid #000; padding-top: 4px;">
+                        Approved by<t t-if="o.user_id">: <span t-field="o.user_id.name"/></t>
+                        <t t-if="o.date_approved"><br/><span t-field="o.date_approved"/></t>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</template>
+
+<template id="report_odin_ld_assessment">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="odin_contract_ld.report_odin_ld_assessment_document" t-lang="o.partner_id.lang"/>
+        </t>
+    </t>
+</template>
+
+</odoo>

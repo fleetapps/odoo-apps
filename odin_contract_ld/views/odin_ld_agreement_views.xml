@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_ld_agreement_view_form" model="ir.ui.view">
+        <field name="name">odin.ld.agreement.form</field>
+        <field name="model">odin.ld.agreement</field>
+        <field name="arch" type="xml">
+            <form string="Liquidated Damages Agreement">
+                <header>
+                    <button name="action_activate" type="object" string="Activate"
+                            class="btn-primary" invisible="state != 'draft'"
+                            groups="odin_contract_ld.group_odin_ld_user"/>
+                    <button name="action_create_charge" type="object" string="Raise Charge"
+                            class="btn-primary"
+                            invisible="state not in ('active', 'completed') or amount_open &lt;= 0"
+                            groups="odin_contract_ld.group_odin_ld_user"/>
+                    <button name="action_complete" type="object" string="Mark Completed"
+                            invisible="state != 'active'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_close" type="object" string="Close"
+                            invisible="state not in ('active', 'completed')"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('closed', 'cancelled')"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state != 'cancelled'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,active,completed,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_charges" type="object"
+                                class="oe_stat_button" icon="fa-gavel">
+                            <field name="charge_count" widget="statinfo" string="Charges"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+
+                    <!--
+                        The number everybody actually opens this record to see,
+                        kept above the detail rather than buried in a tab.
+                    -->
+                    <div class="alert alert-warning" role="alert" invisible="not is_capped">
+                        Damages have reached the contractual cap. Nothing further accrues.
+                    </div>
+
+                    <group>
+                        <group string="Contract">
+                            <field name="project_id" options="{'no_create': True}"/>
+                            <field name="partner_id" options="{'no_create': True}"/>
+                            <field name="direction" widget="radio"/>
+                            <field name="contract_ref"/>
+                            <field name="sale_order_id" invisible="direction != 'payable'"
+                                   options="{'no_create': True}"/>
+                            <field name="purchase_order_id" invisible="direction != 'receivable'"
+                                   options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Amounts">
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="contract_value"/>
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="analytic_distribution" widget="analytic_distribution"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="Damages Clause">
+                            <field name="basis"/>
+                            <field name="rate_amount"
+                                   invisible="basis not in ('per_day', 'per_week')"
+                                   required="basis in ('per_day', 'per_week')"/>
+                            <field name="rate_percent"
+                                   invisible="basis not in ('percent_per_day', 'percent_per_week')"
+                                   required="basis in ('percent_per_day', 'percent_per_week')"/>
+                            <field name="cap_percent"/>
+                            <field name="cap_amount"/>
+                            <field name="grace_days"/>
+                        </group>
+                        <group string="Programme">
+                            <field name="date_contractual_completion"/>
+                            <field name="eot_days_granted"/>
+                            <field name="date_adjusted_completion"/>
+                            <field name="date_actual_completion"/>
+                            <field name="days_delayed"/>
+                        </group>
+                    </group>
+
+                    <group string="Accrual" col="4">
+                        <field name="amount_accrued"/>
+                        <field name="amount_charged"/>
+                        <field name="amount_open"/>
+                        <field name="is_capped" widget="boolean_toggle" readonly="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Extensions of Time" name="eot">
+                            <field name="eot_ids" context="{'default_agreement_id': id}">
+                                <list editable="bottom" decoration-success="state == 'approved'"
+                                      decoration-muted="state == 'rejected'">
+                                    <field name="name" readonly="1"/>
+                                    <field name="date_claim"/>
+                                    <field name="description"/>
+                                    <field name="days_requested"/>
+                                    <field name="days_granted" readonly="1"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'approved'"
+                                           decoration-danger="state == 'rejected'"/>
+                                    <button name="action_submit" type="object" string="Submit"
+                                            icon="fa-paper-plane" invisible="state != 'draft'"/>
+                                    <button name="action_approve" type="object" string="Approve"
+                                            icon="fa-check" invisible="state != 'submitted'"
+                                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                                    <button name="action_reject" type="object" string="Reject"
+                                            icon="fa-times" invisible="state != 'submitted'"
+                                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Charges" name="charges">
+                            <field name="charge_ids" readonly="1">
+                                <list decoration-success="state == 'applied'"
+                                      decoration-muted="state in ('cancelled', 'waived')">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="days_charged"/>
+                                    <field name="amount"/>
+                                    <field name="amount_waived"/>
+                                    <field name="amount_net"/>
+                                    <field name="move_id"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'applied'"
+                                           decoration-warning="state == 'approved'"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Clause Notes" name="notes">
+                            <field name="note" placeholder="Paste the contractual wording here, so an assessment can be checked against it later."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_ld_agreement_view_list" model="ir.ui.view">
+        <field name="name">odin.ld.agreement.list</field>
+        <field name="model">odin.ld.agreement</field>
+        <field name="arch" type="xml">
+            <list string="Liquidated Damages"
+                  decoration-danger="is_capped"
+                  decoration-warning="days_delayed &gt; 0 and not is_capped"
+                  decoration-muted="state in ('closed', 'cancelled')">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="direction"/>
+                <field name="date_adjusted_completion"/>
+                <field name="date_actual_completion" optional="show"/>
+                <field name="days_delayed"/>
+                <field name="contract_value" optional="hide"/>
+                <field name="cap_amount" optional="hide"/>
+                <field name="amount_accrued" sum="Accrued"/>
+                <field name="amount_charged" sum="Charged" optional="show"/>
+                <field name="amount_open" sum="Open"/>
+                <field name="is_capped" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'closed'"
+                       decoration-info="state == 'active'"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="company_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_ld_agreement_view_search" model="ir.ui.view">
+        <field name="name">odin.ld.agreement.search</field>
+        <field name="model">odin.ld.agreement</field>
+        <field name="arch" type="xml">
+            <search string="Liquidated Damages">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="contract_ref"/>
+                <filter name="filter_active" string="Active" domain="[('state', '=', 'active')]"/>
+                <filter name="filter_in_delay" string="In Delay" domain="[('days_delayed', '&gt;', 0)]"/>
+                <filter name="filter_capped" string="At Cap" domain="[('is_capped', '=', True)]"/>
+                <filter name="filter_open" string="Uncharged Damages" domain="[('amount_open', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="filter_payable" string="We Owe" domain="[('direction', '=', 'payable')]"/>
+                <filter name="filter_receivable" string="Owed To Us" domain="[('direction', '=', 'receivable')]"/>
+                <separator/>
+                <filter name="filter_not_closed" string="Not Closed"
+                        domain="[('state', 'not in', ('closed', 'cancelled'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_partner" string="Counterparty" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_direction" string="Direction" context="{'group_by': 'direction'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_ld_agreement_view_graph" model="ir.ui.view">
+        <field name="name">odin.ld.agreement.graph</field>
+        <field name="model">odin.ld.agreement</field>
+        <field name="arch" type="xml">
+            <graph string="Damages Exposure" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="amount_accrued" type="measure"/>
+                <field name="amount_open" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>

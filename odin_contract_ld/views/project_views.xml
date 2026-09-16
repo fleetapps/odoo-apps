@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="project_project_view_form_odin_ld" model="ir.ui.view">
+        <field name="name">project.project.form.odin.ld</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_odin_ld_agreements" type="object"
+                        class="oe_stat_button" icon="fa-gavel"
+                        invisible="odin_ld_agreement_count == 0"
+                        groups="odin_contract_ld.group_odin_ld_user">
+                    <field name="odin_ld_agreement_count" widget="statinfo"
+                           string="Damages"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="action_report_odin_ld_assessment" model="ir.actions.report">
+            <field name="name">Damages Assessment</field>
+            <field name="model">odin.ld.charge</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">odin_contract_ld.report_odin_ld_assessment</field>
+            <field name="report_file">odin_contract_ld.report_odin_ld_assessment</field>
+            <field name="print_report_name">'Damages Assessment - %s' % (object.name)</field>
+            <field name="binding_model_id" ref="model_odin_ld_charge"/>
+            <field name="binding_type">report</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="account_move_view_form_odin_ld" model="ir.ui.view">
+        <field name="name">account.move.form.odin.ld</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_odin_ld_charges" type="object"
+                        class="oe_stat_button" icon="fa-gavel"
+                        invisible="odin_ld_charge_count == 0"
+                        groups="odin_contract_ld.group_odin_ld_user">
+                    <field name="odin_ld_charge_count" widget="statinfo" string="Damages"/>
+                </button>
+            </div>
+            <!--
+                Shown next to the totals rather than in a tab: a reader checking
+                the net payable needs to see what was deducted to get there.
+            -->
+            <field name="amount_total" position="after">
+                <field name="odin_ld_amount" invisible="odin_ld_amount == 0"
+                       groups="odin_contract_ld.group_odin_ld_user"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="account_move_line_view_form_odin_ld" model="ir.ui.view">
+        <field name="name">account.move.line.list.odin.ld</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='name']" position="after">
+                <field name="odin_ld_charge_id" optional="hide" readonly="1"
+                       groups="odin_contract_ld.group_odin_ld_user"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

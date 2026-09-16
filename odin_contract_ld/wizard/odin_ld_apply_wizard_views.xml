@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_ld_apply_wizard_view_form" model="ir.ui.view">
+        <field name="name">odin.ld.apply.wizard.form</field>
+        <field name="model">odin.ld.apply.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Deduct Liquidated Damages">
+                <group>
+                    <group>
+                        <field name="charge_id" invisible="1"/>
+                        <field name="direction" invisible="1"/>
+                        <field name="company_id" invisible="1"/>
+                        <field name="move_type_domain" invisible="1"/>
+                        <field name="agreement_id" readonly="1"/>
+                        <field name="partner_id" readonly="1"/>
+                        <field name="amount_available"/>
+                    </group>
+                    <group>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="move_id"
+                               domain="[('move_type', 'in', move_type_domain), ('state', '=', 'draft'), ('partner_id', '=', partner_id), ('company_id', '=', company_id), ('currency_id', '=', currency_id)]"
+                               options="{'no_create': True}"/>
+                        <field name="amount"/>
+                        <field name="account_id" options="{'no_create': True}"/>
+                        <field name="analytic_distribution" widget="analytic_distribution"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="label" nolabel="1" placeholder="Line description as the counterparty will read it"/>
+                </group>
+                <div class="alert alert-info" role="alert">
+                    The deduction is added as a negative line on the chosen draft document,
+                    so the counterparty sees what was withheld and why.
+                </div>
+                <footer>
+                    <button name="action_apply" type="object" string="Deduct" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

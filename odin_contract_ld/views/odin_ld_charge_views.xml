@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_ld_charge_view_form" model="ir.ui.view">
+        <field name="name">odin.ld.charge.form</field>
+        <field name="model">odin.ld.charge</field>
+        <field name="arch" type="xml">
+            <form string="Liquidated Damages Charge">
+                <header>
+                    <button name="action_assess" type="object" string="Assess" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state != 'assessed'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_open_apply_wizard" type="object" string="Deduct on Document"
+                            class="btn-primary" invisible="state != 'approved'"/>
+                    <button name="action_waive" type="object" string="Waive"
+                            invisible="state in ('applied', 'waived', 'cancelled')"
+                            groups="odin_contract_ld.group_odin_ld_manager"
+                            confirm="Waiving records a commercial concession against this contract. Continue?"/>
+                    <button name="action_detach" type="object" string="Remove from Document"
+                            invisible="state != 'applied' or move_state != 'draft'"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('applied', 'cancelled')"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state in ('draft', 'applied')"
+                            groups="odin_contract_ld.group_odin_ld_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,assessed,approved,applied"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_move" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not move_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Document</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Agreement">
+                            <field name="agreement_id" options="{'no_create': True}"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="direction" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group string="Period">
+                            <field name="date"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="days_charged"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Amounts">
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="amount"/>
+                            <field name="amount_waived"/>
+                            <field name="amount_net"/>
+                        </group>
+                        <group string="Posting">
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="analytic_distribution" widget="analytic_distribution"/>
+                            <field name="move_id" readonly="1" invisible="not move_id"/>
+                            <field name="move_state" invisible="not move_id"/>
+                            <field name="user_id" readonly="1" invisible="not user_id"/>
+                            <field name="date_approved" readonly="1" invisible="not date_approved"/>
+                        </group>
+                    </group>
+                    <group string="Waiver Reason" invisible="not amount_waived and state != 'waived'">
+                        <field name="waiver_reason" nolabel="1"
+                               placeholder="Why the assessment was reduced or given up. A concession with no reason on record looks like an error at audit."/>
+                    </group>
+                    <group string="Notes">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_ld_charge_view_list" model="ir.ui.view">
+        <field name="name">odin.ld.charge.list</field>
+        <field name="model">odin.ld.charge</field>
+        <field name="arch" type="xml">
+            <list string="Damages Charges" decoration-success="state == 'applied'"
+                  decoration-muted="state in ('cancelled', 'waived')"
+                  decoration-warning="state == 'approved'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="agreement_id" optional="show"/>
+                <field name="project_id" optional="show"/>
+                <field name="partner_id"/>
+                <field name="direction" optional="hide"/>
+                <field name="days_charged" optional="hide"/>
+                <field name="amount" sum="Assessed"/>
+                <field name="amount_waived" sum="Waived" optional="show"/>
+                <field name="amount_net" sum="Net"/>
+                <field name="move_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'applied'"
+                       decoration-warning="state == 'approved'"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_ld_charge_view_search" model="ir.ui.view">
+        <field name="name">odin.ld.charge.search</field>
+        <field name="model">odin.ld.charge</field>
+        <field name="arch" type="xml">
+            <search string="Damages Charges">
+                <field name="name"/>
+                <field name="agreement_id"/>
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="move_id"/>
+                <filter name="filter_to_approve" string="To Approve" domain="[('state', '=', 'assessed')]"/>
+                <filter name="filter_to_apply" string="Approved, Not Deducted" domain="[('state', '=', 'approved')]"/>
+                <filter name="filter_applied" string="Applied" domain="[('state', '=', 'applied')]"/>
+                <separator/>
+                <filter name="filter_payable" string="We Owe" domain="[('direction', '=', 'payable')]"/>
+                <filter name="filter_receivable" string="Owed To Us" domain="[('direction', '=', 'receivable')]"/>
+                <separator/>
+                <filter name="filter_this_year" string="This Year"
+                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_agreement" string="Agreement" context="{'group_by': 'agreement_id'}"/>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_partner" string="Counterparty" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_date" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_ld_charge_view_pivot" model="ir.ui.view">
+        <field name="name">odin.ld.charge.pivot</field>
+        <field name="model">odin.ld.charge</field>
+        <field name="arch" type="xml">
+            <pivot string="Damages Analysis" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_net" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="odin_ld_charge_view_graph" model="ir.ui.view">
+        <field name="name">odin.ld.charge.graph</field>
+        <field name="model">odin.ld.charge</field>
+        <field name="arch" type="xml">
+            <graph string="Damages Analysis" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="amount_net" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+</odoo>
