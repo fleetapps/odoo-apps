@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =====================================================================
+         The return itself.
+
+         A form view rather than a client action, and deliberately so: a form is
+         deep-linkable, breadcrumbed and favouritable for free, and none of the
+         machinery Enterprise's report surface carries - comparison columns,
+         foldable hierarchies, analytic filters, prefix groups - is needed to
+         compute a VAT3 and reconcile it.
+         ================================================================== -->
+
+    <record id="ke_vat_return_view_form" model="ir.ui.view">
+        <field name="name">ke.vat.return.form</field>
+        <field name="model">ke.vat.return</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_compute" type="object" string="Compute"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_close" type="object" string="Close Period"
+                            invisible="state != 'draft'"
+                            groups="x_ke_base.group_ke_tax_manager"
+                            confirm="Closing freezes these figures, carries any credit forward to next period, and sets the tax lock date: an entry dated in this period and posted afterwards is moved to the next open period, and the tax figures of entries already in it can no longer be changed. Continue?"/>
+                    <button name="action_export_csv" type="object" string="Export CSV"
+                            invisible="not line_ids"/>
+                    <button name="action_reopen" type="object" string="Reopen"
+                            invisible="state != 'closed'"
+                            groups="x_ke_base.group_ke_tax_manager"
+                            confirm="Reopening does not lift the tax lock date. The period stays closed to posting until you lift it yourself in Settings. Continue?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,closed" readonly="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_batches" type="object"
+                                class="oe_stat_button" icon="fa-exchange">
+                            <field name="batch_count" widget="statinfo"
+                                   string="iTax Imports"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="VAT3 2026-08"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="report_id"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"
+                                   readonly="state != 'draft'"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="date_from" readonly="state != 'draft'"/>
+                            <field name="date_to" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <group string="Filing" invisible="state != 'closed'">
+                        <group>
+                            <field name="itax_ack_ref"
+                                   placeholder="Acknowledgement from iTax"/>
+                            <field name="itax_filed_date"/>
+                        </group>
+                        <group>
+                            <field name="move_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Return" name="page_return">
+                            <field name="line_ids" nolabel="1" readonly="1">
+                                <list create="false" delete="false"
+                                      decoration-bf="level == 1">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="level" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="has_base" column_invisible="1"/>
+                                    <field name="has_tax" column_invisible="1"/>
+                                    <field name="code" string="Box"/>
+                                    <field name="name" string="Description"/>
+                                    <field name="base_display" string="Base"
+                                           class="text-end"/>
+                                    <field name="tax_display" string="VAT"
+                                           class="text-end"/>
+                                    <field name="base_value" optional="hide"/>
+                                    <field name="tax_value" optional="hide"/>
+                                    <button name="action_drill" type="object"
+                                            icon="fa-search"
+                                            title="Open the journal items behind this box"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Manual Entries" name="page_manual">
+                            <div class="alert alert-info" role="alert">
+                                Six boxes on the VAT3 are not derived from the
+                                ledger - input VAT apportioned to exempt supplies,
+                                refund claims lodged, VAT paid, and the credit and
+                                debit adjustments. Enter them here, then recompute.
+                            </div>
+                            <field name="manual_value_ids" nolabel="1"
+                                   readonly="state != 'draft'">
+                                <list editable="bottom" create="false" delete="false">
+                                    <field name="target_report_line_id"
+                                           string="Box" readonly="1"/>
+                                    <field name="target_report_expression_label"
+                                           column_invisible="1"/>
+                                    <field name="date" readonly="1"/>
+                                    <field name="value" string="Amount"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="iTax Reconciliation" name="page_itax">
+                            <field name="batch_ids" nolabel="1"
+                                   context="{'default_company_id': company_id}">
+                                <list>
+                                    <field name="section"/>
+                                    <field name="date_pulled"/>
+                                    <field name="matched_count" string="Matched"/>
+                                    <field name="exception_count" string="Exceptions"
+                                           decoration-danger="exception_count &gt; 0"/>
+                                    <field name="lumpsum_amount" string="Lumpsum"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="ke_vat_return_view_list" model="ir.ui.view">
+        <field name="name">ke.vat.return.list</field>
+        <field name="model">ke.vat.return</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="itax_ack_ref" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'closed'"
+                       decoration-info="state == 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ke_vat_return_view_search" model="ir.ui.view">
+        <field name="name">ke.vat.return.search</field>
+        <field name="model">ke.vat.return</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="report_id"/>
+                <filter name="f_draft" string="Draft"
+                        domain="[('state', '=', 'draft')]"/>
+                <filter name="f_closed" string="Closed"
+                        domain="[('state', '=', 'closed')]"/>
+                <separator/>
+                <filter name="f_unfiled" string="Not yet filed"
+                        domain="[('itax_ack_ref', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_company" string="Company"
+                            context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_vat_returns" model="ir.actions.act_window">
+        <field name="name">VAT Returns</field>
+        <field name="res_model">ke.vat.return</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="ke_vat_return_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Prepare your first VAT3 return
+            </p>
+            <p>
+                A return covers one calendar month. Create it, compute it, and
+                open any box to see the journal items behind it.
+            </p>
+            <p>
+                Before you trust a figure, run one period you have already filed
+                and reconcile it against the return KRA holds.
+            </p>
+        </field>
+    </record>
+
+</odoo>

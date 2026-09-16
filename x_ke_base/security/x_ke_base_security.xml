@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Kenyan tax roles live here rather than in the VAT module, because the
+    eTIMS transmitter will hold the same two: whoever prepares a return is
+    whoever reviews what was transmitted, and whoever closes a period is
+    whoever re-sends a rejected invoice.
+-->
+<odoo>
+    <data>
+
+        <record id="module_category_ke_tax" model="ir.module.category">
+            <field name="name">Kenya Tax</field>
+            <field name="sequence">65</field>
+        </record>
+
+        <!-- Odoo 19: res.groups.category_id was replaced by privilege_id,
+             which points at a res.groups.privilege carrying the category. -->
+        <record id="privilege_ke_tax" model="res.groups.privilege">
+            <field name="name">Kenya Tax</field>
+            <field name="category_id" ref="module_category_ke_tax"/>
+            <field name="sequence">65</field>
+        </record>
+
+        <record id="group_ke_tax_user" model="res.groups">
+            <field name="name">Kenya Tax: User</field>
+            <field name="privilege_id" ref="privilege_ke_tax"/>
+            <!-- Reading journal items is inherent to the role: every VAT3 box
+                 drills down to them and the iTax reconciliation matches against
+                 them. account.move.line read is granted only to the accounting
+                 groups, so without this every drill-down raises AccessError. -->
+            <field name="implied_ids"
+                   eval="[(4, ref('account.group_account_readonly'))]"/>
+            <field name="comment">Prepare a VAT return, enter the manual boxes,
+                reconcile against iTax, and open any box through to the journal
+                items behind it. Cannot close a period, cannot reopen one, and
+                cannot retag posted invoices.</field>
+        </record>
+
+        <record id="group_ke_tax_manager" model="res.groups">
+            <field name="name">Kenya Tax: Manager</field>
+            <field name="privilege_id" ref="privilege_ke_tax"/>
+            <!-- account.group_account_user carries write access to journal
+                 entries, through the basic/invoice groups it implies. A manager
+                 needs it: closing a period can post the period's VAT entry,
+                 reopening sets that entry back to draft, and the repair wizard
+                 rewrites tax tags on posted moves.
+                 account.group_account_readonly, which the user group brings,
+                 is read-only on account.move and would fail all three. -->
+            <field name="implied_ids"
+                   eval="[(4, ref('group_ke_tax_user')),
+                          (4, ref('account.group_account_user'))]"/>
+            <field name="comment">Everything a user can do, plus closing a VAT
+                period (which sets the tax lock date), reopening one, editing
+                the supply classification, and repairing tax tags on entries
+                that were already posted.</field>
+        </record>
+
+        <!-- Every Settings/System administrator administers this too. Without
+             it nobody holds group_ke_tax_user on a fresh install - Odoo never
+             puts admin in a group a module invents - so the menus, which are
+             gated on it, are invisible to every user and the app is
+             unreachable despite installing cleanly. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_ke_tax_manager'))]"/>
+        </record>
+
+        <!-- An accountant (Show Full Accounting Features) prepares and
+             reconciles the return. Without this only a Settings administrator
+             can even see the app: the ODIN bake's "Accountant" role is
+             account.group_account_user and nothing else, and an App Store
+             customer's accountants are the same.
+
+             The manager group is deliberately NOT implied by
+             account.group_account_manager: closing sets a company-wide tax
+             lock date, which should be an explicit grant, and group_ke_tax_manager
+             implies group_account_user, so the implication would also switch
+             on full accounting features for every accounting administrator. -->
+        <record id="account.group_account_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_ke_tax_user'))]"/>
+        </record>
+
+    </data>
+</odoo>

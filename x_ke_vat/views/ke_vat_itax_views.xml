@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ke_vat_itax_batch_view_form" model="ir.ui.view">
+        <field name="name">ke.vat.itax.batch.form</field>
+        <field name="model">ke.vat.itax.batch</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_import" type="object" string="Import CSV"
+                            class="btn-primary" invisible="not csv_file"/>
+                    <button name="action_match" type="object" string="Match Again"
+                            invisible="line_count == 0"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         invisible="line_count == 0">
+                        KRA loads invoices into the auto-populated CSVs in
+                        batches, so a file downloaded early in the month can
+                        legitimately be short. Re-download it before you file and
+                        import it again - importing replaces these rows rather
+                        than adding to them.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="return_id" readonly="1"/>
+                            <field name="section"
+                                   readonly="line_count &gt; 0"/>
+                            <field name="date_pulled"/>
+                        </group>
+                        <group>
+                            <field name="csv_file" filename="csv_filename"
+                                   string="KRA CSV"/>
+                            <field name="csv_filename" invisible="1"/>
+                            <field name="line_count"/>
+                            <field name="matched_count"/>
+                            <field name="exception_count"/>
+                            <field name="lumpsum_amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Reconciliation" name="page_lines">
+                            <field name="line_ids" nolabel="1">
+                                <list create="false"
+                                      decoration-danger="match_state in ('kra_only', 'pin_variance')"
+                                      decoration-warning="match_state in ('odoo_only', 'amount_variance')"
+                                      decoration-muted="match_state == 'matched'">
+                                    <field name="match_state" widget="badge"/>
+                                    <field name="kra_invoice_no"/>
+                                    <field name="kra_invoice_date"/>
+                                    <field name="kra_pin"/>
+                                    <field name="kra_partner_name" optional="show"/>
+                                    <field name="kra_taxable_amount" sum="KRA Taxable"/>
+                                    <field name="kra_tax_amount" sum="KRA VAT"/>
+                                    <field name="move_id"/>
+                                    <field name="odoo_taxable_amount" sum="Our Taxable"/>
+                                    <field name="odoo_tax_amount" sum="Our VAT"/>
+                                    <field name="claim_state" optional="show"/>
+                                    <field name="claim_expiring" column_invisible="1"/>
+                                    <field name="claim_deadline" optional="show"
+                                           decoration-danger="claim_expiring"/>
+                                    <field name="kra_entry_no" optional="hide"/>
+                                    <field name="note" optional="hide"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="company_id" column_invisible="1"/>
+                                    <button name="action_open_document" type="object"
+                                            icon="fa-external-link"
+                                            title="Open the document in Odoo"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="ke_vat_itax_batch_view_list" model="ir.ui.view">
+        <field name="name">ke.vat.itax.batch.list</field>
+        <field name="model">ke.vat.itax.batch</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="return_id"/>
+                <field name="section"/>
+                <field name="date_pulled"/>
+                <field name="matched_count"/>
+                <field name="exception_count"
+                       decoration-danger="exception_count &gt; 0"/>
+                <field name="lumpsum_amount"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ke_vat_itax_line_view_search" model="ir.ui.view">
+        <field name="name">ke.vat.itax.line.search</field>
+        <field name="model">ke.vat.itax.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="kra_invoice_no"/>
+                <field name="kra_pin"/>
+                <field name="partner_id"/>
+                <filter name="f_exceptions" string="Exceptions only"
+                        domain="[('match_state', '!=', 'matched')]"/>
+                <separator/>
+                <filter name="f_kra_only" string="In KRA, not in Odoo"
+                        domain="[('match_state', '=', 'kra_only')]"/>
+                <filter name="f_odoo_only" string="In Odoo, not in KRA"
+                        domain="[('match_state', '=', 'odoo_only')]"/>
+                <filter name="f_amount" string="Amount differs"
+                        domain="[('match_state', '=', 'amount_variance')]"/>
+                <filter name="f_pin" string="PIN differs"
+                        domain="[('match_state', '=', 'pin_variance')]"/>
+                <separator/>
+                <!-- The deferral register: input tax we have chosen not to
+                     claim yet, and how long we have left to claim it. -->
+                <filter name="f_deferred" string="Deferred input tax"
+                        domain="[('claim_state', '=', 'defer')]"/>
+                <filter name="f_expiring" string="Claim expires within 30 days"
+                        domain="[('claim_state', '=', 'defer'),
+                                 ('claim_deadline', '&lt;=', (context_today() + datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter name="f_special_table" string="Excluded: VAT special table"
+                        domain="[('claim_state', '=', 'exclude_special_table')]"/>
+                <group>
+                    <filter name="group_match" string="Match Status"
+                            context="{'group_by': 'match_state'}"/>
+                    <filter name="group_claim" string="Claim Status"
+                            context="{'group_by': 'claim_state'}"/>
+                    <filter name="group_section" string="Section"
+                            context="{'group_by': 'section'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="ke_vat_itax_line_view_list" model="ir.ui.view">
+        <field name="name">ke.vat.itax.line.list</field>
+        <field name="model">ke.vat.itax.line</field>
+        <field name="arch" type="xml">
+            <list create="false"
+                  decoration-danger="match_state in ('kra_only', 'pin_variance')"
+                  decoration-warning="match_state in ('odoo_only', 'amount_variance')">
+                <field name="batch_id"/>
+                <field name="match_state" widget="badge"/>
+                <field name="kra_invoice_no"/>
+                <field name="kra_invoice_date"/>
+                <field name="kra_pin"/>
+                <field name="kra_taxable_amount" sum="KRA Taxable"/>
+                <field name="move_id"/>
+                <field name="odoo_taxable_amount" sum="Our Taxable"/>
+                <field name="claim_state"/>
+                <field name="claim_expiring" column_invisible="1"/>
+                <field name="claim_deadline" decoration-danger="claim_expiring"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="company_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ke_vat_itax_lines" model="ir.actions.act_window">
+        <field name="name">iTax Reconciliation</field>
+        <field name="res_model">ke.vat.itax.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="ke_vat_itax_line_view_search"/>
+        <field name="context">{'search_default_f_exceptions': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No differences to resolve
+            </p>
+            <p>
+                Import a KRA auto-populated CSV against a return, and every row
+                that does not agree with your ledger appears here.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_ke_vat_itax_batches" model="ir.actions.act_window">
+        <field name="name">iTax Imports</field>
+        <field name="res_model">ke.vat.itax.batch</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Import your first KRA CSV
+            </p>
+            <p>
+                Download the auto-populated CSVs from iTax, one per section, and
+                import each against the return for that period.
+            </p>
+        </field>
+    </record>
+
+</odoo>

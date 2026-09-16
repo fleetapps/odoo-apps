@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="ke_tax_retag_wizard_view_form" model="ir.ui.view">
+            <field name="name">ke.tax.retag.wizard.form</field>
+            <field name="model">ke.tax.retag.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Repair Kenyan Tax Tags">
+                    <div class="alert alert-info" role="alert">
+                        <p class="mb-1">
+                            <strong>l10n_ke tags export sales as exempt.</strong>
+                            Exports are zero-rated under the VAT Act, so they
+                            belong in box 3, not box 4.
+                        </p>
+                        <p class="mb-0">
+                            The tax itself is corrected automatically when this
+                            module installs and whenever the Kenyan chart of
+                            accounts is loaded. Entries posted before that keep
+                            the tag they were stamped with, and this is where
+                            those are put right.
+                        </p>
+                    </div>
+                    <!-- The definition first: retagging entries is pointless
+                         while the tax still stamps the wrong tag on new ones. -->
+                    <div class="alert alert-success mb-2" role="status"
+                         invisible="not tax_ok">
+                        <field name="tax_status" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-danger mb-2" role="alert"
+                         invisible="tax_ok">
+                        <p class="mb-1"><strong>The Kenyan tax definition has been reverted.</strong>
+                            This happens when l10n_ke is upgraded after Kenya Tax
+                            Base. Returns cannot be computed until it is repaired.</p>
+                        <field name="tax_status" nolabel="1" readonly="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"
+                                   groups="base.group_multi_company"/>
+                            <field name="move_count"/>
+                            <field name="line_count"/>
+                        </group>
+                        <group>
+                            <field name="affected_amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="tax_ok" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="summary" nolabel="1" readonly="1"/>
+                    <footer>
+                        <button name="action_apply_corrections" type="object"
+                                string="Apply Tax Corrections" class="btn-primary"
+                                invisible="tax_ok"
+                                confirm="This re-points the Kenyan taxes to the tags their VAT3 boxes read. It changes tax configuration, not posted entries. Continue?"/>
+                        <button name="action_retag" type="object"
+                                string="Retag These Entries" class="btn-primary"
+                                invisible="line_count == 0 or not tax_ok"
+                                confirm="This rewrites the tax tags on posted journal items, which changes what those periods report. Periods already closed to tax changes will be skipped. Continue?"/>
+                        <button name="action_open_lines" type="object"
+                                string="Review First" class="btn-secondary"
+                                invisible="line_count == 0"/>
+                        <button string="Close" class="btn-secondary"
+                                special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_ke_tax_retag" model="ir.actions.act_window">
+            <field name="name">Repair Tax Tags</field>
+            <field name="res_model">ke.tax.retag.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+    </data>
+</odoo>

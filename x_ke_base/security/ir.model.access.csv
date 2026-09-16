@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ke_tax_classification_user,ke tax classification user,model_ke_tax_classification,group_ke_tax_user,1,0,0,0
+access_ke_tax_classification_manager,ke tax classification manager,model_ke_tax_classification,group_ke_tax_manager,1,1,1,1
+access_ke_tax_retag_wizard,ke tax retag wizard,model_ke_tax_retag_wizard,group_ke_tax_manager,1,1,1,1

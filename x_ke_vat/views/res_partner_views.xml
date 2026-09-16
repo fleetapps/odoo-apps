@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The KRA VAT special table, on the supplier. Under Sales & Purchase >
+    Purchase, next to the other things that decide how a supplier's bills are
+    treated. Shown only on commercial entities: the flag belongs to the
+    company a bill is claimed against, and a contact person inherits it.
+-->
+<odoo>
+
+    <record id="view_partner_form_ke_vat" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.ke.vat</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales_purchases']//group[@name='purchase']"
+                   position="inside">
+                <field name="ke_vat_special_table"
+                       groups="x_ke_base.group_ke_tax_user"
+                       invisible="parent_id and not is_company"/>
+                <field name="ke_vat_special_table_date"
+                       groups="x_ke_base.group_ke_tax_user"
+                       invisible="not ke_vat_special_table"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
