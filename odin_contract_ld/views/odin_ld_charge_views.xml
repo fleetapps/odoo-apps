@@ -130,7 +130,7 @@
                 <filter name="filter_receivable" string="Owed To Us" domain="[('direction', '=', 'receivable')]"/>
                 <separator/>
                 <filter name="filter_this_year" string="This Year"
-                        domain="[('date', '&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('date', '&gt;=', (context_today() + relativedelta(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_agreement" string="Agreement" context="{'group_by': 'agreement_id'}"/>
                     <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>

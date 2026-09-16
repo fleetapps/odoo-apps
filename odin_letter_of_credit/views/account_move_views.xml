@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_move_view_form_odin_lc" model="ir.ui.view">
+        <field name="name">account.move.form.odin.lc</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_odin_lc" type="object" class="oe_stat_button"
+                        icon="fa-university" invisible="not odin_lc_id"
+                        groups="odin_letter_of_credit.group_odin_lc_user">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Letter of Credit</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!--
+                Above the fold on purpose. Somebody about to pay this bill needs
+                to know it is held before they open the payment wizard, not
+                after it refuses them.
+            -->
+            <xpath expr="//div[@name='button_box']" position="before">
+                <div class="alert alert-warning" role="alert"
+                     invisible="not odin_lc_payment_blocked"
+                     groups="odin_letter_of_credit.group_odin_lc_user">
+                    Payment is held under
+                    <field name="odin_lc_id" readonly="1" class="oe_inline" nolabel="1"/>:
+                    <field name="odin_lc_documents_outstanding" readonly="1" class="oe_inline" nolabel="1"/>
+                    required document(s) outstanding.
+                </div>
+            </xpath>
+
+            <xpath expr="//field[@name='invoice_payment_term_id']" position="after">
+                <field name="odin_lc_id"
+                       domain="[('partner_id', '=', partner_id), ('company_id', '=', company_id)]"
+                       options="{'no_create': True}"
+                       groups="odin_letter_of_credit.group_odin_lc_user"/>
+                <field name="odin_lc_documents_complete" invisible="not odin_lc_id"
+                       groups="odin_letter_of_credit.group_odin_lc_user"/>
+                <field name="odin_lc_payment_blocked" invisible="1"/>
+                <field name="odin_lc_documents_outstanding" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

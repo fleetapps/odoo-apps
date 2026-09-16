@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_report_odin_lc_status" model="ir.actions.report">
+            <field name="name">Credit Status &amp; Document Checklist</field>
+            <field name="model">odin.letter.of.credit</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">odin_letter_of_credit.report_odin_lc_status</field>
+            <field name="report_file">odin_letter_of_credit.report_odin_lc_status</field>
+            <field name="print_report_name">'Letter of Credit - %s' % (object.lc_reference or object.name)</field>
+            <field name="binding_model_id" ref="model_odin_letter_of_credit"/>
+            <field name="binding_type">report</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_project_view_form_odin_lc" model="ir.ui.view">
+        <field name="name">project.project.form.odin.lc</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_view_odin_lc" type="object" class="oe_stat_button"
+                        icon="fa-university" invisible="odin_lc_count == 0"
+                        groups="odin_letter_of_credit.group_odin_lc_user">
+                    <field name="odin_lc_count" widget="statinfo" string="Credits"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

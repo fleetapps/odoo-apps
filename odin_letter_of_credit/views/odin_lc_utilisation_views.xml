@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_lc_utilisation_view_form" model="ir.ui.view">
+        <field name="name">odin.lc.utilisation.form</field>
+        <field name="model">odin.lc.utilisation</field>
+        <field name="arch" type="xml">
+            <form string="Utilisation">
+                <header>
+                    <button name="action_present" type="object" string="Present" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_accept" type="object" string="Accept Documents"
+                            class="btn-primary" invisible="state not in ('presented', 'discrepant')"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"/>
+                    <button name="action_mark_discrepant" type="object" string="Mark Discrepant"
+                            invisible="state not in ('draft', 'presented')"/>
+                    <button name="action_mark_paid" type="object" string="Mark Paid"
+                            class="btn-primary" invisible="state != 'accepted'"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"/>
+                    <button name="action_reject" type="object" string="Refuse"
+                            invisible="state not in ('presented', 'discrepant')"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"/>
+                    <button name="action_draft" type="object" string="Reset to Draft"
+                            invisible="state in ('draft', 'paid')"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,presented,accepted,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="state != 'discrepant'">
+                        Documents are discrepant. The bank's undertaking does not apply
+                        until the applicant waives the discrepancies in writing.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lc_id" options="{'no_create': True}"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="direction" readonly="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" groups="base.group_multi_currency"/>
+                            <field name="amount"/>
+                            <field name="date_presentation"/>
+                            <field name="date_shipment"/>
+                            <field name="date_maturity"/>
+                            <field name="move_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group string="Discrepancies" invisible="state != 'discrepant' and not discrepancy_note">
+                        <field name="discrepancy_note" nolabel="1"
+                               placeholder="List every discrepancy. A bank refusing a presentation must state all of them in a single notice, and so should we."/>
+                    </group>
+                    <group string="Notes">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_lc_utilisation_view_list" model="ir.ui.view">
+        <field name="name">odin.lc.utilisation.list</field>
+        <field name="model">odin.lc.utilisation</field>
+        <field name="arch" type="xml">
+            <list string="Utilisations" decoration-success="state == 'paid'"
+                  decoration-danger="state in ('discrepant', 'rejected')"
+                  decoration-warning="state == 'presented'">
+                <field name="name"/>
+                <field name="lc_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="project_id" optional="hide"/>
+                <field name="date_presentation"/>
+                <field name="date_maturity" optional="show"/>
+                <field name="amount" sum="Drawn"/>
+                <field name="move_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'paid'"
+                       decoration-danger="state in ('discrepant', 'rejected')"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_lc_utilisation_view_search" model="ir.ui.view">
+        <field name="name">odin.lc.utilisation.search</field>
+        <field name="model">odin.lc.utilisation</field>
+        <field name="arch" type="xml">
+            <search string="Utilisations">
+                <field name="name"/>
+                <field name="lc_id"/>
+                <field name="partner_id"/>
+                <field name="move_id"/>
+                <filter name="filter_open" string="Open" domain="[('state', 'in', ('draft', 'presented', 'discrepant', 'accepted'))]"/>
+                <filter name="filter_discrepant" string="Discrepant" domain="[('state', '=', 'discrepant')]"/>
+                <filter name="filter_due" string="Maturing This Month"
+                        domain="[('date_maturity', '&lt;=', (context_today() + relativedelta(day=31)).strftime('%Y-%m-%d')), ('state', '=', 'accepted')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_lc" string="Credit" context="{'group_by': 'lc_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_maturity" string="Maturity Month" context="{'group_by': 'date_maturity:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

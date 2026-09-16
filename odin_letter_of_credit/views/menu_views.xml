@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_lc_action" model="ir.actions.act_window">
+        <field name="name">Letters of Credit</field>
+        <field name="res_model">odin.letter.of.credit</field>
+        <field name="view_mode">list,kanban,form,calendar,graph</field>
+        <field name="search_view_id" ref="odin_lc_view_search"/>
+        <field name="context">{'search_default_filter_live': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Record a documentary credit</p>
+            <p>
+                List the documents the credit calls for, and payment against it is
+                held until the set is complete. Expiry and latest shipment dates are
+                watched daily.
+            </p>
+        </field>
+    </record>
+
+    <record id="odin_lc_utilisation_action" model="ir.actions.act_window">
+        <field name="name">Utilisations</field>
+        <field name="res_model">odin.lc.utilisation</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="odin_lc_utilisation_view_search"/>
+    </record>
+
+    <record id="odin_lc_amendment_action" model="ir.actions.act_window">
+        <field name="name">Amendments</field>
+        <field name="res_model">odin.lc.amendment</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="odin_lc_charge_action" model="ir.actions.act_window">
+        <field name="name">Bank Charges</field>
+        <field name="res_model">odin.lc.charge</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="odin_lc_charge_view_search"/>
+    </record>
+
+    <record id="odin_lc_document_type_action" model="ir.actions.act_window">
+        <field name="name">Document Types</field>
+        <field name="res_model">odin.lc.document.type</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="odin_lc_document_type_view_search"/>
+    </record>
+
+    <menuitem id="menu_odin_lc_root" name="Letters of Credit"
+              parent="account.menu_finance" sequence="93"
+              groups="odin_letter_of_credit.group_odin_lc_user"/>
+
+    <menuitem id="menu_odin_lc" name="Credits"
+              parent="menu_odin_lc_root" action="odin_lc_action" sequence="10"/>
+    <menuitem id="menu_odin_lc_utilisation" name="Utilisations"
+              parent="menu_odin_lc_root" action="odin_lc_utilisation_action" sequence="20"/>
+    <menuitem id="menu_odin_lc_amendment" name="Amendments"
+              parent="menu_odin_lc_root" action="odin_lc_amendment_action" sequence="30"/>
+    <menuitem id="menu_odin_lc_charge" name="Bank Charges"
+              parent="menu_odin_lc_root" action="odin_lc_charge_action" sequence="40"/>
+    <menuitem id="menu_odin_lc_config" name="Document Types"
+              parent="menu_odin_lc_root" action="odin_lc_document_type_action" sequence="90"
+              groups="odin_letter_of_credit.group_odin_lc_manager"/>
+
+</odoo>

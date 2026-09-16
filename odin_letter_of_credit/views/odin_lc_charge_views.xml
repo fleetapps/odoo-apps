@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_lc_charge_view_list" model="ir.ui.view">
+        <field name="name">odin.lc.charge.list</field>
+        <field name="model">odin.lc.charge</field>
+        <field name="arch" type="xml">
+            <list string="Bank Charges" editable="bottom">
+                <field name="date"/>
+                <field name="lc_id"/>
+                <field name="charge_type"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="currency_id" groups="base.group_multi_currency"/>
+                <field name="amount" sum="Total"/>
+                <field name="analytic_distribution" widget="analytic_distribution" optional="show"/>
+                <field name="move_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_lc_charge_view_search" model="ir.ui.view">
+        <field name="name">odin.lc.charge.search</field>
+        <field name="model">odin.lc.charge</field>
+        <field name="arch" type="xml">
+            <search string="Bank Charges">
+                <field name="lc_id"/>
+                <field name="partner_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_lc" string="Credit" context="{'group_by': 'lc_id'}"/>
+                    <filter name="group_type" string="Charge Type" context="{'group_by': 'charge_type'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>
