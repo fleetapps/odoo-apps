@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0). -->
+<odoo>
+    <record id="res_config_settings_view_form_3cx" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.crm_3cx</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="3CX" string="3CX" name="crm_3cx" groups="base.group_system">
+                    <block title="3CX Phone System">
+                        <setting string="API Key"
+                                 help="3CX sends this in the `apikey` header of every request. Enter the same value in the template's API key parameter in the 3CX Admin Console.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="token_3cx_crm" string="API Key" class="col-lg-3 o_light_label"/>
+                                    <field name="token_3cx_crm" class="col-lg-9" widget="CopyClipboardChar"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="3CX Template"
+                                 help="Download the CRM template with this database's URL filled in, then upload it in the 3CX Admin Console under Integrations › CRM › Add.">
+                            <a class="oe_link fw-bold" href="/crm_3cx/template" target="_blank">
+                                <i class="oi oi-arrow-right"/>
+                                Download 3cx_odoo.xml
+                            </a>
+                        </setting>
+                        <setting string="Agents"
+                                 help="Set each user's 3CX extension on their user form (Preferences) so calls are logged in their name. Users without one are matched on the email address 3CX has for the extension.">
+                            <a class="oe_link fw-bold" href="/odoo/users" target="_blank">
+                                <i class="oi oi-arrow-right"/>
+                                Users
+                            </a>
+                        </setting>
+                    </block>
+                    <block title="Calls and Chats">
+                        <setting help="A missed call schedules a call-back activity on the contact or lead; the next answered call with them marks it done.">
+                            <field name="threecx_missed_call_activity"/>
+                        </setting>
+                        <setting help="An inbound call or chat from a number or email that matches nothing creates a lead named after it.">
+                            <field name="threecx_lead_on_unknown"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+</odoo>

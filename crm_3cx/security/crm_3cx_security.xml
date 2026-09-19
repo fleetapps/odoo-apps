@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0). -->
+<odoo>
+    <record id="crm_3cx_call_rule_company" model="ir.rule">
+        <field name="name">3CX Call: multi-company</field>
+        <field name="model_id" ref="model_crm_3cx_call"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

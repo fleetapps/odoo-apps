@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0). -->
+<odoo>
+    <record id="view_users_form_3cx" model="ir.ui.view">
+        <field name="name">res.users.form.inherit.crm_3cx</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <group name="other_preferences" position="inside">
+                <field name="threecx_extension"/>
+            </group>
+        </field>
+    </record>
+</odoo>

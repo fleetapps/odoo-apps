@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0). -->
+<odoo>
+    <record id="view_crm_3cx_call_list" model="ir.ui.view">
+        <field name="name">crm.3cx.call.list</field>
+        <field name="model">crm.3cx.call</field>
+        <field name="arch" type="xml">
+            <list create="0" sample="1" decoration-danger="call_type == 'missed'" decoration-muted="call_type == 'notanswered'">
+                <field name="started_at"/>
+                <field name="call_type" widget="badge"
+                       decoration-success="call_type == 'inbound'" decoration-info="call_type == 'outbound'"
+                       decoration-danger="call_type == 'missed'" decoration-warning="call_type == 'notanswered'"/>
+                <field name="number"/>
+                <field name="partner_id"/>
+                <field name="lead_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="queue" optional="hide"/>
+                <field name="duration_display"/>
+                <field name="duration" sum="Total seconds" optional="hide"/>
+                <field name="recording_url" widget="url" optional="hide"/>
+                <field name="sentiment" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_3cx_call_form" model="ir.ui.view">
+        <field name="name">crm.3cx.call.form</field>
+        <field name="model">crm.3cx.call</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="Call">
+                            <field name="call_type"/>
+                            <field name="number"/>
+                            <field name="started_at"/>
+                            <field name="duration_display"/>
+                            <field name="queue"/>
+                            <field name="recording_url" widget="url"/>
+                        </group>
+                        <group string="Who">
+                            <field name="partner_id"/>
+                            <field name="lead_id"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="extension"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="3CX AI" invisible="not summary and not sentiment and not transcription">
+                        <field name="sentiment"/>
+                        <field name="summary"/>
+                        <field name="transcription"/>
+                    </group>
+                    <group string="In Odoo">
+                        <field name="message_id"/>
+                        <field name="activity_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_crm_3cx_call_search" model="ir.ui.view">
+        <field name="name">crm.3cx.call.search</field>
+        <field name="model">crm.3cx.call</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="number"/>
+                <field name="partner_id"/>
+                <field name="lead_id"/>
+                <field name="user_id"/>
+                <field name="queue"/>
+                <filter name="inbound" string="Inbound" domain="[('direction', '=', 'inbound')]"/>
+                <filter name="outbound" string="Outbound" domain="[('direction', '=', 'outbound')]"/>
+                <separator/>
+                <filter name="answered" string="Answered" domain="[('answered', '=', True)]"/>
+                <filter name="missed" string="Missed" domain="[('call_type', '=', 'missed')]"/>
+                <separator/>
+                <filter name="my_calls" string="My Calls" domain="[('user_id', '=', uid)]"/>
+                <filter name="filter_started_at" date="started_at" default_period="month"/>
+                <group>
+                    <filter name="group_type" string="Type" context="{'group_by': 'call_type'}"/>
+                    <filter name="group_agent" string="Agent" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_partner" string="Contact" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_lead" string="Lead" context="{'group_by': 'lead_id'}"/>
+                    <filter name="group_queue" string="Queue" context="{'group_by': 'queue'}"/>
+                    <filter name="group_day" string="Day" context="{'group_by': 'started_at:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_crm_3cx_call_pivot" model="ir.ui.view">
+        <field name="name">crm.3cx.call.pivot</field>
+        <field name="model">crm.3cx.call</field>
+        <field name="arch" type="xml">
+            <pivot string="Calls" sample="1">
+                <field name="started_at" interval="day" type="row"/>
+                <field name="call_type" type="col"/>
+                <field name="duration" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_crm_3cx_call_graph" model="ir.ui.view">
+        <field name="name">crm.3cx.call.graph</field>
+        <field name="model">crm.3cx.call</field>
+        <field name="arch" type="xml">
+            <graph string="Calls" sample="1" stacked="1">
+                <field name="started_at" interval="day" type="row"/>
+                <field name="call_type" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_crm_3cx_call" model="ir.actions.act_window">
+        <field name="name">3CX Calls</field>
+        <field name="res_model">crm.3cx.call</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_crm_3cx_call_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No calls reported yet</p>
+            <p>Every call 3CX reports lands here with its agent, duration and the contact or lead it was matched to. Enable Call Journaling on the template in the 3CX Admin Console.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_crm_3cx_call" name="3CX Calls" parent="crm.crm_menu_report" action="action_crm_3cx_call" sequence="50"/>
+</odoo>

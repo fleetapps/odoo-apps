@@ -1,0 +1,559 @@
+<?xml version="1.0"?>
+<!--
+  3CX server-side CRM template for Odoo, for the "3CX Phone System Integration"
+  module (crm_3cx). The module answers on the Odoo side; nothing else is needed.
+
+  Setup: 3CX Admin Console > Integrations > CRM > Add > upload this file. Then set
+  "Odoo URL" and "API key" (Odoo: Settings > 3CX), and tick the features you want.
+  Restart the 3CX System service after changing a template, and use the Test
+  button on the same page with a number that exists in Odoo.
+
+  Downloading the template from Odoo (Settings > 3CX) fills in the Odoo URL.
+
+  Matching: Odoo receives the number as the PBX phonebook setting leaves it
+  ("Match exactly" or "Match at least N characters", Admin Console > System >
+  Phonebook > Options) and matches it against contacts, then leads, in the
+  E.164, national and stored formats. The searched number is echoed back as
+  PhoneOther so 3CX always accepts the match.
+-->
+<Crm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  Country="Global" Name="Odoo (crm_3cx)" Version="1" SupportsEmojis="true">
+  <Number Prefix="AsIs" MaxLength="[MaxLength]" />
+  <Connection MaxConcurrentRequests="4" />
+  <Parameters>
+    <Parameter Name="hostodoo" Type="String" Parent="General Configuration" Editor="String" Title="Odoo URL (https://...)" Validation="" Default="" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="apikey" Type="Password" Parent="General Configuration" Editor="String" Title="API key (Odoo: Settings, 3CX)" Validation="" Default="" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="CreateContactEnabled" Type="Boolean" Parent="General Configuration" Editor="String" Title="Allow contact creation directly to your CRM using 3CX Web Client (creates a lead in Odoo)" Validation="" Default="True" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="ReportCallEnabled" Type="Boolean" Parent="" Editor="String" Title="Enable Call Journaling" Validation="" Default="True" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="Subject" Type="String" Parent="ReportCallEnabled" Editor="String" Title="Subject:" Validation="" Default="3CX call" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="InboundCallText" Type="String" Parent="ReportCallEnabled" Editor="String" Title="Answered Inbound Call:" Validation="" Default="[DateTime]: Answered incoming call from [Number] [Name] to [AgentFirstName] [AgentLastName] ([Agent]), duration [Duration]" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="MissedCallText" Type="String" Parent="ReportCallEnabled" Editor="String" Title="Missed Call:" Validation="" Default="[DateTime]: Missed call from [Number] [Name] to [AgentFirstName] [AgentLastName] ([Agent])" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="OutboundCallText" Type="String" Parent="ReportCallEnabled" Editor="String" Title="Answered Outbound Call:" Validation="" Default="[DateTime]: Answered outgoing call from [AgentFirstName] [AgentLastName] ([Agent]) to [Number] [Name], duration [Duration]" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="NotAnsweredOutboundCallText" Type="String" Parent="ReportCallEnabled" Editor="String" Title="Unanswered Outbound Call:" Validation="" Default="[DateTime]: Unanswered outgoing call from [AgentFirstName] [AgentLastName] ([Agent]) to [Number] [Name]" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="ReportChatEnabled" Type="Boolean" Parent="" Editor="String" Title="Enable Chat Journaling" Validation="" Default="True" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+    <Parameter Name="ChatSubject" Type="String" Parent="ReportChatEnabled" Editor="String" Title="Chat Subject:" Validation="" Default="3CX chat" ListValues="" RequestUrl="" RequestUrlParameters="" ResponseScenario="" />
+  </Parameters>
+  <Authentication Type="No" />
+  <Scenarios>
+
+    <!-- Contact lookup by number: runs when a call or SMS/WhatsApp arrives. -->
+    <Scenario Id="" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/crm" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="number" Passes="1" Type="String">[Number]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Contact lookup by email: live chat visitors. -->
+    <Scenario Id="LookupByEmail" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/search" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="field" Passes="0" Type="String">email</Value>
+          <Value Key="text" Passes="1" Type="String">[Email]</Value>
+          <Value Key="exact" Passes="0" Type="Boolean">true</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Web Client search by name: contacts, companies, leads. -->
+    <Scenario Id="SearchContacts_FullName" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/search" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="field" Passes="0" Type="String">name</Value>
+          <Value Key="text" Passes="1" Type="String">[SearchText]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Web Client search by company. -->
+    <Scenario Id="SearchContacts_Company" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/search" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="field" Passes="0" Type="String">company</Value>
+          <Value Key="text" Passes="1" Type="String">[SearchText]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Web Client search by number. -->
+    <Scenario Id="SearchContacts_PhoneNumbers" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/search" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="field" Passes="0" Type="String">phone</Value>
+          <Value Key="text" Passes="1" Type="String">[SearchText]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Web Client search by email. -->
+    <Scenario Id="SearchContacts_Email" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/search" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="field" Passes="0" Type="String">email</Value>
+          <Value Key="text" Passes="1" Type="String">[SearchText]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+    <!-- Call journaling: runs when a call ends. Odoo logs the note in the
+         chatter of the matched contact or lead, records the call under
+         CRM > Reporting > 3CX Calls, and schedules a call-back on a miss. -->
+    <Scenario Id="ReportCall" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="[ReportCallEnabled]!=True" Url="[hostodoo]/api/3cx/call" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="number" Passes="1" Type="String">[Number]</Value>
+          <Value Key="call_type" Passes="1" Type="String">[CallType]</Value>
+          <Value Key="direction" Passes="1" Type="String">[CallDirection]</Value>
+          <Value Key="entity_id" Passes="1" Type="String">[EntityId]</Value>
+          <Value Key="entity_type" Passes="1" Type="String">[EntityType]</Value>
+          <Value Key="name" Passes="1" Type="String">[Name]</Value>
+          <Value Key="agent" Passes="1" Type="String">[Agent]</Value>
+          <Value Key="agent_first_name" Passes="1" Type="String">[AgentFirstName]</Value>
+          <Value Key="agent_last_name" Passes="1" Type="String">[AgentLastName]</Value>
+          <Value Key="agent_email" Passes="1" Type="String">[AgentEmail]</Value>
+          <Value Key="queue" Passes="1" Type="String">[QueueExtension]</Value>
+          <Value Key="duration" Passes="1" Type="String">[Duration]</Value>
+          <Value Key="started_at" Passes="2" Type="String">[[CallStartTimeUTC].ToString("yyyy-MM-ddTHH:mm:ssZ")]</Value>
+          <Value Key="date_time" Passes="1" Type="String">[DateTime]</Value>
+          <Value Key="recording_url" Passes="1" Type="String">[RecordingUrl]</Value>
+          <Value Key="summary" Passes="1" Type="String">[Summary]</Value>
+          <Value Key="transcription" Passes="1" Type="String">[Transcription]</Value>
+          <Value Key="subject" Passes="2" Type="String">[[Subject]]</Value>
+          <Value Key="body" If="[CallType]==Inbound" Passes="2" Type="String">[[InboundCallText]]</Value>
+          <Value Key="body" If="[CallType]==Missed" Passes="2" Type="String">[[MissedCallText]]</Value>
+          <Value Key="body" If="[CallType]==Outbound" Passes="2" Type="String">[[OutboundCallText]]</Value>
+          <Value Key="body" If="[CallType]==Notanswered" Passes="2" Type="String">[[NotAnsweredOutboundCallText]]</Value>
+        </PostValues>
+      </Request>
+    </Scenario>
+
+    <!-- Chat journaling: SMS, WhatsApp and live chat conversations. -->
+    <Scenario Id="ReportChat" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="[ReportChatEnabled]!=True" Url="[hostodoo]/api/3cx/chat" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="number" Passes="1" Type="String">[Number]</Value>
+          <Value Key="email" Passes="1" Type="String">[Email]</Value>
+          <Value Key="entity_id" Passes="1" Type="String">[EntityId]</Value>
+          <Value Key="entity_type" Passes="1" Type="String">[EntityType]</Value>
+          <Value Key="name" Passes="1" Type="String">[Name]</Value>
+          <Value Key="agent" Passes="1" Type="String">[Agent]</Value>
+          <Value Key="agent_first_name" Passes="1" Type="String">[AgentFirstName]</Value>
+          <Value Key="agent_last_name" Passes="1" Type="String">[AgentLastName]</Value>
+          <Value Key="agent_email" Passes="1" Type="String">[AgentEmail]</Value>
+          <Value Key="queue" Passes="1" Type="String">[QueueExtension]</Value>
+          <Value Key="duration" Passes="1" Type="String">[Duration]</Value>
+          <Value Key="started_at" Passes="2" Type="String">[[ChatStartTimeUTC].ToString("yyyy-MM-ddTHH:mm:ssZ")]</Value>
+          <Value Key="subject" Passes="2" Type="String">[[ChatSubject]]</Value>
+          <Value Key="messages" Passes="1" Type="String">[ChatMessages]</Value>
+        </PostValues>
+      </Request>
+    </Scenario>
+
+    <!-- "Create contact" from the 3CX Web Client: becomes a lead in Odoo,
+         returned like a lookup result so the client can show it. -->
+    <Scenario Id="CreateContactRecordFromClient" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="[CreateContactEnabled]!=True" Url="[hostodoo]/api/3cx/contact" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="firstname" Passes="1" Type="String">[FirstName]</Value>
+          <Value Key="lastname" Passes="1" Type="String">[LastName]</Value>
+          <Value Key="number" Passes="1" Type="String">[Number]</Value>
+          <Value Key="email" Passes="1" Type="String">[Email]</Value>
+          <Value Key="company" Passes="1" Type="String">[Company]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+      <Variables>
+        <Variable Name="ContactID" LookupValue="" Path="result.partner_id">
+          <Filter />
+        </Variable>
+        <Variable Name="FirstName" LookupValue="" Path="result.firstname">
+          <Filter />
+        </Variable>
+        <Variable Name="LastName" LookupValue="" Path="result.lastname">
+          <Filter />
+        </Variable>
+        <Variable Name="CompanyName" LookupValue="" Path="result.name">
+          <Filter />
+        </Variable>
+        <Variable Name="Email" LookupValue="" Path="result.email">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneE164" LookupValue="" Path="result.phone_e164">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneRaw" LookupValue="" Path="result.phone">
+          <Filter />
+        </Variable>
+        <Variable Name="PhoneMobile" LookupValue="" Path="result.mobile">
+          <Filter />
+        </Variable>
+        <Variable Name="MatchedNumber" LookupValue="" Path="result.number">
+          <Filter />
+        </Variable>
+        <Variable Name="ContactUrl" LookupValue="" Path="result.web_url">
+          <Filter />
+        </Variable>
+        <Variable Name="EntityType" LookupValue="" Path="result.entity_type">
+          <Filter />
+        </Variable>
+      </Variables>
+      <Outputs Next="" AllowEmpty="false">
+        <Output Type="ContactID" Passes="0" Value="[ContactID]" />
+        <Output Type="FirstName" Passes="0" Value="[FirstName]" />
+        <Output Type="LastName" Passes="0" Value="[LastName]" />
+        <Output Type="CompanyName" Passes="0" Value="[CompanyName]" />
+        <Output Type="Email" Passes="0" Value="[Email]" />
+        <Output Type="PhoneBusiness" Passes="0" Value="[PhoneE164]" />
+        <Output Type="PhoneBusiness2" Passes="0" Value="[PhoneRaw]" />
+        <Output Type="PhoneMobile" Passes="0" Value="[PhoneMobile]" />
+        <Output Type="PhoneOther" Passes="0" Value="[MatchedNumber]" />
+        <Output Type="ContactUrl" Passes="0" Value="[ContactUrl]" />
+        <Output Type="EntityId" Passes="0" Value="[ContactID]" />
+        <Output Type="EntityType" Passes="0" Value="[EntityType]" />
+      </Outputs>
+    </Scenario>
+
+  </Scenarios>
+</Crm>
