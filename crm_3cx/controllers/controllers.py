@@ -340,7 +340,7 @@ class Crm3cxController(http.Controller):
             owner = deal.user_id
         if deal:
             status = "opportunity" if deal.type == "opportunity" else "lead"
-        elif partner and partner.customer_rank:
+        elif partner and "customer_rank" in partner._fields and partner.customer_rank:  # account may be absent
             status = "customer"
         else:
             status = "contact"
