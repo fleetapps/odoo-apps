@@ -357,11 +357,12 @@ class TestCrm3cx(HttpCase):
         data = self._post("/api/3cx/call", {
             "number": "+254733300100", "call_type": "Notanswered", "entity_id": "L%d" % lead.id, "agent": "101",
         }).json()
-        lead = lead.with_context(active_test=False)
-        self.assertFalse(lead.active)
-        self.assertEqual(lead.lost_reason_id, self.env.ref("crm_3cx.lost_reason_unreachable"))
+        archived = lead.with_context(active_test=False)
+        self.assertFalse(archived.active)
+        self.assertEqual(archived.lost_reason_id, self.env.ref("crm_3cx.lost_reason_unreachable"))
         self.assertFalse(data["activity_id"])
-        self.assertFalse(self._own_activities(lead))
+        # Done activities are archived history in 19, so this must be checked with active_test on.
+        self.assertFalse(self._own_activities(lead), "nothing left to do")
 
     def test_first_conversation_moves_the_lead_out_of_the_first_stage(self):
         lead = self._new_lead("Stage", "0733 400100")
