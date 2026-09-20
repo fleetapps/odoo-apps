@@ -7,6 +7,18 @@ CALL_TYPES = [
     ("outbound", "Outbound"),
     ("notanswered", "Outbound, not answered"),
 ]
+ANSWERED = ("inbound", "outbound")
+ATTEMPTS = ("outbound", "notanswered")  # dials made by the team
+
+# Summaries of the call activities this module schedules, so it can find and
+# close its own without touching activities people created by hand.
+CALLBACK_PREFIX = "Call back "
+FIRST_CALL_PREFIX = "First call"
+ATTEMPT_PREFIX = "Call attempt "
+OWN_ACTIVITY_DOMAIN = ["|", "|",
+                       ("summary", "=like", CALLBACK_PREFIX + "%"),
+                       ("summary", "=like", FIRST_CALL_PREFIX + "%"),
+                       ("summary", "=like", ATTEMPT_PREFIX + "%")]
 
 
 class Crm3cxCall(models.Model):
@@ -21,9 +33,12 @@ class Crm3cxCall(models.Model):
     name = fields.Char(compute="_compute_name", store=True)
     call_type = fields.Selection(CALL_TYPES, required=True, index=True)
     direction = fields.Selection(
-        [("inbound", "Inbound"), ("outbound", "Outbound")], compute="_compute_direction", store=True, index=True,
+        [("inbound", "Inbound"), ("outbound", "Outbound")], compute="_compute_flags", store=True, index=True,
     )
-    answered = fields.Boolean(compute="_compute_direction", store=True)
+    answered = fields.Boolean(compute="_compute_flags", store=True)
+    # 1/0 so pivots can sum them into rates: connect rate = conversations / attempts.
+    is_attempt = fields.Integer("Attempt", compute="_compute_flags", store=True)
+    is_conversation = fields.Integer("Conversation", compute="_compute_flags", store=True)
     number = fields.Char("Number", index=True)
     partner_id = fields.Many2one("res.partner", "Contact", index=True, ondelete="set null")
     lead_id = fields.Many2one("crm.lead", "Lead / Opportunity", index=True, ondelete="set null")
@@ -31,6 +46,8 @@ class Crm3cxCall(models.Model):
     extension = fields.Char("Extension")
     queue = fields.Char("Queue")
     started_at = fields.Datetime("Started", index=True)
+    started_hour = fields.Integer("Hour of Day", compute="_compute_started_hour", store=True,
+                                  help="In the company's time zone. Group by it to find the best hours to call.")
     duration = fields.Integer("Duration (s)")
     duration_display = fields.Char("Duration", compute="_compute_duration_display")
     recording_url = fields.Char("Recording")
@@ -38,7 +55,7 @@ class Crm3cxCall(models.Model):
     sentiment = fields.Char("Sentiment")
     transcription = fields.Text("Transcription")
     message_id = fields.Many2one("mail.message", "Chatter Note", ondelete="set null")
-    activity_id = fields.Many2one("mail.activity", "Call-back Activity", ondelete="set null")
+    activity_id = fields.Many2one("mail.activity", "Scheduled Activity", ondelete="set null")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.company, index=True)
 
     @api.depends("call_type", "number", "partner_id.display_name", "lead_id.display_name")
@@ -49,10 +66,21 @@ class Crm3cxCall(models.Model):
             call.name = "%s · %s" % (labels.get(call.call_type, "Call"), who)
 
     @api.depends("call_type")
-    def _compute_direction(self):
+    def _compute_flags(self):
         for call in self:
             call.direction = "inbound" if call.call_type in ("inbound", "missed") else "outbound"
-            call.answered = call.call_type in ("inbound", "outbound")
+            call.answered = call.call_type in ANSWERED
+            call.is_attempt = int(call.call_type in ATTEMPTS)
+            call.is_conversation = int(call.call_type in ANSWERED)
+
+    @api.depends("started_at", "company_id.partner_id.tz")
+    def _compute_started_hour(self):
+        for call in self:
+            if not call.started_at:
+                call.started_hour = -1
+                continue
+            tz = call.company_id.partner_id.tz or self.env.user.tz or "UTC"
+            call.started_hour = fields.Datetime.context_timestamp(call.with_context(tz=tz), call.started_at).hour
 
     @api.depends("duration")
     def _compute_duration_display(self):
@@ -74,6 +102,23 @@ class Crm3cxCall(models.Model):
         """The template sends CallStartTimeUTC as yyyy-MM-ddTHH:mm:ssZ."""
         text = (text or "").strip()
         try:
-            return fields.Datetime.to_datetime(text.replace("T", " ").rstrip("Z"))
+            return fields.Datetime.to_datetime(text.replace("T", " ").rstrip("Z")) or False
         except ValueError:
             return False
+
+    # ── the call activities this module manages, on contacts and leads ──────
+
+    @api.model
+    def _open_call_activities(self, record):
+        return record.activity_search(["mail.mail_activity_data_call"], additional_domain=OWN_ACTIVITY_DOMAIN)
+
+    @api.model
+    def _close_call_activities(self, record, feedback):
+        self._open_call_activities(record).action_feedback(feedback=feedback)
+
+    @api.model
+    def _schedule_call(self, record, summary, user, note="", date_deadline=None):
+        return record.activity_schedule(
+            "mail.mail_activity_data_call", summary=summary, note=note, user_id=user.id,
+            date_deadline=date_deadline or fields.Date.context_today(record),
+        )

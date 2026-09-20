@@ -3,10 +3,26 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0).
 {
     "name": "3CX Phone System Integration",
-    "summary": "Caller ID, contact search and click-to-call from the 3CX client, "
-               "call and chat logging in the chatter, missed-call follow-up",
+    "summary": "Phone sales on 3CX: speed-to-lead SLA, automatic retry cadence, call-backs, "
+               "click-to-dial, ring-time deal context and IVR routing, renewals, call reporting",
     "description": """
-Server-side integration with the 3CX Phone System (v18/v20, PRO or Enterprise).
+Turns a 3CX Phone System (v18/v20, PRO or Enterprise) and Odoo CRM into one
+phone-sales system: every call drives the pipeline, and the pipeline drives
+the phone.
+
+* Speed-to-lead: every new lead with a phone gets a First call activity and an
+  SLA; overdue ones are flagged and escalated to the team leader.
+* Cadence: an unanswered attempt schedules the next one (2 h, 1 d, 3 d, 1 w);
+  after N attempts with no conversation the lead is lost as Unreachable.
+* Call via 3CX from leads, contacts and My Calls (3CX Web Client dialer, any
+  browser, or tel: links).
+* First conversation moves the lead out of the first stage; missed calls become
+  call-back activities closed by the next answered call.
+* Ring-time context: the caller's open opportunity and stage, renewal due, and
+  the deal owner's extension for Call Flow Designer routing.
+* Renewal leads from a renewal date on the contact.
+* Reporting: 3CX Calls (agent, day, outcome, hour, connect rate) and Speed to
+  Lead against won/lost.
 
 * Caller ID: when a call rings, 3CX asks Odoo who it is and shows the contact
   or lead, with a link that opens the record in Odoo.
@@ -27,7 +43,7 @@ whose lookup endpoint exists for Odoo 14.0 to 18.0 only.
     "author": "Odin, Persevida S.L., FL1 sro",
     "website": "https://github.com/fleetapps/odoo-apps",
     "category": "Productivity/VoIP",
-    "version": "19.0.1.0.0",
+    "version": "19.0.2.0.0",
     "license": "AGPL-3",
     # crm brings contacts, mail, calendar and phone_validation; the last one
     # gives res.partner and crm.lead the phone_mobile_search / phone_sanitized
@@ -37,6 +53,7 @@ whose lookup endpoint exists for Odoo 14.0 to 18.0 only.
     "data": [
         "security/ir.model.access.csv",
         "security/crm_3cx_security.xml",
+        "data/crm_3cx_data.xml",
         "views/crm_3cx_call_views.xml",
         "views/res_users_views.xml",
         "views/res_partner_views.xml",

@@ -27,16 +27,17 @@ Facts about the 3CX engine this code relies on, from 3CX's template rules:
 import hmac
 import logging
 import re
+from datetime import timedelta
 
 import phonenumbers
 from markupsafe import Markup, escape
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from odoo import http
+from odoo import fields, http
 from odoo.http import content_disposition, request
 from odoo.tools import file_open
 
-from ..models.res_config_settings import PARAM_LEAD_ON_UNKNOWN, PARAM_MISSED_ACTIVITY, PARAM_TOKEN, param_flag
+from ..models.res_config_settings import PARAM_LEAD_ON_UNKNOWN, PARAM_POP_OPPORTUNITY, PARAM_TOKEN, param_flag
 
 _logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ _logger = logging.getLogger(__name__)
 MIN_SEARCH_DIGITS = 5
 LOOKUP_LIMIT = 10
 SEARCH_LIMIT = 20  # what 3CX asks templates to request per search
-CALLBACK_PREFIX = "Call back "
+RENEWAL_HINT_DAYS = 60  # a renewal this close is worth a word in the ring-time popup
 CALL_LABELS = {
     "inbound": "Inbound call",
     "outbound": "Outbound call",
@@ -190,6 +191,17 @@ class Crm3cxController(http.Controller):
                     return self._ranked(found)
         return request.env["res.partner"]
 
+    def _ring(self, number):
+        """What 3CX shows while the phone rings: the records for the number,
+        and, when a known contact has an open deal, that deal in front."""
+        records = self._find(number)
+        if records and records._name == "res.partner" and param_flag(request.env, PARAM_POP_OPPORTUNITY):
+            for partner in records:
+                deal = partner._threecx_open_opportunity()
+                if deal:
+                    return [(deal, partner)] + [(r, None) for r in records if r != partner]
+        return [(r, None) for r in records]
+
     def _by_email(self, email):
         email = _text(email)
         if not email:
@@ -240,8 +252,35 @@ class Crm3cxController(http.Controller):
 
     # ── what 3CX gets back ──────────────────────────────────────────────────
 
-    def _record_payload(self, record, number=""):
+    @staticmethod
+    def _context_suffix(partner, deal=None):
+        """What the agent should know before saying hello, in the one line 3CX
+        shows under the caller's name."""
+        parts = []
+        if deal:
+            parts.append("%s (%s)" % (deal.name, deal.stage_id.name or deal.type))
+        if partner and partner.threecx_renewal_date:
+            today = fields.Date.context_today(partner)
+            if today <= partner.threecx_renewal_date <= today + timedelta(days=RENEWAL_HINT_DAYS):
+                parts.append("Renewal %s" % partner.threecx_renewal_date.strftime("%d %b"))
+        return parts
+
+    def _record_payload(self, record, number="", caller=None):
+        """`caller` is the contact whose number matched when `record` is their
+        open opportunity: the popup names the person, the link opens the deal."""
         base = record.get_base_url()
+        if caller is not None:
+            payload = self._record_payload(caller, number)
+            company = caller.name if caller.is_company else (caller.commercial_company_name or "")
+            payload.update({
+                "partner_id": "L%d" % record.id,
+                "entity_type": "Leads",
+                "type": record.type,
+                "contact_name": record.name,
+                "web_url": self._lead_url(record, base),
+                "name": " · ".join(p for p in [company] + self._context_suffix(caller, record) if p),
+            })
+            return payload
         if record._name == "res.partner":
             if "firstname" in record._fields:  # OCA partner_firstname
                 firstname, lastname = record.firstname or "", record.lastname or ""
@@ -250,6 +289,7 @@ class Crm3cxController(http.Controller):
             if record.is_company:
                 firstname, lastname = "", ""
             company = record.name if record.is_company else (record.commercial_company_name or "")
+            company = " · ".join(p for p in [company] + self._context_suffix(record) if p)
             payload = {
                 "partner_id": str(record.id),
                 "entity_type": "Contacts",
@@ -264,7 +304,6 @@ class Crm3cxController(http.Controller):
             company = record.partner_name or record.partner_id.commercial_company_name or ""
             if not (firstname or company):
                 company = record.name  # 3CX drops a record with no name at all
-            action = "crm.crm_lead_action_pipeline" if record.type == "opportunity" else "crm.crm_lead_all_leads"
             payload = {
                 "partner_id": "L%d" % record.id,
                 "entity_type": "Leads",
@@ -272,7 +311,7 @@ class Crm3cxController(http.Controller):
                 "contact_name": record.name,
                 "email": record.email_from or "",
                 "company_type": "",
-                "web_url": "%s/odoo/action-%d/%d" % (base, self._xmlid_id(action), record.id),
+                "web_url": self._lead_url(record, base),
             }
         phone = record.phone or ""
         payload.update({
@@ -286,10 +325,42 @@ class Crm3cxController(http.Controller):
             "mobile": self._field(record, "mobile"),
             "number": number,
         })
+        payload.update(self._routing(record))
         return payload
 
+    @staticmethod
+    def _routing(record):
+        """For 3CX Call Flow Designer, which gets this JSON raw through the
+        LookupFromCFD scenario: enough to route a caller to the salesperson who
+        owns their deal, or to a retention queue when a renewal is close."""
+        partner = record if record._name == "res.partner" else record.partner_id
+        owner = record.user_id
+        deal = record if record._name == "crm.lead" else (partner._threecx_open_opportunity() if partner else None)
+        if deal and not owner:
+            owner = deal.user_id
+        if deal:
+            status = "opportunity" if deal.type == "opportunity" else "lead"
+        elif partner and partner.customer_rank:
+            status = "customer"
+        else:
+            status = "contact"
+        renewal = partner.threecx_renewal_date if partner else False
+        return {
+            "owner_extension": owner.threecx_extension or "",
+            "owner_name": owner.name or "",
+            "customer_status": status,
+            "stage": deal.stage_id.name if deal else "",
+            "renewal_in_days": (renewal - fields.Date.context_today(record)).days if renewal else "",
+        }
+
+    def _lead_url(self, lead, base):
+        action = "crm.crm_lead_action_pipeline" if lead.type == "opportunity" else "crm.crm_lead_all_leads"
+        return "%s/odoo/action-%d/%d" % (base, self._xmlid_id(action), lead.id)
+
     def _records_response(self, records, number=""):
-        return self._json({"result": [self._record_payload(r, number) for r in records]})
+        """`records` is a recordset, a list of records, or a list of (record, caller) pairs."""
+        pairs = [r if isinstance(r, tuple) else (r, None) for r in records]
+        return self._json({"result": [self._record_payload(r, number, caller) for r, caller in pairs]})
 
     # ── journaling ──────────────────────────────────────────────────────────
 
@@ -362,36 +433,26 @@ class Crm3cxController(http.Controller):
             html += Markup("<p>%s</p>") % Markup("<br/>").join(extras)
         return html
 
-    @staticmethod
-    def _leads_enabled():
-        group = request.env.ref("crm.group_use_lead")
-        return group in request.env.ref("base.group_user").sudo().all_implied_ids
-
-    def _create_lead(self, name, number="", email="", company="", user=None):
+    def _create_lead(self, name, number="", email="", company="", user=None, kind=False):
         """A lead owned by `user` (the agent, when 3CX told us who) or by the
         leader of the default sales team; never by the public user this
-        request runs as, which is what crm.lead's default would pick."""
+        request runs as, which is what crm.lead's default would pick. Created
+        as that user too, so the first-call activity is not stamped "Public user"."""
+        actor = user or request.env.ref("base.user_admin")
+        Lead = request.env["crm.lead"].with_user(actor).sudo()
         team = request.env["crm.team"].sudo()._get_default_team_id(user_id=user.id if user else False)
         owner = user or team.user_id
-        return request.env["crm.lead"].sudo().create({
+        return Lead.create({
             "name": name,
-            "type": "lead" if self._leads_enabled() else "opportunity",
+            "type": "lead" if Lead._threecx_leads_enabled() else "opportunity",
             "phone": number or False,
             "email_from": email or False,
             "partner_name": company or False,
             "contact_name": name if company else False,
             "user_id": owner.id if owner else False,
             "team_id": team.id if team else False,
+            "threecx_kind": kind,
         })
-
-    def _assignee(self, record, data):
-        return record.user_id or self._agent_user(data) or request.env.ref("base.user_admin")
-
-    @staticmethod
-    def _open_callbacks(record):
-        return record.activity_search(
-            ["mail.mail_activity_data_call"], additional_domain=[("summary", "=like", CALLBACK_PREFIX + "%")],
-        )
 
     def _journal(self, data, kind):
         """Shared by ReportCall and ReportChat: find (or create) the record,
@@ -413,7 +474,8 @@ class Crm3cxController(http.Controller):
             if not (param_flag(request.env, PARAM_LEAD_ON_UNKNOWN, False) and inbound and (number or email)):
                 return self._json({"logged": False, "reason": "no matching contact or lead"})
             what = "Call" if kind == "call" else "Chat"
-            record = self._create_lead("%s from %s" % (what, number or email), number=number, email=email, user=agent or None)
+            record = self._create_lead("%s from %s" % (what, number or email), number=number, email=email,
+                                       user=agent or None, kind="inbound" if kind == "call" else "chat")
             created = True
 
         # Activities and their "done" messages are stamped with env.user, so
@@ -430,23 +492,17 @@ class Crm3cxController(http.Controller):
 
         result = {"logged": True, "model": record._name, "id": record.id, "created": created}
         if kind == "call":
-            activity = None
-            if call_type == "missed" and param_flag(request.env, PARAM_MISSED_ACTIVITY, True):
-                if not self._open_callbacks(record):  # one open call-back per record is enough
-                    label = self._agent_label(data)
-                    activity = record.activity_schedule(
-                        "mail.mail_activity_data_call",
-                        summary=CALLBACK_PREFIX + (number or record.display_name),
-                        note=Markup("<p>Missed call%s.</p>") % (" for " + label if label else ""),
-                        user_id=self._assignee(record, data).id,
-                    )
-            elif call_type in ("inbound", "outbound"):
-                self._open_callbacks(record).action_feedback(feedback="Reached on a 3CX call")
-            call = self._log_call(data, call_type, number, record, agent, message, activity)
+            call = self._log_call(data, call_type, number, record, agent, message)
+            # Call-backs, retry cadence, unreachable, stage, SLA: the rules live
+            # on the record's model, so the same call has the same effect
+            # whether it came from 3CX or from a test.
+            activity = record._threecx_after_call(call, agent or None)
+            if activity:
+                call.activity_id = activity
             result.update(call_id=call.id, activity_id=activity.id if activity else False)
         return self._json(result)
 
-    def _log_call(self, data, call_type, number, record, agent, message, activity):
+    def _log_call(self, data, call_type, number, record, agent, message):
         """The row behind CRM > Reporting > 3CX Calls."""
         Call = request.env["crm.3cx.call"].sudo()
         is_lead = record._name == "crm.lead"
@@ -458,14 +514,14 @@ class Crm3cxController(http.Controller):
             "user_id": agent.id if agent else False,
             "extension": _text(data.get("agent")),
             "queue": _text(data.get("queue")),
-            "started_at": Call._parse_started_at(_text(data.get("started_at"))),
+            # A template without CallStartTimeUTC still reports the call now.
+            "started_at": Call._parse_started_at(_text(data.get("started_at"))) or fields.Datetime.now(),
             "duration": Call._parse_duration(_text(data.get("duration"))),
             "recording_url": _resolved(data.get("recording_url")),
             "summary": _resolved(data.get("summary")),
             "sentiment": _resolved(data.get("sentiment")),
             "transcription": _resolved(data.get("transcription")),
             "message_id": message.id if message else False,
-            "activity_id": activity.id if activity else False,
             "company_id": (record.company_id.id if "company_id" in record._fields and record.company_id else request.env.company.id),
         })
 
@@ -476,10 +532,10 @@ class Crm3cxController(http.Controller):
         """Contact lookup by number: the scenario with the empty Id."""
         self._authenticate()
         number = _text(self._payload().get("number"))
-        records = self._find(number)
-        if not records:
+        pairs = self._ring(number)
+        if not pairs:
             return self._json({"result": [], "new_number": True})
-        return self._records_response(records, number)
+        return self._records_response(pairs, number)
 
     @http.route("/api/3cx/search", type="http", auth="public", methods=["POST"], csrf=False, readonly=True)
     def search(self, **kw):

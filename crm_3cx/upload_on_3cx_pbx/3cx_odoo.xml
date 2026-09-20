@@ -426,6 +426,24 @@
       </Outputs>
     </Scenario>
 
+    <!-- Call Flow Designer lookup: the flow receives this JSON as is. Route on
+         result.owner_extension (the salesperson who owns the deal), on
+         result.customer_status (contact, customer, lead, opportunity) or on
+         result.renewal_in_days. -->
+    <Scenario Id="LookupFromCFD_Contacts_LookupNumber" Type="REST" EntityId="" EntityOrder="">
+      <Request SkipIf="" Url="[hostodoo]/api/3cx/crm" MessagePasses="0" Message="" RequestContentType="application/json" RequestEncoding="Json" RequestType="Post" ResponseType="Json">
+        <Headers>
+          <Value Key="apikey" Passes="1" Type="String">[apikey]</Value>
+        </Headers>
+        <PostValues>
+          <Value Key="number" Passes="1" Type="String">[Number]</Value>
+        </PostValues>
+      </Request>
+      <Rules>
+        <Rule Type="Any" Ethalon="">result.partner_id</Rule>
+      </Rules>
+    </Scenario>
+
     <!-- Call journaling: runs when a call ends. Odoo logs the note in the
          chatter of the matched contact or lead, records the call under
          CRM > Reporting > 3CX Calls, and schedules a call-back on a miss. -->

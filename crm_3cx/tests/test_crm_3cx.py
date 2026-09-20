@@ -1,12 +1,18 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0).
 import json
+from datetime import timedelta
+
+from odoo import fields
 
 from psycopg2 import IntegrityError
 
 from odoo.tests import HttpCase, tagged
 from odoo.tools import mute_logger
 
-from ..models.res_config_settings import PARAM_LEAD_ON_UNKNOWN, PARAM_MISSED_ACTIVITY, PARAM_TOKEN
+from ..models.res_config_settings import (
+    PARAM_CADENCE_HOURS, PARAM_FIRST_CALL_MINUTES, PARAM_LEAD_ON_UNKNOWN, PARAM_MAX_ATTEMPTS, PARAM_MISSED_ACTIVITY,
+    PARAM_POP_OPPORTUNITY, PARAM_RENEWAL_DAYS, PARAM_TOKEN, PARAM_WEBCLIENT_URL,
+)
 
 TOKEN = "test-3cx-token"
 
@@ -25,6 +31,8 @@ class TestCrm3cx(HttpCase):
         cls.agent = cls.env["res.users"].create({
             "name": "Jane Doe", "login": "jane@example.com", "email": "jane@example.com", "threecx_extension": "101",
         })
+        cls.leader = cls.env["res.users"].create({"name": "Team Lead", "login": "lead@example.com", "email": "lead@example.com"})
+        cls.team = cls.env["crm.team"].create({"name": "Telesales", "user_id": cls.leader.id, "member_ids": [(4, cls.agent.id)]})
         cls.company = cls.env["res.partner"].create({
             "name": "Mavuno Traders", "is_company": True, "phone": "+254 20 1234567",
         })
@@ -40,7 +48,17 @@ class TestCrm3cx(HttpCase):
             "partner_name": "Pwani Logistics",
             "phone": "0722 000111",
             "email_from": "otieno@example.com",
+            "user_id": cls.agent.id,
+            "team_id": cls.team.id,
         })
+
+    def _new_lead(self, name, phone, **vals):
+        return self.env["crm.lead"].create({
+            "name": name, "phone": phone, "user_id": self.agent.id, "team_id": self.team.id, **vals,
+        })
+
+    def _own_activities(self, record):
+        return self.env["crm.3cx.call"]._open_call_activities(record)
 
     def _post(self, url, payload, key=TOKEN):
         headers = {"Content-Type": "application/json"}
@@ -279,3 +297,137 @@ class TestCrm3cx(HttpCase):
     def test_extension_is_unique_per_user(self):
         with self.assertRaises(IntegrityError), self.env.cr.savepoint():
             self.env["res.users"].create({"name": "Dup", "login": "dup@example.com", "threecx_extension": "101"})
+
+    # ── telesales automation ────────────────────────────────────────────────
+
+    def test_new_lead_gets_a_first_call_and_an_sla(self):
+        lead = self._new_lead("Web form: motor cover", "0733 100200")
+        self.assertEqual(lead.threecx_sla_state, "pending")
+        self.assertAlmostEqual((lead.threecx_sla_deadline - lead.create_date).total_seconds() / 60, 15, delta=1)
+        activity = self._own_activities(lead)
+        self.assertEqual(len(activity), 1)
+        self.assertEqual((activity.summary, activity.user_id), ("First call", self.agent))
+        self.assertEqual(lead.threecx_speed_bucket, "never")
+        # A lead without a phone gets neither.
+        silent = self._new_lead("Email only", False, email_from="x@example.com")
+        self.assertFalse(silent.threecx_sla_state)
+        self.assertFalse(self._own_activities(silent))
+        # Switched off: nothing scheduled.
+        self.env["ir.config_parameter"].sudo().set_param(PARAM_FIRST_CALL_MINUTES, "0")
+        quiet = self._new_lead("No SLA", "0733 100300")
+        self.assertFalse(quiet.threecx_sla_state)
+        self.assertFalse(self._own_activities(quiet))
+
+    def test_first_dial_in_time_meets_the_sla_and_the_cron_flags_the_rest(self):
+        fast = self._new_lead("Fast", "0733 200100")
+        slow = self._new_lead("Slow", "0733 200200")
+        self._post("/api/3cx/call", {"number": "+254733200100", "call_type": "Notanswered", "entity_id": "L%d" % fast.id, "agent": "101"})
+        self.assertEqual(fast.threecx_sla_state, "met")
+        self.assertEqual(fast.threecx_speed_bucket, "5m")
+        self.assertFalse(self._own_activities(fast).filtered(lambda a: a.summary == "First call"), "the first call is done")
+
+        slow.write({"threecx_sla_deadline": fields.Datetime.now() - timedelta(minutes=1)})
+        self.env["crm.lead"]._cron_threecx_sla()
+        self.assertEqual(slow.threecx_sla_state, "breached")
+        escalation = slow.activity_ids.filtered(lambda a: a.user_id == self.leader)
+        self.assertEqual(len(escalation), 1, "the team leader is told")
+        self.assertIn("overdue", escalation.summary)
+        self.assertTrue(any("First call overdue" in m.body for m in slow.message_ids))
+        # A call that comes late is still recorded as breached, not met.
+        self._post("/api/3cx/call", {"number": "+254733200200", "call_type": "Inbound", "entity_id": "L%d" % slow.id, "duration": "00:01:00"})
+        self.assertEqual(slow.threecx_sla_state, "breached")
+
+    def test_unanswered_attempts_follow_the_cadence_then_give_up(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        icp.set_param(PARAM_CADENCE_HOURS, "2,24")
+        icp.set_param(PARAM_MAX_ATTEMPTS, "3")
+        lead = self._new_lead("Cadence", "0733 300100")
+        for attempt in (1, 2):
+            data = self._post("/api/3cx/call", {
+                "number": "+254733300100", "call_type": "Notanswered", "entity_id": "L%d" % lead.id, "agent": "101",
+            }).json()
+            self.assertEqual(lead.threecx_attempts, attempt)
+            nxt = self._own_activities(lead)
+            self.assertEqual(len(nxt), 1, "exactly one next step is open")
+            self.assertEqual(nxt.summary, "Call attempt %d" % (attempt + 1))
+            self.assertEqual(nxt.user_id, self.agent)
+            self.assertEqual(nxt.id, data["activity_id"])
+        self.assertTrue(lead.active)
+        # Third strike: lost as unreachable, nothing more scheduled.
+        data = self._post("/api/3cx/call", {
+            "number": "+254733300100", "call_type": "Notanswered", "entity_id": "L%d" % lead.id, "agent": "101",
+        }).json()
+        lead = lead.with_context(active_test=False)
+        self.assertFalse(lead.active)
+        self.assertEqual(lead.lost_reason_id, self.env.ref("crm_3cx.lost_reason_unreachable"))
+        self.assertFalse(data["activity_id"])
+        self.assertFalse(self._own_activities(lead))
+
+    def test_first_conversation_moves_the_lead_out_of_the_first_stage(self):
+        lead = self._new_lead("Stage", "0733 400100")
+        first = lead.stage_id
+        self.assertTrue(first, "crm ships default stages")
+        self._post("/api/3cx/call", {"number": "+254733400100", "call_type": "Notanswered", "entity_id": "L%d" % lead.id})
+        self.assertEqual(lead.stage_id, first, "no conversation yet")
+        self._post("/api/3cx/call", {"number": "+254733400100", "call_type": "Outbound", "entity_id": "L%d" % lead.id, "duration": "00:02:00"})
+        self.assertNotEqual(lead.stage_id, first)
+        self.assertGreater(lead.stage_id.sequence, first.sequence)
+        moved = lead.stage_id
+        self._post("/api/3cx/call", {"number": "+254733400100", "call_type": "Inbound", "entity_id": "L%d" % lead.id, "duration": "00:02:00"})
+        self.assertEqual(lead.stage_id, moved, "only the first conversation moves it")
+        self.assertEqual((lead.threecx_conversations, lead.threecx_attempts, lead.threecx_talk_time), (2, 2, 240))
+
+    def test_ring_pops_the_open_opportunity_with_routing_data(self):
+        deal = self.env["crm.lead"].create({
+            "name": "Fleet cover renewal", "type": "opportunity", "partner_id": self.partner.id,
+            "user_id": self.agent.id, "team_id": self.team.id,
+        })
+        self.partner.write({"threecx_renewal_date": fields.Date.context_today(self.partner) + timedelta(days=12)})
+        result = self._post("/api/3cx/crm", {"number": "+254712345678"}).json()["result"]
+        record = result[0]
+        self.assertEqual(record["partner_id"], "L%d" % deal.id, "the deal comes first")
+        self.assertEqual((record["firstname"], record["lastname"]), ("Wanjiru", "Kamau"), "named after the caller")
+        self.assertIn("Fleet cover renewal (%s)" % deal.stage_id.name, record["name"])
+        self.assertIn("Renewal", record["name"])
+        self.assertTrue(record["web_url"].endswith("/%d" % deal.id))
+        self.assertEqual((record["owner_extension"], record["owner_name"], record["customer_status"]), ("101", "Jane Doe", "opportunity"))
+        self.assertEqual(record["renewal_in_days"], 12)
+        self.assertEqual(record["stage"], deal.stage_id.name)
+        # Journaling against that entity lands on the deal, not the contact.
+        data = self._post("/api/3cx/call", {"number": "+254712345678", "call_type": "Inbound", "entity_id": record["partner_id"], "duration": "00:00:30"}).json()
+        self.assertEqual((data["model"], data["id"]), ("crm.lead", deal.id))
+        self.assertEqual(self.env["crm.3cx.call"].browse(data["call_id"]).partner_id, self.partner)
+        # Switched off: the contact card, with the renewal hint still there.
+        self.env["ir.config_parameter"].sudo().set_param(PARAM_POP_OPPORTUNITY, "False")
+        record = self._post("/api/3cx/crm", {"number": "+254712345678"}).json()["result"][0]
+        self.assertEqual(record["partner_id"], str(self.partner.id))
+        self.assertIn("Renewal", record["name"])
+        self.assertEqual(record["customer_status"], "opportunity")
+
+    def test_renewal_cron_creates_one_lead_per_renewal(self):
+        self.env["ir.config_parameter"].sudo().set_param(PARAM_RENEWAL_DAYS, "30")
+        renewal = fields.Date.context_today(self.partner) + timedelta(days=20)
+        self.partner.write({"threecx_renewal_date": renewal, "threecx_policy_ref": "MOT-2026-0042", "user_id": self.agent.id})
+        self.company.write({"threecx_renewal_date": renewal + timedelta(days=60)})  # outside the horizon
+        Lead = self.env["crm.lead"]
+        Lead._cron_threecx_renewals()
+        Lead._cron_threecx_renewals()
+        leads = Lead.search([("threecx_kind", "=", "renewal")])
+        self.assertEqual(len(leads), 1)
+        lead = leads[0]
+        self.assertEqual((lead.partner_id, lead.user_id, lead.date_deadline, lead.threecx_renewal_date), (self.partner, self.agent, renewal, renewal))
+        self.assertIn("MOT-2026-0042", lead.name)
+        self.assertEqual(lead.phone, self.partner.phone)
+        self.assertEqual(lead.threecx_sla_state, "pending", "a renewal lead is a lead: first call SLA applies")
+        self.assertEqual(self._own_activities(lead).user_id, self.agent)
+
+    def test_call_via_3cx_opens_the_web_client_dialer_or_a_tel_link(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        icp.set_param(PARAM_WEBCLIENT_URL, "https://pbx.example.com/")
+        action = self.lead.action_threecx_call()
+        self.assertEqual(action["type"], "ir.actions.act_url")
+        self.assertEqual(action["url"], "https://pbx.example.com/webclient/#/call?phone=%2B254722000111")
+        self.assertEqual(self.partner.action_threecx_call()["url"], "https://pbx.example.com/webclient/#/call?phone=%2B254712345678")
+        icp.set_param(PARAM_WEBCLIENT_URL, False)
+        self.assertEqual(self.lead.action_threecx_call()["url"], "tel:+254722000111")
+        self.assertFalse(self._new_lead("No phone", False).action_threecx_call())

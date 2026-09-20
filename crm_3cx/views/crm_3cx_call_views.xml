@@ -15,6 +15,7 @@
                 <field name="lead_id"/>
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="queue" optional="hide"/>
+                <field name="started_hour" optional="hide"/>
                 <field name="duration_display"/>
                 <field name="duration" sum="Total seconds" optional="hide"/>
                 <field name="recording_url" widget="url" optional="hide"/>
@@ -89,6 +90,7 @@
                     <filter name="group_lead" string="Lead" context="{'group_by': 'lead_id'}"/>
                     <filter name="group_queue" string="Queue" context="{'group_by': 'queue'}"/>
                     <filter name="group_day" string="Day" context="{'group_by': 'started_at:day'}"/>
+                    <filter name="group_hour" string="Hour of Day" context="{'group_by': 'started_hour'}"/>
                 </group>
             </search>
         </field>
@@ -101,6 +103,8 @@
             <pivot string="Calls" sample="1">
                 <field name="started_at" interval="day" type="row"/>
                 <field name="call_type" type="col"/>
+                <field name="is_attempt" type="measure"/>
+                <field name="is_conversation" type="measure"/>
                 <field name="duration" type="measure"/>
             </pivot>
         </field>

@@ -18,6 +18,15 @@
                                 </div>
                             </div>
                         </setting>
+                        <setting string="Call from Odoo"
+                                 help="Your PBX address (e.g. https://company.3cx.ke). The Call buttons on leads, contacts and My Calls open the 3CX Web Client with the number ready to dial. Empty = tel: links for the 3CX desktop app or browser extension.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="threecx_webclient_url" string="3CX Web Client URL" class="col-lg-3 o_light_label"/>
+                                    <field name="threecx_webclient_url" class="col-lg-9" placeholder="https://company.3cx.ke"/>
+                                </div>
+                            </div>
+                        </setting>
                         <setting string="3CX Template"
                                  help="Download the CRM template with this database's URL filled in, then upload it in the 3CX Admin Console under Integrations › CRM › Add.">
                             <a class="oe_link fw-bold" href="/crm_3cx/template" target="_blank">
@@ -33,12 +42,56 @@
                             </a>
                         </setting>
                     </block>
-                    <block title="Calls and Chats">
+                    <block title="Speed to Lead">
+                        <setting string="First call SLA"
+                                 help="Every new lead with a phone number gets a First call activity; it is flagged as overdue when nobody has dialled it within this time. Leads called within 5 minutes convert many times better than leads called the next day. 0 switches it off.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="threecx_first_call_minutes" string="First call within (minutes)" class="col-lg-6 o_light_label"/>
+                                    <field name="threecx_first_call_minutes" class="col-lg-3"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting help="When the first call is overdue, the team leader is told on the lead and gets an activity.">
+                            <field name="threecx_sla_escalate"/>
+                        </setting>
+                    </block>
+                    <block title="Follow-up Discipline">
+                        <setting string="Retry cadence"
+                                 help="After an unanswered outbound attempt, the next attempt is scheduled automatically: one delay per attempt, in hours. 2,24,72,168 = 2 hours, then 1 day, 3 days, 1 week.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="threecx_cadence_hours" string="Hours between attempts" class="col-lg-6 o_light_label"/>
+                                    <field name="threecx_cadence_hours" class="col-lg-6"/>
+                                </div>
+                                <div class="row mt16">
+                                    <label for="threecx_max_attempts" string="Mark unreachable after" class="col-lg-6 o_light_label"/>
+                                    <field name="threecx_max_attempts" class="col-lg-3"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting help="A lead leaves the pipeline's first stage on its own once someone has actually talked to the person.">
+                            <field name="threecx_advance_stage"/>
+                        </setting>
                         <setting help="A missed call schedules a call-back activity on the contact or lead; the next answered call with them marks it done.">
                             <field name="threecx_missed_call_activity"/>
                         </setting>
-                        <setting help="An inbound call or chat from a number or email that matches nothing creates a lead named after it.">
+                        <setting help="An inbound call or chat from a number or email that matches nothing creates a lead named after it, with a First call activity.">
                             <field name="threecx_lead_on_unknown"/>
+                        </setting>
+                    </block>
+                    <block title="Ring-time Context and Renewals">
+                        <setting help="When a caller has an open lead or opportunity, 3CX shows its title and stage under the caller's name, and the link opens the deal instead of the contact card. Call Flow Designer also gets the deal owner's extension to route the call.">
+                            <field name="threecx_pop_opportunity"/>
+                        </setting>
+                        <setting string="Renewal leads"
+                                 help="Contacts with a Renewal Date (contact form, Sales) get a renewal lead this many days before it, assigned to their salesperson, with a First call activity. 0 switches it off.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="threecx_renewal_days" string="Days before renewal" class="col-lg-6 o_light_label"/>
+                                    <field name="threecx_renewal_days" class="col-lg-3"/>
+                                </div>
+                            </div>
                         </setting>
                     </block>
                 </app>

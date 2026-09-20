@@ -1,19 +1,57 @@
 # 3CX Phone System Integration for Odoo 19 (`crm_3cx`)
 
-Server-side integration between a 3CX Phone System (V18/V20, **PRO or
-Enterprise** — the CRM integration feature is not in the free/StartUP editions)
-and Odoo CRM, over 3CX's CRM Integration API. No extra 3CX licence is needed:
-this transport is not gated the way the Call Control and Configuration APIs are.
+Turns a 3CX PBX (V18/V20, **PRO or Enterprise**) and Odoo CRM into one
+phone-sales system: every call drives the pipeline, and the pipeline drives
+the phone. Over 3CX's CRM Integration API, which is not licence-gated the way
+the Call Control and Configuration APIs are — nothing here needs the AI edition.
+
+## What it does for a phone-sales team
+
+**The loop a lead goes through**
+
+1. **A lead arrives** (web form, import, a call or chat from an unknown number,
+   a renewal coming up). It gets a *First call* activity and a **speed-to-lead
+   SLA** (default 15 min). Leads called within 5 minutes convert many times
+   better than leads called the next day; a cron flags the ones nobody dialled
+   and tells the team leader.
+2. **The agent works *My Calls*** (CRM › Sales): every lead with a call due,
+   with a **Call via 3CX** button that opens the 3CX Web Client dialer with the
+   number filled in — any browser, no extension — or a `tel:` link for the
+   desktop app.
+3. **3CX reports the call.** No answer → the **next attempt is scheduled by the
+   cadence** (2 h, 1 day, 3 days, 1 week); after N unanswered attempts with no
+   conversation the lead is marked lost as *Unreachable*, so the pipeline stays
+   honest. First real conversation → the lead **leaves the first stage** on its
+   own. Every call is a note in the chatter and a row in the call log.
+4. **A customer calls in.** 3CX shows the person, their company, and their
+   **open opportunity with its stage** (and *Renewal 02 Oct* when one is
+   close); the link opens the deal. With Call Flow Designer, Odoo also tells 3CX
+   **which extension owns the deal**, so the IVR can route the caller straight
+   to their salesperson.
+5. **Missed call** → *Call back* activity for the salesperson (or the agent
+   who missed it), closed by the next answered call.
+6. **Renewals**: a renewal date on the contact creates a renewal lead 30 days
+   ahead (configurable), assigned to their salesperson, into the same SLA and
+   cadence. For insurance, that is the retention book.
+7. **Managers** get *CRM › Reporting › 3CX Calls* (by agent, day, outcome,
+   hour of day, connect rate, talk time) and *Speed to Lead* (how fast leads
+   were first dialled against whether they were won), plus stat buttons and a
+   *Calls* tab on every lead and contact.
+
+Also: contact search from the 3CX Web Client by name, company, number or
+email (contacts and leads), lookup by email for live chat, chat transcripts
+in the chatter (SMS, WhatsApp, live chat), lead creation from the 3CX client,
+extension ↔ Odoo user mapping, and the 3CX AI summary and recording link on
+the call when the PBX provides them.
 
 | When | 3CX does | Odoo does |
 |---|---|---|
-| A call or SMS/WhatsApp arrives | asks `/api/3cx/crm` who the number is | answers with the **contact, company or lead/opportunity**: name, company, email, dialable number, link to the record |
-| An agent searches in the 3CX Web Client | asks `/api/3cx/search` by name, company, number or email | returns contacts and leads, up to 20; the agent calls them from 3CX |
-| A live-chat visitor writes | asks `/api/3cx/search` by email | returns the contact or lead with that address |
-| A call ends | reports it to `/api/3cx/call` with the texts the 3CX admin configured | logs a note in the record's chatter, stores a **3CX Call** record (*CRM › Reporting › 3CX Calls*: list, pivot, graph), and on a **missed** call schedules a *Call back* activity — closed again by the next answered call |
-| A chat ends | reports it to `/api/3cx/chat` | logs the transcript in the chatter |
-| An agent clicks *Create contact* in 3CX | posts to `/api/3cx/contact` | creates a **lead** and returns it |
-| A call or chat comes from an unknown number | reports it | *optionally* creates a lead named after it (Settings › 3CX) |
+| A call or SMS/WhatsApp arrives | asks `/api/3cx/crm` who the number is | answers with the contact, company or open deal: names, dialable number, context line, link, owner extension |
+| An agent searches in the 3CX Web Client | asks `/api/3cx/search` | returns contacts and leads, up to 20 |
+| A call ends | reports it to `/api/3cx/call` with the admin's texts | chatter note, call record, cadence / call-back / stage / SLA rules |
+| A chat ends | reports it to `/api/3cx/chat` | transcript in the chatter |
+| An agent clicks *Create contact* in 3CX | posts to `/api/3cx/contact` | creates a lead, with First call SLA |
+| IVR (Call Flow Designer) asks about a caller | `LookupFromCFD` → `/api/3cx/crm` | raw JSON: `owner_extension`, `customer_status`, `stage`, `renewal_in_days` |
 
 ## Why not 3CX's built-in Odoo integration?
 
@@ -41,6 +79,21 @@ for Odoo 14.0–18.0 (its controller reads `mobile`, removed from `res.partner`
 and `crm.lead` in 19.0). Its response keys are kept, so its template still
 works for lookup.
 
+## Settings (Settings › 3CX)
+
+| Setting | Default | Effect |
+|---|---|---|
+| First call within (minutes) | 15 | First call activity + SLA on every new lead with a phone; 0 = off |
+| Tell the team leader when overdue | on | note + activity for the team leader on breach |
+| Retry cadence (hours) | 2,24,72,168 | delay before the next attempt after an unanswered dial |
+| Mark unreachable after (attempts) | 5 | lost reason *Unreachable*; 0 = never |
+| Move out of first stage after first conversation | on | |
+| Call-back activity for missed calls | on | |
+| Lead for unknown numbers | off | inbound calls and chats only |
+| Show the caller's open opportunity in the popup | on | also feeds the CFD routing fields |
+| Renewal leads (days ahead) | 30 | from *Renewal Date* on the contact; 0 = off |
+| 3CX Web Client URL | empty | `https://pbx…` → Call buttons open its dialer; empty → `tel:` links |
+
 ## Install
 
 1. Put `crm_3cx` on the addons path, *Apps › Update Apps List*, install
@@ -49,7 +102,7 @@ works for lookup.
    comes with this database's URL filled in).
 3. On each user's form, *Preferences › 3CX Extension*: the extension they
    answer on. (Without it, the agent is matched on the email 3CX has for the
-   extension.)
+   extension.) This is also what the IVR routes to.
 4. 3CX Admin Console › *Integrations › CRM* › **Add** › upload the file. Enter
    the **API key**; *Odoo URL* is prefilled. Call Journaling, Chat Journaling
    and contact creation are on by default and can be switched off there.

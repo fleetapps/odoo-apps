@@ -6,12 +6,149 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_threecx_call" type="object" string="Call via 3CX" icon="fa-phone" class="btn-secondary"
+                        invisible="not phone"/>
+            </header>
             <div name="button_box" position="inside">
                 <button class="oe_stat_button" type="object" name="action_view_threecx_calls" icon="fa-phone"
                         invisible="not threecx_call_count">
                     <field name="threecx_call_count" widget="statinfo" string="Calls"/>
                 </button>
             </div>
+            <notebook position="inside">
+                <page name="threecx" string="Calls">
+                    <group>
+                        <group string="Speed to Lead">
+                            <field name="threecx_sla_state" widget="badge"
+                                   decoration-success="threecx_sla_state == 'met'"
+                                   decoration-warning="threecx_sla_state == 'pending'"
+                                   decoration-danger="threecx_sla_state == 'breached'"/>
+                            <field name="threecx_sla_deadline"/>
+                            <field name="threecx_first_touch"/>
+                            <field name="threecx_speed_to_lead" invisible="not threecx_first_touch"/>
+                            <field name="threecx_speed_bucket"/>
+                        </group>
+                        <group string="Contact">
+                            <field name="threecx_attempts"/>
+                            <field name="threecx_conversations"/>
+                            <field name="threecx_missed"/>
+                            <field name="threecx_first_conversation"/>
+                            <field name="threecx_last_call"/>
+                            <field name="threecx_talk_time" invisible="not threecx_talk_time"/>
+                            <field name="threecx_kind" invisible="not threecx_kind"/>
+                            <field name="threecx_renewal_date" invisible="not threecx_renewal_date"/>
+                        </group>
+                    </group>
+                    <field name="threecx_call_ids" readonly="1">
+                        <list>
+                            <field name="started_at"/>
+                            <field name="call_type" widget="badge"
+                                   decoration-success="call_type == 'inbound'" decoration-info="call_type == 'outbound'"
+                                   decoration-danger="call_type == 'missed'" decoration-warning="call_type == 'notanswered'"/>
+                            <field name="number"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="duration_display"/>
+                            <field name="recording_url" widget="url"/>
+                        </list>
+                    </field>
+                </page>
+            </notebook>
         </field>
     </record>
+
+    <!-- Filters on both the Leads and the Pipeline search views. -->
+    <record id="view_crm_case_leads_filter_3cx" model="ir.ui.view">
+        <field name="name">crm.lead.search.leads.inherit.crm_3cx</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_leads_filter"/>
+        <field name="arch" type="xml">
+            <filter name="inactive" position="after">
+                <separator/>
+                <filter name="threecx_never_called" string="Never called" domain="[('threecx_first_touch', '=', False)]"/>
+                <filter name="threecx_sla_breached" string="First call overdue" domain="[('threecx_sla_state', '=', 'breached')]"/>
+                <filter name="threecx_called_fast" string="Called within 5 min" domain="[('threecx_speed_bucket', '=', '5m')]"/>
+                <filter name="threecx_renewals" string="Renewals" domain="[('threecx_kind', '=', 'renewal')]"/>
+            </filter>
+            <filter name="salesperson" position="before">
+                <filter name="threecx_group_speed" string="Speed to Lead" context="{'group_by': 'threecx_speed_bucket'}"/>
+            </filter>
+        </field>
+    </record>
+    <record id="view_crm_case_opportunities_filter_3cx" model="ir.ui.view">
+        <field name="name">crm.lead.search.opportunities.inherit.crm_3cx</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <filter name="filter_won_status_lost" position="after">
+                <separator/>
+                <filter name="threecx_never_called" string="Never called" domain="[('threecx_first_touch', '=', False)]"/>
+                <filter name="threecx_sla_breached" string="First call overdue" domain="[('threecx_sla_state', '=', 'breached')]"/>
+                <filter name="threecx_called_fast" string="Called within 5 min" domain="[('threecx_speed_bucket', '=', '5m')]"/>
+                <filter name="threecx_renewals" string="Renewals" domain="[('threecx_kind', '=', 'renewal')]"/>
+            </filter>
+            <filter name="salesperson" position="before">
+                <filter name="threecx_group_speed" string="Speed to Lead" context="{'group_by': 'threecx_speed_bucket'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- The agent's call queue: every lead with a call activity assigned to me. -->
+    <record id="view_crm_lead_list_my_calls" model="ir.ui.view">
+        <field name="name">crm.lead.list.my.calls.crm_3cx</field>
+        <field name="model">crm.lead</field>
+        <field name="arch" type="xml">
+            <list string="My Calls" create="0" default_order="priority desc, threecx_sla_deadline asc, id asc"
+                  decoration-danger="threecx_sla_state == 'breached'">
+                <field name="activity_date_deadline" widget="remaining_days"/>
+                <field name="activity_summary"/>
+                <field name="name"/>
+                <field name="contact_name" optional="show"/>
+                <field name="partner_name" optional="show"/>
+                <field name="phone" widget="phone"/>
+                <button name="action_threecx_call" type="object" icon="fa-phone" title="Call via 3CX" invisible="not phone"/>
+                <field name="stage_id"/>
+                <field name="threecx_sla_state" widget="badge" optional="show"
+                       decoration-success="threecx_sla_state == 'met'"
+                       decoration-warning="threecx_sla_state == 'pending'"
+                       decoration-danger="threecx_sla_state == 'breached'"/>
+                <field name="threecx_attempts" optional="show"/>
+                <field name="threecx_last_call" optional="show"/>
+                <field name="expected_revenue" sum="Total" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_crm_lead_my_calls" model="ir.actions.act_window">
+        <field name="name">My Calls</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,activity,kanban,form</field>
+        <field name="domain">[('activity_ids.user_id', '=', uid), ('activity_ids.activity_type_id.category', '=', 'phonecall')]</field>
+        <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'list', 'view_id': ref('view_crm_lead_list_my_calls')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to call right now</p>
+            <p>New leads, missed calls and retry attempts land here as call activities. Click the number to dial through 3CX; when the call ends 3CX reports it and the activity is closed or rescheduled for you.</p>
+        </field>
+    </record>
+    <menuitem id="menu_crm_lead_my_calls" name="My Calls" parent="crm.crm_menu_sales" action="action_crm_lead_my_calls" sequence="4"/>
+
+    <!-- Manager's view: does calling fast win more? -->
+    <record id="action_crm_lead_speed_to_lead" model="ir.actions.act_window">
+        <field name="name">Speed to Lead</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="context">{
+            'search_default_filter_creation_date': 1,
+            'pivot_row_groupby': ['threecx_speed_bucket'],
+            'pivot_column_groupby': ['won_status'],
+            'pivot_measures': ['__count'],
+            'graph_groupbys': ['threecx_speed_bucket'],
+            'active_test': False,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No leads yet</p>
+            <p>Leads grouped by how fast the first call attempt happened, against whether they were won. Speed to lead is measured from the lead's creation to the first dial 3CX reported.</p>
+        </field>
+    </record>
+    <menuitem id="menu_crm_lead_speed_to_lead" name="Speed to Lead" parent="crm.crm_menu_report" action="action_crm_lead_speed_to_lead" sequence="51"/>
 </odoo>
