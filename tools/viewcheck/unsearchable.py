@@ -12,8 +12,11 @@ import xml.etree.ElementTree as ET
 def model_fields(root):
     """{model_name: {field: (stored, has_search)}} from */models/*.py."""
     out = {}
-    for dp, _d, fs in os.walk(root):
-        if os.path.basename(dp) not in ("models", "wizard"):
+    for dp, dirs, fs in os.walk(root):
+        # See rngcheck.py: skip dot-directories so a nested git worktree is not
+        # scanned as if it were part of the module.
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        if os.path.basename(dp) not in ("models", "wizard", "wizards"):
             continue
         for f in fs:
             if not f.endswith(".py"):
@@ -23,31 +26,43 @@ def model_fields(root):
                 name = None
                 fields = {}
                 for stmt in cls.body:
-                    if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
-                        tgt = stmt.targets[0]
-                        if not isinstance(tgt, ast.Name):
-                            continue
-                        if tgt.id == "_name" and isinstance(stmt.value, ast.Constant):
-                            name = stmt.value.value
-                        elif isinstance(stmt.value, ast.Call):
-                            fn = stmt.value.func
-                            if (isinstance(fn, ast.Attribute)
-                                    and isinstance(fn.value, ast.Name)
-                                    and fn.value.id == "fields"):
-                                kw = {k.arg for k in stmt.value.keywords}
-                                vals = {k.arg: k.value for k in stmt.value.keywords}
-                                computed = {"compute", "related"} & kw
-                                stored = (not computed) or (
-                                    isinstance(vals.get("store"), ast.Constant)
-                                    and vals["store"].value is True)
-                                fields[tgt.id] = (bool(stored), "search" in kw)
+                    # Odoo 20 core annotates field declarations
+                    # (`category_id: ResPartnerCategory = fields.Many2many(...)`),
+                    # which is an AnnAssign, not an Assign. Miss that and this
+                    # checker silently passes everything in an annotated module.
+                    if isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                        tgt, value = stmt.target, stmt.value
+                    elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+                        tgt, value = stmt.targets[0], stmt.value
+                    else:
+                        continue
+                    if not isinstance(tgt, ast.Name):
+                        continue
+                    if tgt.id == "_name" and isinstance(value, ast.Constant):
+                        name = value.value
+                        continue
+                    if not isinstance(value, ast.Call):
+                        continue
+                    fn = value.func
+                    if not (isinstance(fn, ast.Attribute)
+                            and isinstance(fn.value, ast.Name)
+                            and fn.value.id == "fields"):
+                        continue
+                    kw = {k.arg for k in value.keywords}
+                    vals = {k.arg: k.value for k in value.keywords}
+                    computed = {"compute", "related"} & kw
+                    stored = (not computed) or (
+                        isinstance(vals.get("store"), ast.Constant)
+                        and vals["store"].value is True)
+                    fields[tgt.id] = (bool(stored), "search" in kw)
                 if name:
                     out[name] = fields
     return out
 
 def check(root, fields_by_model):
     problems = []
-    for dp, _d, fs in os.walk(root):
+    for dp, dirs, fs in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
         for f in fs:
             if not f.endswith(".xml"):
                 continue

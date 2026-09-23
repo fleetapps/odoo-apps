@@ -4,7 +4,7 @@
 ``graphql`` / ``api_call_raw`` methods are patched at the registry class.
 
 Testing framework reference:
-https://www.odoo.com/documentation/19.0/developer/reference/backend/testing.html
+https://www.odoo.com/documentation/20.0/developer/reference/backend/testing.html
 """
 import json
 

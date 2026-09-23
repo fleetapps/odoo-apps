@@ -8,7 +8,7 @@ for a permanent offline access token and store it. The merchant types nothing.
 
 https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant
 Odoo controllers ref:
-https://www.odoo.com/documentation/19.0/developer/reference/backend/http.html
+https://www.odoo.com/documentation/20.0/developer/reference/backend/http.html
 
 Security - all three checks Shopify's docs require, in order, before the code
 is ever exchanged:

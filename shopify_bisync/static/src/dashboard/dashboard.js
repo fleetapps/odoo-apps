@@ -5,7 +5,7 @@
 // countries + per-store comparison, from shopify.bisync.sale.report. Pure
 // OWL + orm service, no external chart libraries (store review: no CDN).
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -14,12 +14,15 @@ import { Layout } from "@web/search/layout";
 export class ShopifyDashboard extends Component {
     static template = "shopify_bisync.Dashboard";
     static components = { Layout };
-    static props = { "*": true };
+    // No props declaration: Owl 3 validates only what a component declares
+    // through useProps, and this client action reads none of the props the
+    // action service hands it. The old `static props = { "*": true }` existed
+    // purely to quiet Owl 2's validator, and Owl 3 raises on the static form.
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ loading: true, data: null, onboarding: null });
+        this.state = proxy({ loading: true, data: null, onboarding: null });
         onWillStart(() => this.load());
     }
 

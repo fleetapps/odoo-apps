@@ -5,7 +5,7 @@
 // this one answers "is the connector working", not "how is the shop trading".
 // Pure OWL + orm service, no chart library (store review: no CDN assets).
 
-import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -18,13 +18,16 @@ const REFRESH_MS = 15000;
 export class ShopifySyncDashboard extends Component {
     static template = "shopify_bisync.SyncDashboard";
     static components = { Layout };
-    static props = { "*": true };
+    // No props declaration: Owl 3 validates only what a component declares
+    // through useProps, and this client action reads none of the props the
+    // action service hands it. The old `static props = { "*": true }` existed
+    // purely to quiet Owl 2's validator, and Owl 3 raises on the static form.
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-        this.state = useState({
+        this.state = proxy({
             loading: true,
             data: null,
             filter: "all",

@@ -37,33 +37,19 @@
             <field name="implied_ids" eval="[(4, ref('group_connector_admin'))]"/>
         </record>
 
-        <!-- Multi-company isolation: every connector record hangs off an
-             instance which belongs to exactly one company. -->
-        <record id="rule_instance_company" model="ir.rule">
-            <field name="name">Shopify instance: multi-company</field>
-            <field name="model_id" ref="model_shopify_bisync_instance"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-        <record id="rule_job_company" model="ir.rule">
-            <field name="name">Shopify job: multi-company</field>
-            <field name="model_id" ref="model_shopify_bisync_job"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-        <record id="rule_binding_company" model="ir.rule">
-            <field name="name">Shopify binding: multi-company</field>
-            <field name="model_id" ref="model_shopify_bisync_binding"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-        <record id="rule_mismatch_company" model="ir.rule">
-            <field name="name">Shopify mismatch: multi-company</field>
-            <field name="model_id" ref="model_shopify_bisync_mismatch"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
-        <record id="rule_conflict_company" model="ir.rule">
-            <field name="name">Shopify conflict: multi-company</field>
-            <field name="model_id" ref="model_shopify_bisync_conflict"/>
-            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-        </record>
+        <!-- ====================================== Access ================== -->
+        <!-- Odoo 20 merged ir.model.access and ir.rule into a single ir.access
+             model, so the five multi-company rules that used to sit here are now
+             rows in security/ir.access.csv carrying the operations and the
+             domain together.
 
+             They kept their xml ids (rule_*_company) because they are the same
+             decision: every connector record hangs off an instance belonging to
+             exactly one company. They carry no group, which in ir.access means
+             *restriction* - it intersects for everybody, administrators
+             included, exactly as a global ir.rule did. Do not add a group to
+             them: a row with a group is a permission, and permissions union, so
+             grouping one of these would turn multi-company isolation into an
+             extra grant. -->
     </data>
 </odoo>

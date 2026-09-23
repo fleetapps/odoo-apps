@@ -2,7 +2,7 @@
 # Part of Shopify Connector - Two-Way Sync. License OPL-1.
 """Module lifecycle hooks (manifest: pre_init_hook / uninstall_hook /
 post_load). Hook signatures per the Odoo 19 module reference:
-https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+https://www.odoo.com/documentation/20.0/developer/reference/backend/module.html
 """
 import logging
 

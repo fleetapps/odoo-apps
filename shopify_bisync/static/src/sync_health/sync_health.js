@@ -6,7 +6,7 @@
 // drill-down. Built on the Odoo Web Library (OWL) with the standard orm /
 // action services - no external assets, no phone-home.
 
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, proxy, useProps } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -14,12 +14,15 @@ import { standardWidgetProps } from "@web/views/widgets/standard_widget_props";
 
 export class ShopifySyncHealth extends Component {
     static template = "shopify_bisync.SyncHealth";
-    static props = { ...standardWidgetProps };
+    // A class field, not `static props`: Owl 3 ignores the static form and the
+    // compatibility layer raises on it. This widget really does read its props
+    // (props.record.resId), so the schema has to be declared.
+    props = useProps({ ...standardWidgetProps });
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({ counts: {}, loaded: false });
+        this.state = proxy({ counts: {}, loaded: false });
         this.meta = [
             { key: "pending", label: _t("Pending"), css: "text-bg-warning" },
             { key: "failed", label: _t("Failed"), css: "text-bg-danger" },

@@ -2,7 +2,7 @@
 # Part of Shopify Connector - Two-Way Sync. License OPL-1.
 """Shopify webhook receiver.
 
-Controllers ref: https://www.odoo.com/documentation/19.0/developer/reference/backend/http.html
+Controllers ref: https://www.odoo.com/documentation/20.0/developer/reference/backend/http.html
 
 Security: every payload is verified with HMAC-SHA256 (base64) of the RAW body
 against the app secret (``X-Shopify-Hmac-Sha256``) BEFORE any parsing, using a

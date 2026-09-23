@@ -44,7 +44,11 @@ def main(roots):
     found = []
     n = 0
     for root in roots:
-        for dirpath, _dirs, files in os.walk(root):
+        for dirpath, dirs, files in os.walk(root):
+            # Skip dot-directories in place. This repo keeps a git worktree at
+            # shopify_bisync/.claude/worktrees/ holding a second copy of every
+            # module; scanning it doubles the work and reports confusing paths.
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
             for f in files:
                 if f.endswith(".xml"):
                     n += 1

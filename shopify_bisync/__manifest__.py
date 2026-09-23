@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Module manifest reference:
-# https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+# https://www.odoo.com/documentation/20.0/developer/reference/backend/module.html
 {
     "name": "Odoo Shopify Sync",
-    "version": "19.0.1.7.0",
+    "version": "20.0.1.0.0",
     "category": "Sales/Sales",
     "summary": "Bidirectional Shopify sync: products, stock, prices, customers, "
                "orders, fulfillments & refunds. Webhook-driven inbound, queued "
@@ -52,7 +52,7 @@ No phone-home, no CDN — everything runs inside your Odoo.
     "external_dependencies": {"python": ["requests"]},
     "data": [
         "security/connector_security.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "data/product_data.xml",
         "data/onboarding_data.xml",
         "data/ir_cron.xml",
