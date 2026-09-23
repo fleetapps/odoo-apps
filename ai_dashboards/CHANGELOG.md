@@ -33,6 +33,17 @@ Port to **Odoo 20**.
   contract: an explicit, shallow-compared dependency list with the callback
   untracked.
 
+  The redraw now depends on `rootRef()` as well as on the figures and the spec,
+  and that dependency is load-bearing. Owl 2's `useEffect` fired in
+  `onMounted`/`onPatched`, so the DOM was guaranteed to exist when it ran. Owl 3
+  effects are not tied to the render cycle: they run once at setup and then
+  whenever a tracked dependency changes, flushed in a microtask. The figures
+  arrive in `onWillStart`, which completes *before* the first render, so without
+  the ref the sequence was: run at setup (no data, no DOM), run again when the
+  load lands (data, still no DOM), then the DOM appears and nothing re-runs —
+  every chart silently blank. Depending on the ref signal makes "the element now
+  exists" the trigger, which is how Owl 3 says what `onMounted` used to say.
+
 ### Notes
 - **The Draft → Live lifecycle is unaffected**, which was worth checking:
   Odoo 20 made `record.update()` save by itself when a record is not in edition.

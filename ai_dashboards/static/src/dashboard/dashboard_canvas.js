@@ -118,18 +118,36 @@ export class AIDashboardCanvas extends Component {
             await this.load();
         });
 
-        // Redraw when the figures change *or* when the spec does. A chart is
-        // painted by Chart.js rather than by the template, so recolouring a
-        // tile or switching a bar to a line changes nothing on screen unless
-        // this runs — the second dependency is what makes those edits visible.
-        // useOnChange, not Owl 3's useEffect: useEffect auto-tracks every
-        // signal the callback touches, and drawAll() reads most of the state,
-        // so it would redraw on paging, on entering edit mode, on a rename -
-        // and Chart.js teardown plus rebuild is not free. useOnChange keeps the
-        // Owl 2 contract: an explicit dependency list, shallow-compared, with
-        // the callback untracked.
+        // Redraw when the canvas element appears, when the figures change, or
+        // when the spec does. A chart is painted by Chart.js rather than by the
+        // template, so recolouring a tile or switching a bar to a line changes
+        // nothing on screen unless this runs — the spec dependency is what makes
+        // those edits visible.
+        //
+        // rootRef is the *first* dependency for a reason, and it is not
+        // decoration. Owl 2's useEffect fired in onMounted/onPatched, so the DOM
+        // was guaranteed to exist by the time it ran. Owl 3 effects are not tied
+        // to the render cycle at all: they run once at setup and then whenever a
+        // tracked dependency changes, flushed in a microtask. The figures arrive
+        // in onWillStart, which completes *before* the first render, so without
+        // this dependency the sequence is: run at setup (no data, no DOM), run
+        // again when load() lands (data, still no DOM), then the DOM appears and
+        // nothing re-runs — every chart silently blank. Depending on the ref
+        // signal makes "the element now exists" the thing that triggers the
+        // draw, which is the Owl 3 way to say what onMounted used to say.
+        //
+        // useOnChange rather than Owl 3's own useEffect: useEffect auto-tracks
+        // every signal its callback touches, and drawAll() reads most of the
+        // state, so it would redraw on paging, on entering edit mode, on a
+        // rename — and Chart.js teardown plus rebuild is not free. useOnChange
+        // keeps the Owl 2 contract: an explicit dependency list, shallow-
+        // compared, with the callback untracked.
         useOnChange(
-            () => [this.state.data, this.props.record.data[this.props.name]],
+            () => [
+                this.rootRef(),
+                this.state.data,
+                this.props.record.data[this.props.name],
+            ],
             () => {
                 this.drawAll();
                 return () => this.destroyCharts();

@@ -38,16 +38,24 @@
                     <!-- No display="always": header buttons without it live in
                          the selection actions, so these appear only once rows
                          are ticked, and act on exactly what was ticked
-                         (MultiRecordViewButton passes list.getResIds(true)). -->
+                         (MultiRecordViewButton passes list.getResIds(true)).
+
+                         groups= on each button because only the admin group has
+                         write access to this model. The menu is admin-only, but
+                         the action is reachable by url, and a button that can
+                         only ever raise an AccessError should not be drawn. -->
                     <button name="action_bulk_apply" type="object"
+                            groups="mcp_governance_suite.group_mcp_admin"
                             string="Read only" icon="fa-eye"
                             context="{'mcp_bulk_preset': 'read'}"
                             title="Selected models: read, nothing else."/>
                     <button name="action_bulk_apply" type="object"
+                            groups="mcp_governance_suite.group_mcp_admin"
                             string="Read + Write" icon="fa-pencil"
                             context="{'mcp_bulk_preset': 'draft'}"
                             title="Selected models: read, create and update, but never delete."/>
                     <button name="action_bulk_apply" type="object"
+                            groups="mcp_governance_suite.group_mcp_admin"
                             string="Full access" icon="fa-unlock"
                             class="btn-primary"
                             context="{'mcp_bulk_preset': 'full'}"

@@ -64,6 +64,11 @@ the kind that fail silently rather than loudly, so they are spelled out.
   model's name instead of an editable `model_id`, and hides *Last Modified* /
   *Modified By* by default.
 
+  The three bulk buttons carry `groups="…group_mcp_admin"`, because only that
+  group has write access to this model. The menu is already admin-only, but the
+  action is reachable by url, and a button that can only ever raise an
+  AccessError should not be drawn.
+
   The toggles did not become read-only — they got better. In a non-editable list
   a row stays in readonly mode, and Odoo 20's `record.update()` saves by itself
   whenever the record is not in edition, so a click now commits immediately
