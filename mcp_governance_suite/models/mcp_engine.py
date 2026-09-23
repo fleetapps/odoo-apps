@@ -2,7 +2,7 @@
 """Tool execution engine - every call is scope-checked, ACL-checked, audited.
 
 The controller has already switched ``self.env`` to the acting user, so native
-Odoo security (ir.model.access + ir.rule + field groups + multi-company record
+Odoo security (ir.access + field groups + multi-company record
 rules) is enforced *underneath* everything here. The engine adds the governance
 layer on top: capability gating, per-model operation scopes, field blacklists,
 extra record domains, row caps, rate limiting and approval gates.
@@ -12,7 +12,7 @@ extend the connector with new tool *records*, or override/add a `_handler_*`
 method by inheriting this model - no controller changes, upgrade-safe.
 
 ORM reference (search_read / _read_group / name_search / fields_get / domains):
-https://www.odoo.com/documentation/19.0/developer/reference/backend/orm.html
+https://www.odoo.com/documentation/20.0/developer/reference/backend/orm.html
 """
 import ast
 import datetime

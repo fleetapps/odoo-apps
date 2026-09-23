@@ -4,7 +4,7 @@
 OAuth 2.1 is the recommended way to connect (see mcp_oauth.py), but keys remain
 useful for headless clients, CI, and MCP clients that cannot run a browser
 authorization flow. Either way the principle is identical: every call executes
-*as* an Odoo user, so ir.model.access and ir.rule bound that user on top of the
+*as* an Odoo user, so ir.access bounds that user on top of the
 MCP governance scope.
 
 The plaintext key is shown to a human exactly once, through a reveal wizard;
@@ -30,7 +30,7 @@ class MCPApiKey(models.Model):
         "res.users", required=True, ondelete="cascade",
         default=lambda self: self.env.user,
         help="Every MCP call made with this key runs AS this user: "
-             "ir.model.access + ir.rule apply on top of the MCP scope.")
+             "ir.access applies on top of the MCP scope.")
     scope_id = fields.Many2one(
         "mcp.scope", required=True, ondelete="restrict",
         default=lambda self: self.env.user.sudo().mcp_effective_scope(),

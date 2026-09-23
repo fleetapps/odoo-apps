@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Manifest reference:
-# https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+# https://www.odoo.com/documentation/20.0/developer/reference/backend/module.html
 {
     "name": "AI MCP Pro",
-    "version": "19.0.4.1.0",
+    "version": "20.0.1.0.0",
     "category": "Extra Tools/AI",
     "summary": "Connect Claude, ChatGPT, Gemini, Cursor or any MCP client to Odoo "
                "with one-click OAuth 2.1 — every AI action runs as the real user, "
@@ -36,14 +36,15 @@ Works with both generations of MCP client
 -----------------------------------------
 The transport is **dual-era**: protocol revision ``2026-07-28`` (per-request
 metadata, ``server/discover``, no handshake) *and* the older handshake-based
-revisions (``2025-06-18``, ``2025-03-26``). Connectors built against either
+revisions (``2025-11-25``, ``2025-06-18``, ``2025-03-26``). Connectors built
+against either
 generation keep working.
 
 Runs as the real user — never a shared admin token
 --------------------------------------------------
-Every request executes **as the signed-in Odoo user**, so ``ir.model.access``,
-record rules, field groups and multi-company isolation all apply underneath the
-MCP scope. A read-only user can only read; a user without delete rights cannot
+Every request executes **as the signed-in Odoo user**, so ``ir.access``
+(Odoo 20's merged access rights and record rules), field groups and
+multi-company isolation all apply underneath the MCP scope. A read-only user can only read; a user without delete rights cannot
 delete. The AI can never exceed the person using it.
 
 Governance that closes the deal
@@ -80,7 +81,7 @@ Provider-agnostic by design. Multi-company aware. Fully translatable.
     "data": [
         # security (groups + rules first, then the access matrix)
         "security/mcp_security.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         # seed data (capabilities before prompts that reference them)
         "data/mcp_capability_data.xml",
         "data/mcp_prompt_data.xml",

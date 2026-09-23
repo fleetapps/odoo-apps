@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 # Manifest reference:
-# https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+# https://www.odoo.com/documentation/20.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards Pro",
-    "version": "19.0.3.0.0",
+    "version": "20.0.1.0.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
@@ -73,7 +73,7 @@ URL, one sign-in, one log.
     "depends": ["mcp_governance_suite"],
     "data": [
         "security/ai_dashboards_security.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "data/mcp_capability_data.xml",
         "data/mail_template.xml",
         "data/ir_cron.xml",

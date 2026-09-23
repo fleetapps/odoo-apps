@@ -38,59 +38,20 @@
             <field name="implied_ids" eval="[(4, ref('group_dashboard_admin'))]"/>
         </record>
 
-        <!-- ====================================== Record Rules ============ -->
-        <!-- Your own dashboards, plus anything shared with a group you are in.
-             Sharing grants sight, never edit: ai.dashboard._check_owner keeps
-             writing with the owner, so one person's change cannot silently
-             rewrite what a whole team looks at each morning. -->
-        <record id="rule_dashboard_own_or_shared" model="ir.rule">
-            <field name="name">Dashboards: own or shared with me</field>
-            <field name="model_id" ref="model_ai_dashboard"/>
-            <field name="domain_force">
-                ['|', ('owner_id', '=', user.id),
-                      '&amp;', ('state', '=', 'published'),
-                               '|', ('group_ids', 'in', user.all_group_ids.ids),
-                                    ('share_user_ids', 'in', [user.id])]
-            </field>
-            <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
-        </record>
+        <!-- ====================================== Access ================== -->
+        <!-- Odoo 20 merged ir.model.access and ir.rule into one ir.access
+             model, so what used to be six record rules here now lives in
+             security/ir.access.csv as rows that carry the operations and the
+             domain together.
 
-        <record id="rule_dashboard_admin" model="ir.rule">
-            <field name="name">Dashboards: administrators see all</field>
-            <field name="model_id" ref="model_ai_dashboard"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_dashboard_admin'))]"/>
-        </record>
-
-        <!-- History follows the dashboard it belongs to. -->
-        <record id="rule_version_follows_dashboard" model="ir.rule">
-            <field name="name">Dashboard history: own only</field>
-            <field name="model_id" ref="model_ai_dashboard_version"/>
-            <field name="domain_force">[('dashboard_id.owner_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
-        </record>
-
-        <!-- A subscription is a standing instruction to render as you, so it
-             is yours alone to hold. -->
-        <record id="rule_subscription_own" model="ir.rule">
-            <field name="name">Dashboard subscriptions: own only</field>
-            <field name="model_id" ref="model_ai_dashboard_subscription"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
-        </record>
-
-        <record id="rule_subscription_admin" model="ir.rule">
-            <field name="name">Dashboard subscriptions: administrators see all</field>
-            <field name="model_id" ref="model_ai_dashboard_subscription"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_dashboard_admin'))]"/>
-        </record>
-
-        <record id="rule_version_admin" model="ir.rule">
-            <field name="name">Dashboard history: administrators see all</field>
-            <field name="model_id" ref="model_ai_dashboard_version"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_dashboard_admin'))]"/>
-        </record>
+             The reasoning they encoded is unchanged. You see your own
+             dashboards plus anything published and shared with a group you are
+             in; sharing grants sight, never edit, because ai.dashboard._check_owner
+             keeps writing with the owner, so one person's change cannot
+             silently rewrite what a whole team looks at each morning. History
+             follows the dashboard it belongs to, and a subscription - a
+             standing instruction to render as you - is yours alone to hold.
+             Administrator rows carry no domain, and permission rows union, so
+             an administrator still sees everything. -->
     </data>
 </odoo>

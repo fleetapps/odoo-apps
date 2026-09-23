@@ -6,7 +6,7 @@ This server is **dual-era**: it speaks both shapes of the protocol.
 * **Modern** (`2026-07-28`) carries the protocol version, client identity and
   capabilities as per-request `_meta` plus mirrored HTTP headers. There is no
   handshake and no session; `server/discover` reports what we support.
-* **Legacy** (`2025-06-18` and earlier) opens with an `initialize` handshake.
+* **Legacy** (`2025-11-25` and earlier) opens with an `initialize` handshake.
 
 Supporting only one era breaks the other outright - the spec's compatibility
 matrix scores Modern-client/Legacy-server and Legacy-client/Modern-server both
@@ -22,7 +22,7 @@ Authorization: a Bearer credential that is either
 * an OAuth 2.1 access token (mcp.oauth.token) - the recommended path.
 
 Either way the request env is switched to the acting user before any tool runs,
-so ir.model.access + ir.rule enforce underneath the MCP governance scope. On a
+so ir.access enforces underneath the MCP governance scope. On a
 missing/invalid token we answer 401 with a WWW-Authenticate header pointing at
 the RFC 9728 resource metadata, which is how MCP clients discover OAuth.
 """
@@ -52,7 +52,18 @@ from ..models.tools_crypto import hash_secret
 _logger = logging.getLogger(__name__)
 
 MODERN_PROTOCOL_VERSIONS = ("2026-07-28",)
-LEGACY_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26")
+# Newest first: LATEST_LEGACY_VERSION is this tuple's head, and it is what a
+# legacy `initialize` is answered with when the client asks for a revision we
+# do not list.
+#
+# 2025-11-25 is the last handshake-based revision. Everything it made
+# *mandatory* is already served here - notably the 403 on a bad Origin
+# (_origin_allowed) and RFC 9728 discovery with the WWW-Authenticate header
+# optional - and its headline additions (CIMD registration, incremental scope
+# consent) were built before this module ever claimed the revision. What it
+# also added - tool icons, tasks, URL elicitation, tool-calling in sampling -
+# are optional capabilities a server advertises or does not, and we do not.
+LEGACY_PROTOCOL_VERSIONS = ("2025-11-25", "2025-06-18", "2025-03-26")
 SUPPORTED_PROTOCOL_VERSIONS = MODERN_PROTOCOL_VERSIONS + LEGACY_PROTOCOL_VERSIONS
 LATEST_LEGACY_VERSION = LEGACY_PROTOCOL_VERSIONS[0]
 

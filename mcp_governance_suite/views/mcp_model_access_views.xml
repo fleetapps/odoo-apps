@@ -7,18 +7,57 @@
         <field name="name">mcp.scope.line.matrix</field>
         <field name="model">mcp.scope.line</field>
         <field name="arch" type="xml">
-            <list editable="bottom" multi_edit="1"
+            <!-- Deliberately *not* editable="bottom".
+
+                 In a non-editable list a row stays in readonly mode, and
+                 Odoo 20's record.update() auto-saves whenever the record is not
+                 in edition (web/../relational_model/record.js: `save =
+                 !isInEdition && canSaveOnUpdate`). So every boolean_toggle here
+                 commits on the click instead of leaving the row dirty until you
+                 tab away - which is what you want when you are flipping a
+                 switch on a hundred models.
+
+                 It is also much cheaper to draw. An editable list instantiates
+                 an editing widget per cell per row; this one instantiates real
+                 components only for the toggles and renders the rest as static
+                 cells. multi_edit survives without editable: the renderer
+                 enters edit mode for `multiEdit && record.selected` regardless
+                 (web/../list_renderer.js: onCellClicked), so tick rows and edit
+                 one cell to apply it to all of them.
+
+                 model_id is not a column any more for the same reason - 130
+                 many2one autocompletes to render a value that never legitimately
+                 changes. The model's name is shown instead, and the row's model
+                 is still editable on the form. -->
+            <list multi_edit="1"
                   decoration-danger="write_bits_inert"
                   decoration-warning="can_call_methods"
                   decoration-muted="not active"
                   default_order="scope_id, model_name">
+                <header>
+                    <!-- No display="always": header buttons without it live in
+                         the selection actions, so these appear only once rows
+                         are ticked, and act on exactly what was ticked
+                         (MultiRecordViewButton passes list.getResIds(true)). -->
+                    <button name="action_bulk_apply" type="object"
+                            string="Read only" icon="fa-eye"
+                            context="{'mcp_bulk_preset': 'read'}"
+                            title="Selected models: read, nothing else."/>
+                    <button name="action_bulk_apply" type="object"
+                            string="Read + Write" icon="fa-pencil"
+                            context="{'mcp_bulk_preset': 'draft'}"
+                            title="Selected models: read, create and update, but never delete."/>
+                    <button name="action_bulk_apply" type="object"
+                            string="Full access" icon="fa-unlock"
+                            class="btn-primary"
+                            context="{'mcp_bulk_preset': 'full'}"
+                            title="Selected models: read, create, update and delete. Business method calls are never granted in bulk."/>
+                </header>
                 <field name="write_bits_inert" column_invisible="1"/>
                 <field name="scope_read_only" optional="hide"
                        string="Scope Read-Only"/>
                 <field name="scope_id" optional="show"/>
-                <field name="model_id" string="Model"
-                       options="{'no_create': True}"
-                       domain="[('transient', '=', False)]"/>
+                <field name="model_label" string="Model" readonly="1"/>
                 <field name="model_name" string="Technical Name" readonly="1"
                        optional="show"/>
                 <field name="can_read" widget="boolean_toggle"/>
@@ -34,10 +73,13 @@
                        optional="hide"/>
                 <field name="record_domain" optional="hide"/>
                 <field name="active" widget="boolean_toggle" optional="hide"/>
+                <!-- optional="hide" rather than "show": these are two more
+                     columns (one of them a many2one) drawn per row for
+                     information the audit log already holds properly. -->
                 <field name="write_date" string="Last Modified" readonly="1"
-                       optional="show"/>
+                       optional="hide"/>
                 <field name="write_uid" string="Modified By" readonly="1"
-                       optional="show"/>
+                       optional="hide"/>
             </list>
         </field>
     </record>
@@ -155,7 +197,14 @@
             <p>
                 This is the master switchboard: one row per Odoo model, one
                 column per operation. Toggle anything directly in the list — no
-                need to open records.
+                need to open records, and each click saves as you make it.
+            </p>
+            <p>
+                <b>Do not set a hundred models one switch at a time.</b> Tick the
+                rows you want — or the header checkbox for all of them — and use
+                <b>Read only</b>, <b>Read + Write</b> or <b>Full access</b> in the
+                selection bar. The sane order is to grant broadly and then tighten
+                the few rows that deserve it.
             </p>
             <p>
                 <b>It can only ever take access away, never add it.</b> Every AI
@@ -166,7 +215,9 @@
             </p>
             <p>
                 Use <b>AI MCP → Permissions → Add Models</b> to add a whole
-                set at once.
+                set at once. <b>Method Calls</b> is never granted in bulk: it can
+                confirm an order or post an invoice, so it stays a per-model
+                choice made next to its warning.
             </p>
         </field>
     </record>

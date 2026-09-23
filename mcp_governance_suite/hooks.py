@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Module lifecycle hooks. Signatures per the Odoo 19 module reference:
-https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+"""Module lifecycle hooks. Signatures per the Odoo 20 module reference:
+https://www.odoo.com/documentation/20.0/developer/reference/backend/module.html
 """
 import logging
 

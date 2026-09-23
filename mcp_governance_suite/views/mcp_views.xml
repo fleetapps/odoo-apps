@@ -128,6 +128,29 @@
                                     string="Add Models" icon="fa-plus"
                                     class="btn-secondary mb-2"
                                     context="{'default_scope_id': id}"/>
+                            <!-- Grant the whole scope in one click, then tighten
+                                 the few rows that deserve it. The other order -
+                                 opening every row and flipping three switches -
+                                 is the same decision made hundreds of times, and
+                                 it stops being a decision after the fortieth.
+                                 Method calls are never granted in bulk. -->
+                            <span class="ms-2 me-1 text-muted">Set every model below to:</span>
+                            <button name="action_apply_preset_to_lines" type="object"
+                                    string="Read only" icon="fa-eye"
+                                    class="btn-secondary mb-2"
+                                    invisible="not line_ids"
+                                    context="{'mcp_bulk_preset': 'read'}"/>
+                            <button name="action_apply_preset_to_lines" type="object"
+                                    string="Read + Write" icon="fa-pencil"
+                                    class="btn-secondary mb-2"
+                                    invisible="not line_ids"
+                                    context="{'mcp_bulk_preset': 'draft'}"/>
+                            <button name="action_apply_preset_to_lines" type="object"
+                                    string="Full access" icon="fa-unlock"
+                                    class="btn-secondary mb-2"
+                                    invisible="not line_ids"
+                                    confirm="Give every model in this scope read, create, update and delete? You can still tighten individual rows afterwards."
+                                    context="{'mcp_bulk_preset': 'full'}"/>
                             <field name="line_ids"
                                    context="{'default_scope_id': id}">
                                 <list editable="bottom"

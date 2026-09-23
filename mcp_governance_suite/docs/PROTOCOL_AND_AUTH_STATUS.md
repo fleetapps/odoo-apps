@@ -38,11 +38,19 @@ serve today's *and* yesterday's clients.
 | Era | Revisions | Opens with |
 |---|---|---|
 | Modern | `2026-07-28` | per-request `_meta` + `MCP-Protocol-Version` header |
-| Legacy | `2025-06-18`, `2025-03-26` | `initialize` handshake |
+| Legacy | `2025-11-25`, `2025-06-18`, `2025-03-26` | `initialize` handshake |
 
-Note also that `2025-11-25` exists between the two and is **not** implemented;
-it is a legacy-era revision, so clients pinned to it fall back to `initialize`
-and negotiate down to `2025-06-18`.
+**Updated for 20.0:** `2025-11-25` is now served directly rather than
+negotiated away. It was previously left out, and the fallback did work — a
+client pinned to it opens with `initialize`, is answered `2025-06-18`, and
+sends that in the header from then on. But the fallback only works for a client
+willing to step down, and the revision turned out to cost nothing: everything
+`2025-11-25` made mandatory was already here (the 403 on a bad `Origin`, and
+RFC 9728 discovery with `WWW-Authenticate` optional), and its two headline
+additions — CIMD registration and incremental scope consent — were built before
+the module claimed the revision at all. Its remaining additions (tool icons,
+tasks, URL elicitation, tool-calling in sampling) are optional capabilities a
+server advertises or does not.
 
 ### 1.3 What v2 got right
 

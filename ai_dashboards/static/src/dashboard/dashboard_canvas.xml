@@ -2,7 +2,7 @@
 <templates xml:space="preserve">
 
 <t t-name="ai_dashboards.Canvas">
-    <div class="o_ai_dash" t-ref="root"
+    <div class="o_ai_dash" t-ref="this.rootRef"
          t-att-class="state.loading ? 'o_ai_dash--busy' : ''">
 
         <!-- Direct manipulation needs somewhere that says what has and has
@@ -97,7 +97,7 @@
 
                     <div class="o_ai_dash_tile_head">
                         <input t-if="state.editing === widget.id"
-                               t-ref="renamer"
+                               t-ref="this.renamerRef"
                                class="form-control form-control-sm"
                                t-att-value="widget.title"
                                aria-label="Tile name"

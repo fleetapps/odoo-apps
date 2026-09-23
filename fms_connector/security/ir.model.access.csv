@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_fms_branch_route_manager,fms branch route manager,model_fms_connector_branch_route,group_fms_connector_manager,1,1,1,1

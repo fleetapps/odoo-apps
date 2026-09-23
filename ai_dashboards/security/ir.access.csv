@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,operation,domain
+access_ai_dashboard_user,ai dashboard user (own or shared with me),model_ai_dashboard,group_dashboard_user,crud,"['|', ('owner_id', '=', user.id), '&', ('state', '=', 'published'), '|', ('group_ids', 'in', user.all_group_ids.ids), ('share_user_ids', 'in', [user.id])]"
+access_ai_dashboard_admin,ai dashboard admin (all),model_ai_dashboard,group_dashboard_admin,crud,
+access_ai_dashboard_version_user,ai dashboard version user (own only),model_ai_dashboard_version,group_dashboard_user,r,"[('dashboard_id.owner_id', '=', user.id)]"
+access_ai_dashboard_version_admin,ai dashboard version admin (all),model_ai_dashboard_version,group_dashboard_admin,crd,
+access_ai_dashboard_subscription_user,ai dashboard subscription user (own only),model_ai_dashboard_subscription,group_dashboard_user,crud,"[('user_id', '=', user.id)]"
+access_ai_dashboard_subscription_admin,ai dashboard subscription admin (all),model_ai_dashboard_subscription,group_dashboard_admin,crud,

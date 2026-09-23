@@ -12,7 +12,10 @@ only ever *narrow* access, never widen it. This is defence-in-depth: even a
 misconfigured scope cannot hand an AI more than the underlying user already has.
 """
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools.translate import LazyTranslate
+
+_lt = LazyTranslate(__name__)
 
 # Permission presets, as label -> (read, create, write, unlink). They live here
 # rather than on the wizard because the install hook and the Connect screen add
@@ -22,6 +25,23 @@ PRESETS = {
     "draft": (True, True, True, False),
     "full": (True, True, True, True),
 }
+
+# What each preset is called on screen, so the bulk buttons' confirmation names
+# the preset the way the button did. Lazily translated rather than plain strings
+# because they are looked up by key: `_(SOME_DICT[key])` is invisible to the
+# translation extractor, so the labels would never reach a .po file. A lazy
+# string is extracted here and resolved in the reader's language when it is
+# interpolated.
+PRESET_LABELS = {
+    "read": _lt("Read only"),
+    "draft": _lt("Read, create and update"),
+    "full": _lt("Full access including delete"),
+}
+
+# Deliberately absent from every preset: can_call_methods. Business method
+# calls are the one switch that can confirm an order or post an invoice, so
+# they are never granted in bulk - an administrator names the exact methods on
+# the row, one model at a time, and reads the warning while doing it.
 
 # The models a business actually asks questions about. Referencing any of these
 # from a data file would break installation on a database without that app, so
@@ -170,6 +190,50 @@ class MCPScope(models.Model):
         Line = self.env["mcp.scope.line"]
         return Line.create(values) if values else Line.browse()
 
+    def action_apply_preset_to_lines(self):
+        """Re-apply one preset to every model already in this scope.
+
+        The bulk buttons on the matrix cover "these rows"; this covers "this
+        whole scope", which is what an administrator actually means when they
+        have just added forty models and want all of them writable. Archived
+        rows are left alone: archiving a row is a deliberate suspension, and
+        silently re-arming it here would undo that without saying so.
+        """
+        self.ensure_one()
+        preset = self.env.context.get("mcp_bulk_preset")
+        if preset not in PRESETS:
+            raise UserError(_("Unknown permission preset '%s'.", preset or ""))
+
+        lines = self.line_ids.filtered("active")
+        if not lines:
+            raise UserError(_(
+                "'%s' has no models yet. Use Add Models first.", self.name))
+        lines._apply_preset(preset)
+
+        message = _(
+            "%(count)s model(s) in '%(scope)s' set to: %(preset)s.",
+            count=len(lines), scope=self.name, preset=PRESET_LABELS[preset])
+
+        # Granting write on a read-only scope saves, looks right, and changes
+        # nothing. It is this module's easiest misconfiguration, so say so.
+        inert = self.read_only and preset != "read"
+        if inert:
+            message += "\n\n" + _(
+                "Read Only is still on for this scope, which overrides every "
+                "write switch just set. Turn it off - keeping Require Approval "
+                "on - to make them take effect.")
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Model permissions updated"),
+                "message": message,
+                "type": "warning" if inert else "success",
+                "sticky": bool(inert),
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }
+
     def readable_model_names(self):
         """Models this scope can currently read, deterministically ordered.
 
@@ -288,6 +352,77 @@ class MCPScopeLine(models.Model):
     def allowed_method_set(self):
         self.ensure_one()
         return {m for m in (self.allowed_methods or "").replace(" ", "").split(",") if m}
+
+    # -------------------------------------------------------- bulk switching
+    def _apply_preset(self, preset):
+        """Set the four data switches on every row in ``self`` from a preset.
+
+        One ``write`` for the whole selection rather than one per row: this is
+        reached with 130 models selected, and a write per row would mean 130
+        recomputes of ``write_bits_inert`` and 130 audit-worthy revisions of the
+        same decision.
+        """
+        can_read, can_create, can_write, can_unlink = PRESETS[preset]
+        self.write({
+            "can_read": can_read,
+            "can_create": can_create,
+            "can_write": can_write,
+            "can_unlink": can_unlink,
+        })
+
+    def action_bulk_apply(self):
+        """Apply the preset named in the context to every selected row.
+
+        This exists because the honest way to configure a scope is to select
+        everything and grant it in one go, then tighten the handful of rows that
+        deserve tightening. Doing it the other way round - opening 130 rows and
+        flipping three switches on each - is the same decision made 390 times,
+        and nobody makes it carefully by the fortieth.
+
+        Bound to the header buttons on the matrix, so ``self`` is exactly what
+        the administrator ticked.
+        """
+        preset = self.env.context.get("mcp_bulk_preset")
+        if preset not in PRESETS:
+            raise UserError(_(
+                "Unknown permission preset '%s'.", preset or ""))
+        if not self:
+            raise UserError(_("Select the rows you want to change first."))
+
+        self._apply_preset(preset)
+
+        message = _(
+            "%(count)s model(s) set to: %(preset)s.",
+            count=len(self), preset=PRESET_LABELS[preset])
+
+        # The single easiest way to misconfigure this module is to grant write
+        # access on a scope whose Read Only kill-switch is still on: the
+        # switches save, look right and change nothing. Say so here rather than
+        # letting the admin discover it when the AI refuses.
+        inert = self.filtered("write_bits_inert").scope_id
+        if inert:
+            message += "\n\n" + _(
+                "Note: %(scopes)s still has Read Only switched on, which "
+                "overrides every write switch you just set. Turn Read Only off "
+                "on that scope - keeping Require Approval on - to make them "
+                "take effect.",
+                scopes=", ".join(inert.mapped("name")))
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Model permissions updated"),
+                "message": message,
+                "type": "warning" if inert else "success",
+                "sticky": bool(inert),
+                # display_notification returns params.next, and soft_reload
+                # restores the current controller - so the toggles repaint with
+                # what was just written instead of showing stale values until
+                # the next navigation.
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }
 
     def action_open_scope(self):
         """Jump from a matrix row to the scope that owns it."""

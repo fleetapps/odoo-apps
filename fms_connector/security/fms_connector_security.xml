@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="module_category_fms_connector" model="ir.module.category">
+            <field name="name">Fleet FMS Connector</field>
+            <field name="sequence">65</field>
+        </record>
+
+        <!-- Odoo 19: res.groups.category_id was replaced by privilege_id,
+             which points at a res.groups.privilege carrying the category. -->
+        <record id="privilege_fms_connector" model="res.groups.privilege">
+            <field name="name">Fleet FMS Connector</field>
+            <field name="category_id" ref="module_category_fms_connector"/>
+            <field name="sequence">65</field>
+        </record>
+
+        <record id="group_fms_connector_manager" model="res.groups">
+            <field name="name">Fleet FMS Connector: Manager</field>
+            <field name="privilege_id" ref="privilege_fms_connector"/>
+            <field name="comment">Manage the API key, defaults and
+                branch/country -> approver routing. Everyone who can already
+                see purchase requests / expenses can still see the FMS
+                reference fields on them; this group only gates the
+                connector's own settings and routing table.</field>
+        </record>
+
+        <!-- Every Settings/System administrator administers this app too,
+             for the same reason shopify_bisync grants it: Odoo never puts
+             admin in a group a module invents, so without this the routing
+             menu is unreachable on a fresh install. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_fms_connector_manager'))]"/>
+        </record>
+
+        <record id="rule_branch_route_company" model="ir.rule">
+            <field name="name">FMS branch route: multi-company</field>
+            <field name="model_id" ref="model_fms_connector_branch_route"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

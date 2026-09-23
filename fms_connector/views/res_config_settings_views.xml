@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Standalone Settings app icon rather than injecting into
+             Purchase's or Expenses' own settings form: this configuration
+             (API keys, fallback users, defaults) belongs to the bridge
+             itself, not to either app it touches.
+
+             base.res_config_settings_view_form is just a bare form element
+             (string="Settings" class="oe_form_configuration"
+             js_class="base_settings"); there is no div.settings wrapper
+             anywhere in it or in how other modules extend it. Every app (see
+             e.g. purchase/views/res_config_settings_views.xml) targets the
+             form element with position="inside" directly, each contributing
+             its own app block as a sibling; verified against the 19.0 source
+             on 2026-09-23. An earlier div[hasclass('settings')] xpath here
+             matched nothing and would have failed module installation
+             outright. -->
+        <record id="res_config_settings_view_form_fms_connector" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.fms.connector</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="inside">
+                    <app data-string="Fleet FMS Connector" string="Fleet FMS Connector"
+                         name="fms_connector">
+                        <block title="Credentials" name="fms_connector_credentials">
+                            <setting string="FMS calling into Odoo"
+                                     help="The key FMS sends as X-FMS-Api-Key on every call into this Odoo. Generate it here, then paste it into FMS's Odoo integration settings.">
+                                <field name="fms_inbound_api_key" readonly="1"/>
+                                <button name="action_fms_generate_inbound_api_key"
+                                        type="object" string="Generate new key"
+                                        class="btn-secondary"/>
+                            </setting>
+                            <setting string="Odoo calling into FMS"
+                                     help="Used when a purchase order confirms, to tell FMS which vendor won and at what amount.">
+                                <div class="content-group">
+                                    <div class="row">
+                                        <label for="fms_base_url" class="col-lg-4 o_light_label"/>
+                                        <field name="fms_base_url"
+                                               placeholder="https://&lt;project-ref&gt;.supabase.co/functions/v1"/>
+                                    </div>
+                                    <div class="row">
+                                        <label for="fms_outbound_api_key" class="col-lg-4 o_light_label"/>
+                                        <field name="fms_outbound_api_key" password="True"/>
+                                    </div>
+                                </div>
+                            </setting>
+                            <setting string="Public URL for links FMS sends"
+                                     help="Do not leave this blank and do not rely on the System Parameter web.base.url for this -- it is rewritten to whatever host an admin last logged in from.">
+                                <field name="fms_public_base_url"
+                                       placeholder="https://odoo.example.com"/>
+                            </setting>
+                        </block>
+                        <block title="Fallbacks and defaults" name="fms_connector_defaults">
+                            <setting string="Fallback requestor"
+                                     help="Used when a purchase request arrives and no Odoo user's login/email matches the driver or admin who raised it in FMS.">
+                                <field name="fms_default_requestor_id"/>
+                            </setting>
+                            <setting string="Fallback approver"
+                                     help="Used when the request's country/branch has no row under Fleet FMS Connector > Branch Routing.">
+                                <field name="fms_default_approver_id"/>
+                            </setting>
+                            <setting string="Fallback expense employee"
+                                     help="Used when an incoming expense's employee_email doesn't match any Odoo employee's work email.">
+                                <field name="fms_default_expense_employee_id"/>
+                            </setting>
+                            <setting string="Purchase request picking type"
+                                     help="purchase.request requires a picking type even for a service-only line such as a vehicle repair. Point this at whichever operation type your team uses for non-stock requests.">
+                                <field name="fms_default_picking_type_id"/>
+                            </setting>
+                            <setting string="Purchase request product"
+                                     help="Placeholder product used on the request line, e.g. a generic 'Vehicle Maintenance &amp; Repair Service'.">
+                                <field name="fms_default_request_product_id"/>
+                            </setting>
+                            <setting string="Expense category"
+                                     help="Expense category (product) used for expenses pushed from FMS, e.g. a generic 'Vehicle Maintenance &amp; Repair'.">
+                                <field name="fms_default_expense_product_id"/>
+                            </setting>
+                        </block>
+                    </app>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

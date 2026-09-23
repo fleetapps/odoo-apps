@@ -8,6 +8,7 @@ from ..models.tools_crypto import hash_secret, new_secret
 
 MODERN = "2026-07-28"
 LEGACY = "2025-06-18"
+LEGACY_NEWEST = "2025-11-25"
 META_VERSION = "io.modelcontextprotocol/protocolVersion"
 
 
@@ -170,6 +171,32 @@ class TestHttpEndpoints(HttpCase):
         self.assertIn("serverInfo", result)
         # Legacy clients track a session id; they still get one.
         self.assertIn("Mcp-Session-Id", r.headers)
+
+    def test_legacy_initialize_honours_the_newest_handshake_revision(self):
+        """2025-11-25 is served, not negotiated away.
+
+        The downgrade path worked - answer 2025-06-18 and let the client send
+        that back - but it only works for a client willing to step down, and
+        this revision costs nothing to speak.
+        """
+        r = self._post({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                        "params": {"protocolVersion": LEGACY_NEWEST}})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["result"]["protocolVersion"], LEGACY_NEWEST)
+
+    def test_unknown_legacy_revision_negotiates_down_to_the_newest(self):
+        """A revision we do not speak is answered with the best we do."""
+        r = self._post({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                        "params": {"protocolVersion": "2024-11-05"}})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["result"]["protocolVersion"], LEGACY_NEWEST)
+
+    def test_newest_legacy_revision_is_accepted_in_the_header(self):
+        """Once negotiated, the client sends it on every later request."""
+        r = self._post({"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                       headers={"MCP-Protocol-Version": LEGACY_NEWEST})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("tools", r.json()["result"])
 
     def test_legacy_tools_list_without_meta(self):
         r = self._post({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})

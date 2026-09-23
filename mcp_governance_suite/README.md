@@ -39,7 +39,7 @@ layer** that makes AI-over-ERP approvable:
 
 | Concern | How it's answered |
 |---|---|
-| *"Whose permissions does the AI have?"* | The signed-in user's. Every call runs through the ORM as them — `ir.model.access`, record rules, field groups and multi-company all apply. |
+| *"Whose permissions does the AI have?"* | The signed-in user's. Every call runs through the ORM as them — `ir.access` (Odoo 20's merged access rights and record rules), field groups and multi-company all apply. |
 | *"What can it touch?"* | A **scope**: per-model read/create/write/delete, field blacklists, extra record domains, row caps. Read-only by default. |
 | *"Can it change things without me?"* | Only if you allow it. Turn on **approval** and every write becomes a human-reviewed request. |
 | *"What did it do?"* | The **audit log**: one attributable row per call (user, tool, model, IP, duration, token estimate). |
@@ -204,7 +204,7 @@ AI client ──Bearer(OAuth token | API key)──▶ /mcp
   MCP governance scope   (capability gate, per-model ops, blacklist, domain, caps)
       │
       ▼  execute through the ORM AS THE USER
-  ir.model.access · ir.rule · field groups · multi-company   ← native Odoo security
+  ir.access · field groups · multi-company                   ← native Odoo security
       │
       ▼
   audit log  (+ approval gate for writes)
@@ -245,7 +245,7 @@ The server is **dual-era**, so it works with both generations of MCP client:
 | Era | Revisions | How a request opens |
 |---|---|---|
 | Modern | `2026-07-28` | Per-request `_meta` + `MCP-Protocol-Version` header; no handshake, no session. `server/discover` reports what we support. |
-| Legacy | `2025-06-18`, `2025-03-26` | `initialize` handshake, negotiated down. |
+| Legacy | `2025-11-25`, `2025-06-18`, `2025-03-26` | `initialize` handshake, negotiated down. |
 
 `2026-07-28` removed the `initialize` handshake, the GET stream and
 protocol-level sessions. Answering only one era breaks the other outright, so

@@ -3,7 +3,7 @@
 import json
 from unittest.mock import patch
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -185,6 +185,108 @@ class TestModelPicker(TransactionCase):
         again = self._picker()
         self.assertEqual(again.new_count, 0)
         self.assertEqual(again.already_count, 3)
+
+
+@tagged("post_install", "-at_install")
+class TestBulkPresets(TransactionCase):
+    """Applying one preset to many rows at once.
+
+    This is the path an administrator actually takes: add a hundred models,
+    then grant them. Doing it row by row is the same decision made hundreds of
+    times, so the bulk path has to be exactly as correct as the single one.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.scope = cls.env["mcp.scope"].create({
+            "name": "TEST bulk scope", "read_only": False})
+        cls.scope.add_models(
+            ["res.partner", "res.company", "res.country"], preset="read")
+        cls.lines = cls.scope.line_ids
+
+    def _bulk(self, preset, lines=None):
+        return (lines if lines is not None else self.lines).with_context(
+            mcp_bulk_preset=preset).action_bulk_apply()
+
+    def test_full_preset_sets_every_switch_on_every_row(self):
+        self._bulk("full")
+        for line in self.lines:
+            self.assertTrue(
+                line.can_read and line.can_create and line.can_write
+                and line.can_unlink,
+                "%s should have every data switch on" % line.model_name)
+
+    def test_draft_preset_never_grants_delete(self):
+        self._bulk("draft")
+        self.assertTrue(all(self.lines.mapped("can_write")))
+        self.assertFalse(any(self.lines.mapped("can_unlink")))
+
+    def test_read_preset_takes_write_access_away_again(self):
+        """The buttons must tighten as well as loosen, or 'Read only' lies."""
+        self._bulk("full")
+        self._bulk("read")
+        self.assertTrue(all(self.lines.mapped("can_read")))
+        self.assertFalse(any(self.lines.mapped("can_create")))
+        self.assertFalse(any(self.lines.mapped("can_unlink")))
+
+    def test_bulk_never_grants_method_calls(self):
+        """can_call_methods is the one switch that can post an invoice. No
+        preset may turn it on, however broad the preset is."""
+        self._bulk("full")
+        self.assertFalse(any(self.lines.mapped("can_call_methods")))
+
+    def test_only_the_selected_rows_change(self):
+        target = self.lines.filtered(lambda l: l.model_name == "res.partner")
+        self._bulk("full", target)
+        others = self.lines - target
+        self.assertTrue(target.can_unlink)
+        self.assertFalse(any(others.mapped("can_unlink")))
+
+    def test_unknown_preset_is_refused(self):
+        with self.assertRaises(UserError):
+            self._bulk("everything")
+
+    def test_empty_selection_is_refused(self):
+        with self.assertRaises(UserError):
+            self._bulk("full", self.env["mcp.scope.line"])
+
+    def test_warns_when_the_scope_kill_switch_makes_it_pointless(self):
+        """Granting write on a read-only scope saves and does nothing. The
+        notification has to say so - that silence is the module's easiest
+        misconfiguration."""
+        self.scope.read_only = True
+        result = self._bulk("full")
+        params = result["params"]
+        self.assertEqual(params["type"], "warning")
+        self.assertIn("Read Only", params["message"])
+        self.assertTrue(params["sticky"], "a warning nobody reads is no warning")
+
+    def test_no_warning_when_the_scope_can_actually_write(self):
+        result = self._bulk("full")
+        self.assertEqual(result["params"]["type"], "success")
+        self.assertNotIn("Read Only", result["params"]["message"])
+
+    def test_scope_level_apply_covers_every_active_line(self):
+        self.scope.with_context(
+            mcp_bulk_preset="full").action_apply_preset_to_lines()
+        self.assertTrue(all(self.scope.line_ids.mapped("can_unlink")))
+
+    def test_scope_level_apply_leaves_archived_rows_suspended(self):
+        """Archiving a row is a deliberate suspension. Re-arming it silently
+        while granting everything else would undo that without saying so."""
+        archived = self.lines[0]
+        archived.active = False
+        self.scope.with_context(
+            mcp_bulk_preset="full").action_apply_preset_to_lines()
+        self.assertFalse(archived.can_unlink)
+        self.assertFalse(archived.active)
+
+    def test_scope_level_apply_refuses_an_empty_scope(self):
+        empty = self.env["mcp.scope"].create({"name": "TEST empty scope"})
+        with self.assertRaises(UserError):
+            empty.with_context(
+                mcp_bulk_preset="full").action_apply_preset_to_lines()
 
 
 @tagged("post_install", "-at_install")

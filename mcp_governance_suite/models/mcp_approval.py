@@ -71,7 +71,7 @@ class MCPApprovalRequest(models.Model):
     def action_approve(self):
         for req in self.filtered(lambda r: r.state == "pending"):
             values = json.loads(req.values_json or "{}")
-            # Execute AS the requesting user so ACLs/ir.rules apply again.
+            # Execute AS the requesting user so ir.access applies again.
             env_as = self.env(user=req.user_id.id)
             try:
                 Model = env_as[req.model_name]

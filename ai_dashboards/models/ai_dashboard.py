@@ -8,7 +8,7 @@ ORM - which is what makes a shared dashboard safe to share and impossible to
 leave stale.
 
 Deliberately not an ``ir.ui.menu``. Only ``base.group_system`` may create menus
-(base/security/ir.model.access.csv), so a dashboard built by an assistant
+(base/security/ir.access.csv), so a dashboard built by an assistant
 running as an ordinary employee could not be one without handing every employee
 the power to rewrite the database's navigation. A record in this model, reached
 through the app tile, needs no elevated rights at all - and gets ownership,

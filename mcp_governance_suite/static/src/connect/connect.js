@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, markup, onMounted, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, markup, onMounted, onWillStart, onWillUnmount, proxy } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
@@ -17,14 +17,17 @@ const POLL_SLOW = 30000;
 
 export class MCPConnect extends Component {
     static template = "mcp_governance_suite.Connect";
-    static props = ["*"];
+    // No props declaration: Owl 3 validates only what a component declares
+    // through useProps, and this screen is a client action that reads none of
+    // the props the action service hands it. The old `static props = ["*"]`
+    // existed purely to quiet Owl 2's validator, and Owl 3 raises on it.
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
 
-        this.state = useState({
+        this.state = proxy({
             data: null,
             loading: true,
             failed: false,

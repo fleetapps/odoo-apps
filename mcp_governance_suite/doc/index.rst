@@ -54,7 +54,7 @@ Then, under **AI MCP → Permissions**:
   approval requirement, a rate limit and a row cap. Assign a scope per user
   under **Settings → Users**, or set the database-wide default here.
 
-Every call still runs through Odoo's own ``ir.model.access`` and record rules
+Every call still runs through Odoo's own ``ir.access`` rows
 as the connected user — a scope can only narrow what a user can already do,
 never widen it.
 

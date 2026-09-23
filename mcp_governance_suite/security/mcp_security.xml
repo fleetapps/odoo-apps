@@ -59,8 +59,8 @@
              This is navigation, not security. The three real gates are
              untouched: the read-only default governance scope, the per-model
              permission matrix, and - underneath both - the user's own
-             ir.model.access and record rules, which an MCP call can only ever
-             narrow, never widen. A user reaching this menu can connect an
+             ir.access rows, which an MCP call can only ever narrow, never
+             widen. A user reaching this menu can connect an
              assistant that sees exactly what they can already see.
 
              Deliberately not noupdate, so it also applies on every -u of an
@@ -74,68 +74,13 @@
             <field name="implied_ids" eval="[(4, ref('group_mcp_user'))]"/>
         </record>
 
-        <!-- ======================================= Record Rules =========== -->
-        <!-- API keys: a user sees only their own; admins see all. -->
-        <record id="rule_api_key_own" model="ir.rule">
-            <field name="name">MCP keys: own only</field>
-            <field name="model_id" ref="model_mcp_api_key"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
-        </record>
-        <record id="rule_api_key_admin" model="ir.rule">
-            <field name="name">MCP keys: admin all</field>
-            <field name="model_id" ref="model_mcp_api_key"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_admin'))]"/>
-        </record>
-        <!-- Multi-company isolation for keys. -->
-        <record id="rule_api_key_company" model="ir.rule">
-            <field name="name">MCP keys: company</field>
-            <field name="model_id" ref="model_mcp_api_key"/>
-            <field name="global" eval="True"/>
-            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-        </record>
-
-        <!-- OAuth tokens: own vs admin. -->
-        <record id="rule_oauth_token_own" model="ir.rule">
-            <field name="name">MCP tokens: own only</field>
-            <field name="model_id" ref="model_mcp_oauth_token"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
-        </record>
-        <record id="rule_oauth_token_admin" model="ir.rule">
-            <field name="name">MCP tokens: admin all</field>
-            <field name="model_id" ref="model_mcp_oauth_token"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_admin'))]"/>
-        </record>
-
-        <!-- Audit log: own vs admin (approvers may see all to investigate). -->
-        <record id="rule_audit_own" model="ir.rule">
-            <field name="name">MCP audit: own only</field>
-            <field name="model_id" ref="model_mcp_audit_log"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
-        </record>
-        <record id="rule_audit_admin" model="ir.rule">
-            <field name="name">MCP audit: admin/approver all</field>
-            <field name="model_id" ref="model_mcp_audit_log"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_approver'))]"/>
-        </record>
-
-        <!-- Approvals: a user tracks their own; approvers see the whole queue. -->
-        <record id="rule_approval_own" model="ir.rule">
-            <field name="name">MCP approvals: own only</field>
-            <field name="model_id" ref="model_mcp_approval_request"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_user'))]"/>
-        </record>
-        <record id="rule_approval_approver" model="ir.rule">
-            <field name="name">MCP approvals: approver all</field>
-            <field name="model_id" ref="model_mcp_approval_request"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mcp_approver'))]"/>
-        </record>
+        <!-- ======================================= Access ================ -->
+        <!-- Odoo 20 merged ir.model.access and ir.rule into a single
+             ir.access model, so every rule that used to live here is now a row
+             in security/ir.access.csv carrying both the operations and the
+             domain. A row with a group is a *permission* (rows union, so an
+             administrator implying the user group still sees everything); a row
+             with no group is a *restriction* that intersects for everybody -
+             which is what the old global multi-company rule on API keys became. -->
     </data>
 </odoo>

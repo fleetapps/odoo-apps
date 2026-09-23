@@ -2,7 +2,75 @@
 
 All notable changes to **Odoo MCP** are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
-Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
+Odoo's `SERIES.MAJOR.MINOR.PATCH` scheme.
+
+## [20.0.1.0.0] — 2026-09-24
+
+Port to **Odoo 20**. Two platform rewrites land in this release, and both are
+the kind that fail silently rather than loudly, so they are spelled out.
+
+### Changed
+- **`security/ir.model.access.csv` → `security/ir.access.csv`.** Odoo 20 merged
+  access rights and record rules into one `ir.access` model; `ir.model.access`
+  and `ir.rule` no longer exist (`odoo/addons/base/models/ir_access.py`, and
+  neither `ir_rule.py` nor an `IrModelAccess` class survives). Each row now
+  carries the operations as a compact `crud` string *and* the domain, so the
+  nine record rules that used to live in `mcp_security.xml` are folded into the
+  matching permission rows.
+
+  The semantics are preserved, including the part that is easy to get wrong: a
+  row **with** a group is a permission and permissions union, so an
+  administrator implying the user group still sees every key, token, audit line
+  and approval. A row with **no** group is a *restriction* that intersects for
+  everybody — which is the old global multi-company rule on API keys, and which
+  is the opposite of what a group-less row meant under `ir.model.access`.
+
+  Note the 20.0 developer documentation still documents `ir.model.access` and
+  `ir.rule` on the security page; the source does not. The source won.
+- **Owl 3.** Odoo 20 replaces Owl 2, and `useState` and `useRef` are gone with
+  no shim in `web/static/src/owl2/owl3_compatibility_layer.js`. The Connect
+  screen now builds its state with `proxy()` and declares no props at all — it
+  never read the ones the action service hands it, and the old
+  `static props = ["*"]` existed only to quiet Owl 2's validator, which Owl 3
+  raises on.
+
+### Added
+- **Bulk permission presets on the model matrix.** Tick any number of rows and
+  set them all to *Read only*, *Read + Write* or *Full access* from the
+  selection bar; the same three buttons sit on the scope form and apply to every
+  model in the scope. Configuring a scope was previously one decision per row
+  per column — for a hundred models that is several hundred clicks, and it stops
+  being a decision long before the end.
+
+  No preset ever grants **Method Calls**: that is the one switch that can
+  confirm an order or post an invoice, so it stays a per-model choice made next
+  to its warning. If the selection belongs to a scope whose Read Only
+  kill-switch is still on, the confirmation says so and sticks, because those
+  toggles save, look right and change nothing.
+- **Protocol revision `2025-11-25`** is now served directly rather than
+  negotiated away. The downgrade path did work — a client pinned to it opens
+  with `initialize` and is answered `2025-06-18` — but it only works for a
+  client willing to step down, and the revision costs nothing to speak:
+  everything it makes mandatory was already here (the 403 on a bad `Origin`,
+  RFC 9728 discovery with `WWW-Authenticate` optional), and its two headline
+  additions, CIMD registration and incremental scope consent, were built before
+  this module claimed the revision at all.
+
+### Performance
+- **The permission matrix is no longer an editable list.** With 130 models it
+  was instantiating an editing widget per cell per row, plus a many2one
+  autocomplete per row for a value that never legitimately changes. It now
+  renders static cells with live components only for the toggles, shows the
+  model's name instead of an editable `model_id`, and hides *Last Modified* /
+  *Modified By* by default.
+
+  The toggles did not become read-only — they got better. In a non-editable list
+  a row stays in readonly mode, and Odoo 20's `record.update()` saves by itself
+  whenever the record is not in edition, so a click now commits immediately
+  instead of leaving the row dirty until you tab away. `multi_edit` still works:
+  the renderer enters edit mode for a selected row regardless of `editable`, so
+  ticking rows and editing one cell still applies it to all of them. The text
+  columns are edited on the row's form, where the warnings are.
 
 ## [19.0.3.8.0] — 2026-08-27
 

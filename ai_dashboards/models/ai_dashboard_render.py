@@ -3,7 +3,7 @@
 
 The single most important line in this file is that nothing here runs with
 elevated rights. A dashboard is opened by a person, and every query runs as
-**that** person through the ordinary ORM, so their ``ir.model.access``, record
+**that** person through the ordinary ORM, so their ``ir.access`` rows, record
 rules, field permissions and company access all apply. Two colleagues opening
 the same shared dashboard correctly see different numbers, and neither of them
 sees anything they could not have found by hand.

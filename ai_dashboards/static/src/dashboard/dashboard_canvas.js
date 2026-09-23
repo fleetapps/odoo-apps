@@ -1,6 +1,14 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillUnmount, useRef, useState, useEffect } from "@odoo/owl";
+import {
+    Component,
+    onWillStart,
+    onWillUnmount,
+    proxy,
+    signal,
+    useOnChange,
+    useProps,
+} from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
 import { registry } from "@web/core/registry";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
@@ -66,15 +74,19 @@ const FORMAT_LABELS = {
 export class AIDashboardCanvas extends Component {
     static template = "ai_dashboards.Canvas";
     static components = { Dropdown };
-    static props = { ...standardFieldProps };
+    // Owl 3 ignores `static props` - the compatibility layer raises on it
+    // outright - and a ref is a signal you call rather than an object with an
+    // `.el`. Both have to be class fields, not setup() locals.
+    props = useProps({ ...standardFieldProps });
+    rootRef = signal.ref();
+    renamerRef = signal.ref();
 
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
-        this.rootRef = useRef("root");
 
-        this.state = useState({
+        this.state = proxy({
             loading: true,
             error: null,
             data: null,
@@ -110,25 +122,30 @@ export class AIDashboardCanvas extends Component {
         // painted by Chart.js rather than by the template, so recolouring a
         // tile or switching a bar to a line changes nothing on screen unless
         // this runs — the second dependency is what makes those edits visible.
-        useEffect(
+        // useOnChange, not Owl 3's useEffect: useEffect auto-tracks every
+        // signal the callback touches, and drawAll() reads most of the state,
+        // so it would redraw on paging, on entering edit mode, on a rename -
+        // and Chart.js teardown plus rebuild is not free. useOnChange keeps the
+        // Owl 2 contract: an explicit dependency list, shallow-compared, with
+        // the callback untracked.
+        useOnChange(
+            () => [this.state.data, this.props.record.data[this.props.name]],
             () => {
                 this.drawAll();
                 return () => this.destroyCharts();
-            },
-            () => [this.state.data, this.props.record.data[this.props.name]]
+            }
         );
 
         // Put the cursor in the title box the moment it opens, with the old
         // name selected, so renaming is one gesture instead of three.
-        this.renamerRef = useRef("renamer");
-        useEffect(
+        useOnChange(
+            () => [this.renamerRef()],
             (el) => {
                 if (el) {
                     el.focus();
                     el.select();
                 }
-            },
-            () => [this.renamerRef.el]
+            }
         );
 
         // One rule, and it replaces a pile of special cases: if the figures we
@@ -362,7 +379,7 @@ export class AIDashboardCanvas extends Component {
 
     drawAll() {
         this.destroyCharts();
-        if (!this.state.data || !this.rootRef.el) {
+        if (!this.state.data || !this.rootRef()) {
             return;
         }
         for (const widget of this.widgets) {
@@ -372,7 +389,7 @@ export class AIDashboardCanvas extends Component {
                     || widget.calculating) {
                 continue;
             }
-            const canvas = this.rootRef.el.querySelector(
+            const canvas = this.rootRef().querySelector(
                 `canvas[data-widget="${widget.id}"]`
             );
             if (canvas) {

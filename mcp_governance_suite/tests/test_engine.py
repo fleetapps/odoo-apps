@@ -2,7 +2,7 @@
 """Engine governance tests: scoping, blacklists, read-only, approval, limits.
 
 Odoo testing reference:
-https://www.odoo.com/documentation/19.0/developer/reference/backend/testing.html
+https://www.odoo.com/documentation/20.0/developer/reference/backend/testing.html
 """
 import json
 
