@@ -267,6 +267,32 @@ class TestBulkPresets(TransactionCase):
         self.assertEqual(result["params"]["type"], "success")
         self.assertNotIn("Read Only", result["params"]["message"])
 
+    def test_tightening_a_read_only_scope_does_not_warn_about_writes(self):
+        """write_bits_inert is also true when Method Calls is on, and no preset
+        touches that switch. Reading it naively made 'Read only' announce that
+        the write switches just set were being overridden - after turning every
+        one of them off."""
+        self.scope.read_only = True
+        result = self._bulk("read")
+        self.assertNotIn("Read Only", result["params"]["message"])
+
+    def test_read_preset_says_method_calls_are_still_on(self):
+        """No preset clears Method Calls, so 'Read only' does not actually make
+        the row read-only. Saying nothing would be a lie by omission."""
+        line = self.lines[0]
+        line.write({"can_call_methods": True,
+                    "allowed_methods": "action_archive"})
+        result = self._bulk("read")
+        params = result["params"]
+        self.assertEqual(params["type"], "warning")
+        self.assertIn("Method Calls", params["message"])
+        self.assertIn(line.model_name, params["message"])
+
+    def test_read_preset_is_quiet_when_no_row_can_call_methods(self):
+        result = self._bulk("read")
+        self.assertEqual(result["params"]["type"], "success")
+        self.assertNotIn("Method Calls", result["params"]["message"])
+
     def test_scope_level_apply_covers_every_active_line(self):
         self.scope.with_context(
             mcp_bulk_preset="full").action_apply_preset_to_lines()

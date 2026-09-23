@@ -213,23 +213,17 @@ class MCPScope(models.Model):
         message = _(
             "%(count)s model(s) in '%(scope)s' set to: %(preset)s.",
             count=len(lines), scope=self.name, preset=PRESET_LABELS[preset])
-
-        # Granting write on a read-only scope saves, looks right, and changes
-        # nothing. It is this module's easiest misconfiguration, so say so.
-        inert = self.read_only and preset != "read"
-        if inert:
-            message += "\n\n" + _(
-                "Read Only is still on for this scope, which overrides every "
-                "write switch just set. Turn it off - keeping Require Approval "
-                "on - to make them take effect.")
+        # Same two silent traps as the matrix buttons, same wording.
+        suffix, warn = lines._preset_advisory(preset)
+        message += suffix
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
                 "title": _("Model permissions updated"),
                 "message": message,
-                "type": "warning" if inert else "success",
-                "sticky": bool(inert),
+                "type": "warning" if warn else "success",
+                "sticky": warn,
                 "next": {"type": "ir.actions.client", "tag": "soft_reload"},
             },
         }
@@ -370,6 +364,42 @@ class MCPScopeLine(models.Model):
             "can_unlink": can_unlink,
         })
 
+    def _preset_advisory(self, preset):
+        """What an admin still needs to know after a bulk preset landed.
+
+        Two things can make a preset not mean what the button said, and both are
+        silent, so both are spelled out here rather than discovered later:
+
+        * Granting writes on a scope whose Read Only kill-switch is on. The
+          switches save, look right and change nothing.
+        * Tightening to Read only on a row whose Method Calls switch is on. No
+          preset touches that switch - it is the one that can confirm an order
+          or post an invoice - so the row is not actually read-only afterwards.
+
+        Returns ``(message_suffix, is_warning)``.
+        """
+        if preset == "read":
+            # Only the second case can apply: no write bits were granted.
+            loud = self.filtered("can_call_methods")
+            if not loud:
+                return "", False
+            return "\n\n" + _(
+                "Method Calls is still on for %(models)s. No preset ever turns "
+                "that switch off, because it is the one that can confirm an "
+                "order or post an invoice - so those models are not read-only "
+                "yet. Clear it on each row.",
+                models=", ".join(sorted(loud.mapped("model_name")))), True
+
+        inert = self.filtered("write_bits_inert").scope_id
+        if not inert:
+            return "", False
+        return "\n\n" + _(
+            "Read Only is still switched on for %(scopes)s, which overrides "
+            "every write switch just set - they save and change nothing. Turn "
+            "Read Only off there, keeping Require Approval on, to make them "
+            "take effect.",
+            scopes=", ".join(sorted(inert.mapped("name")))), True
+
     def action_bulk_apply(self):
         """Apply the preset named in the context to every selected row.
 
@@ -394,19 +424,8 @@ class MCPScopeLine(models.Model):
         message = _(
             "%(count)s model(s) set to: %(preset)s.",
             count=len(self), preset=PRESET_LABELS[preset])
-
-        # The single easiest way to misconfigure this module is to grant write
-        # access on a scope whose Read Only kill-switch is still on: the
-        # switches save, look right and change nothing. Say so here rather than
-        # letting the admin discover it when the AI refuses.
-        inert = self.filtered("write_bits_inert").scope_id
-        if inert:
-            message += "\n\n" + _(
-                "Note: %(scopes)s still has Read Only switched on, which "
-                "overrides every write switch you just set. Turn Read Only off "
-                "on that scope - keeping Require Approval on - to make them "
-                "take effect.",
-                scopes=", ".join(inert.mapped("name")))
+        suffix, warn = self._preset_advisory(preset)
+        message += suffix
 
         return {
             "type": "ir.actions.client",
@@ -414,8 +433,8 @@ class MCPScopeLine(models.Model):
             "params": {
                 "title": _("Model permissions updated"),
                 "message": message,
-                "type": "warning" if inert else "success",
-                "sticky": bool(inert),
+                "type": "warning" if warn else "success",
+                "sticky": warn,
                 # display_notification returns params.next, and soft_reload
                 # restores the current controller - so the toggles repaint with
                 # what was just written instead of showing stale values until

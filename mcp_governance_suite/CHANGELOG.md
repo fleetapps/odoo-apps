@@ -44,9 +44,14 @@ the kind that fail silently rather than loudly, so they are spelled out.
 
   No preset ever grants **Method Calls**: that is the one switch that can
   confirm an order or post an invoice, so it stays a per-model choice made next
-  to its warning. If the selection belongs to a scope whose Read Only
-  kill-switch is still on, the confirmation says so and sticks, because those
-  toggles save, look right and change nothing.
+  to its warning.
+
+  Because two things can quietly make a preset not mean what the button said,
+  the confirmation says so and sticks. Granting writes on a scope whose Read
+  Only kill-switch is on: the switches save, look right and change nothing.
+  Tightening to *Read only* on a row whose Method Calls switch is on: no preset
+  clears that switch, so the row is not actually read-only afterwards, and the
+  message names the models that still need it turned off by hand.
 - **Protocol revision `2025-11-25`** is now served directly rather than
   negotiated away. The downgrade path did work — a client pinned to it opens
   with `initialize` and is answered `2025-06-18` — but it only works for a
