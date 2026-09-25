@@ -65,5 +65,10 @@ No phone-home, no CDN -- everything runs inside your Odoo.
     ],
     "pre_init_hook": "pre_init_check",
     "installable": True,
-    "application": False,
+    # Must be True or the module is invisible in Apps: that list defaults to the
+    # "Apps" filter, which is domain [('application','=',True)], so with False it
+    # only ever showed up under Settings > Technical > Modules. It carries its own
+    # root menu anyway, so it behaves like an app. Every other module in this repo
+    # sets True; this one was the odd exception.
+    "application": True,
 }
