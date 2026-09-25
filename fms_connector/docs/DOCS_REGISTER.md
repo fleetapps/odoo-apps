@@ -1,5 +1,14 @@
 # VERIFY-ON-BUILD register — fms_connector
 
+> **Target: Odoo 18/19 only — do not port to Odoo 20.** This is a bespoke
+> bridge for one customer on 18/19, not an App Store listing, and no user of
+> it is on 20 (confirmed 2026-09-24). It keeps the 19.0 security shapes
+> (`security/ir.model.access.csv` + an `ir.rule`) on purpose, even though the
+> rest of this repo sits on the `20.0` branch where both models are gone in
+> favour of unified `ir.access`. Views were still validated against the 20.0
+> RNG (`tools/viewcheck/rngcheck.py`) and pass, so the exception is limited
+> to security.
+
 Every platform assumption baked into this module, closed with the document
 consulted and the date. Re-verify anything touching `purchase_request`
 against the customer's actual installed version before go-live -- it is an
@@ -22,6 +31,7 @@ against.
 | 11 | Callback delivery | Best-effort only in this first cut (`requests.post`, 10s timeout, logged failure, no retry). If FMS reachability proves flaky in practice, promote to a queued job (small log table + `ir.cron` sweep) rather than tightening the timeout | design choice, matches the scope agreed for this phase | 2026-09-23 |
 | 12 | `hr.expense` needs an explicit submit step | **Bug found and fixed 2026-09-23.** A bare `create()` left every pushed expense stuck in `state == 'draft'` forever on both versions -- nobody was ever notified, and there was nothing for Rose to approve. Odoo 19 removed `hr.expense.sheet` entirely (`action_submit()` now lives directly on `hr.expense`, auto-approving when the employee has no expense manager); Odoo 18 computes `state` purely from a linked `hr.expense.sheet` and has no direct action on `hr.expense` at all. `_fms_submit_for_approval()` branches on `hasattr(self, 'action_submit')` to call the right one. Also confirmed `action_submit()`'s own permission check (`user.employee_id != expense.employee_id and not expense.can_approve`) does not block a `.sudo()` call: `can_approve`'s compute explicitly treats `self.env.su` as sufficient | <https://github.com/odoo/odoo/blob/19.0/addons/hr_expense/models/hr_expense.py>, <https://github.com/odoo/odoo/blob/18.0/addons/hr_expense/models/hr_expense_sheet.py> | 2026-09-23 |
 | 13 | `fms.connector.branch.route.country` `required=True` contradicted its own help text | **Bug found and fixed 2026-09-23.** The field's help text documented "leave country blank to match any country for this branch," but `required=True` makes Odoo's ORM reject a blank value on save -- the wildcard-country fallback branch in `resolve_approver()` could never actually be reached. Removed `required=True` | internal contradiction, no external doc needed | 2026-09-23 |
+| 14 | Approval is a PO **state transition**, not `button_confirm` | **Bug found and fixed 2026-09-24.** `button_confirm` is not the approval moment: `if order._approval_allowed(): order.button_approve() else: order.write({'state': 'to approve'})`. Under two-step validation over the threshold the order parks in `'to approve'`, yet the old `button_confirm` override notified FMS unconditionally -- so FMS told the driver "approved, proceed with the vehicle" while Odoo was still waiting on the approver, and never notified when real approval landed. Now overrides `write` and fires only for orders entering `'purchase'`, which covers `button_approve`, one-step `button_confirm` (which routes through it), and any server action or import writing the same state. Payload reports `state: "approved"` from the order, since the OCA request's own state is manual-button-driven and means nothing here | <https://github.com/odoo/odoo/blob/19.0/addons/purchase/models/purchase_order.py> (re-checked against 18.0 and 20.0, same shape) | 2026-09-24 |
 
 ## Open items for the customer's Odoo team to confirm before go-live
 

@@ -1,5 +1,10 @@
 # Fleet FMS Connector
 
+> **Odoo 18/19 only — do not port to Odoo 20.** Bespoke bridge for one
+> customer on 18/19, not an App Store listing; no user of it is on 20. It
+> keeps the 19.0 security shapes on purpose while the rest of this repo sits
+> on the `20.0` branch. See `docs/DOCS_REGISTER.md`.
+
 A narrow bridge between the Fleet FMS app and Odoo. It does **not** move
 RFQs, vendor quotations, bid analysis or PO/expense approval into FMS --
 those stay exactly where they are today, in Odoo. It only carries two

@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 # Manifest reference:
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
+#
+# TARGET: Odoo 18/19 ONLY. Do not port this module to Odoo 20.
+# It is a bespoke bridge for one customer who runs 18/19, not an App Store
+# listing, and nobody who uses it is on 20 (confirmed with the customer,
+# 2026-09-24). It therefore deliberately keeps the 19.0 security shapes --
+# security/ir.model.access.csv and an ir.rule -- which Odoo 20 replaced with
+# the unified ir.access model. The rest of this repo lives on the 20.0 branch
+# and has been ported; this module is the standing exception.
 {
     "name": "Fleet FMS Connector",
     "version": "19.0.1.0.0",
