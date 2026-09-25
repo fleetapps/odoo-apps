@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_fms_branch_route_list" model="ir.ui.view">
+            <field name="name">fms.connector.branch.route.list</field>
+            <field name="model">fms.connector.branch.route</field>
+            <field name="arch" type="xml">
+                <list editable="bottom">
+                    <field name="country"/>
+                    <field name="branch"/>
+                    <field name="approver_id"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_fms_branch_route_form" model="ir.ui.view">
+            <field name="name">fms.connector.branch.route.form</field>
+            <field name="model">fms.connector.branch.route</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <field name="country" placeholder="Leave blank to match any country for this branch"/>
+                            <field name="branch"/>
+                            <field name="approver_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_fms_branch_route" model="ir.actions.act_window">
+            <field name="name">Branch Routing</field>
+            <field name="res_model">fms.connector.branch.route</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Add a route to say who approves purchase requests raised
+                    from a given branch/country.
+                </p>
+                <p>
+                    A branch with no row here falls back to the instance-wide
+                    default approver under Settings &gt; Fleet FMS Connector.
+                </p>
+            </field>
+        </record>
+
+        <menuitem id="menu_fms_connector_root" name="Fleet FMS Connector"
+                  sequence="95" groups="fms_connector.group_fms_connector_manager"/>
+        <menuitem id="menu_fms_branch_route" name="Branch Routing"
+                  parent="menu_fms_connector_root"
+                  action="action_fms_branch_route" sequence="10"/>
+
+    </data>
+</odoo>
