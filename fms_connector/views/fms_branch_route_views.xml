@@ -49,6 +49,7 @@
         </record>
 
         <menuitem id="menu_fms_connector_root" name="Fleet FMS Connector"
+                  web_icon="fms_connector,static/description/icon.png"
                   sequence="95" groups="fms_connector.group_fms_connector_manager"/>
         <menuitem id="menu_fms_branch_route" name="Branch Routing"
                   parent="menu_fms_connector_root"
