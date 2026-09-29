@@ -48,6 +48,9 @@
                         <footer class="mt-2 small text-muted d-block">
                             <div>Last approved close: <field name="desk_last_closing_date"/></div>
                             <div invisible="kind != 'bar'">Last POS day: <field name="desk_last_pos_date"/></div>
+                            <div class="text-warning" invisible="not desk_pos_missing_date">
+                                POS day missing: <field name="desk_pos_missing_date"/>
+                            </div>
                             <div>Variance, last 7 days: <field name="desk_variance_week" widget="monetary"/></div>
                         </footer>
                     </t>

@@ -4,8 +4,10 @@ from odoo import api, fields, models
 class OdinBarPosDay(models.Model):
     """One row per bar and trading day whose POS sales are posted to stock.
 
-    The POS importer creates these through ``odin.bar._mark_pos_posted``. A
-    manager can also add one by hand for a day the bar did not trade.
+    The POS importer creates these through ``odin.bar._mark_pos_posted`` and
+    removes them through ``odin.bar._unmark_pos_posted``. A manager can add
+    one by hand for a day without a POS report, e.g. the club was closed.
+    Adding or removing a row by hand moves no stock.
     """
 
     _name = "odin.bar.pos.day"

@@ -62,9 +62,10 @@
                             <group>
                                 <group>
                                     <field name="pos_required"/>
-                                    <field name="partner_id"/>
                                     <field name="pos_group_name"/>
                                     <field name="pos_suffix"/>
+                                    <field name="partner_id"/>
+                                    <field name="pos_start_date" invisible="not pos_required"/>
                                 </group>
                             </group>
                         </page>

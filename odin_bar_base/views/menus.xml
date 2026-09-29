@@ -6,11 +6,16 @@
               groups="stock.group_stock_user"
               sequence="46"/>
 
-    <menuitem id="menu_bar_pos_days"
+    <menuitem id="menu_bar_pos"
               name="POS import"
               parent="menu_bar_root"
-              action="odin_bar_pos_day_action"
               sequence="50"/>
+
+    <menuitem id="menu_bar_pos_days"
+              name="Days by bar"
+              parent="menu_bar_pos"
+              action="odin_bar_pos_day_action"
+              sequence="30"/>
 
     <menuitem id="menu_bar_config"
               name="Configuration"

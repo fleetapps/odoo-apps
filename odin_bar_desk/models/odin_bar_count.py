@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import pytz
 
 from odoo import _, api, fields, models
@@ -70,6 +72,12 @@ class OdinBarCount(models.Model):
     )
     approve_blocked_reason = fields.Char(compute="_compute_approve_blocked_reason")
     preview_ready = fields.Boolean(compute="_compute_approve_blocked_reason")
+    pos_missing_date = fields.Date(
+        "POS day missing",
+        compute="_compute_approve_blocked_reason",
+        help="First trading day whose POS sales must be posted before this count can be approved.",
+    )
+    pos_import_available = fields.Boolean(compute="_compute_approve_blocked_reason")
     note = fields.Text("Manager note")
 
     _one_approved_closing = models.UniqueIndex(
@@ -106,21 +114,28 @@ class OdinBarCount(models.Model):
     def _compute_approve_blocked_reason(self):
         for count in self:
             waiting = count.state in ("submitted", "recount")
+            missing = waiting and count.bar_id._pos_missing_day(count.business_date)
+            count.pos_missing_date = missing or False
+            count.pos_import_available = bool(missing and count.bar_id._pos_import_action(missing))
             count.approve_blocked_reason = waiting and count._approve_blocked_reason()
-            count.preview_ready = waiting and count._pos_ready()
+            count.preview_ready = waiting and not missing
 
     def _pos_ready(self):
+        """Whether the POS sales this count depends on are all posted: those of
+        its own trading day and of every day before it. A spot count needs its
+        day too, to know which items sold that day."""
         self.ensure_one()
-        return self.kind != "closing" or self.bar_id._pos_day_posted(self.business_date)
+        return self.bar_id._pos_day_posted(self.business_date)
 
     def _approve_blocked_reason(self):
         """Why this count cannot be approved yet, or False."""
         self.ensure_one()
-        if not self._pos_ready():
+        missing = self.bar_id._pos_missing_day(self.business_date)
+        if missing:
             return _(
                 "Post the POS import for %(bar)s on %(day)s before approving this count.",
                 bar=self.bar_id.name,
-                day=format_date(self.env, self.business_date, date_format="EEE d MMM"),
+                day=format_date(self.env, missing, date_format="EEE d MMM"),
             )
         earlier = self._earlier_pending()
         if earlier:
@@ -129,6 +144,17 @@ class OdinBarCount(models.Model):
                 count=earlier.name,
             )
         return False
+
+    def _pos_sold_products(self, products):
+        """Products a spot count leaves alone: the POS sold them at the bar
+        that trading day. Sales come as one total per day, so there is no
+        telling how many were sold before the count. The closing count
+        checks them."""
+        self.ensure_one()
+        if self.kind != "spot" or not self.bar_id._pos_tracked():
+            return self.env["product.product"]
+        moved = self.bar_id._pos_moved_qty(products, self.business_date)
+        return products.filtered(lambda product: not product.uom_id.is_zero(moved[product.id]))
 
     def _earlier_pending(self):
         """Older counts of the same bar still waiting for a decision. Approving
@@ -149,6 +175,14 @@ class OdinBarCount(models.Model):
         if not self.env.su and not self.env.user.has_group(MANAGER_GROUP):
             raise AccessError(_("Only Bar Desk managers can do this."))
 
+    def action_open_pos_import(self):
+        self.ensure_one()
+        missing = self.bar_id._pos_missing_day(self.business_date)
+        action = missing and self.bar_id._pos_import_action(missing)
+        if not action:
+            raise UserError(_("The POS days of this count are already posted."))
+        return action
+
     def action_approve(self):
         self._check_manager()
         for count in self.sorted(lambda c: (c.submitted_at or c.create_date, c.id)):
@@ -163,32 +197,56 @@ class OdinBarCount(models.Model):
     def _post_adjustments(self):
         """Post counted minus expected, as it stood when the count was submitted."""
         self.ensure_one()
-        bar = self.bar_id
-        company = bar.company_id
+        company = self.bar_id.company_id
         lines = self.line_ids.filtered("touched")
-        expected = bar._stock_as_of(
-            lines.product_id, self.submitted_at, self.business_date, closing=self.kind == "closing"
+        sold = self._pos_sold_products(lines.product_id)
+        expected = self.bar_id._stock_as_of(
+            lines.product_id - sold,
+            self.submitted_at,
+            self.business_date,
+            closing=self.kind == "closing",
         )
-        fallback_location = self.env["stock.location"].search(
-            [("usage", "=", "inventory"), ("company_id", "in", [company.id, False])], limit=1
-        )
-        move_vals = []
+        diffs = {}
         for line in lines:
             product = line.product_id.with_company(company)
-            uom = product.uom_id
-            expected_qty = expected.get(product.id, 0.0)
-            diff = uom.round(line.counted_qty - expected_qty)
             cost = product.standard_price
+            if line.product_id in sold:
+                line.write(
+                    {"expected_qty": 0.0, "diff_qty": 0.0, "unit_cost": cost, "diff_value": 0.0, "skipped": True}
+                )
+                continue
+            expected_qty = expected.get(product.id, 0.0)
+            diff = product.uom_id.round(line.counted_qty - expected_qty)
             line.write(
                 {
                     "expected_qty": expected_qty,
                     "diff_qty": diff,
                     "unit_cost": cost,
                     "diff_value": company.currency_id.round(diff * cost),
+                    "skipped": False,
                 }
             )
-            if uom.is_zero(diff):
-                continue
+            if not product.uom_id.is_zero(diff):
+                diffs[product] = diff
+        self._create_adjustment_moves(diffs, self.name)
+        self.write(
+            {"state": "approved", "approved_by_id": self.env.uid, "approved_at": fields.Datetime.now()}
+        )
+
+    def _create_adjustment_moves(self, diffs, name):
+        """Inventory moves changing the bar's stock by ``diffs`` ({product:
+        signed quantity in its unit}), dated when the count was submitted, so
+        later counts see them in their own "as of" position whatever order
+        they are approved in."""
+        self.ensure_one()
+        bar = self.bar_id
+        company = bar.company_id
+        fallback_location = self.env["stock.location"].search(
+            [("usage", "=", "inventory"), ("company_id", "in", [company.id, False])], limit=1
+        )
+        move_vals = []
+        for product, diff in diffs.items():
+            uom = product.uom_id
             inventory_location = product.property_stock_inventory or fallback_location
             if diff > 0:
                 source, destination = inventory_location, bar.location_id
@@ -204,7 +262,7 @@ class OdinBarCount(models.Model):
                     "location_id": source.id,
                     "location_dest_id": destination.id,
                     "is_inventory": True,
-                    "inventory_name": self.name,
+                    "inventory_name": name,
                     "picked": True,
                     "bar_count_id": self.id,
                     "move_line_ids": [
@@ -226,13 +284,39 @@ class OdinBarCount(models.Model):
         moves = self.env["stock.move"].create(move_vals)
         moves._action_done()
         if moves:
-            # Date the adjustment when the count was taken, so later counts see
-            # it in their own "as of" position whatever order they are approved in.
             moves.write({"date": self.submitted_at})
             moves.move_line_ids.write({"date": self.submitted_at})
-        self.write(
-            {"state": "approved", "approved_by_id": self.env.uid, "approved_at": fields.Datetime.now()}
-        )
+        return moves
+
+    def _reopen(self, reason):
+        """Send approved counts back for approval. Their adjustments are
+        reversed, dated like the originals, so a manager approves them again
+        with the expected quantities worked out afresh."""
+        location_ids = set()
+        for count in self.filtered(lambda c: c.state == "approved"):
+            company = count.bar_id.company_id
+            location = count.bar_id.location_id
+            location_ids.add(location.id)
+            net = defaultdict(float)
+            for move in count.move_ids.filtered(lambda m: m.state == "done"):
+                if move.location_dest_id == location:
+                    net[move.product_id] += move.product_qty
+                elif move.location_id == location:
+                    net[move.product_id] -= move.product_qty
+            count._create_adjustment_moves(
+                {
+                    product.with_company(company): -qty
+                    for product, qty in net.items()
+                    if not product.uom_id.is_zero(qty)
+                },
+                _("%(count)s (reopened)", count=count.name),
+            )
+            count.line_ids.write(
+                {"expected_qty": 0.0, "diff_qty": 0.0, "unit_cost": 0.0, "diff_value": 0.0, "skipped": False}
+            )
+            count.write({"state": "submitted", "approved_by_id": False, "approved_at": False})
+            count.message_post(body=reason)
+        return True
 
     def action_request_recount(self):
         self._check_manager()
@@ -290,6 +374,13 @@ class OdinBarCountLine(models.Model):
     diff_qty = fields.Float("Difference", readonly=True, digits="Product Unit")
     unit_cost = fields.Float("Unit cost", readonly=True, digits="Product Price")
     diff_value = fields.Monetary("Variance", readonly=True, currency_field="currency_id")
+    skipped = fields.Boolean(
+        "Sold that day",
+        readonly=True,
+        help="A spot count leaves alone what the POS sold at the bar that day: "
+        "sales come as one total per day, so there is no telling how many were "
+        "sold before the count. The closing count checks it.",
+    )
     currency_id = fields.Many2one(related="count_id.currency_id")
     preview_expected_qty = fields.Float(
         "Expected (preview)", compute="_compute_preview", digits="Product Unit"
@@ -300,6 +391,7 @@ class OdinBarCountLine(models.Model):
     preview_diff_value = fields.Monetary(
         "Variance (preview)", compute="_compute_preview", currency_field="currency_id"
     )
+    preview_skipped = fields.Boolean("Sold that day (preview)", compute="_compute_preview")
 
     _count_product_uniq = models.Constraint(
         "UNIQUE(count_id, product_id)", "A product can only be counted once per count."
@@ -349,16 +441,20 @@ class OdinBarCountLine(models.Model):
                     line.preview_expected_qty = line.expected_qty
                     line.preview_diff_qty = line.diff_qty
                     line.preview_diff_value = line.diff_value
+                    line.preview_skipped = line.skipped
                 continue
             expected = {}
+            sold = self.env["product.product"]
             if count.state in ("submitted", "recount") and count._pos_ready():
+                sold = count._pos_sold_products(lines.product_id)
                 expected = count.bar_id.sudo()._stock_as_of(
-                    lines.product_id,
+                    lines.product_id - sold,
                     count.submitted_at,
                     count.business_date,
                     closing=count.kind == "closing",
                 )
             for line in lines:
+                line.preview_skipped = line.product_id in sold
                 if line.product_id.id in expected and line.touched:
                     product = line.product_id.with_company(count.company_id)
                     line.preview_expected_qty = expected[product.id]

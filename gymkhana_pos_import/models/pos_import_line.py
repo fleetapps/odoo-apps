@@ -21,7 +21,7 @@ class PosImportLine(models.Model):
     company_id = fields.Many2one(related='import_id.company_id', store=True, index=True)
     currency_id = fields.Many2one(related='import_id.currency_id')
     sequence = fields.Integer()
-    bar_id = fields.Many2one('pos.import.bar', string="Bar", required=True, ondelete='restrict')
+    bar_id = fields.Many2one('odin.bar', string="Bar", required=True, ondelete='restrict')
     group_name = fields.Char(string="POS Group")
     sub_group = fields.Char(string="Sub Group")
     pos_key = fields.Char(string="POS Key", required=True, index=True)

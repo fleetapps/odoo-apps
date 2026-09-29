@@ -19,9 +19,11 @@ not part of this module (see *Not included*).
 
 ## Setting up
 
-1. **Bars**: *Bar Control → Configuration → Bars*. Add the Main Store (kind
-   Store, location `MS/Stock`) and each bar, then press **Fill from stock
-   setup**. The warning box lists anything still missing.
+1. **Bars**: *Bar Control → Configuration → Bars*. The POS importer's upgrade
+   has already created Banda Bar, Bulls Eye and Main Bar with their POS
+   setup. Add the Main Store (kind Store, location `MS/Stock`), then press
+   **Fill from stock setup** on each bar. The warning box lists anything still
+   missing.
 2. **Stock-out reasons**: created with the first bar and mapped to your `ROMA`,
    `EVT`, `DEBT` and `IBT` operation types and to the Breakage, Spoilage,
    Flat / Returned by guest and Expired scrap reasons. Check them under
@@ -82,7 +84,8 @@ this bar today, who did it and when.
 7. **Submit** works once every line is green. The count then goes to a
    manager.
 
-A **spot count** takes a few items at any time. It adjusts only those items.
+A **spot count** takes a few items at any time. It adjusts only those items,
+and only the ones the POS did not sell at the bar that day (see *Rules*).
 
 *Training line: "Count every night: full bottles, then tots in the open one."*
 
@@ -111,14 +114,24 @@ against your bar."*
 
 *Training line: "Store: Send to bar, pick the bar, add items, Send."*
 
+**Manager: every morning**
+1. *Bar Control → POS import → Import a day*: drop yesterday's Group Sales
+   Register PDF, check the review, **Post day**.
+2. The posted day lists **Bar counts ready to approve**. Click one, check it,
+   **Approve**. Done.
+
+*Training line: "Post yesterday's POS, then approve last night's counts."*
+
 **Manager**
 - **Dashboard**: per bar, deliveries not checked, counts to approve, stock outs
-  today, open disputes, last approved close, last POS day and 7-day variance.
+  today, open disputes, last approved close, last POS day, *POS day missing*
+  and 7-day variance.
 - **Count approvals**: open a count to see counted, expected, difference and
   value. **Approve** stays disabled with "Post the POS import for Bulls Eye on
-  Sun 27 Sep before approving this count." until that day's POS import is
-  posted. Counts are approved in the order they were taken. **Ask for a
-  recount** shows "Recount requested" on the bar's Desk.
+  Sun 27 Sep before approving this count." until the POS sales of that day,
+  and of every day before it, are posted. **Open POS import** goes straight to
+  that day's import. Counts are approved in the order they were taken. **Ask
+  for a recount** shows "Recount requested" on the bar's Desk.
 - **Deliveries → Disputes** holds transfer disputes between bars, decided here:
   validate the draft, or cancel it.
 - **Reporting → Variance** shows posted differences by product and bar.
@@ -138,8 +151,19 @@ against your bar."*
   when they are posted later. The adjustment is dated at the count, so the
   next morning's delivery is kept and later counts stay right whatever order
   they are approved in.
-- **Closing counts wait for the POS import** of their day. Earlier counts of
-  the same bar must be approved or cancelled first.
+- **Counts wait for the POS import** of their day and of every day before it,
+  from the bar's first POS day (*POS days from* on the bar). A day imported
+  late would otherwise change the stock under a count already approved.
+  Earlier counts of the same bar must be approved or cancelled first.
+- **Spot counts leave alone what sold that day.** POS sales come as one total
+  per day, so a mid-shift count cannot tell how many were sold before it.
+  Items the POS sold at the bar that day are marked *Sold that day* and not
+  adjusted; the closing count checks them. Everything else is adjusted.
+- **An undone POS day reopens its counts.** Undoing a POS import sends every
+  count of that bar approved for that day or later back for approval, with
+  its adjustment reversed. After the corrected import, approve them again:
+  the variance is worked out on the new sales. The import screen lists these
+  counts before you undo.
 - **One approved closing count per bar and day**, enforced by a database index.
   A new closing count replaces one still waiting for approval.
 - **Retries are safe.** Every Desk action carries a request id with a unique
@@ -165,13 +189,12 @@ when.
 
 ## Open points
 
-- **Mid-shift spot counts and daily POS data.** POS sales arrive as one total
-  per day, after the day ends. A spot count counts that day's sales only up to
-  the count's time, which is exact only if the importer dates sales at the
-  time they happened. With a single daily total, sales earlier in the day are
-  missing from *expected*, and a mid-shift spot count shows a false shortage.
-  Use spot counts before trading starts, or have the importer date sales by
-  time.
+- **Sales after midnight.** The trading day ends at 06:00, so a count at
+  01:30 closes the day before. This matches the POS report only if the POS
+  puts a sale rung up at 00:30 on the report of the day before. If the POS
+  report runs midnight to midnight, those sales land on the next day's report
+  and show as a shortage on one night and a surplus on the next. Check one
+  late night's report with the club before go-live.
 - **Barcode scanning** is left out on purpose. It can be added later as a
   separate module that feeds scanned products into the same keypad and lines.
 
@@ -182,7 +205,8 @@ odoo-bin -d <db> -i odin_bar_desk --test-tags /odin_bar_desk --stop-after-init
 ```
 
 These cover count approval with a next-morning delivery, the POS import posted
-before or after a count, spot counts touching only counted items, retries with
-the same request id, staff refused for another bar, blind counting, disputes,
-store mode, and two browser tours on the Desk. The tours need Chrome or
+before or after a count, counts waiting for every earlier POS day, an undone
+POS day reopening its counts, spot counts leaving items sold that day, retries
+with the same request id, staff refused for another bar, blind counting,
+disputes, store mode, and two browser tours on the Desk. The tours need Chrome or
 Chromium; set `ODOO_BROWSER_BIN` if it is not on the path.

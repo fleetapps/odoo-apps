@@ -63,6 +63,18 @@
                 <li t-foreach="data.warnings" t-as="msg" t-key="msg_index" t-esc="msg"/>
             </ul>
         </div>
+        <div t-if="data.bar_links and data.bar_links.length" class="alert alert-info o_pos_import_bar_links" role="status">
+            <strong>Bar counts ready to approve:</strong>
+            <t t-foreach="data.bar_links" t-as="link" t-key="link.model + link.id">
+                <a href="#" class="ms-2" t-on-click.prevent="() => this.open(link)" t-esc="link.name"/>
+            </t>
+        </div>
+        <div t-if="data.undo_links and data.undo_links.length" class="alert alert-light o_pos_import_undo_links" role="status">
+            Undoing this day sends these approved bar counts back for approval:
+            <t t-foreach="data.undo_links" t-as="link" t-key="link.model + link.id">
+                <a href="#" class="ms-2" t-on-click.prevent="() => this.open(link)" t-esc="link.name"/>
+            </t>
+        </div>
     </t>
 
     <t t-name="gymkhana_pos_import.ReviewDetail">

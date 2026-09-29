@@ -212,6 +212,18 @@ class BarDeskCase(TransactionCase):
             bar._mark_pos_posted(business_date, source="test import")
         return picking
 
+    def undo_pos_sales(self, bar, business_date, picking):
+        """What the POS importer's Undo does: the day's delivery comes back to
+        the bar on the same trading day, then the day is no longer posted."""
+        self.post(
+            bar.sale_type_id,
+            self.loc_customers,
+            bar.location_id,
+            [(move.product_id, move.quantity, move.product_uom) for move in picking.move_ids],
+            business_date=business_date,
+        )
+        bar._unmark_pos_posted(business_date)
+
     def count_line(self, product, *, units=0.0, bottles=None, open_tots=0.0):
         return {
             "product_id": product.id,

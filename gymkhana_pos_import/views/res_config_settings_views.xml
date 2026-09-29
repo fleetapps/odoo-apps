@@ -28,7 +28,7 @@
                         </setting>
                         <setting id="pos_import_config_links" string="Bars and item mapping">
                             <div class="mt8">
-                                <button name="gymkhana_pos_import.action_pos_import_bar" type="action"
+                                <button name="odin_bar_base.odin_bar_action" type="action"
                                         string="Bars" class="btn-link" icon="oi-arrow-right"/>
                             </div>
                             <div>

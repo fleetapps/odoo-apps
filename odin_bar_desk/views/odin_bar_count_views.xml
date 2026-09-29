@@ -35,6 +35,8 @@
                     <!-- No name and no type: rendered disabled, next to the reason shown below. -->
                     <button string="Approve" class="btn-primary"
                             invisible="state not in ('submitted', 'recount') or not approve_blocked_reason"/>
+                    <button name="action_open_pos_import" type="object" string="Open POS import"
+                            invisible="not pos_import_available"/>
                     <button name="action_request_recount" type="object" string="Ask for a recount"
                             invisible="state != 'submitted'"/>
                     <button name="action_cancel" type="object" string="Cancel count"
@@ -50,6 +52,11 @@
                          invisible="state not in ('submitted', 'recount') or not preview_ready">
                         Expected quantities are worked out as they stood when the count was submitted.
                         Approving posts only the differences.
+                        <span invisible="kind != 'spot'">
+                            Items the POS sold at the bar that day are left alone: sales come as one
+                            total per day, so there is no telling how many were sold before the count.
+                            The closing count checks them.
+                        </span>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
@@ -70,13 +77,14 @@
                             <field name="diff_value" invisible="state != 'approved'"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="preview_ready" invisible="1"/>
+                            <field name="pos_import_available" invisible="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Lines" name="lines">
                             <field name="line_ids" readonly="1">
-                                <list decoration-muted="not touched"
+                                <list decoration-muted="not touched or preview_skipped"
                                       decoration-danger="preview_diff_qty &lt; 0"
                                       decoration-success="preview_diff_qty &gt; 0">
                                     <field name="product_id"/>
@@ -90,6 +98,8 @@
                                            column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
                                     <field name="preview_diff_value" string="Value" sum="Total"
                                            column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
+                                    <field name="preview_skipped" string="Sold that day" widget="boolean"
+                                           column_invisible="parent.kind != 'spot' or (parent.state != 'approved' and not parent.preview_ready)"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </list>
                             </field>

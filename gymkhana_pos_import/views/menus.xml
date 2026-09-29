@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_pos_import_root" name="POS Day Import"
-              web_icon="gymkhana_pos_import,static/description/icon.png"
-              groups="gymkhana_pos_import.group_pos_import_user" sequence="45"/>
+    <!-- The import lives in Bar Control, next to the bars and their counts:
+         Bar Control > POS import, and the setup under Configuration. -->
+    <menuitem id="menu_pos_import_new" name="Import a day" parent="odin_bar_base.menu_bar_pos"
+              action="action_pos_import_new" groups="gymkhana_pos_import.group_pos_import_user" sequence="10"/>
+    <menuitem id="menu_pos_import_days" name="Imported days" parent="odin_bar_base.menu_bar_pos"
+              action="action_pos_import" groups="gymkhana_pos_import.group_pos_import_user" sequence="20"/>
 
-    <menuitem id="menu_pos_import_new" name="Import a Day" parent="menu_pos_import_root"
-              action="action_pos_import_new" sequence="10"/>
-    <menuitem id="menu_pos_import_days" name="POS Days" parent="menu_pos_import_root"
-              action="action_pos_import" sequence="20"/>
-
-    <menuitem id="menu_pos_import_config" name="Configuration" parent="menu_pos_import_root" sequence="90"/>
-    <menuitem id="menu_pos_import_settings" name="Settings" parent="menu_pos_import_config"
-              action="action_pos_import_settings" sequence="5"
+    <menuitem id="menu_pos_import_settings" name="POS import settings" parent="odin_bar_base.menu_bar_config"
+              action="action_pos_import_settings" sequence="40"
               groups="gymkhana_pos_import.group_pos_import_manager"/>
-    <menuitem id="menu_pos_import_bars" name="Bars" parent="menu_pos_import_config"
-              action="action_pos_import_bar" sequence="10"/>
-    <menuitem id="menu_pos_import_map" name="Item Mapping" parent="menu_pos_import_config"
-              action="action_pos_item_map" sequence="20"/>
+    <menuitem id="menu_pos_import_map" name="POS item mapping" parent="odin_bar_base.menu_bar_config"
+              action="action_pos_item_map" groups="gymkhana_pos_import.group_pos_import_user" sequence="45"/>
+
+    <!-- Importers see Configuration for the item mapping, and the bars (read only, or
+         editable for POS import administrators). -->
+    <record id="odin_bar_base.menu_bar_config" model="ir.ui.menu">
+        <field name="group_ids" eval="[Command.link(ref('gymkhana_pos_import.group_pos_import_user'))]"/>
+    </record>
 </odoo>

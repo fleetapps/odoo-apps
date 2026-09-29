@@ -128,9 +128,8 @@ class TestCountApproval(BarDeskCase):
             )
         self.assertEqual(count.kind, "spot")
         self.assertEqual(count.line_ids.product_id, self.jameson)
-        # Spot counts do not wait for the day's POS import.
-        self.assertFalse(count.with_user(self.manager).approve_blocked_reason)
-        with freeze_time("2026-09-27 15:30:00"):
+        self.bar_be._mark_pos_posted(DAY1, no_sales=True)
+        with freeze_time("2026-09-28 06:00:00"):
             count.with_user(self.manager).action_approve()
         self.assertEqual(count.move_ids.product_id, self.jameson)
         self.assertEqual(self.qty(self.jameson, self.loc_be), 45)

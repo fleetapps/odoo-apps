@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import format_date
 
 # Deliveries older than this drop off the Desk and the dashboard.
 DELIVERY_DAYS = 14
@@ -17,6 +18,7 @@ class OdinBar(models.Model):
         "bar_id",
         "employee_id",
         string="Staff",
+        copy=False,
         groups="hr.group_hr_user",
         help="Employees who can sign in here with their PIN.",
     )
@@ -38,6 +40,11 @@ class OdinBar(models.Model):
     desk_stock_out_today = fields.Integer("Stock outs today", compute="_compute_desk_dashboard")
     desk_last_closing_date = fields.Date("Last approved close", compute="_compute_desk_dashboard")
     desk_last_pos_date = fields.Date("Last POS day", compute="_compute_desk_dashboard")
+    desk_pos_missing_date = fields.Date(
+        "POS day missing",
+        compute="_compute_desk_dashboard",
+        help="First trading day up to yesterday whose POS sales are not posted.",
+    )
     desk_variance_week = fields.Monetary(
         "Variance, 7 days", compute="_compute_desk_dashboard", currency_field="currency_id"
     )
@@ -64,6 +71,7 @@ class OdinBar(models.Model):
                         "desk_stock_out_today": 0,
                         "desk_last_closing_date": False,
                         "desk_last_pos_date": False,
+                        "desk_pos_missing_date": False,
                         "desk_variance_week": 0.0,
                     }
                 )
@@ -103,9 +111,66 @@ class OdinBar(models.Model):
                     "desk_last_pos_date": PosDay.search(
                         [("bar_id", "=", bar.id)], order="business_date desc", limit=1
                     ).business_date,
+                    "desk_pos_missing_date": bar._pos_missing_day(today - timedelta(days=1)),
                     "desk_variance_week": sum(week.mapped("diff_value")),
                 }
             )
+
+    # ------------------------------------------------------------------
+    # POS days and counts
+    # ------------------------------------------------------------------
+
+    def _pos_day_changed(self, day):
+        """The POS sales of ``day`` moved this bar's stock after the fact, so
+        counts approved for that day or later ones were settled on other
+        figures: send them back for approval."""
+        res = super()._pos_day_changed(day)
+        counts = self._pos_settled_counts(day)
+        if counts:
+            counts._reopen(
+                _(
+                    "Back to approval: the POS sales of %(bar)s on %(day)s changed after this "
+                    "count was approved. Its adjustment was reversed; approve it again once the "
+                    "day is posted.",
+                    bar=self.name,
+                    day=format_date(self.env, day, date_format="EEE d MMM"),
+                )
+            )
+        return res
+
+    def _pos_settled_counts(self, day):
+        self.ensure_one()
+        return self.env["odin.bar.count"].sudo().search(
+            [("bar_id", "=", self.id), ("state", "=", "approved"), ("business_date", ">=", day)],
+            order="submitted_at",
+        )
+
+    @api.model
+    def _pos_count_link(self, count, extra):
+        return {"model": "odin.bar.count", "id": count.id, "name": count.name, "extra": extra}
+
+    def _pos_day_dependents(self, day):
+        links = super()._pos_day_dependents(day)
+        return links + [
+            self._pos_count_link(count, _("approved count"))
+            for count in self._pos_settled_counts(day)
+        ]
+
+    def _pos_day_waiting(self, day):
+        links = super()._pos_day_waiting(day)
+        counts = self.env["odin.bar.count"].sudo().search(
+            [
+                ("bar_id", "=", self.id),
+                ("state", "in", ("submitted", "recount")),
+                ("business_date", "<=", day),
+            ],
+            order="submitted_at",
+        )
+        return links + [
+            self._pos_count_link(count, _("ready to approve"))
+            for count in counts
+            if count._pos_ready()
+        ]
 
     # ------------------------------------------------------------------
     # Domains and product lists shared by the Desk and the backend
