@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_bar_user,odin.bar user,model_odin_bar,stock.group_stock_user,1,0,0,0
+access_odin_bar_manager,odin.bar manager,model_odin_bar,stock.group_stock_manager,1,1,1,1
+access_odin_bar_pos_day_user,odin.bar.pos.day user,model_odin_bar_pos_day,stock.group_stock_user,1,1,1,0
+access_odin_bar_pos_day_manager,odin.bar.pos.day manager,model_odin_bar_pos_day,stock.group_stock_manager,1,1,1,1

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_users_form_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">res.users.form.odin.bar.desk</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <group name="other_preferences" position="inside">
+                <field name="odin_bar_id" options="{'no_create': True}"/>
+                <field name="odin_bar_ids" widget="many2many_tags" options="{'no_create': True}"/>
+            </group>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.HomeTile">
+        <button class="o_bar_desk_tile" t-on-click="() => this.open(screen)">
+            <i t-attf-class="fa {{ icon }} o_bar_desk_tile_icon"/>
+            <span class="o_bar_desk_tile_label" t-esc="label"/>
+            <span t-if="subtitle" class="o_bar_desk_tile_sub" t-esc="subtitle"/>
+            <span t-if="badge" class="o_bar_desk_badge" t-esc="badge"/>
+        </button>
+    </t>
+
+    <t t-name="odin_bar_desk.HomeScreen">
+        <div class="o_bar_desk_body">
+            <t t-if="home">
+                <div t-foreach="home.count.recounts" t-as="recount" t-key="recount.business_date + recount.kind"
+                     class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+                    <i class="fa fa-repeat"/>
+                    <div>
+                        <div class="fw-bold">Recount requested for <t t-esc="recount.day_label"/></div>
+                        <div t-if="recount.note" class="small" t-esc="recount.note"/>
+                    </div>
+                </div>
+                <div class="o_bar_desk_tiles">
+                    <t t-if="desk.bar.kind === 'bar'">
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'stockout'"/>
+                            <t t-set="icon" t-value="'fa-sign-out'"/>
+                            <t t-set="label" t-value="'Stock out'"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'count'"/>
+                            <t t-set="icon" t-value="'fa-list-ol'"/>
+                            <t t-set="label" t-value="'Count'"/>
+                            <t t-set="subtitle" t-value="countLine"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'deliveries'"/>
+                            <t t-set="icon" t-value="'fa-truck'"/>
+                            <t t-set="label" t-value="'Deliveries'"/>
+                            <t t-set="subtitle" t-value="home.unchecked ? home.unchecked + ' not checked' : 'All checked'"/>
+                            <t t-set="badge" t-value="home.unchecked"/>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'send'"/>
+                            <t t-set="icon" t-value="'fa-truck'"/>
+                            <t t-set="label" t-value="'Send to bar'"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'receive'"/>
+                            <t t-set="icon" t-value="'fa-download'"/>
+                            <t t-set="label" t-value="'Receive'"/>
+                            <t t-set="subtitle" t-value="home.receipts ? home.receipts + ' waiting' : 'From a supplier'"/>
+                            <t t-set="badge" t-value="home.receipts"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'count'"/>
+                            <t t-set="icon" t-value="'fa-list-ol'"/>
+                            <t t-set="label" t-value="'Count store'"/>
+                            <t t-set="subtitle" t-value="countLine"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'disputes'"/>
+                            <t t-set="icon" t-value="'fa-exclamation-triangle'"/>
+                            <t t-set="label" t-value="'Disputes'"/>
+                            <t t-set="subtitle" t-value="home.disputes ? home.disputes + ' to decide' : 'None open'"/>
+                            <t t-set="badge" t-value="home.disputes"/>
+                        </t>
+                    </t>
+                </div>
+                <h2 class="o_bar_desk_section">Today</h2>
+                <div t-if="!home.timeline.length" class="text-muted py-3">Nothing yet today.</div>
+                <ul class="o_bar_desk_timeline">
+                    <li t-foreach="home.timeline" t-as="item" t-key="item.id">
+                        <span class="o_bar_desk_timeline_time" t-esc="item.time"/>
+                        <i t-attf-class="fa {{ item.icon }} o_bar_desk_timeline_icon"/>
+                        <span class="o_bar_desk_timeline_text">
+                            <span class="fw-bold" t-esc="item.title"/>
+                            <span t-if="item.detail" class="d-block small text-muted" t-esc="item.detail"/>
+                            <span t-if="item.who" class="d-block small" t-esc="item.who"/>
+                        </span>
+                    </li>
+                </ul>
+            </t>
+            <div t-else="" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+        </div>
+    </t>
+</templates>

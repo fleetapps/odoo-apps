@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_bar_root"
+              name="Bar Control"
+              web_icon="odin_bar_base,static/description/icon.png"
+              groups="stock.group_stock_user"
+              sequence="46"/>
+
+    <menuitem id="menu_bar_pos_days"
+              name="POS import"
+              parent="menu_bar_root"
+              action="odin_bar_pos_day_action"
+              sequence="50"/>
+
+    <menuitem id="menu_bar_config"
+              name="Configuration"
+              parent="menu_bar_root"
+              groups="stock.group_stock_manager"
+              sequence="100"/>
+
+    <menuitem id="menu_bar_config_bars"
+              name="Bars"
+              parent="menu_bar_config"
+              action="odin_bar_action"
+              sequence="10"/>
+</odoo>

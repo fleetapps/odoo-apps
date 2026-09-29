@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.CountScreen">
+        <t t-if="state.phase === 'choose'">
+            <div class="o_bar_desk_body">
+                <t t-set="today" t-value="days[0]"/>
+                <div class="o_bar_desk_tiles o_bar_desk_tiles_wide">
+                    <button t-if="today" class="o_bar_desk_tile" t-att-disabled="state.busy or today.state === 'approved'"
+                            t-on-click="() => this.start('closing', today.business_date)">
+                        <i class="fa fa-moon-o o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label"><t t-esc="closingName"/> for <t t-esc="today.day_label"/></span>
+                        <span class="o_bar_desk_tile_sub" t-esc="note(today) || 'Every item on the sheet, zeros included'"/>
+                    </button>
+                    <button class="o_bar_desk_tile" t-att-disabled="state.busy" t-on-click="() => this.start('spot')">
+                        <i class="fa fa-search o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label">Spot count</span>
+                        <span class="o_bar_desk_tile_sub">A few items, any time</span>
+                    </button>
+                </div>
+                <button t-if="!state.otherDays" class="btn btn-link mt-2 px-0" t-on-click="() => this.state.otherDays = true">
+                    Count an earlier day
+                </button>
+                <div t-else="" class="mt-3">
+                    <div class="fw-bold mb-2">Closing count for an earlier day</div>
+                    <button t-foreach="days.slice(1)" t-as="day" t-key="day.business_date"
+                            class="btn btn-light o_bar_desk_big w-100 mb-2 text-start"
+                            t-att-disabled="state.busy or day.state === 'approved'"
+                            t-on-click="() => this.start('closing', day.business_date)">
+                        <span class="fw-bold" t-esc="day.day_label"/>
+                        <span class="d-block small text-muted" t-esc="note(day) || 'Not counted'"/>
+                    </button>
+                </div>
+                <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+            </div>
+        </t>
+        <t t-else="">
+            <div class="o_bar_desk_body">
+                <div class="d-flex align-items-start gap-2">
+                    <h2 class="o_bar_desk_section flex-grow-1 m-0" t-esc="heading"/>
+                    <button class="btn btn-link btn-sm text-muted px-0" t-on-click="startOver">Start over</button>
+                </div>
+                <div class="d-flex align-items-center gap-2 my-2">
+                    <div class="progress flex-grow-1" role="progressbar" aria-label="Counted"
+                         t-att-aria-valuenow="progress.percent" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar bg-success" t-attf-style="width: {{ progress.percent }}%"/>
+                    </div>
+                    <span class="small text-nowrap"><t t-esc="progress.done"/>/<t t-esc="progress.total"/></span>
+                </div>
+                <div class="small mb-2" t-att-class="state.save === 'saved' ? 'text-success' : 'text-muted'">
+                    <i t-attf-class="fa {{ state.save === 'offline' ? 'fa-plug' : 'fa-check' }} me-1"/><t t-esc="saveLabel"/>
+                </div>
+                <div t-if="!isSpot" class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.filter = 'all'">All</button>
+                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'todo' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.filter = 'todo'">To count (<t t-esc="progress.left"/>)</button>
+                    <input type="search" class="form-control o_bar_desk_find" placeholder="Find" aria-label="Find a product"
+                           t-model="state.query" autocomplete="off"/>
+                </div>
+                <LineList lines="lines" onTap.bind="tap" onBump.bind="bump"
+                          empty="isSpot ? 'Add the items you are counting.' : (state.filter === 'todo' ? 'Everything is counted.' : 'Nothing on the count sheet.')"/>
+                <button t-if="isSpot" class="btn btn-outline-primary o_bar_desk_big w-100 mt-1" t-on-click="() => this.state.picking = true">
+                    <i class="fa fa-plus me-2"/>Add item
+                </button>
+                <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+            </div>
+            <div class="o_bar_desk_footer">
+                <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!canSubmit" t-on-click="submit">
+                    <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>
+                    <t t-if="!isSpot and progress.left">Submit (<t t-esc="progress.left"/> left)</t>
+                    <t t-else="">Submit</t>
+                </button>
+            </div>
+            <ProductPicker t-if="state.picking" model="model" title="'Spot count'" markedIds="pickedIds"
+                           onPick.bind="pick" onClose="() => this.state.picking = false"/>
+            <Keypad t-if="state.keypad" t-key="state.keypad.product.id" product="state.keypad.product" mode="'count'"
+                    value="state.keypad.value" allowRemove="isSpot and pickedIds.has(state.keypad.product.id)"
+                    hint="state.keypad.product.poured ? 'Full bottles first, then what is left in the open bottle' : ''"
+                    onConfirm.bind="confirm" onRemove.bind="removeCurrent" onClose="() => this.state.keypad = null"/>
+        </t>
+    </t>
+</templates>

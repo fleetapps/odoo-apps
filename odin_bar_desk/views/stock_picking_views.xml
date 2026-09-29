@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">stock.picking.form.odin.bar.desk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']/group" position="inside">
+                <group string="Bar Desk" name="bar_desk"
+                       invisible="not bar_employee_id and not bar_ack_state and not bar_dispute_origin_id">
+                    <field name="bar_employee_id" invisible="not bar_employee_id"/>
+                    <field name="bar_reason_id" invisible="not bar_reason_id"/>
+                    <field name="bar_member_ref" invisible="not bar_member_ref"/>
+                    <field name="bar_ack_state" invisible="not bar_ack_state"/>
+                    <field name="bar_ack_employee_id" invisible="not bar_ack_employee_id"/>
+                    <field name="bar_ack_date" invisible="not bar_ack_date"/>
+                    <field name="bar_dispute_origin_id" invisible="not bar_dispute_origin_id"/>
+                    <field name="bar_dispute_state" invisible="not bar_dispute_origin_id"/>
+                    <field name="bar_dispute_ids" widget="many2many_tags" invisible="not bar_dispute_ids"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_internal_search_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">stock.picking.search.odin.bar.desk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Not checked by bar" name="not_checked" domain="[('bar_ack_state', '=', 'not_checked')]"/>
+                <filter string="Disputed by bar" name="disputed" domain="[('bar_ack_state', '=', 'disputed')]"/>
+                <filter string="Open disputes" name="open_disputes"
+                        domain="[('bar_dispute_origin_id', '!=', False), ('state', 'not in', ('done', 'cancel'))]"/>
+                <field name="bar_employee_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_bar_delivery_list" model="ir.ui.view">
+        <field name="name">stock.picking.list.bar.delivery</field>
+        <field name="model">stock.picking</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Bar deliveries" create="0"
+                  decoration-warning="bar_ack_state == 'not_checked'"
+                  decoration-danger="bar_ack_state == 'disputed'">
+                <field name="date_done" string="Done"/>
+                <field name="name"/>
+                <field name="location_id" string="From"/>
+                <field name="location_dest_id" string="To"/>
+                <field name="bar_employee_id" string="Sent by" optional="show"/>
+                <field name="bar_ack_state" widget="badge"
+                       decoration-warning="bar_ack_state == 'not_checked'"
+                       decoration-success="bar_ack_state == 'confirmed'"
+                       decoration-danger="bar_ack_state == 'disputed'"/>
+                <field name="bar_ack_employee_id"/>
+                <field name="bar_ack_date" optional="show"/>
+                <field name="bar_dispute_ids" widget="many2many_tags" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_picking_bar_dispute_list" model="ir.ui.view">
+        <field name="name">stock.picking.list.bar.dispute</field>
+        <field name="model">stock.picking</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Bar disputes" create="0"
+                  decoration-info="bar_dispute_state == 'pending'"
+                  decoration-muted="bar_dispute_state == 'rejected'">
+                <field name="create_date" string="Raised"/>
+                <field name="name"/>
+                <field name="bar_dispute_origin_id"/>
+                <field name="location_id" string="From"/>
+                <field name="location_dest_id" string="To"/>
+                <field name="bar_employee_id" string="Raised by"/>
+                <field name="bar_dispute_state" widget="badge"
+                       decoration-info="bar_dispute_state == 'pending'"
+                       decoration-success="bar_dispute_state == 'accepted'"/>
+                <field name="state" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_bar_deliveries" model="ir.actions.act_window">
+        <field name="name">Bar deliveries</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('bar_ack_state', '!=', False)]</field>
+        <field name="context">{'search_default_not_checked': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_picking_bar_delivery_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('stock.view_picking_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing to follow up</p>
+            <p>Transfers into a bar and whether the bar checked them. Checking is
+            optional: a shortage in an unchecked delivery counts against the bar.</p>
+        </field>
+    </record>
+
+    <record id="action_bar_disputes" model="ir.actions.act_window">
+        <field name="name">Bar disputes</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('bar_dispute_origin_id', '!=', False)]</field>
+        <field name="context">{'search_default_open_disputes': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_picking_bar_dispute_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('stock.view_picking_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No dispute</p>
+            <p>Corrections raised by bars against deliveries. Validate one if the
+            goods never left; cancel it to leave the variance with the bar.</p>
+        </field>
+    </record>
+</odoo>

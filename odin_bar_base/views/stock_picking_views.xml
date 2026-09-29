@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_odin_bar_base" model="ir.ui.view">
+        <field name="name">stock.picking.form.odin.bar.base</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <group name="other_infos" position="inside">
+                <field name="bar_business_date" readonly="state in ['cancel', 'done']"/>
+            </group>
+        </field>
+    </record>
+
+    <record id="view_picking_internal_search_inherit_odin_bar_base" model="ir.ui.view">
+        <field name="name">stock.picking.search.odin.bar.base</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <field name="origin" position="after">
+                <field name="bar_business_date"/>
+            </field>
+        </field>
+    </record>
+</odoo>

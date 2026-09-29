@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_bar_count_manager,odin.bar.count manager,model_odin_bar_count,group_bar_desk_manager,1,1,0,0
+access_odin_bar_count_line_manager,odin.bar.count.line manager,model_odin_bar_count_line,group_bar_desk_manager,1,0,0,0
+access_odin_bar_activity_manager,odin.bar.activity manager,model_odin_bar_activity,group_bar_desk_manager,1,0,0,0
+access_odin_bar_reason_manager,odin.bar.reason manager,model_odin_bar_reason,group_bar_desk_manager,1,0,0,0
+access_odin_bar_reason_stock_manager,odin.bar.reason stock manager,model_odin_bar_reason,stock.group_stock_manager,1,1,1,1

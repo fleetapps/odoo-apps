@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_view_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">product.template.form.odin.bar.desk</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="stock.view_template_property_form"/>
+        <field name="arch" type="xml">
+            <page name="inventory" position="inside">
+                <group string="Bar Desk" name="bar_desk">
+                    <group>
+                        <field name="bar_desk_ok"/>
+                        <field name="bar_count_sequence" invisible="not bar_desk_ok"/>
+                    </group>
+                    <group invisible="not bar_desk_ok">
+                        <field name="uom_ids" invisible="1"/>
+                        <field name="bar_bottle_uom_id" domain="[('id', 'in', uom_ids)]"
+                               options="{'no_create': True}"/>
+                        <field name="tots_per_bottle" invisible="not bar_bottle_uom_id"/>
+                    </group>
+                </group>
+            </page>
+        </field>
+    </record>
+
+    <record id="product_template_list_view_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">product.template.list.odin.bar.desk</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="bar_desk_ok" optional="hide"/>
+                <field name="bar_count_sequence" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="product_template_search_view_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">product.template.search.odin.bar.desk</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter string="In Bar Desk" name="bar_desk_ok" domain="[('bar_desk_ok', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_category_form_view_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">product.category.form.odin.bar.desk</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="parent_id" position="after">
+                <field name="bar_count_sequence"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_bar_desk_products" model="ir.actions.act_window">
+        <field name="name">Desk products</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_bar_desk_ok': 1, 'default_bar_desk_ok': True, 'default_is_storable': True}</field>
+    </record>
+</odoo>

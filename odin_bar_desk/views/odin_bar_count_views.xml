@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_count_view_list" model="ir.ui.view">
+        <field name="name">odin.bar.count.list</field>
+        <field name="model">odin.bar.count</field>
+        <field name="arch" type="xml">
+            <list string="Counts" create="0" decoration-muted="state == 'cancel'"
+                  decoration-info="state in ('submitted', 'recount') and not approve_blocked_reason">
+                <field name="business_date"/>
+                <field name="bar_id"/>
+                <field name="kind"/>
+                <field name="employee_id"/>
+                <field name="submitted_at"/>
+                <field name="counted_count" string="Items"/>
+                <field name="diff_value" sum="Total" decoration-danger="diff_value &lt; 0" decoration-success="diff_value &gt; 0"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="approve_blocked_reason" string="Waiting for" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'submitted'" decoration-warning="state == 'recount'"
+                       decoration-success="state == 'approved'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_view_form" model="ir.ui.view">
+        <field name="name">odin.bar.count.form</field>
+        <field name="model">odin.bar.count</field>
+        <field name="arch" type="xml">
+            <form string="Count" create="0">
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state not in ('submitted', 'recount') or approve_blocked_reason"
+                            confirm="Post the differences to stock? This cannot be undone."/>
+                    <!-- No name and no type: rendered disabled, next to the reason shown below. -->
+                    <button string="Approve" class="btn-primary"
+                            invisible="state not in ('submitted', 'recount') or not approve_blocked_reason"/>
+                    <button name="action_request_recount" type="object" string="Ask for a recount"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_cancel" type="object" string="Cancel count"
+                            invisible="state in ('approved', 'cancel')"
+                            confirm="Cancel this count? Nothing will be posted."/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning mb-3" role="alert" invisible="not approve_blocked_reason">
+                        <field name="approve_blocked_reason" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-info mb-3" role="status"
+                         invisible="state not in ('submitted', 'recount') or not preview_ready">
+                        Expected quantities are worked out as they stood when the count was submitted.
+                        Approving posts only the differences.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="bar_id"/>
+                            <field name="kind"/>
+                            <field name="business_date"/>
+                            <field name="employee_id"/>
+                        </group>
+                        <group>
+                            <field name="started_at"/>
+                            <field name="submitted_at"/>
+                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="approved_at" invisible="not approved_at"/>
+                            <field name="replaced_by_id" invisible="not replaced_by_id"/>
+                            <field name="diff_value" invisible="state != 'approved'"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="preview_ready" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Lines" name="lines">
+                            <field name="line_ids" readonly="1">
+                                <list decoration-muted="not touched"
+                                      decoration-danger="preview_diff_qty &lt; 0"
+                                      decoration-success="preview_diff_qty &gt; 0">
+                                    <field name="product_id"/>
+                                    <field name="touched" column_invisible="1"/>
+                                    <field name="counted_display"/>
+                                    <field name="counted_qty"/>
+                                    <field name="product_uom_id" string="Unit"/>
+                                    <field name="preview_expected_qty" string="Expected"
+                                           column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
+                                    <field name="preview_diff_qty" string="Difference"
+                                           column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
+                                    <field name="preview_diff_value" string="Value" sum="Total"
+                                           column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Adjustments" name="moves" invisible="not move_ids">
+                            <field name="move_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="product_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="quantity"/>
+                                    <field name="product_uom" string="Unit"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Note" name="note">
+                            <field name="note" placeholder="Why a recount was asked for, what was found..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_view_search" model="ir.ui.view">
+        <field name="name">odin.bar.count.search</field>
+        <field name="model">odin.bar.count</field>
+        <field name="arch" type="xml">
+            <search string="Counts">
+                <field name="bar_id"/>
+                <field name="business_date"/>
+                <field name="employee_id"/>
+                <filter string="To approve" name="to_approve" domain="[('state', 'in', ('submitted', 'recount'))]"/>
+                <filter string="Approved" name="approved" domain="[('state', '=', 'approved')]"/>
+                <filter string="Counting" name="draft" domain="[('state', '=', 'draft')]"/>
+                <separator/>
+                <filter string="Closing counts" name="closing" domain="[('kind', '=', 'closing')]"/>
+                <filter string="Spot counts" name="spot" domain="[('kind', '=', 'spot')]"/>
+                <separator/>
+                <filter string="Trading day" name="business_date" date="business_date"/>
+                <group>
+                    <filter string="Bar" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Trading day" name="group_day" context="{'group_by': 'business_date:day'}"/>
+                    <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_action" model="ir.actions.act_window">
+        <field name="name">Counts</field>
+        <field name="res_model">odin.bar.count</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_to_approve': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No count waiting</p>
+            <p>Counts submitted from the Bar Desk wait here for approval. Approval
+            posts the difference between what staff counted and what the system
+            expected when they counted.</p>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_line_view_pivot" model="ir.ui.view">
+        <field name="name">odin.bar.count.line.pivot</field>
+        <field name="model">odin.bar.count.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Variance">
+                <field name="bar_id" type="col"/>
+                <field name="product_id" type="row"/>
+                <field name="diff_value" type="measure"/>
+                <field name="diff_qty" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_line_view_list" model="ir.ui.view">
+        <field name="name">odin.bar.count.line.list</field>
+        <field name="model">odin.bar.count.line</field>
+        <field name="arch" type="xml">
+            <list string="Variance" create="0" edit="0">
+                <field name="count_id"/>
+                <field name="product_id"/>
+                <field name="counted_qty"/>
+                <field name="expected_qty"/>
+                <field name="diff_qty"/>
+                <field name="product_uom_id" string="Unit"/>
+                <field name="diff_value" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_line_view_search" model="ir.ui.view">
+        <field name="name">odin.bar.count.line.search</field>
+        <field name="model">odin.bar.count.line</field>
+        <field name="arch" type="xml">
+            <search string="Variance">
+                <field name="product_id"/>
+                <field name="count_id"/>
+                <filter string="Losses" name="losses" domain="[('diff_qty', '&lt;', 0)]"/>
+                <filter string="Gains" name="gains" domain="[('diff_qty', '&gt;', 0)]"/>
+                <group>
+                    <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Bar" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Count" name="group_count" context="{'group_by': 'count_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_bar_count_line_variance_action" model="ir.actions.act_window">
+        <field name="name">Variance</field>
+        <field name="res_model">odin.bar.count.line</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="domain">[('state', '=', 'approved')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No approved count yet</p>
+            <p>The differences posted by approved counts, by product and bar.</p>
+        </field>
+    </record>
+</odoo>
