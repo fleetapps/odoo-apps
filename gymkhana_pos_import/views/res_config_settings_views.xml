@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.gymkhana_pos_import</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="90"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="POS Day Import" string="POS Day Import" name="gymkhana_pos_import"
+                     groups="gymkhana_pos_import.group_pos_import_manager">
+                    <block title="Group Sales Register" name="pos_import_settings">
+                        <setting id="pos_import_outlet" string="Outlet" company_dependent="1"
+                                 help="Outlet name exactly as printed on the report. A report for another outlet is refused.">
+                            <field name="pos_import_outlet" placeholder="e.g. Dhostana Ventures Ltd"/>
+                        </setting>
+                        <setting id="pos_import_partner" string="Customer" company_dependent="1"
+                                 help="Customer of the daily orders and invoice. Each bar's order ships to the bar's own contact.">
+                            <field name="pos_import_partner_id"/>
+                        </setting>
+                        <setting id="pos_import_taxes" string="Taxes" company_dependent="1"
+                                 help="Applied to every line; they must be price-included (e.g. VAT 16% and CTL 2%).">
+                            <field name="pos_import_tax_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting id="pos_import_rounding" string="Rounding product" company_dependent="1"
+                                 help="Service for the cent added when a line's net can't be split into an exact unit price.">
+                            <field name="pos_import_rounding_product_id"/>
+                        </setting>
+                        <setting id="pos_import_config_links" string="Bars and item mapping">
+                            <div class="mt8">
+                                <button name="gymkhana_pos_import.action_pos_import_bar" type="action"
+                                        string="Bars" class="btn-link" icon="oi-arrow-right"/>
+                            </div>
+                            <div>
+                                <button name="gymkhana_pos_import.action_pos_item_map" type="action"
+                                        string="Item Mapping" class="btn-link" icon="oi-arrow-right"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_pos_import_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'gymkhana_pos_import', 'bin_size': False}</field>
+    </record>
+</odoo>
