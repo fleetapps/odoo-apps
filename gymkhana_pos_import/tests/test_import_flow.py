@@ -358,6 +358,14 @@ class TestPostDay(PosImportCommon):
         self.assertEqual(len(orders._create_invoices()), 3)
         # ...and the import's orders make one (asserted in test_post_day)
 
+    def test_pricelist_in_another_currency_is_ignored(self):
+        other = self.setup_other_currency('EUR')
+        self.club.property_product_pricelist = self.env['product.pricelist'].create({
+            'name': "EUR list", 'currency_id': other.id, 'company_id': self.company.id})
+        imp = self._post()
+        self.assertEqual(imp.order_ids.currency_id, self.currency)
+        self.assertEqual(Decimal(str(imp.invoice_id.amount_total)), Decimal("217205.00"))
+
     def test_rounding_line_when_net_does_not_divide(self):
         # Jagermeister(BB): 7 tots for 1,520.00 -> 217.14 x 7 = 1,519.98 + 0.02 rounding
         data = pdf_tools.replace_text(self.pdf, " 8.00", " 7.00", page=1)

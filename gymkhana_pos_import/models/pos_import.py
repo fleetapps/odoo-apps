@@ -595,7 +595,12 @@ class PosImport(models.Model):
         day = self.business_date
         by_bar = self._pos_lines_by_bar()
 
-        # 2. One sale order per bar present in the PDF
+        # 2. One sale order per bar present in the PDF. Prices come from the PDF, so a
+        #    pricelist is only kept when it is in the company currency (the order's
+        #    currency follows its pricelist).
+        pricelist = partner.with_company(company).property_product_pricelist
+        if pricelist.currency_id != company.currency_id:
+            pricelist = self.env['product.pricelist']
         orders = self.env['sale.order']
         for bar, lines in by_bar.items():
             analytic = {str(bar.analytic_account_id.id): 100}
@@ -615,6 +620,7 @@ class PosImport(models.Model):
                 'partner_id': partner.id,
                 'partner_invoice_id': partner.id,
                 'partner_shipping_id': bar.delivery_partner_id.id,
+                'pricelist_id': pricelist.id,
                 'date_order': when,
                 'warehouse_id': (bar.picking_type_id.warehouse_id or bar.location_id.warehouse_id).id,
                 'client_order_ref': f"{self.name} {bar.name}",
