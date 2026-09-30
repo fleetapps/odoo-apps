@@ -53,6 +53,7 @@ export class StoreReceiveScreen extends Component {
             receipts: [],
             query: "",
             suppliers: [],
+            searching: false,
             supplier: null,
             supplierProducts: new Set(),
             invoice: null,
@@ -102,10 +103,13 @@ export class StoreReceiveScreen extends Component {
     }
 
     async searchSuppliers() {
+        this.state.searching = true;
         try {
             this.state.suppliers = await this.model.fetch("desk_suppliers", { bar_id: this.storeId, query: this.state.query });
         } catch (error) {
             this.state.error = errorMessage(error);
+        } finally {
+            this.state.searching = false;
         }
     }
 

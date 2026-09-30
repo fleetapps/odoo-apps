@@ -59,8 +59,8 @@
                 <t t-call="odin_bar_desk.Step">
                     <t t-set="num" t-value="2"/>
                     <t t-set="title" t-value="'Moves'"/>
-                    <t t-set="done" t-value="home.approved"/>
-                    <t t-set="status" t-value="home.moves.length ? home.moves.length + ' logged' : 'None yet'"/>
+                    <t t-set="done" t-value="home.approved or home.moves.length or countsDone"/>
+                    <t t-set="status" t-value="home.moves.length ? home.moves.length + ' logged' : 'None logged'"/>
                     <ul t-if="home.moves.length" class="o_bar_desk_moves">
                         <li t-foreach="moves" t-as="move" t-key="move.id">
                             <div class="fw-bold">

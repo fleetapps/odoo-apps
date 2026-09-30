@@ -169,7 +169,8 @@ export class CountScreen extends Component {
     }
 
     breakdown(product, parts) {
-        if (!parts) {
+        if (!parts || (!parts.moved && !parts.sold)) {
+            // Nothing moved or sold: the expected figure is what it had.
             return "";
         }
         const bits = [`had ${fmt(parts.opening)}`];

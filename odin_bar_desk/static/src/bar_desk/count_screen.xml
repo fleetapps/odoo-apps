@@ -54,7 +54,7 @@
                                 </span>
                                 <span class="o_bar_desk_line_qty text-end">
                                     <span t-if="line.touched" t-esc="line.label"/>
-                                    <span t-else="" class="text-muted fw-normal">Count</span>
+                                    <span t-else="" class="o_bar_desk_line_placeholder">Count</span>
                                     <span t-if="line.diff" class="d-block small text-warning-emphasis" t-esc="line.diff"/>
                                 </span>
                             </button>
@@ -82,7 +82,7 @@
                        onPick.bind="pick" onClose="() => this.state.picking = false"/>
         <Keypad t-if="state.keypad" t-key="state.keypad.product.id" product="state.keypad.product" mode="'count'"
                 value="state.keypad.value" expected="keypadExpected()" onSame.bind="sameFromKeypad"
-                hint="state.keypad.product.poured ? 'Full bottles, then the tots left in the open bottle. + adds up.' : 'Tap + to add up what sits in different places.'"
+                hint="state.keypad.product.poured ? 'Full bottles, then tots in the open one' : '+ adds up several places'"
                 onConfirm.bind="confirm" onClose="() => this.state.keypad = null"/>
     </t>
 </templates>

@@ -189,6 +189,8 @@ class OdinBarDesk(models.AbstractModel):
             "kind": bar.kind,
             "business_date": fields.Date.to_string(day),
             "day_label": self._desk_day_label(day),
+            # The day the sheet opens on: yesterday, closed this morning.
+            "closing_label": self._desk_day_label(day - timedelta(days=1)),
         }
 
     @api.model

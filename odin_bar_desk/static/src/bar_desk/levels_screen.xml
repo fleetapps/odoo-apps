@@ -12,7 +12,9 @@
                     <input type="search" class="form-control o_bar_desk_find" placeholder="Find" aria-label="Find a product"
                            t-model="state.query" autocomplete="off"/>
                 </div>
-                <p class="small text-muted mb-2">Club total against par, in bottles (btl) and crates (cr). Red means below par.</p>
+                <p class="small text-muted mb-2">
+                    Club total against par, in bottles (btl) and crates (cr).<t t-if="belowCount"> Red means below par.</t>
+                </p>
                 <div t-if="!rows.length" class="text-muted text-center py-4">Nothing to show.</div>
                 <div t-foreach="rows" t-as="row" t-key="row.key" class="o_bar_desk_level" t-att-class="{'o_below': row.below}">
                     <div class="d-flex align-items-baseline gap-2">

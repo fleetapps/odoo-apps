@@ -4,9 +4,9 @@
         <div class="o_bar_desk_sheet_backdrop" t-on-click.self="props.onClose">
             <div class="o_bar_desk_sheet o_bar_desk_keypad">
                 <div class="d-flex align-items-start gap-2 mb-2">
-                    <div class="flex-grow-1">
-                        <div class="fw-bold fs-5 lh-sm" t-esc="props.product.name"/>
-                        <div t-if="props.hint" class="text-muted small" t-esc="props.hint"/>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="o_bar_desk_keypad_title" t-esc="props.product.name"/>
+                        <div t-if="props.hint" class="text-muted small text-truncate" t-esc="props.hint"/>
                     </div>
                     <button class="btn btn-link text-body fs-4 p-0 px-2" aria-label="Close" t-on-click="props.onClose">
                         <i class="fa fa-times"/>

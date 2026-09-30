@@ -62,7 +62,7 @@
     align-items: center;
     gap: 0.4rem;
     min-width: 0;
-    max-width: 45%;
+    max-width: 35%;
     padding: 0.25rem 0.6rem 0.25rem 0.25rem;
     border: 1px solid var(--#{$prefix}border-color);
     border-radius: 2rem;
@@ -99,7 +99,9 @@
 .o_bar_desk_body {
     flex: 1 1 auto;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 1rem 1rem 2rem;
+    // A field focused near the bottom scrolls clear of the footer and keyboard.
+    scroll-padding-bottom: 6rem;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -512,8 +514,45 @@
 
 @media (min-width: 768px) {
     .o_bar_desk_body {
-        padding: 1.25rem 1.5rem;
+        padding: 1.25rem 1.5rem 2rem;
     }
+}
+
+// On a desktop the screens keep a phone-like column in the middle, so lines
+// and buttons do not stretch across the whole monitor. Padding rather than a
+// max-width keeps the scrollbar at the window's edge.
+@media (min-width: 992px) {
+    .o_bar_desk_body,
+    .o_bar_desk_footer {
+        // Quoted: libsass would read max() as its own function and fail on mixed units.
+        padding-left: #{"max(1.5rem, calc((100% - 46rem) / 2))"};
+        padding-right: #{"max(1.5rem, calc((100% - 46rem) / 2))"};
+    }
+}
+
+// Touch screens keep :hover after a tap, so an outline chip looked chosen
+// when it was not. Only real pointers get the hover fill.
+@media (hover: none) {
+    .o_bar_desk .btn-outline-secondary,
+    .o_bar_desk .btn-outline-primary {
+        &:hover:not(:active):not(.active) {
+            border-color: var(--#{$prefix}btn-border-color);
+            background-color: transparent;
+            color: var(--#{$prefix}btn-color);
+        }
+    }
+}
+
+.o_bar_desk_line_placeholder {
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: var(--#{$prefix}tertiary-color);
+}
+
+.o_bar_desk_keypad_title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 .o_bar_desk_find {

@@ -48,13 +48,30 @@ export function emptyCountLine() {
     return { touched: false, unit_qty: 0, bottle_detail: {}, open_tots: 0 };
 }
 
-/** What a count line says, e.g. "3 btl + 12 tots" or "48". */
+/** "Crate 25" reads as "cr" next to a number; other packs keep their name. */
+export function packShort(pack) {
+    const name = shortUnit(pack);
+    return name.toLowerCase().startsWith("crate") ? "cr" : name;
+}
+
+/** Units in crates, for beer and sodas: "1 cr + 7", "2 cr", "" under a crate. */
+function inPacks(product, qty) {
+    const pack = product.poured ? null : product.packs[0];
+    if (!pack || pack.factor <= 1 || Math.abs(qty) < pack.factor) {
+        return "";
+    }
+    const full = Math.floor(Math.abs(qty) / pack.factor + 1e-9);
+    const rest = Math.round((Math.abs(qty) - full * pack.factor) * 100) / 100;
+    return rest ? `${full} ${packShort(pack)} + ${fmt(rest)}` : `${full} ${packShort(pack)}`;
+}
+
+/** What a count line says, e.g. "3 btl + 12 tots", "48 (1 cr + 23)". */
 export function countLabel(product, line) {
     if (!line?.touched) {
         return "";
     }
     if (!product.poured) {
-        return fmt(line.unit_qty);
+        return stockLabel(product, line.unit_qty || 0);
     }
     const detail = line.bottle_detail || {};
     const parts = [];
@@ -102,18 +119,28 @@ export function countLineFor(product, qty) {
     return line;
 }
 
-/** A quantity in the stock unit as staff read it: "182 tots", "48". */
-export function stockLabel(product, qty) {
+/** A quantity in the stock unit as staff read it: "182 tots", "48 (1 cr + 23)", "6 pcs". */
+export function stockLabel(product, qty, { packs = true } = {}) {
     if (product.uom.name.toLowerCase() === "tot") {
         return `${fmt(qty)} ${Math.abs(qty) === 1 ? "tot" : "tots"}`;
     }
-    return fmt(qty);
+    const crates = packs && inPacks(product, qty);
+    if (crates) {
+        return `${fmt(qty)} (${crates})`;
+    }
+    return `${fmt(qty)} ${unitWord(product)}`;
 }
 
-/** A signed difference: "+3", "−40 tots". */
+/** "pcs" for plain units, the unit's own name otherwise (kg, L). */
+function unitWord(product) {
+    const name = product.uom.name;
+    return /^units?$/i.test(name) ? "pcs" : name;
+}
+
+/** A signed difference: "+3 pcs", "−40 tots". */
 export function diffLabel(product, qty) {
     const sign = qty > 0 ? "+" : qty < 0 ? "−" : "";
-    return `${sign}${stockLabel(product, Math.abs(qty))}`;
+    return `${sign}${stockLabel(product, Math.abs(qty), { packs: false })}`;
 }
 
 /** A count line with one more (or one less) full bottle, or unit. */
@@ -135,6 +162,11 @@ export function normalize(text) {
         .normalize("NFD")
         .replace(/[̀-ͯ]/g, "")
         .toLowerCase();
+}
+
+/** "Mary Wanjiku" → "Mary": the header has room for one name on a phone. */
+export function firstName(name) {
+    return (name || "").trim().split(/\s+/)[0] || "";
 }
 
 export function initials(name) {
