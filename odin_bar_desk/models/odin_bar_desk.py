@@ -430,8 +430,6 @@ class OdinBarDesk(models.AbstractModel):
                     ]
                 )
             ),
-            "can_order": bar.kind == "store"
-            and bool(employee.sudo().odin_bar_can_order or self._desk_is_manager()),
         }
         if bar.kind == "bar":
             result["unchecked"] = Picking.search_count(
@@ -560,7 +558,6 @@ class OdinBarDesk(models.AbstractModel):
             "receive": _("Supplier delivery from %(supplier)s", supplier=activity.partner_id.name or "?"),
             "ask": _("Asked %(bar)s for stock", bar=activity.dest_bar_id.name),
             "ask_none": _("Could not send to %(bar)s", bar=activity.dest_bar_id.name),
-            "order": _("Ordered from %(supplier)s", supplier=activity.partner_id.name or "?"),
             "dispute_accept": _("Dispute on %(delivery)s accepted", delivery=delivery),
             "dispute_reject": _("Dispute on %(delivery)s rejected", delivery=delivery),
         }
@@ -575,7 +572,6 @@ class OdinBarDesk(models.AbstractModel):
             "dispute_reject": "fa-times-circle",
             "ask": "fa-hand-paper-o",
             "ask_none": "fa-ban",
-            "order": "fa-shopping-cart",
         }
         title = titles.get(activity.kind, activity.display_name)
         if incoming and activity.kind == "send":
@@ -1163,72 +1159,6 @@ class OdinBarDesk(models.AbstractModel):
         return self._desk_result(activity)
 
     @api.model
-    def desk_suppliers(self, bar_id, token, query=""):
-        store, _employee = self._desk_store(bar_id, token)
-        Partner = self.env["res.partner"].sudo()
-        domain = [("company_id", "in", [store.company_id.id, False])]
-        if query:
-            domain.append(("name", "ilike", query))
-        partners = Partner.browse()
-        if "supplier_rank" in Partner._fields:
-            partners = Partner.search(
-                domain + [("supplier_rank", ">", 0)], limit=20, order="supplier_rank desc, name"
-            )
-        if not partners:
-            partners = Partner.search(domain + [("is_company", "=", True)], limit=20, order="name")
-        return [{"id": partner.id, "name": partner.display_name} for partner in partners]
-
-    @api.model
-    def desk_store_receive(self, bar_id, token, uuid, partner_id, lines, paid=None, supplier_ref=None):
-        """Book a supplier delivery that came without an order straight into
-        the store, validated at once. ``paid`` ("now" or "later") also bills
-        it, paid from the store's account when "now"."""
-        store, employee = self._desk_store(bar_id, token)
-        replay = self._desk_replay(uuid)
-        if replay:
-            return self._desk_result(replay)
-        self._desk_check_payment(store, paid)
-        picking_type = store.receipt_type_id
-        if not picking_type:
-            raise UserError(_("Set the receipt type on %(store)s first.", store=store.name))
-        partner = self.env["res.partner"].sudo().browse(int(partner_id or 0)).exists()
-        if not partner or partner.company_id not in (store.company_id, self.env["res.company"]):
-            raise UserError(_("Pick the supplier."))
-        items = self._desk_items(store, lines)
-        source = picking_type.default_location_src_id or partner.property_stock_supplier
-        activity = self._desk_begin(
-            uuid,
-            {
-                "kind": "receive",
-                "bar_id": store.id,
-                "partner_id": partner.id,
-                "employee_id": employee.id,
-                "business_date": store._business_date(),
-                "summary": self._desk_summary(items),
-                "amount": self._desk_value(store, items),
-            },
-        )
-        picking = self._desk_picking(
-            store,
-            picking_type,
-            source,
-            store.location_id,
-            items,
-            {"partner_id": partner.id, "bar_employee_id": employee.id, "bar_activity_id": activity.id},
-        )
-        if paid:
-            self._desk_supplier_bill(
-                store,
-                partner,
-                [(product, uom, qty, self.env["purchase.order.line"]) for product, uom, qty in items],
-                paid,
-                supplier_ref,
-                activity,
-                origin=picking.name,
-            )
-        return self._desk_result(activity)
-
-    @api.model
     def desk_receipts(self, bar_id, token):
         """Receipts waiting at the store, e.g. from purchase orders."""
         store, _employee = self._desk_store(bar_id, token)
@@ -1243,6 +1173,7 @@ class OdinBarDesk(models.AbstractModel):
                 "origin": picking.origin or "",
                 "day_label": self._desk_day_label(store._business_date(picking.scheduled_date)),
                 "line_count": len(picking.move_ids),
+                "billed": picking.bar_billed,
             }
             for picking in pickings
         ]
@@ -1298,8 +1229,10 @@ class OdinBarDesk(models.AbstractModel):
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
-        self._desk_check_payment(store, paid)
         picking = self._desk_receipt_record(store, picking_id)
+        if picking.bar_billed:
+            paid = None  # the rest of an invoice already billed
+        self._desk_check_payment(store, paid)
         quantities = {int(move_id): float(qty or 0.0) for move_id, qty in (received or {}).items()}
         moves = picking.move_ids.filtered(lambda move: move.state not in ("done", "cancel"))
         if any(qty < 0 for qty in quantities.values()) or set(quantities) - set(moves.ids):

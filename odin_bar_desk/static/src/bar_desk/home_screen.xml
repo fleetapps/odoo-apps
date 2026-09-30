@@ -75,12 +75,6 @@
                             <t t-set="subtitle" t-value="home.receipts ? home.receipts + ' expected' : 'From a supplier'"/>
                             <t t-set="badge" t-value="home.receipts"/>
                         </t>
-                        <t t-call="odin_bar_desk.HomeTile" t-if="home.can_order">
-                            <t t-set="screen" t-value="'order'"/>
-                            <t t-set="icon" t-value="'fa-shopping-cart'"/>
-                            <t t-set="label" t-value="'Order'"/>
-                            <t t-set="subtitle" t-value="'From suppliers'"/>
-                        </t>
                         <t t-call="odin_bar_desk.HomeTile">
                             <t t-set="screen" t-value="'count'"/>
                             <t t-set="icon" t-value="'fa-list-ol'"/>

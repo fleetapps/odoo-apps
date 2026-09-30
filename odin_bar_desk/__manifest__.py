@@ -24,6 +24,7 @@ sends stock to bars; managers approve counts in Bar Control. See README.md.
         "views/stock_picking_views.xml",
         "views/product_views.xml",
         "views/hr_employee_views.xml",
+        "views/res_partner_views.xml",
         "views/res_users_views.xml",
         "views/menus.xml",
     ],

@@ -1,4 +1,4 @@
-import { Component, onWillUpdateProps, useState } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { newUuid } from "./desk_model";
 import { Keypad } from "./keypad";
 import { LineList } from "./line_list";
@@ -18,14 +18,16 @@ export class ItemsEditor extends Component {
         items: Array,
         defaultUnit: Function,
         pickerTitle: String,
+        onlyIds: { type: Object, optional: true },
     };
 
     setup() {
-        this.items = useState(this.props.items);
         this.state = useState({ picking: false, keypad: null });
-        onWillUpdateProps((next) => {
-            this.items = useState(next.items);
-        });
+    }
+
+    /** The screen's own reactive list: changes here re-render the screen. */
+    get items() {
+        return this.props.items;
     }
 
     get lines() {

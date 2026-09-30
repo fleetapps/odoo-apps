@@ -1,27 +1,19 @@
-"""Bar Desk: asking for stock, ordering from suppliers, paying on delivery.
+"""Bar Desk: asking for stock, and supplier deliveries checked against the invoice.
 
 Same rules as the rest of the Desk (see odin_bar_desk.py): every call names
 the bar and carries the staff token; stock actions carry a request id and are
 posted once.
 """
 
-import logging
-import math
-import re
 from datetime import timedelta
-from urllib.parse import quote
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 
 from .odin_bar_desk import LIST_LIMIT, _short_uom
 
-_logger = logging.getLogger(__name__)
-
 # Asks and answers stay on the asking bar's screen this long.
 REQUEST_HOURS = 16
-# A store count this recent is where the order suggestion starts from.
-ORDER_COUNT_HOURS = 16
 
 
 class OdinBarDesk(models.AbstractModel):
@@ -267,23 +259,62 @@ class OdinBarDesk(models.AbstractModel):
         return self._desk_result(activity)
 
     # ------------------------------------------------------------------
-    # Order from suppliers
+    # Suppliers
     # ------------------------------------------------------------------
 
     @api.model
-    def _desk_order_context(self, bar_id, token):
-        store, employee = self._desk_store(bar_id, token)
-        if not (employee.sudo().odin_bar_can_order or self._desk_is_manager()):
-            raise UserError(_("Only staff allowed to order from suppliers can do this."))
-        return store, employee
+    def _desk_supplier_info(self, partner):
+        partner = partner.sudo()
+        return {
+            "id": partner.id,
+            "name": partner.display_name,
+            "supplies": partner.bar_supplies or ", ".join(partner.bar_supply_categ_ids.mapped("name")),
+        }
 
     @api.model
-    def _desk_supplier(self, product, company):
-        sellers = product.seller_ids.filtered(
-            lambda seller: seller.company_id in (company, self.env["res.company"])
-            and (not seller.product_id or seller.product_id == product)
+    def desk_suppliers(self, bar_id, token, query=""):
+        """Suppliers to pick on a supplier delivery, with what they supply."""
+        store, _employee = self._desk_store(bar_id, token)
+        Partner = self.env["res.partner"].sudo()
+        domain = [("company_id", "in", [store.company_id.id, False]), ("supplier_rank", ">", 0)]
+        if query:
+            domain.append(("name", "ilike", query))
+        partners = Partner.search(domain, limit=LIST_LIMIT, order="name")
+        if not partners and query:
+            partners = Partner.search(
+                [("company_id", "in", [store.company_id.id, False]), ("is_company", "=", True), ("name", "ilike", query)],
+                limit=20,
+                order="name",
+            )
+        return [self._desk_supplier_info(partner) for partner in partners]
+
+    @api.model
+    def desk_supplier_products(self, bar_id, token, partner_id):
+        """Products this supplier brings: those of the categories it supplies,
+        on its price list, or delivered by it before. Empty when unknown."""
+        store, _employee = self._desk_store(bar_id, token)
+        partner = self.env["res.partner"].sudo().browse(int(partner_id or 0)).exists()
+        products = store._desk_products()
+        if not partner:
+            return []
+        categories = self.env["product.category"].sudo().search(
+            [("id", "child_of", partner.bar_supply_categ_ids.ids)]
+        ) if partner.bar_supply_categ_ids else self.env["product.category"]
+        delivered = self.env["stock.move"].sudo().search(
+            [
+                ("state", "=", "done"),
+                ("picking_id.partner_id", "=", partner.id),
+                ("location_dest_id", "=", store.location_id.id),
+                ("product_id", "in", products.ids),
+            ],
+            limit=500,
+        ).product_id
+        listed = products.filtered(
+            lambda product: product.categ_id in categories
+            or partner in product.seller_ids.partner_id
+            or product in delivered
         )
-        return sellers[:1].partner_id
+        return listed.ids
 
     @api.model
     def _desk_supplier_price(self, product, partner, uom, qty):
@@ -297,226 +328,161 @@ class OdinBarDesk(models.AbstractModel):
         return product.uom_id._compute_price(product.standard_price, uom)
 
     @api.model
-    def _desk_store_available(self, store, products):
-        """Stock at the store now, in each product's unit. A product counted in
-        the last hours starts from what was counted, plus what moved since, so
-        the suggestion is right before the count is approved."""
-        result = {}
-        lines = self.env["odin.bar.count.line"].sudo().search(
-            [
-                ("bar_id", "=", store.id),
-                ("product_id", "in", products.ids),
-                ("touched", "=", True),
-                ("count_id.state", "in", ("submitted", "recount", "approved")),
-                ("count_id.submitted_at", ">=", fields.Datetime.now() - timedelta(hours=ORDER_COUNT_HOURS)),
-            ],
-            order="id desc",
-        )
-        now = fields.Datetime.now()
-        day = store._business_date()
-        for line in lines:
-            product = line.product_id
-            if product.id in result:
-                continue
-            since = line.count_id.submitted_at
-            moved = store._stock_as_of(product, now, day)[product.id] - store._stock_as_of(product, since, day)[product.id]
-            result[product.id] = line.counted_qty + moved
-        rest = products.filtered(lambda product: product.id not in result)
-        if rest:
-            quants = self.env["stock.quant"].sudo()._read_group(
-                [("location_id", "child_of", store.location_id.id), ("product_id", "in", rest.ids)],
-                ["product_id"],
-                ["quantity:sum"],
-            )
-            on_hand = {product.id: qty for product, qty in quants}
-            for product in rest:
-                result[product.id] = on_hand.get(product.id, 0.0)
+    def _desk_invoice_lines(self, store, lines):
+        """Client lines ``[{product_id, uom_id, invoiced, received}]`` as
+        ``[(product, uom, invoiced, received)]``."""
+        allowed = {product.id: product for product in store._desk_products()}
+        Uom = self.env["uom.uom"].sudo()
+        result = []
+        for line in lines or []:
+            product = allowed.get(int(line.get("product_id") or 0))
+            if not product:
+                raise UserError(_("This product is not offered at %(bar)s.", bar=store.name))
+            uom = Uom.browse(int(line.get("uom_id") or product.uom_id.id)).exists()
+            if uom != product.uom_id and uom not in product.product_tmpl_id._bar_pack_uoms():
+                raise UserError(_("That is not a unit of %(product)s.", product=product.name))
+            invoiced = uom.round(float(line.get("invoiced") or 0.0))
+            received = uom.round(float(line.get("received") or 0.0))
+            if invoiced < 0 or received < 0:
+                raise UserError(_("Quantities cannot be negative."))
+            if invoiced or received:
+                result.append((product, uom, invoiced, received))
+        if not result:
+            raise UserError(_("Add the items on the invoice."))
         return result
 
     @api.model
-    def _desk_store_incoming(self, store, products):
-        """Quantity already ordered and not yet delivered, in each product's unit."""
-        moves = self.env["stock.move"].sudo()._read_group(
-            [
-                ("product_id", "in", products.ids),
-                ("location_dest_id", "child_of", store.location_id.id),
-                ("location_id.usage", "=", "supplier"),
-                ("state", "not in", ("done", "cancel", "draft")),
-            ],
-            ["product_id"],
-            ["product_qty:sum"],
-        )
-        return {product.id: qty for product, qty in moves}
-
-    @api.model
-    def _desk_order_partner_info(self, partner, store):
-        return {
-            "id": partner.id,
-            "name": partner.display_name,
-            "email": partner.email or "",
-            "phone": partner.phone or "",
-        }
-
-    @api.model
-    def desk_order_suggestions(self, bar_id, token):
-        """What to order, per supplier: the usual level at the store less what
-        is there and what is already on order, in the order unit."""
-        store, _employee = self._desk_order_context(bar_id, token)
-        company = store.company_id
-        products = store._desk_products().filtered(lambda product: product.bar_usual_qty > 0)
-        available = self._desk_store_available(store, products)
-        incoming = self._desk_store_incoming(store, products)
-        by_supplier = {}
-        no_supplier = []
-        for product in products:
-            order_uom = product.bar_order_uom_id or product.uom_id
-            factor = order_uom._compute_quantity(1, product.uom_id, round=False) or 1.0
-            need = product.bar_usual_qty * factor - available.get(product.id, 0.0) - incoming.get(product.id, 0.0)
-            if need <= 1e-6:
-                continue
-            qty = math.ceil(need / factor - 1e-6)
-            supplier = self._desk_supplier(product, company)
-            if not supplier:
-                no_supplier.append(product.display_name)
-                continue
-            by_supplier.setdefault(supplier, []).append(
-                {"product_id": product.id, "uom_id": order_uom.id, "qty": qty}
-            )
-        start = fields.Datetime.now() - timedelta(hours=REQUEST_HOURS)
-        orders = self.env["odin.bar.activity"].sudo().search(
-            [("bar_id", "=", store.id), ("kind", "=", "order"), ("date", ">=", start)]
-        )
-        ordered = {}
-        for activity in orders:
-            ordered.setdefault(activity.partner_id, []).append(
+    def _desk_attach(self, records, invoice):
+        """Keep the photo or PDF of the supplier's invoice on ``records``."""
+        if not invoice or not invoice.get("data"):
+            return
+        for record in records:
+            self.env["ir.attachment"].sudo().create(
                 {
-                    "name": activity.purchase_id.name,
-                    "time": self._desk_time_label(store, activity.date),
-                    "who": activity.employee_id.name or "",
-                    "summary": activity.summary or "",
+                    "name": invoice.get("name") or _("Supplier invoice"),
+                    "datas": invoice["data"],
+                    "mimetype": invoice.get("mimetype") or False,
+                    "res_model": record._name,
+                    "res_id": record.id,
                 }
             )
-        suppliers = []
-        for partner in sorted(set(by_supplier) | set(ordered), key=lambda p: p.display_name or ""):
-            suppliers.append(
-                dict(
-                    self._desk_order_partner_info(partner, store),
-                    lines=by_supplier.get(partner, []),
-                    ordered=ordered.get(partner, []),
-                )
-            )
-        return {"suppliers": suppliers, "no_supplier": sorted(no_supplier)}
 
     @api.model
-    def _desk_whatsapp(self, partner, company, text):
-        digits = re.sub(r"\D", "", partner.phone or "")
-        if digits.startswith("0") and company.country_id.phone_code:
-            digits = f"{company.country_id.phone_code}{digits[1:]}"
-        return f"https://wa.me/{digits}?text={quote(text)}"
+    def desk_supplier_delivery(
+        self,
+        bar_id,
+        token,
+        uuid,
+        partner_id,
+        lines,
+        missing="coming",
+        paid="later",
+        amount=False,
+        supplier_ref=False,
+        invoice=False,
+    ):
+        """A supplier delivery checked against the supplier's invoice.
 
-    @api.model
-    def _desk_order_info(self, order, store):
-        lines = [
-            f"{line.product_qty:g} × {_short_uom(line.product_uom_id)} {line.product_id.display_name}"
-            for line in order.order_line
-            if not line.display_type
-        ]
-        text = "\n".join(
-            [
-                _("Order %(order)s from %(company)s", order=order.name, company=order.company_id.name),
-                *lines,
-                _("Please deliver to %(store)s. Thank you.", store=store.name),
-            ]
-        )
-        return {
-            "order": order.name,
-            "supplier": order.partner_id.display_name,
-            "emailed": bool(
-                self.env["odin.bar.activity"].sudo().search_count(
-                    [("purchase_id", "=", order.id), ("note", "!=", False)], limit=1
-                )
-            ),
-            "whatsapp": self._desk_whatsapp(order.partner_id, order.company_id, text),
-            "text": text,
-        }
-
-    @api.model
-    def desk_order_send(self, bar_id, token, uuid, partner_id, lines):
-        """Place an order with a supplier: a confirmed purchase order delivering
-        to the store, emailed to the supplier when they have an email."""
-        store, employee = self._desk_order_context(bar_id, token)
+        ``lines``: what the invoice lists and what arrived, per item. What
+        arrived goes into the store at once. The supplier bill follows the
+        invoice. Items short on arrival are either still coming (``missing``
+        "coming": they stay expected, already billed) or to be credited
+        ("credit": a draft credit note waits for the supplier's). ``paid``
+        "now" pays ``amount`` (default: the bill total) from the store's
+        account. ``invoice`` is an optional photo or PDF of the invoice.
+        """
+        store, employee = self._desk_store(bar_id, token)
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
+        self._desk_check_payment(store, paid)
+        if missing not in ("coming", "credit"):
+            raise UserError(_("Say what happens to the missing items."))
+        picking_type = store.receipt_type_id
+        if not picking_type:
+            raise UserError(_("Set the receipt type on %(store)s first.", store=store.name))
         partner = self.env["res.partner"].sudo().browse(int(partner_id or 0)).exists()
         if not partner or partner.company_id not in (store.company_id, self.env["res.company"]):
             raise UserError(_("Pick the supplier."))
-        if not store.receipt_type_id:
-            raise UserError(_("Set the receipt type on %(store)s first.", store=store.name))
-        items = self._desk_items(store, lines)
-        order = (
-            self.env["purchase.order"]
-            .sudo()
-            .with_company(store.company_id)
-            .create(
-                {
-                    "partner_id": partner.id,
-                    "company_id": store.company_id.id,
-                    "picking_type_id": store.receipt_type_id.id,
-                    "order_line": [
-                        Command.create(
-                            {
-                                "product_id": product.id,
-                                "product_qty": qty,
-                                "product_uom_id": uom.id,
-                                "price_unit": self._desk_supplier_price(product.with_company(store.company_id), partner, uom, qty),
-                            }
-                        )
-                        for product, uom, qty in items
-                    ],
-                }
-            )
-        )
-        order.button_confirm()
+        entries = self._desk_invoice_lines(store, lines)
+        received = [(product, uom, rec) for product, uom, _inv, rec in entries if rec]
+        invoiced = [(product, uom, inv) for product, uom, inv, _rec in entries if inv]
+        short = [(product, uom, inv - rec) for product, uom, inv, rec in entries if inv > rec]
+        extra = [(product, uom, rec - inv) for product, uom, inv, rec in entries if rec > inv]
+        ref = (supplier_ref or "").strip() or False
         activity = self._desk_begin(
             uuid,
             {
-                "kind": "order",
+                "kind": "receive",
                 "bar_id": store.id,
                 "partner_id": partner.id,
                 "employee_id": employee.id,
                 "business_date": store._business_date(),
-                "purchase_id": order.id,
-                "summary": self._desk_summary(items),
-                "amount": order.amount_untaxed,
+                "summary": self._desk_summary(received) if received else _("Nothing arrived"),
+                "amount": self._desk_value(store, received) if received else 0.0,
+                "note": ref,
             },
         )
-        template = self.env.ref("purchase.email_template_edi_purchase_done", raise_if_not_found=False)
-        if partner.email and template:
-            # An email that cannot go (no PDF engine, no mail server) never
-            # blocks the order: the Desk then offers WhatsApp.
-            try:
-                with self.env.cr.savepoint():
-                    template.sudo().send_mail(order.id)
-                    activity.note = _("Emailed to %(email)s", email=partner.email)
-            except Exception:
-                _logger.exception("Bar Desk: order %s could not be emailed", order.name)
+        source = picking_type.default_location_src_id or partner.property_stock_supplier
+        vals = {
+            "partner_id": partner.id,
+            "origin": ref,
+            "bar_employee_id": employee.id,
+            "bar_activity_id": activity.id,
+        }
+        records = [activity]
+        if received:
+            records.append(self._desk_picking(store, picking_type, source, store.location_id, received, vals))
+        if short and missing == "coming":
+            pending = self._desk_picking(
+                store,
+                picking_type,
+                source,
+                store.location_id,
+                short,
+                dict(vals, bar_billed=True, origin=_("Still to come on %(ref)s", ref=ref or partner.display_name)),
+                validate=False,
+            )
+            pending.action_confirm()
+            records.append(pending)
+        notes = []
+        if short:
+            notes.append(
+                _(
+                    "Missing on arrival (%(what)s): %(items)s",
+                    what=_("still coming") if missing == "coming" else _("credit note due"),
+                    items=self._desk_summary(short),
+                )
+            )
+        if extra:
+            notes.append(_("More than invoiced arrived: %(items)s", items=self._desk_summary(extra)))
+        bill = self.env["account.move"]
+        if invoiced:
+            bill = self._desk_supplier_bill(
+                store, partner, invoiced, paid, ref, activity, amount=amount, notes=notes
+            )
+            records.append(bill)
+        if short and missing == "credit":
+            records.append(self._desk_supplier_bill(
+                store, partner, short, False, ref, activity, refund=True,
+                notes=[_("Waiting for the supplier's credit note for items missing on %(ref)s.", ref=ref or bill.name or "")],
+            ))
+        self._desk_attach(records, invoice)
         return self._desk_result(activity)
 
     @api.model
     def _desk_result(self, activity):
         result = super()._desk_result(activity)
-        if activity.purchase_id:
-            result["order"] = self._desk_order_info(activity.purchase_id, activity.bar_id)
         if activity.bill_id:
             result["bill"] = {
                 "name": activity.bill_id.name,
                 "paid": activity.bill_id.payment_state in ("paid", "in_payment"),
+                "checked": activity.bill_id.state == "posted",
             }
         return result
 
     # ------------------------------------------------------------------
-    # Paying on a supplier delivery
+    # Supplier bills and payment
     # ------------------------------------------------------------------
 
     @api.model
@@ -529,13 +495,21 @@ class OdinBarDesk(models.AbstractModel):
             )
 
     @api.model
-    def _desk_supplier_bill(self, store, partner, lines, paid, supplier_ref, activity, origin=False):
-        """Bill what arrived (``lines``: [(product, uom, qty, purchase line or
-        empty)]) and, when paid now, pay it from the store's account."""
+    def _desk_supplier_bill(
+        self, store, partner, lines, paid, supplier_ref, activity, origin=False, amount=False, notes=None, refund=False
+    ):
+        """Bill ``lines`` ([(product, uom, qty)] or [(product, uom, qty,
+        purchase line)]) and, when paid now, pay it from the store's account.
+
+        When the invoice total typed on the Desk (``amount``) does not match
+        the bill, the bill waits in draft for a manager to check the prices;
+        a payment made now is then recorded on its own, to be matched."""
         company = store.company_id
         today = fields.Date.context_today(self.with_context(tz=store.tz))
         invoice_lines = []
-        for product, uom, qty, purchase_line in lines:
+        for line in lines:
+            product, uom, qty = line[:3]
+            purchase_line = line[3] if len(line) > 3 else False
             if purchase_line:
                 vals = purchase_line._prepare_account_move_line()
                 vals["quantity"] = uom._compute_quantity(qty, purchase_line.product_uom_id)
@@ -549,7 +523,7 @@ class OdinBarDesk(models.AbstractModel):
             .with_company(company)
             .create(
                 {
-                    "move_type": "in_invoice",
+                    "move_type": "in_refund" if refund else "in_invoice",
                     "partner_id": partner.id,
                     "company_id": company.id,
                     "invoice_date": today,
@@ -559,12 +533,40 @@ class OdinBarDesk(models.AbstractModel):
                 }
             )
         )
-        bill.action_post()
+        amount = float(amount or 0.0)
+        mismatch = amount and bill.currency_id.compare_amounts(amount, bill.amount_total) != 0
+        for note in notes or []:
+            bill.message_post(body=note)
+        if refund:
+            return bill
+        if mismatch:
+            bill.message_post(
+                body=_(
+                    "The supplier's invoice says %(invoice)s but Odoo's prices give %(odoo)s. "
+                    "Check the prices, then confirm this bill.",
+                    invoice=amount,
+                    odoo=bill.amount_total,
+                )
+            )
+        else:
+            bill.action_post()
         if paid == "now":
-            self.env["account.payment.register"].sudo().with_company(company).with_context(
-                active_model="account.move", active_ids=bill.ids
-            ).create(
-                {"journal_id": store.supplier_payment_journal_id.id, "payment_date": today}
-            )._create_payments()
+            journal = store.supplier_payment_journal_id
+            if bill.state == "posted":
+                self.env["account.payment.register"].sudo().with_company(company).with_context(
+                    active_model="account.move", active_ids=bill.ids
+                ).create({"journal_id": journal.id, "payment_date": today})._create_payments()
+            else:
+                payment = self.env["account.payment"].sudo().with_company(company).create(
+                    {
+                        "payment_type": "outbound",
+                        "partner_type": "supplier",
+                        "partner_id": partner.id,
+                        "amount": amount,
+                        "journal_id": journal.id,
+                        "date": today,
+                    }
+                )
+                payment.action_post()
         activity.bill_id = bill
         return bill

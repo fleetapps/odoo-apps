@@ -26,6 +26,11 @@ class StockPicking(models.Model):
         "stock is at the bar once the transfer is done, and a shortage in an "
         "unchecked delivery counts against the bar.",
     )
+    bar_billed = fields.Boolean(
+        "Already billed",
+        copy=False,
+        help="Items still to come on a supplier invoice already billed: receiving them bills nothing.",
+    )
     bar_ack_employee_id = fields.Many2one("hr.employee", string="Checked by", copy=False)
     bar_ack_date = fields.Datetime("Checked at", copy=False)
     bar_dispute_origin_id = fields.Many2one(

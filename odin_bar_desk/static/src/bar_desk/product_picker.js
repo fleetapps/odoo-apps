@@ -16,12 +16,22 @@ export class ProductPicker extends Component {
     };
 
     setup() {
-        this.state = useState({ query: "", categId: this.hasRanking ? "top" : "all" });
+        this.state = useState({ query: "", categId: "all", showAll: false });
+        this.state.categId = this.hasRanking ? "top" : "all";
+    }
+
+    get limited() {
+        return Boolean(this.props.onlyIds?.size) && !this.state.showAll;
     }
 
     get allProducts() {
         const products = this.props.model.state.catalog?.products || [];
-        return this.props.onlyIds ? products.filter((p) => this.props.onlyIds.has(p.id)) : products;
+        return this.limited ? products.filter((p) => this.props.onlyIds.has(p.id)) : products;
+    }
+
+    toggleAll() {
+        this.state.showAll = !this.state.showAll;
+        this.state.categId = "all";
     }
 
     get hasRanking() {

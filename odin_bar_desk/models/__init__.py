@@ -1,6 +1,7 @@
 from . import product
 from . import res_users
 from . import hr_employee
+from . import res_partner
 from . import odin_bar_reason
 from . import odin_bar
 from . import odin_bar_activity

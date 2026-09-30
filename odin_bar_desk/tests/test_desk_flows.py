@@ -261,12 +261,12 @@ class TestDeskFlows(BarDeskCase):
     def test_receive_from_a_supplier(self):
         desk = self.desk(self.device_store)
         self.assertIn(self.supplier.id, [p["id"] for p in desk.desk_suppliers(self.store.id, self.store_token, "EABL")])
-        result = desk.desk_store_receive(
+        result = desk.desk_supplier_delivery(
             self.store.id,
             self.store_token,
             self.uuid(),
             self.supplier.id,
-            [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 5}],
+            [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "invoiced": 5, "received": 5}],
         )
         receipt = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
         self.assertEqual(receipt.state, "done")
