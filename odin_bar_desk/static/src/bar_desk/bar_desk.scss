@@ -562,27 +562,47 @@
 
 // Day sheet -----------------------------------------------------------------
 
+// Four trading days fit a phone side by side: two short lines per chip.
 .o_bar_desk_days {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.4rem;
-    margin: -0.25rem -1rem 0;
-    padding: 0.25rem 1rem 0.5rem;
-    overflow-x: auto;
+    margin-bottom: 0.75rem;
 }
 
 .o_bar_desk_day {
-    flex: 0 0 auto;
-    min-height: 2.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    min-height: 3.25rem;
+    padding: 0.3rem 0.25rem;
     border: 1px solid var(--#{$prefix}border-color);
-    border-radius: 2rem;
+    border-radius: var(--bar-desk-radius);
     background-color: var(--#{$prefix}body-bg);
-    white-space: nowrap;
+    line-height: 1.2;
+
+    .o_bar_desk_day_top {
+        max-width: 100%;
+        overflow: hidden;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .o_bar_desk_day_date {
+        color: var(--#{$prefix}secondary-color);
+        font-size: 0.8rem;
+        white-space: nowrap;
+    }
 
     &.o_active {
         border-color: var(--#{$prefix}primary);
         background-color: var(--#{$prefix}primary);
         color: #fff;
 
+        .o_bar_desk_day_date,
         .text-success,
         .text-warning {
             color: #fff !important;
@@ -834,8 +854,12 @@
 }
 
 .o_bar_desk_level {
-    padding: 0.55rem 0;
+    padding: 0.75rem 0;
     border-bottom: 1px solid var(--#{$prefix}border-color);
+
+    > * + * {
+        margin-top: 0.15rem;
+    }
 
     &.o_below {
         box-shadow: inset 3px 0 0 var(--#{$prefix}danger);
@@ -843,3 +867,73 @@
     }
 }
 
+
+// Locations and "when" choices: equal tiles, two to a row.
+.o_bar_desk_grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+
+    .o_bar_desk_chip {
+        min-width: 0;
+        border-radius: var(--bar-desk-radius);
+        white-space: normal;
+    }
+}
+
+.o_bar_desk_chip_two {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+    padding-block: 0.4rem;
+
+    span {
+        font-weight: 600;
+    }
+
+    small {
+        opacity: 0.8;
+    }
+}
+
+// Count: progress, save state, filters and search in one compact block.
+.o_bar_desk_toolbar {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--#{$prefix}border-color);
+
+    .progress {
+        height: 0.6rem;
+    }
+}
+
+.o_bar_desk_save {
+    color: var(--#{$prefix}secondary-color);
+
+    &.o_saved {
+        color: var(--#{$prefix}success);
+    }
+
+    &.o_offline,
+    &.o_error {
+        color: var(--#{$prefix}warning-text-emphasis);
+    }
+}
+
+.o_bar_desk_menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 5;
+    min-width: 11rem;
+    padding: 0.35rem 0;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 0.5rem;
+    background-color: var(--#{$prefix}body-bg);
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+
+    .dropdown-item {
+        padding: 0.65rem 1rem;
+    }
+}

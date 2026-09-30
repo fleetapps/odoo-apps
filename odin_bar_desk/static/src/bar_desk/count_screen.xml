@@ -4,35 +4,46 @@
         <div class="o_bar_desk_body">
             <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
             <t t-elif="state.count">
-                <div class="d-flex align-items-start gap-2">
-                    <h2 class="o_bar_desk_section flex-grow-1 m-0">
-                        <t t-esc="state.count.bar.name"/> · closing <t t-esc="state.count.day_label"/>
-                    </h2>
-                    <button class="btn btn-link btn-sm text-muted px-0" t-on-click="startOver">Start over</button>
+                <div class="o_bar_desk_toolbar">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" role="progressbar" aria-label="Counted"
+                             t-att-aria-valuenow="progress.percent" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar bg-success" t-attf-style="width: {{ progress.percent }}%"/>
+                        </div>
+                        <span class="small fw-bold text-nowrap"><t t-esc="progress.done"/>/<t t-esc="progress.total"/></span>
+                        <span class="o_bar_desk_save small text-nowrap" t-att-class="'o_' + state.save" t-att-title="saveLabel">
+                            <i t-attf-class="fa {{ saveIcon }}"/> <t t-esc="saveShort"/>
+                        </span>
+                        <div class="position-relative">
+                            <button class="btn btn-link text-body px-2" aria-label="More" t-on-click="() => this.state.menu = !state.menu">
+                                <i class="fa fa-ellipsis-v"/>
+                            </button>
+                            <div t-if="state.menu" class="o_bar_desk_menu">
+                                <button class="dropdown-item text-danger" t-on-click="startOver">
+                                    <i class="fa fa-undo me-2"/>Start over
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.state.filter = 'all'">All</button>
+                        <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'todo' ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.state.filter = 'todo'">To count <t t-esc="progress.left"/></button>
+                        <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'diff' ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.state.filter = 'diff'">Differ <t t-esc="progress.differing"/></button>
+                        <button class="btn o_bar_desk_chip ms-auto" aria-label="Find a product"
+                                t-att-class="state.finding ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="toggleFind">
+                            <i class="fa fa-search"/>
+                        </button>
+                    </div>
+                    <input t-if="state.finding" type="search" class="form-control mt-2" placeholder="Find a product"
+                           aria-label="Find a product" t-model="state.query" autocomplete="off" t-ref="find"/>
                 </div>
                 <div t-if="state.count.pos_missing_label" class="alert alert-warning py-2 my-2" role="alert">
                     The POS sales of <t t-esc="state.count.pos_missing_label"/> are not in yet, so the expected
                     quantities do not take them off. Count anyway; import them before approving.
-                </div>
-                <div class="d-flex align-items-center gap-2 my-2">
-                    <div class="progress flex-grow-1" role="progressbar" aria-label="Counted"
-                         t-att-aria-valuenow="progress.percent" aria-valuemin="0" aria-valuemax="100">
-                        <div class="progress-bar bg-success" t-attf-style="width: {{ progress.percent }}%"/>
-                    </div>
-                    <span class="small text-nowrap"><t t-esc="progress.done"/>/<t t-esc="progress.total"/></span>
-                </div>
-                <div class="small mb-2" t-att-class="state.save === 'saved' ? 'text-success' : 'text-muted'">
-                    <i t-attf-class="fa {{ state.save === 'offline' ? 'fa-plug' : 'fa-check' }} me-1"/><t t-esc="saveLabel"/>
-                </div>
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
-                            t-on-click="() => this.state.filter = 'all'">All</button>
-                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'todo' ? 'btn-primary' : 'btn-outline-secondary'"
-                            t-on-click="() => this.state.filter = 'todo'">To count (<t t-esc="progress.left"/>)</button>
-                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'diff' ? 'btn-primary' : 'btn-outline-secondary'"
-                            t-on-click="() => this.state.filter = 'diff'">Differ (<t t-esc="progress.differing"/>)</button>
-                    <input type="search" class="form-control o_bar_desk_find" placeholder="Find" aria-label="Find a product"
-                           t-model="state.query" autocomplete="off"/>
                 </div>
                 <div class="o_bar_desk_lines">
                     <div t-if="!lines.length" class="text-muted text-center py-4">

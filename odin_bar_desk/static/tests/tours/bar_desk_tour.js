@@ -22,8 +22,8 @@ registry.category("web_tour.tours").add("odin_bar_desk_move", {
     steps: () => [
         ...signIn,
         { trigger: "button:contains(Log a move)", run: "click" },
-        { trigger: ".o_bar_desk_chips:eq(0) button:contains(Main Store)", run: "click" },
-        { trigger: ".o_bar_desk_chips:eq(1) button:contains(Bulls Eye)", run: "click" },
+        { trigger: ".o_bar_desk_grid:eq(0) button:contains(Main Store)", run: "click" },
+        { trigger: ".o_bar_desk_grid:eq(1) button:contains(Bulls Eye)", run: "click" },
         { trigger: "button:contains(Add item)", run: "click" },
         { trigger: ".o_bar_desk_picker_search input", run: "edit Tusker" },
         { trigger: ".o_bar_desk_pick:contains(Tusker)", run: "click" },

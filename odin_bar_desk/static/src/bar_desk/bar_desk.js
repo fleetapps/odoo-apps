@@ -64,7 +64,7 @@ export class BarDesk extends Component {
     }
 
     get title() {
-        return SCREENS[this.screen.name].title;
+        return this.screen.params?.title || SCREENS[this.screen.name].title;
     }
 
     get subtitle() {

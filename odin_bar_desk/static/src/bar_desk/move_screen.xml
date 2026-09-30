@@ -3,7 +3,7 @@
     <t t-name="odin_bar_desk.MoveScreen">
         <div class="o_bar_desk_body">
             <div class="o_bar_desk_label">From</div>
-            <div class="o_bar_desk_chips mb-3">
+            <div class="o_bar_desk_grid mb-3">
                 <button t-foreach="locations" t-as="loc" t-key="loc.id"
                         class="btn o_bar_desk_chip o_bar_desk_chip_big"
                         t-att-class="state.fromId === loc.id ? 'btn-primary' : 'btn-outline-secondary'"
@@ -13,7 +13,7 @@
             </div>
 
             <div class="o_bar_desk_label">To</div>
-            <div class="o_bar_desk_chips mb-2">
+            <div class="o_bar_desk_grid mb-2">
                 <button t-foreach="locations" t-as="loc" t-key="loc.id"
                         class="btn o_bar_desk_chip o_bar_desk_chip_big"
                         t-att-class="state.toId === loc.id ? 'btn-primary' : 'btn-outline-secondary'"
@@ -36,16 +36,16 @@
 
             <t t-if="sheetDayOpen">
                 <div class="o_bar_desk_label">When</div>
-                <div class="o_bar_desk_chips mb-1">
-                    <button class="btn o_bar_desk_chip"
+                <div class="o_bar_desk_grid mb-1">
+                    <button class="btn o_bar_desk_chip o_bar_desk_chip_two"
                             t-att-class="state.onSheetDay ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.state.onSheetDay = true">
-                        <t t-esc="home.day.label"/> (before the count)
+                        <span t-esc="home.day.label"/><small>before the count</small>
                     </button>
-                    <button class="btn o_bar_desk_chip"
+                    <button class="btn o_bar_desk_chip o_bar_desk_chip_two"
                             t-att-class="!state.onSheetDay ? 'btn-primary' : 'btn-outline-secondary'"
                             t-on-click="() => this.state.onSheetDay = false">
-                        Today (after the count)
+                        <span>Today</span><small>after the count</small>
                     </button>
                 </div>
                 <div class="small text-muted mb-3">

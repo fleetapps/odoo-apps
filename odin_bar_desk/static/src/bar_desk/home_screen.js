@@ -9,6 +9,9 @@ function plural(count, word) {
     return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 const COUNT_STATES = {
     none: "Not counted",
     draft: "Counting",
@@ -44,6 +47,28 @@ export class HomeScreen extends Component {
         } catch {
             // Offline: keep showing the last known day.
         }
+    }
+
+    /** "Today", else the weekday: the top line of a day chip. */
+    dayName(day) {
+        return day.date === this.home.days[this.home.days.length - 1].date
+            ? "Today"
+            : WEEKDAYS[this.date(day).getDay()];
+    }
+
+    /** "29 Sep": the bottom line of a day chip. */
+    dayDate(day) {
+        const date = this.date(day);
+        return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+    }
+
+    date(day) {
+        const [year, month, date] = day.date.split("-").map(Number);
+        return new Date(year, month - 1, date);
+    }
+
+    get anyCounted() {
+        return this.home.locations.some((location) => ["submitted", "recount", "approved"].includes(location.state));
     }
 
     get home() {
@@ -111,9 +136,9 @@ export class HomeScreen extends Component {
             return;
         }
         if (location.state === "submitted" || location.state === "recount") {
-            this.props.app.go("differences", { locationId: location.id });
+            this.props.app.go("differences", { locationId: location.id, title: location.name });
         } else {
-            this.props.app.go("count", { barId: location.id });
+            this.props.app.go("count", { barId: location.id, title: location.name });
         }
     }
 

@@ -23,14 +23,14 @@
                             t-att-class="{'o_active': day.date === home.day.date}"
                             t-att-aria-selected="day.date === home.day.date"
                             t-on-click="() => this.setDay(day.date)">
-                        <span t-esc="day.label"/>
-                        <i t-if="day.state === 'approved'" class="fa fa-check-circle text-success ms-1" aria-label="Approved"/>
-                        <i t-elif="day.state === 'open'" class="fa fa-circle-o text-warning ms-1" aria-label="Started"/>
+                        <span class="o_bar_desk_day_top">
+                            <t t-esc="dayName(day)"/>
+                            <i t-if="day.state === 'approved'" class="fa fa-check-circle text-success ms-1" aria-label="Approved"/>
+                            <i t-elif="day.state === 'open'" class="fa fa-circle-o text-warning ms-1" aria-label="Started"/>
+                        </span>
+                        <span class="o_bar_desk_day_date" t-esc="dayDate(day)"/>
                     </button>
                 </div>
-                <h2 class="o_bar_desk_section mt-2">
-                    Closing <t t-esc="home.day.label"/>
-                </h2>
                 <div t-if="home.approved" class="alert alert-success py-2" role="status">
                     <i class="fa fa-check-circle me-1"/> This day is approved.
                 </div>
@@ -97,23 +97,22 @@
                     </div>
                 </t>
 
-                <t t-call="odin_bar_desk.Step">
+                <t t-if="anyCounted" t-call="odin_bar_desk.Step">
                     <t t-set="num" t-value="4"/>
                     <t t-set="title" t-value="'Differences'"/>
                     <t t-set="done" t-value="countsDone and !home.unresolved"/>
-                    <t t-set="status" t-value="home.unresolved ? home.unresolved + ' to explain' : (home.differences ? 'All explained' : '')"/>
-                    <button class="btn o_bar_desk_big w-100"
+                    <t t-set="status" t-value="home.unresolved ? home.unresolved + ' to explain' : (home.differences ? 'All explained' : 'None so far')"/>
+                    <button t-if="home.differences and !home.approved" class="btn o_bar_desk_big w-100"
                             t-att-class="home.unresolved ? 'btn-warning' : 'btn-outline-secondary'"
-                            t-att-disabled="!home.differences or home.approved"
                             t-on-click="() => this.open('differences')">
                         <t t-if="home.unresolved">Explain <t t-esc="home.unresolved"/> difference<t t-if="home.unresolved > 1">s</t></t>
-                        <t t-elif="home.differences">Review differences</t>
-                        <t t-else="">No differences yet</t>
+                        <t t-else="">Review differences</t>
                     </button>
+                    <div t-elif="!home.differences" class="small text-muted">Every count so far matches what was expected.</div>
                 </t>
 
                 <t t-call="odin_bar_desk.Step">
-                    <t t-set="num" t-value="5"/>
+                    <t t-set="num" t-value="anyCounted ? 5 : 4"/>
                     <t t-set="title" t-value="'Approve'"/>
                     <t t-set="done" t-value="home.approved"/>
                     <t t-set="status" t-value="''"/>
