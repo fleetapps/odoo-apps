@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="whatsapp_template_view_list" model="ir.ui.view">
+        <field name="name">whatsapp_connector.template.list</field>
+        <field name="model">whatsapp_connector.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="template_name"/>
+                <field name="language_code"/>
+                <field name="category"/>
+                <field name="model_id"/>
+                <field name="account_id"/>
+                <field name="status_label" widget="badge"
+                       decoration-success="status == 'APPROVED'"
+                       decoration-warning="status == 'PENDING'"
+                       decoration-danger="status == 'REJECTED'"/>
+                <field name="status" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="whatsapp_template_view_form" model="ir.ui.view">
+        <field name="name">whatsapp_connector.template.form</field>
+        <field name="model">whatsapp_connector.template</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="status_label" widget="badge"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="template_name"/>
+                            <field name="language_code"/>
+                            <field name="account_id"/>
+                            <field name="category"/>
+                        </group>
+                        <group>
+                            <field name="model_id" options="{'no_create': True}"/>
+                            <field name="phone_field"/>
+                            <field name="user_ids" widget="many2many_tags"/>
+                            <field name="meta_template_id"/>
+                            <field name="quality"/>
+                            <field name="status" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Header">
+                        <field name="header_type"/>
+                        <field name="header_text" invisible="header_type != 'text'"/>
+                        <field name="header_attachment_id" invisible="header_type not in ('image', 'video', 'document')"/>
+                    </group>
+                    <notebook>
+                        <page string="Body" name="body">
+                            <field name="body" placeholder="Hello {{1}}, …"/>
+                            <group><field name="footer"/></group>
+                        </page>
+                        <page string="Buttons" name="buttons">
+                            <field name="button_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="button_type"/>
+                                    <field name="text"/>
+                                    <field name="url_type" invisible="button_type != 'url'"/>
+                                    <field name="website_url" invisible="button_type != 'url'"/>
+                                    <field name="call_number" invisible="button_type != 'phone_number'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Variables" name="variables">
+                            <field name="variable_ids">
+                                <list editable="bottom">
+                                    <field name="line_type"/>
+                                    <field name="placeholder_index"/>
+                                    <field name="field_type"/>
+                                    <field name="field_name" invisible="field_type != 'field'"/>
+                                    <field name="demo_value"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_template" model="ir.actions.act_window">
+        <field name="name">Templates</field>
+        <field name="res_model">whatsapp_connector.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

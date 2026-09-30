@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- R13: Odoo 19 Community ships no WhatsApp lead source. -->
+    <record id="utm_source_whatsapp" model="utm.source">
+        <field name="name">WhatsApp</field>
+    </record>
+
+    <data noupdate="1">
+        <record id="ir_cron_mark_dropped" model="ir.cron">
+            <field name="name">WhatsApp: mark messages Meta never delivered as dropped</field>
+            <field name="model_id" ref="model_whatsapp_connector_message"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_mark_dropped()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+        </record>
+    </data>
+</odoo>

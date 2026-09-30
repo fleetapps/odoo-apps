@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- R1: a WhatsApp app with Configuration > WhatsApp Business Accounts,
+         Templates and Messages, as in Odoo Enterprise. -->
+    <menuitem id="menu_whatsapp_root" name="WhatsApp"
+              web_icon="whatsapp_connector,static/description/icon.png"
+              groups="group_whatsapp_user" sequence="45"/>
+
+    <menuitem id="menu_whatsapp_conversations" name="Conversations" parent="menu_whatsapp_root"
+              action="action_whatsapp_conversations" sequence="10"/>
+    <menuitem id="menu_whatsapp_templates" name="Templates" parent="menu_whatsapp_root"
+              action="action_whatsapp_template" sequence="20"/>
+    <menuitem id="menu_whatsapp_messages" name="Messages" parent="menu_whatsapp_root"
+              action="action_whatsapp_message" sequence="30"/>
+
+    <menuitem id="menu_whatsapp_configuration" name="Configuration" parent="menu_whatsapp_root"
+              groups="group_whatsapp_manager" sequence="90"/>
+    <menuitem id="menu_whatsapp_accounts" name="WhatsApp Business Accounts" parent="menu_whatsapp_configuration"
+              action="action_whatsapp_account" sequence="10"/>
+    <menuitem id="menu_whatsapp_webhook_events" name="Webhook Log" parent="menu_whatsapp_configuration"
+              action="action_whatsapp_webhook_event" groups="group_whatsapp_admin" sequence="20"/>
+</odoo>

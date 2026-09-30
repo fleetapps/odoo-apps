@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_account_user,account user,model_whatsapp_connector_account,group_whatsapp_user,1,0,0,0
+access_account_manager,account manager,model_whatsapp_connector_account,group_whatsapp_manager,1,1,1,0
+access_account_admin,account admin,model_whatsapp_connector_account,group_whatsapp_admin,1,1,1,1
+access_operator_user,operator user,model_whatsapp_connector_operator,group_whatsapp_user,1,0,0,0
+access_operator_manager,operator manager,model_whatsapp_connector_operator,group_whatsapp_manager,1,1,1,1
+access_template_user,template user,model_whatsapp_connector_template,group_whatsapp_user,1,0,0,0
+access_template_manager,template manager,model_whatsapp_connector_template,group_whatsapp_manager,1,1,1,1
+access_template_button_user,template button user,model_whatsapp_connector_template_button,group_whatsapp_user,1,0,0,0
+access_template_button_manager,template button manager,model_whatsapp_connector_template_button,group_whatsapp_manager,1,1,1,1
+access_template_variable_user,template variable user,model_whatsapp_connector_template_variable,group_whatsapp_user,1,0,0,0
+access_template_variable_manager,template variable manager,model_whatsapp_connector_template_variable,group_whatsapp_manager,1,1,1,1
+access_message_user,message user,model_whatsapp_connector_message,group_whatsapp_user,1,0,0,0
+access_message_manager,message manager,model_whatsapp_connector_message,group_whatsapp_manager,1,1,0,0
+access_webhook_event_admin,webhook event admin,model_whatsapp_connector_webhook_event,group_whatsapp_admin,1,1,0,1
