@@ -36,12 +36,33 @@
                         <t t-call="odin_bar_desk.HomeTile">
                             <t t-set="screen" t-value="'deliveries'"/>
                             <t t-set="icon" t-value="'fa-truck'"/>
-                            <t t-set="label" t-value="'Deliveries'"/>
+                            <t t-set="label" t-value="'Stock in'"/>
                             <t t-set="subtitle" t-value="home.unchecked ? home.unchecked + ' not checked' : 'All checked'"/>
                             <t t-set="badge" t-value="home.unchecked"/>
                         </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'ask'"/>
+                            <t t-set="icon" t-value="'fa-hand-paper-o'"/>
+                            <t t-set="label" t-value="'Ask for stock'"/>
+                            <t t-set="subtitle" t-value="askLine"/>
+                            <t t-set="badge" t-value="home.asks_missing"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'requests'"/>
+                            <t t-set="icon" t-value="'fa-inbox'"/>
+                            <t t-set="label" t-value="'Requests'"/>
+                            <t t-set="subtitle" t-value="home.requests_in ? home.requests_in + ' to answer' : 'None waiting'"/>
+                            <t t-set="badge" t-value="home.requests_in"/>
+                        </t>
                     </t>
                     <t t-else="">
+                        <t t-call="odin_bar_desk.HomeTile">
+                            <t t-set="screen" t-value="'requests'"/>
+                            <t t-set="icon" t-value="'fa-inbox'"/>
+                            <t t-set="label" t-value="'Requests'"/>
+                            <t t-set="subtitle" t-value="home.requests_in ? home.requests_in + ' to answer' : 'None waiting'"/>
+                            <t t-set="badge" t-value="home.requests_in"/>
+                        </t>
                         <t t-call="odin_bar_desk.HomeTile">
                             <t t-set="screen" t-value="'send'"/>
                             <t t-set="icon" t-value="'fa-truck'"/>
@@ -50,9 +71,15 @@
                         <t t-call="odin_bar_desk.HomeTile">
                             <t t-set="screen" t-value="'receive'"/>
                             <t t-set="icon" t-value="'fa-download'"/>
-                            <t t-set="label" t-value="'Receive'"/>
-                            <t t-set="subtitle" t-value="home.receipts ? home.receipts + ' waiting' : 'From a supplier'"/>
+                            <t t-set="label" t-value="'Supplier delivery'"/>
+                            <t t-set="subtitle" t-value="home.receipts ? home.receipts + ' expected' : 'From a supplier'"/>
                             <t t-set="badge" t-value="home.receipts"/>
+                        </t>
+                        <t t-call="odin_bar_desk.HomeTile" t-if="home.can_order">
+                            <t t-set="screen" t-value="'order'"/>
+                            <t t-set="icon" t-value="'fa-shopping-cart'"/>
+                            <t t-set="label" t-value="'Order'"/>
+                            <t t-set="subtitle" t-value="'From suppliers'"/>
                         </t>
                         <t t-call="odin_bar_desk.HomeTile">
                             <t t-set="screen" t-value="'count'"/>

@@ -1,5 +1,6 @@
 import { Component, onMounted, onWillUnmount, useState } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
+import { feedback } from "./desk_model";
 
 const REFRESH_DELAY = 60000;
 
@@ -27,8 +28,12 @@ export class HomeScreen extends Component {
     }
 
     async refresh() {
+        const before = this.desk.home?.requests_in;
         try {
             await this.model.loadHome();
+            if (before !== undefined && this.desk.home.requests_in > before) {
+                feedback(true); // someone is asking for stock
+            }
         } catch {
             // Offline: keep showing the last known day.
         }
@@ -48,6 +53,14 @@ export class HomeScreen extends Component {
             text += ` · ${count.counted}/${count.total}`;
         }
         return text;
+    }
+
+    get askLine() {
+        const home = this.home;
+        if (home.asks_missing) {
+            return `${home.asks_missing} not fully sent`;
+        }
+        return home.asks_waiting ? `${home.asks_waiting} waiting` : "From the store or a bar";
     }
 
     open(screen) {

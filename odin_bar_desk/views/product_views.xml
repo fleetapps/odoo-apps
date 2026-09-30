@@ -17,6 +17,14 @@
                                options="{'no_create': True}"/>
                         <field name="tots_per_bottle" invisible="not bar_bottle_uom_id"/>
                     </group>
+                    <group string="Ordering for the Main Store" invisible="not bar_desk_ok">
+                        <field name="bar_order_uom_id" domain="[('id', 'in', uom_ids)]"
+                               options="{'no_create': True}"/>
+                        <field name="bar_usual_qty"/>
+                        <div colspan="2" class="text-muted small">
+                            The supplier is the first one on the Purchase tab.
+                        </div>
+                    </group>
                 </group>
             </page>
         </field>

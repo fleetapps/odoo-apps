@@ -19,7 +19,7 @@
                                     <div class="fs-3" t-att-class="record.desk_unchecked_count.raw_value ? 'text-warning' : ''">
                                         <field name="desk_unchecked_count"/>
                                     </div>
-                                    <div class="small text-muted">Deliveries not checked</div>
+                                    <div class="small text-muted">Stock in not checked</div>
                                 </button>
                             </div>
                             <div class="col-6">
@@ -83,6 +83,11 @@
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="Bar Desk" name="desk">
+                    <group invisible="kind != 'store'">
+                        <group string="Supplier deliveries">
+                            <field name="supplier_payment_journal_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
                     <group>
                         <group string="Desk logins">
                             <field name="device_user_ids" nolabel="1" colspan="2" readonly="1"

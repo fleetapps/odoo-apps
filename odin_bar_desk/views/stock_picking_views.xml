@@ -87,7 +87,7 @@
     </record>
 
     <record id="action_bar_deliveries" model="ir.actions.act_window">
-        <field name="name">Bar deliveries</field>
+        <field name="name">Stock in at bars</field>
         <field name="res_model">stock.picking</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('bar_ack_state', '!=', False)]</field>

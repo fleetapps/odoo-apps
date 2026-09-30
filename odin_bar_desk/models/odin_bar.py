@@ -33,6 +33,14 @@ class OdinBar(models.Model):
         "product shown in the Bar Desk.",
     )
     currency_id = fields.Many2one(related="company_id.currency_id")
+    supplier_payment_journal_id = fields.Many2one(
+        "account.journal",
+        string="Suppliers are paid from",
+        check_company=True,
+        domain="[('type', 'in', ('cash', 'bank'))]",
+        help="Cash or M-Pesa account that pays a supplier when the store taps Paid now "
+        "on a supplier delivery.",
+    )
 
     desk_unchecked_count = fields.Integer("Not checked", compute="_compute_desk_dashboard")
     desk_to_approve_count = fields.Integer("To approve", compute="_compute_desk_dashboard")

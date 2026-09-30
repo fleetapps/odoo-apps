@@ -10,6 +10,9 @@ ACTIVITY_KINDS = [
     ("dispute_accept", "Dispute accepted"),
     ("dispute_reject", "Dispute rejected"),
     ("pin_fail", "Wrong PIN"),
+    ("ask", "Asked for stock"),
+    ("ask_none", "Could not send"),
+    ("order", "Ordered from supplier"),
 ]
 
 
@@ -51,6 +54,9 @@ class OdinBarActivity(models.Model):
     picking_ids = fields.One2many("stock.picking", "bar_activity_id", string="Transfers")
     scrap_ids = fields.One2many("stock.scrap", "bar_activity_id", string="Scraps")
     count_id = fields.Many2one("odin.bar.count", string="Count", index="btree_not_null")
+    request_id = fields.Many2one("odin.bar.request", string="Request", index="btree_not_null")
+    purchase_id = fields.Many2one("purchase.order", string="Purchase order", index="btree_not_null")
+    bill_id = fields.Many2one("account.move", string="Supplier bill", index="btree_not_null")
     source_picking_id = fields.Many2one(
         "stock.picking", string="Delivery", index="btree_not_null"
     )

@@ -19,6 +19,12 @@ class HrEmployee(models.Model):
         help="Can sign in at every bar and store of the company, including bars added later.",
     )
 
+    odin_bar_can_order = fields.Boolean(
+        "Can order from suppliers",
+        groups="hr.group_hr_user",
+        help="Sees Order on the Main Store's Desk and can send purchase orders to suppliers.",
+    )
+
     def _odin_bar_allowed(self, bar):
         """Whether this employee may sign in to the Desk at ``bar``."""
         self.ensure_one()

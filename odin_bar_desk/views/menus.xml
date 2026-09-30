@@ -29,16 +29,22 @@
               sequence="20"/>
 
     <menuitem id="menu_bar_deliveries_root"
-              name="Deliveries"
+              name="Stock in"
               parent="odin_bar_base.menu_bar_root"
               groups="group_bar_desk_manager"
               sequence="30"/>
 
     <menuitem id="menu_bar_deliveries"
-              name="Deliveries to bars"
+              name="Stock in at bars"
               parent="menu_bar_deliveries_root"
               action="action_bar_deliveries"
               sequence="10"/>
+
+    <menuitem id="menu_bar_requests"
+              name="Requests"
+              parent="menu_bar_deliveries_root"
+              action="odin_bar_request_action"
+              sequence="15"/>
 
     <menuitem id="menu_bar_disputes"
               name="Disputes"

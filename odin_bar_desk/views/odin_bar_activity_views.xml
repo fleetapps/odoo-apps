@@ -91,7 +91,7 @@
                 <field name="member_ref"/>
                 <field name="summary"/>
                 <filter string="Stock outs" name="stock_out" domain="[('kind', '=', 'stock_out')]"/>
-                <filter string="Deliveries" name="deliveries" domain="[('kind', 'in', ('ack', 'dispute', 'send', 'receive', 'dispute_accept', 'dispute_reject'))]"/>
+                <filter string="Stock in and supplier deliveries" name="deliveries" domain="[('kind', 'in', ('ack', 'dispute', 'send', 'receive', 'dispute_accept', 'dispute_reject'))]"/>
                 <filter string="Counts" name="counts" domain="[('kind', '=', 'count')]"/>
                 <filter string="Wrong PINs" name="pin_fail" domain="[('kind', '=', 'pin_fail')]"/>
                 <separator/>
