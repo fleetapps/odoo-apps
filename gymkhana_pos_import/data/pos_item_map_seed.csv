@@ -1,0 +1,78 @@
+pos_key,pos_name,pos_unit,product_id,odoo_product,status,seen_at_bars,pos_price_incl
+balozi beer|bottle,Balozi Beer,Bottle,148,Balozi 500ml,mapped,Banda Bar/Bulls Eye,250.00
+bitter lemon 300 ml|bottle,Bitter Lemon 300 Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,80.00
+black currant 300 ml|bottle,Black Currant 300 Ml,Bottle,158,Black Currant 300ml,mapped,Bulls Eye/Main Bar,80.00
+black label|1ltr,Black Label,1Ltr,,NEEDS KIT: Johnnie Walker Black Label – 1L Bottle (33 tots),create_kit,Bulls Eye,5955.00
+black label|375ml,Black Label,375Ml,70,Johnnie Walker Black Label 375ml (half bottle),mapped,Bulls Eye,2650.00
+black label|tot,Black Label,Tot,69,Johnnie Walker Black Label,mapped,Bulls Eye,240.00
+campari|tot,Campari,Tot,143,Campari,mapped,Bulls Eye,160.00
+capt morgan spice gold|tot,Capt Morgan Spice Gold,Tot,41,Captain Morgan Spiced Gold,mapped,Banda Bar/Bulls Eye,130.00
+chivas regal 12yrs|tot,Chivas Regal 12Yrs,Tot,134,Chivas Regal 12 Yrs,mapped,Bulls Eye,270.00
+club special mix glass|bottle,Club Special Mix Glass,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,150.00
+coke 300 ml|bottle,Coke 300 Ml,Bottle,159,Coca-Cola 300ml,mapped,Banda Bar/Bulls Eye/Main Bar,80.00
+dunhill double switch|pkt,Dunhill Double Switch,Pkt,166,Dunhill Double Switch,mapped,Banda Bar/Bulls Eye/Main Bar,600.00
+dunhill single switch|pkt,Dunhill Single Switch,Pkt,167,Dunhill Single Switch,mapped,Bulls Eye,600.00
+embassy kings|pkt,Embassy Kings,Pkt,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,600.00
+embassy lights|pkt,Embassy Lights,Pkt,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,600.00
+famous grouse|tot,Famous Grouse,Tot,75,Famous Grouse,mapped,Banda Bar,130.00
+fanta orange 300 ml|bottle,Fanta Orange 300 Ml,Bottle,160,Fanta Orange 300ml,mapped,Banda Bar/Bulls Eye/Main Bar,80.00
+glenfiddich 15yrs|tot,Glenfiddich 15Yrs,Tot,123,Glenfiddich 15 Yrs,mapped,Main Bar,550.00
+glenlivet 12yrs|1ltr,Glenlivet 12Yrs,1Ltr,,NEEDS KIT: Glenlivet 12 Yrs – 1L Bottle (33 tots),create_kit,Banda Bar,11000.00
+glenlivet 12yrs|tot,Glenlivet 12Yrs,Tot,126,Glenlivet 12 Yrs,mapped,Bulls Eye,380.00
+gordon's gin|tot,Gordon'S Gin,Tot,33,Gordon's,mapped,Bulls Eye,115.00
+green gram 100gms (geeta)|each,Green Gram 100Gms (Geeta),Each,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,150.00
+guiness large 500ml|bottle,Guiness Large 500Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,280.00
+heineken 0.0|bottle,Heineken 0.0,Bottle,156,Heineken 0.0,mapped,Banda Bar/Bulls Eye,300.00
+heineken|bottle,Heineken,Bottle,149,Heineken,mapped,Banda Bar/Bulls Eye,315.00
+hennessey|tot,Hennessey,Tot,49,Hennessy,mapped,Banda Bar,350.00
+hot dawa|glass,Hot Dawa,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,250.00
+j & b|tot,J & B,Tot,133,J&B,mapped,Banda Bar/Bulls Eye,120.00
+jack daniel|tot,Jack Daniel,Tot,60,Jack Daniel's,mapped,Bulls Eye,260.00
+jagermeister|tot,Jagermeister,Tot,144,Jägermeister,mapped,Banda Bar,190.00
+jameson black barrel|750ml,Jameson Black Barrel,750ml,119,Jameson Black Barrel – 750ml Bottle (kit),mapped,Bulls Eye,5200.00
+jameson|350ml,Jameson,350Ml,62,Jameson 350ml (half bottle),mapped,Bulls Eye,1750.00
+jameson|tot,Jameson,Tot,61,Jameson,mapped,Bulls Eye,170.00
+kitkat 2 fingers|each,Kitkat 2 Fingers,Each,164,KitKat 2 Fingers,mapped,Banda Bar,100.00
+lime cordial|tot,Lime Cordial,Tot,169,Lime Cordial,mapped,Bulls Eye,20.00
+martell|tot,Martell,Tot,48,Martell,mapped,Bulls Eye,370.00
+matches|each,Matches,Each,165,Matches,mapped,Bulls Eye,10.00
+mineral water 1lt|bottle,Mineral Water 1Lt,Bottle,162,Mineral Water 1L,mapped,Banda Bar/Bulls Eye/Main Bar,100.00
+mineral water 500ml|bottle,Mineral Water 500Ml,Bottle,163,Mineral Water 500ml,mapped,Bulls Eye/Main Bar,50.00
+mocktail berry lemonade|glass,Mocktail Berry Lemonade,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,300.00
+mocktail passion lemonade|glass,Mocktail Passion Lemonade,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,300.00
+myers|tot,Myers,Tot,42,Myers's Rum,mapped,Bulls Eye,120.00
+ng vodka gimlet|glass,NG Vodka Gimlet,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,450.00
+ordinary peanuts|each,Ordinary Peanuts,Each,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye/Main Bar,80.00
+original lemonade|glass,Original Lemonade,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,450.00
+passion margarita|glass,Passion Margarita,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,450.00
+passion|glass,Passion,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,300.00
+pilsner 500ml|bottle,Pilsner 500Ml,Bottle,150,Pilsner 500ml,mapped,Bulls Eye,260.00
+potato crisps 100gms (gita foods)|each,Potato Crisps 100Gms ( Gita Foods),Each,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,165.00
+red bull 250ml can|bottle,Red Bull 250Ml Can,Bottle,161,Red Bull 250ml Can,mapped,Main Bar,300.00
+red dry glass|glass,Red Dry Glass,Glass,176,House Red Dry – Glass (kit),mapped,Bulls Eye,400.00
+red label|tot,Red Label,Tot,72,Johnnie Walker Red Label,mapped,Banda Bar/Bulls Eye,130.00
+red sweet glass|glass,Red Sweet Glass,Glass,175,House Red Sweet – Glass (kit),mapped,Bulls Eye,400.00
+roasted grams 100gms (geeta)|each,Roasted Grams 100Gms (Geeta),Each,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,155.00
+saprkling water 500ml|500ml,SAPRKLING WATER 500ML,500ML,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,100.00
+shirley temple|glass,Shirley Temple,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,250.00
+singleton 12yrs|tot,Singleton 12Yrs,Tot,130,Singleton 12 Yrs,mapped,Bulls Eye,420.00
+smirnoff black ice 300ml|bottle,Smirnoff Black Ice 300Ml,Bottle,147,Smirnoff Black Ice 300ml,mapped,Banda Bar/Bulls Eye,250.00
+smirnoff vodka|tot,Smirnoff Vodka,Tot,46,Smirnoff Vodka,mapped,Banda Bar/Bulls Eye,100.00
+soda water 300 ml|bottle,Soda Water 300 Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye/Main Bar,80.00
+soda water 500ml - plastic|bottle,Soda Water 500Ml - Plastic,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,100.00
+sparkling water 500ml|500ml,SPARKLING WATER 500ML,500ML,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye/Main Bar,100.00
+sprite 300 ml|bottle,Sprite 300 Ml,Bottle,157,Sprite 300ml,mapped,Banda Bar/Bulls Eye/Main Bar,80.00
+stoney tangawizi 300 ml|bottle,Stoney Tangawizi 300 Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,80.00
+tanqueray gin ldn|tot,Tanqueray Gin Ldn,Tot,37,Tanqueray London Dry,mapped,Bulls Eye,240.00
+tanqueray sevilla|tot,Tanqueray Sevilla,Tot,39,Tanqueray Sevilla,mapped,Bulls Eye,180.00
+tonic water 300 ml|bottle,Tonic Water 300 Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Banda Bar/Bulls Eye,80.00
+tusker beer 500ml|bottle,Tusker Beer 500Ml,Bottle,151,Tusker Lager 500ml,mapped,Bulls Eye,250.00
+tusker cider 500ml|bottle,Tusker Cider 500Ml,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,250.00
+tusker lite 330ml|bottle,Tusker Lite 330Ml,Bottle,152,Tusker Lite 330ml,mapped,Bulls Eye,280.00
+tusker malt 330ml|bottle,Tusker Malt 330Ml,Bottle,153,Tusker Malt 330ml,mapped,Banda Bar/Bulls Eye,280.00
+vimto mix glass|bottle,Vimto Mix Glass,Bottle,,"NEEDS PRODUCT (storable, not in Odoo yet)",create_product,Bulls Eye,200.00
+vimto mix|glass,Vimto mix,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,200.00
+watermelon margarita hh 450|glass,Watermelon Margarita HH 450,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Bulls Eye,450.00
+watermelon|glass,Watermelon,Glass,,NEEDS DECISION: recipe BoM (deduct ingredients) or sales-only,recipe_or_sales_only,Banda Bar/Bulls Eye,300.00
+white cap 500ml|bottle,White Cap 500Ml,Bottle,154,White Cap 500ml,mapped,Banda Bar/Bulls Eye/Main Bar,285.00
+white cap crisp 300ml|bottle,White Cap Crisp 300Ml,Bottle,155,White Cap Crisp 330ml  [CHECK SIZE: POS says 300ml],mapped,Banda Bar/Bulls Eye,290.00

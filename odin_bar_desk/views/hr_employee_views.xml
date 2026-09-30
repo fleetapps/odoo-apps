@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">hr.employee.form.odin.bar.desk</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <group name="identification_group" position="after">
+                <group string="Bar Desk" name="bar_desk">
+                    <field name="odin_bar_all"/>
+                    <field name="odin_bar_ids" widget="many2many_tags" options="{'no_create': True}"
+                           invisible="odin_bar_all"/>
+                    <div colspan="2" class="text-muted small">
+                        Staff sign in at these bars with the PIN above.
+                    </div>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

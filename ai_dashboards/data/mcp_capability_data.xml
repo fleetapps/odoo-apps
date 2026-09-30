@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tools are data in mcp_governance_suite, so this module adds a
+         capability and seven tool records rather than touching the controller.
+         noupdate=0 so description and schema fixes propagate on upgrade.
+
+         A scope with no explicit capability selection gets every installed one
+         (mcp.scope.allowed_capabilities), so these appear on connections that
+         already exist — nobody has to reconnect Claude to get them. -->
+
+    <record id="cap_dashboards" model="mcp.capability">
+        <field name="name">Dashboards</field>
+        <field name="technical_name">dashboards</field>
+        <field name="sequence">40</field>
+        <field name="description">Build dashboards the user can open in Odoo. You describe what to show — models, filters, groupings and measures — and Odoo draws and stores it. You never write code, SQL or markup, and a saved dashboard holds the question rather than the numbers, so it is recalculated with the permissions of whoever opens it.</field>
+    </record>
+
+    <!-- ============================================ Discovery ============= -->
+    <record id="tool_get_dashboard_schema" model="mcp.tool">
+        <field name="name">get_dashboard_schema</field>
+        <field name="title">Dashboard format</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">get_dashboard_schema</field>
+        <field name="sequence">1</field>
+        <field name="description">Return the dashboard specification format: the widget types, the aggregates and date granularities available, the layout grid, the limits, and a complete worked example. Call this before building your first dashboard in a conversation — it is short, and a spec written without it is usually refused for a fixable reason.</field>
+        <field name="input_schema">{"type": "object", "additionalProperties": false}</field>
+    </record>
+
+    <record id="tool_list_dashboards" model="mcp.tool">
+        <field name="name">list_dashboards</field>
+        <field name="title">List dashboards</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">list_dashboards</field>
+        <field name="sequence">2</field>
+        <field name="description">List the saved dashboards this user can open, with their ids, owners and a one-line description of each. Use it to find the id of a dashboard the user refers to by name.</field>
+        <field name="input_schema">{"type": "object", "additionalProperties": false}</field>
+    </record>
+
+    <record id="tool_get_dashboard" model="mcp.tool">
+        <field name="name">get_dashboard</field>
+        <field name="title">Read a dashboard</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">get_dashboard</field>
+        <field name="sequence">3</field>
+        <field name="description">Return one dashboard's full specification. Always call this before changing an existing dashboard: edit the spec you get back and save that, rather than rebuilding from scratch, so the parts the user was happy with stay exactly as they were.</field>
+        <field name="input_schema">{"type": "object", "properties": {"dashboard_id": {"type": "integer"}}, "required": ["dashboard_id"], "additionalProperties": false}</field>
+    </record>
+
+    <record id="tool_seed_from_view" model="mcp.tool">
+        <field name="name">seed_from_view</field>
+        <field name="title">Suggest fields for a model</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">seed_from_view</field>
+        <field name="sequence">4</field>
+        <field name="description">For a given model, return the numeric fields worth totalling and the fields worth grouping by. A quick way to propose a sensible dashboard for a model you have not worked with before, without reading the whole schema.</field>
+        <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string", "description": "Technical model name, e.g. sale.order"}}, "required": ["model"], "additionalProperties": false}</field>
+    </record>
+
+    <!-- ============================================== Writing ============= -->
+    <record id="tool_preview_dashboard" model="mcp.tool">
+        <field name="name">preview_dashboard</field>
+        <field name="title">Preview a dashboard</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">preview_dashboard</field>
+        <field name="sequence">10</field>
+        <field name="description">Validate a specification, save it as a preview, and return a link plus a sample of the real figures each tile produces. Prefer this over save_dashboard when building something new: the preview does not appear on the user's app tile, and the sample lets you check the numbers look sensible before asking them to look. If a figure seems wrong, say so and fix the spec rather than presenting it.</field>
+        <field name="input_schema">{"type": "object", "properties": {"spec": {"type": "object", "description": "The dashboard specification. Call get_dashboard_schema for the format."}, "name": {"type": "string", "description": "Optional. Defaults to the spec's title."}}, "required": ["spec"], "additionalProperties": false}</field>
+    </record>
+
+    <record id="tool_save_dashboard" model="mcp.tool">
+        <field name="name">save_dashboard</field>
+        <field name="title">Save a dashboard</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">save_dashboard</field>
+        <field name="sequence">11</field>
+        <field name="description">Save a dashboard so it appears on the user's AI Dashboards app tile. Pass a dashboard_id to update an existing one (publishing a preview, or applying a change), or a spec alone to create and save in one step. Only the owner can change a dashboard; for someone else's, suggest they duplicate it. Every save keeps the previous version, so a change can always be undone.</field>
+        <field name="input_schema">{"type": "object", "properties": {"dashboard_id": {"type": "integer", "description": "Omit to create a new one."}, "spec": {"type": "object"}, "name": {"type": "string"}, "note": {"type": "string", "description": "A short note for the history, e.g. 'added last-year comparison'."}}, "additionalProperties": false}</field>
+    </record>
+
+    <record id="tool_delete_dashboard" model="mcp.tool">
+        <field name="name">delete_dashboard</field>
+        <field name="title">Delete a dashboard</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">delete_dashboard</field>
+        <field name="sequence">12</field>
+        <field name="description">Delete a dashboard permanently. Only its owner can. Confirm with the user first — the dashboard and its whole history go, and this cannot be undone.</field>
+        <field name="input_schema">{"type": "object", "properties": {"dashboard_id": {"type": "integer"}}, "required": ["dashboard_id"], "additionalProperties": false}</field>
+    </record>
+
+    <!-- ======================================= Business context =========== -->
+    <record id="ctx_dashboards" model="mcp.context">
+        <field name="name">Building dashboards</field>
+        <field name="body">When the user asks for a dashboard, report, chart or KPI in Odoo, build it with the dashboard tools rather than answering with a table in chat — they get something they can open again tomorrow. Call get_dashboard_schema first, then get_schema on each model you intend to use so the field names are real rather than guessed. Prefer preview_dashboard over save_dashboard for anything new, check the sample figures it returns, and only then invite the user to look. To change an existing dashboard, read it with get_dashboard and edit that specification.</field>
+    </record>
+</odoo>

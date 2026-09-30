@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="preview_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.preview.form</field>
+            <field name="model">shopify.bisync.preview</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="product_tmpl_id"/>
+                        <field name="instance_id"/>
+                        <field name="has_changes" invisible="1"/>
+                    </group>
+                    <div class="alert alert-success" role="status"
+                         invisible="has_changes">
+                        <field name="summary" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="not has_changes">
+                        <field name="summary" nolabel="1" readonly="1"/>
+                        Nothing has been sent to Shopify. Push only when the
+                        list below is what you expect.
+                    </div>
+                    <field name="line_ids" invisible="not has_changes">
+                        <list create="false" delete="false" edit="false">
+                            <field name="name"/>
+                            <field name="shopify_value"/>
+                            <field name="odoo_value"/>
+                        </list>
+                    </field>
+                    <footer>
+                        <button name="action_push" type="object"
+                                string="Push to Shopify" class="btn-primary"
+                                invisible="not has_changes"/>
+                        <button string="Close" special="cancel"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="access_import_wizard_form" model="ir.ui.view">
+        <field name="name">access.manager.import.wizard.form</field>
+        <field name="model">access.manager.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Access Profiles">
+                <div class="alert alert-info" role="alert">
+                    Upload a JSON bundle previously exported from Access Manager Pro.
+                    References that cannot be resolved on this database (missing
+                    models, fields, users, reports…) are skipped and logged.
+                </div>
+                <group>
+                    <field name="file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                    <field name="profile_count" invisible="not file"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Import"
+                            class="btn-primary" invisible="not file"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_access_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import Access Profiles</field>
+        <field name="res_model">access.manager.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

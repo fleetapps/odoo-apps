@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Shown when the trip back from Shopify cannot be trusted or completed.
+         Says what happened and what to do next in plain language: a merchant
+         who sees a bare traceback here assumes the whole product is broken.
+         The query string is never echoed - it carries the one-time code. -->
+    <template id="oauth_error" name="Shopify connection failed">
+        <t t-call="web.frontend_layout">
+            <div class="container my-5" style="max-width: 40rem;">
+                <h2>We couldn't finish connecting to Shopify</h2>
+                <p class="lead text-muted" t-esc="message"/>
+                <p>
+                    Nothing was changed and your store is not connected. Go back to
+                    the store in Odoo and press <b>Connect to Shopify</b> to try
+                    again — approval links from Shopify can only be used once, so
+                    starting over is normal and safe.
+                </p>
+                <a t-if="instance_id" class="btn btn-primary"
+                   t-attf-href="/odoo/action-shopify_bisync.instance_action/#{instance_id}">
+                    Back to the store
+                </a>
+                <a t-else="" class="btn btn-primary"
+                   href="/odoo/action-shopify_bisync.instance_action">
+                    Back to my stores
+                </a>
+            </div>
+        </t>
+    </template>
+
+</odoo>

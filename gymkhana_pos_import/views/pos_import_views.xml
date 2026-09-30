@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_import_view_list" model="ir.ui.view">
+        <field name="name">pos.import.list</field>
+        <field name="model">pos.import</field>
+        <field name="arch" type="xml">
+            <list string="POS Day Imports" decoration-muted="state == 'cancelled'" decoration-info="state == 'review'">
+                <field name="business_date"/>
+                <field name="name"/>
+                <field name="pdf_line_count" string="Lines" optional="show"/>
+                <field name="pdf_net" sum="Total"/>
+                <field name="invoice_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-info="state == 'review'"
+                       decoration-success="state == 'posted'" decoration-muted="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="pos_import_view_search" model="ir.ui.view">
+        <field name="name">pos.import.search</field>
+        <field name="model">pos.import</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="business_date"/>
+                <filter name="to_review" string="To Review" domain="[('state', '=', 'review')]"/>
+                <filter name="posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+                <filter name="cancelled" string="Undone" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="business_date" string="Business Date" date="business_date"/>
+                <group>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'business_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="pos_import_view_form" model="ir.ui.view">
+        <field name="name">pos.import.form</field>
+        <field name="model">pos.import</field>
+        <field name="arch" type="xml">
+            <form string="POS Day Import">
+                <header>
+                    <button name="action_review" string="Review" type="object" class="btn-primary"
+                            invisible="state != 'draft' or not pdf_file or parse_error"/>
+                    <button name="action_post" string="Post day" type="object" class="btn-primary"
+                            invisible="state != 'review' or not can_post"/>
+                    <button string="Post day" class="btn-primary" disabled="1"
+                            title="Fix everything in red first."
+                            invisible="state != 'review' or can_post"/>
+                    <button name="action_undo" string="Undo day" type="object"
+                            groups="gymkhana_pos_import.group_pos_import_manager"
+                            invisible="not can_undo"
+                            confirm="Undo this day? The deliveries are returned to the bars, the invoice is credited and the orders are cancelled. Bar counts approved on this day's sales go back for approval. The date can then be imported again."/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,review,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box" invisible="state in ('draft', 'review')">
+                        <button name="action_open_orders" type="object" class="oe_stat_button" icon="fa-dollar"
+                                invisible="not order_count">
+                            <field name="order_count" widget="statinfo" string="Sale Orders"/>
+                        </button>
+                        <button name="action_open_pickings" type="object" class="oe_stat_button" icon="fa-truck"
+                                invisible="not picking_count">
+                            <field name="picking_count" widget="statinfo" string="Deliveries"/>
+                        </button>
+                        <button name="action_open_invoices" type="object" class="oe_stat_button" icon="fa-pencil-square-o"
+                                invisible="not invoice_id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Invoice</span>
+                            </div>
+                        </button>
+                    </div>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="can_post" invisible="1"/>
+                    <field name="can_undo" invisible="1"/>
+                    <field name="invoice_id" invisible="1"/>
+
+                    <!-- Screen 1: drop the PDF -->
+                    <div invisible="state != 'draft'" class="o_pos_import_upload">
+                        <h1>Import a POS day</h1>
+                        <field name="pdf_filename" invisible="1"/>
+                        <field name="pdf_file" widget="pos_import_dropzone" filename="pdf_filename" nolabel="1"/>
+                        <div class="alert alert-danger mt-3 mb-0" role="alert" invisible="not parse_error">
+                            <field name="parse_error" nolabel="1"/>
+                        </div>
+                        <div class="alert alert-success mt-3 mb-0" role="status" invisible="parse_error or not business_date">
+                            <field name="business_date" nolabel="1" readonly="1"/> ·
+                            <field name="pdf_net" nolabel="1" readonly="1"/> ·
+                            <field name="pdf_line_count" nolabel="1" readonly="1"/> lines: press Review.
+                        </div>
+                    </div>
+
+                    <!-- Screens 2 (review) and 3 (done) -->
+                    <div invisible="state == 'draft'">
+                        <field name="review_summary" widget="pos_import_review" options="{'section': 'summary'}" nolabel="1"/>
+                        <div class="alert alert-danger" role="alert" invisible="state != 'review' or not unmatched_count">
+                            <strong><field name="unmatched_count" nolabel="1" class="d-inline"/> item(s) aren't matched to a product.</strong>
+                            Pick the product for each one below. Every choice is saved to the mapping, so it's only needed once.
+                            <field name="unmatched_line_ids" nolabel="1" class="mt-2 bg-white">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="company_id" column_invisible="1"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="bar_id" readonly="1"/>
+                                    <field name="pos_name" readonly="1"/>
+                                    <field name="pos_unit" readonly="1"/>
+                                    <field name="qty" readonly="1"/>
+                                    <field name="net" readonly="1"/>
+                                    <field name="match_state" readonly="1" widget="badge" decoration-danger="1"/>
+                                    <field name="product_id" required="1" options="{'no_create': True}"/>
+                                </list>
+                            </field>
+                        </div>
+                        <field name="review_detail" widget="pos_import_review" options="{'section': 'detail'}" nolabel="1"/>
+                        <notebook invisible="state == 'draft'">
+                            <page string="All PDF lines" name="lines">
+                                <field name="line_ids" nolabel="1" readonly="1">
+                                    <list decoration-danger="match_state != 'ok'" decoration-warning="price_warning or rate_mismatch">
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="page" optional="hide"/>
+                                        <field name="bar_id"/>
+                                        <field name="sub_group" optional="show"/>
+                                        <field name="pos_name"/>
+                                        <field name="pos_unit"/>
+                                        <field name="item_count" optional="hide"/>
+                                        <field name="qty"/>
+                                        <field name="price_unit" optional="show"/>
+                                        <field name="amount" optional="hide" sum="Amount"/>
+                                        <field name="tax" optional="show" sum="Tax"/>
+                                        <field name="net" sum="Net"/>
+                                        <field name="product_id"/>
+                                        <field name="stock_effect" optional="show"/>
+                                        <field name="match_state" optional="hide"/>
+                                        <field name="price_warning" optional="show"/>
+                                        <field name="rate_mismatch" optional="hide"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Source" name="source">
+                                <group>
+                                    <group>
+                                        <field name="pdf_file" filename="pdf_filename" readonly="1"/>
+                                        <field name="business_date"/>
+                                        <field name="outlet"/>
+                                        <field name="file_hash" groups="base.group_no_one"/>
+                                    </group>
+                                    <group>
+                                        <field name="pdf_amount"/>
+                                        <field name="pdf_tax"/>
+                                        <field name="pdf_net"/>
+                                        <field name="refund_id" invisible="not refund_id"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_pos_import" model="ir.actions.act_window">
+        <field name="name">POS Days</field>
+        <field name="res_model">pos.import</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="pos_import_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Import a POS day</p>
+            <p>Drop the Group Sales Register PDF printed from the POS: one sale order and one
+               delivery per bar and one invoice are posted in a single step.</p>
+        </field>
+    </record>
+
+    <record id="action_pos_import_new" model="ir.actions.act_window">
+        <field name="name">Import a POS Day</field>
+        <field name="res_model">pos.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

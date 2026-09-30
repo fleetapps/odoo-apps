@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Menus load last: every menuitem below points at an action defined in one of
+    the view files loaded before it.
+
+    They hang under x_ke_base's "Kenya Tax" root rather than opening a second
+    one, so that when the eTIMS transmitter arrives a Kenyan user has one place
+    to look rather than three.
+-->
+<odoo>
+
+    <menuitem id="menu_ke_vat_returns"
+              name="VAT Returns"
+              parent="x_ke_base.menu_ke_tax_root"
+              action="action_ke_vat_returns"
+              sequence="10"/>
+
+    <menuitem id="menu_ke_vat_reconciliation"
+              name="iTax Reconciliation"
+              parent="x_ke_base.menu_ke_tax_root"
+              sequence="20"/>
+
+    <menuitem id="menu_ke_vat_itax_lines"
+              name="Differences"
+              parent="menu_ke_vat_reconciliation"
+              action="action_ke_vat_itax_lines"
+              sequence="10"/>
+
+    <menuitem id="menu_ke_vat_itax_batches"
+              name="iTax Imports"
+              parent="menu_ke_vat_reconciliation"
+              action="action_ke_vat_itax_batches"
+              sequence="20"/>
+
+</odoo>

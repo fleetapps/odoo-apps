@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.mcp</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app string="AI MCP" name="mcp_governance_suite">
+                    <block title="MCP Server" name="mcp_server_block">
+                        <setting string="Enable MCP Server"
+                                 help="Serve the MCP endpoint at /mcp for AI assistants.">
+                            <field name="mcp_enabled"/>
+                        </setting>
+                        <setting string="Sign in with Odoo (OAuth 2.1)"
+                                 help="Recommended. Browser-based connect — no keys, no files.">
+                            <field name="mcp_oauth_enabled"/>
+                        </setting>
+                        <setting string="Allow API-key connections"
+                                 help="For headless clients and CI that cannot open a browser.">
+                            <field name="mcp_apikey_enabled"/>
+                        </setting>
+                        <setting string="Dynamic client registration"
+                                 help="RFC 7591, deprecated upstream. Client ID Metadata Documents are always supported; keep this on only for clients that cannot use them.">
+                            <field name="mcp_dynamic_registration"/>
+                        </setting>
+                        <setting string="Allowed browser origins"
+                                 help="Comma-separated. Empty is the safe default — MCP clients are not browsers, and accepting any origin invites DNS-rebinding attacks.">
+                            <field name="mcp_allowed_origins" placeholder="https://app.example.com"/>
+                        </setting>
+                    </block>
+
+                    <block title="Governance &amp; Lifetimes" name="mcp_gov_block">
+                        <setting string="Default OAuth scope"
+                                 help="Applied to OAuth users with no personal scope. Start read-only.">
+                            <field name="mcp_default_scope_id"/>
+                        </setting>
+                        <setting string="Access token lifetime"
+                                 help="Seconds. Short-lived is safer (OAuth 2.1).">
+                            <field name="mcp_access_token_ttl"/>
+                        </setting>
+                        <setting string="Refresh token lifetime" help="Seconds.">
+                            <field name="mcp_refresh_token_ttl"/>
+                        </setting>
+                        <setting string="Audit retention" help="Months of audit history to keep.">
+                            <field name="mcp_audit_retention_months"/>
+                        </setting>
+                    </block>
+
+                    <block title="Connect" name="mcp_connect_block">
+                        <setting string="MCP Server URL"
+                                 help="Paste this into your AI client's custom connector.">
+                            <field name="mcp_endpoint_url" widget="CopyClipboardChar" readonly="1"/>
+                        </setting>
+                        <setting string="Discovery URL"
+                                 help="OAuth is discovered automatically from here (RFC 9728).">
+                            <field name="mcp_metadata_url" widget="CopyClipboardChar" readonly="1"/>
+                        </setting>
+                        <setting string="Public address override"
+                                 help="Only needed when this server cannot work out its own public address — it reads the proxy's forwarded headers, so TLS-terminating proxies normally need nothing here.">
+                            <field name="mcp_public_base_url" placeholder="https://erp.example.com"/>
+                        </setting>
+                        <setting string="Guided setup"
+                                 help="Readiness checks, the URL to paste, a QR code for mobile, per-client steps and live connection status.">
+                            <button name="action_open_connect" type="object"
+                                    string="Open the Connect screen" class="btn-primary"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- No <target>: 'inline' was dropped from the act_window target selection
+         in Odoo 19. Core's own Settings action (base_setup) now omits the field
+         and relies on the 'current' default, which renders the settings page
+         exactly the same way. -->
+    <record id="mcp_config_settings_action" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'mcp_governance_suite'}</field>
+    </record>
+</odoo>

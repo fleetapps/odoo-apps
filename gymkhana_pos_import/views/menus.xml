@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The import lives in Bar Control, next to the bars and their counts:
+         Bar Control > POS import, and the setup under Configuration. -->
+    <menuitem id="menu_pos_import_new" name="Import a day" parent="odin_bar_base.menu_bar_pos"
+              action="action_pos_import_new" groups="gymkhana_pos_import.group_pos_import_user" sequence="10"/>
+    <menuitem id="menu_pos_import_days" name="Imported days" parent="odin_bar_base.menu_bar_pos"
+              action="action_pos_import" groups="gymkhana_pos_import.group_pos_import_user" sequence="20"/>
+
+    <menuitem id="menu_pos_import_settings" name="POS import settings" parent="odin_bar_base.menu_bar_config"
+              action="action_pos_import_settings" sequence="40"
+              groups="gymkhana_pos_import.group_pos_import_manager"/>
+    <menuitem id="menu_pos_import_map" name="POS item mapping" parent="odin_bar_base.menu_bar_config"
+              action="action_pos_item_map" groups="gymkhana_pos_import.group_pos_import_user" sequence="45"/>
+
+    <!-- Importers see Configuration for the item mapping, and the bars (read only, or
+         editable for POS import administrators). -->
+    <record id="odin_bar_base.menu_bar_config" model="ir.ui.menu">
+        <field name="group_ids" eval="[Command.link(ref('gymkhana_pos_import.group_pos_import_user'))]"/>
+    </record>
+</odoo>

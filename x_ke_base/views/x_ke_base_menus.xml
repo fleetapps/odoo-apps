@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A root menu the VAT module hangs its own items under, and the eTIMS module
+    will too. Gated on group_ke_tax_user, which base.group_system implies in
+    x_ke_base_security.xml.
+-->
+<odoo>
+
+    <menuitem id="menu_ke_tax_root"
+              name="Kenya Tax"
+              web_icon="x_ke_base,static/description/icon.png"
+              groups="x_ke_base.group_ke_tax_user"
+              sequence="66"/>
+
+    <menuitem id="menu_ke_tax_config"
+              name="Configuration"
+              parent="menu_ke_tax_root"
+              groups="x_ke_base.group_ke_tax_manager"
+              sequence="90"/>
+
+    <menuitem id="menu_ke_tax_classification"
+              name="Supply Classification"
+              parent="menu_ke_tax_config"
+              action="action_ke_tax_classification"
+              sequence="10"/>
+
+    <menuitem id="menu_ke_tax_repair"
+              name="Repair Tax Tags"
+              parent="menu_ke_tax_config"
+              action="action_ke_tax_retag"
+              sequence="20"/>
+
+</odoo>

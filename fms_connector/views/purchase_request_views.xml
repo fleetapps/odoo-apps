@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Inherits purchase_request's view_purchase_request_form
+             (OCA/purchase-workflow, module purchase_request), verified
+             against the 19.0 branch on 2026-09-23: requested_by/assigned_to
+             sit in the first <group> of the sheet. -->
+        <record id="view_purchase_request_form_fms" model="ir.ui.view">
+            <field name="name">purchase.request.form.fms.connector</field>
+            <field name="model">purchase.request</field>
+            <field name="inherit_id" ref="purchase_request.view_purchase_request_form"/>
+            <field name="arch" type="xml">
+                <field name="assigned_to" position="after">
+                    <field name="x_fms_driver_name" string="Driver / Requester (FMS)"
+                           readonly="1" invisible="not x_fms_ref"/>
+                    <field name="x_fms_vehicle_ref" string="Vehicle"
+                           readonly="1" invisible="not x_fms_ref"/>
+                    <field name="x_fms_branch" string="Branch / Program Office"
+                           readonly="1" invisible="not x_fms_ref"/>
+                    <field name="x_fms_country" string="Country"
+                           readonly="1" invisible="not x_fms_ref"/>
+                    <field name="x_fms_ref" invisible="1"/>
+                    <field name="x_fms_driver_email" invisible="1"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_purchase_request_search_fms" model="ir.ui.view">
+            <field name="name">purchase.request.search.fms.connector</field>
+            <field name="model">purchase.request</field>
+            <field name="inherit_id" ref="purchase_request.view_purchase_request_search"/>
+            <field name="arch" type="xml">
+                <field name="name" position="after">
+                    <field name="x_fms_vehicle_ref" string="Vehicle (FMS)"/>
+                    <field name="x_fms_branch" string="Branch (FMS)"/>
+                </field>
+            </field>
+        </record>
+
+    </data>
+</odoo>

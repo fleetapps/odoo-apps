@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Corrections to the Kenyan return definition shipped by l10n_ke 19.0.
+
+    These records belong to l10n_ke; we write over them by external id. That is
+    legitimate and survives an upgrade of this module, but it does NOT survive
+    an upgrade of l10n_ke, which reloads its own data and puts the defects back
+    without reloading ours.
+
+    Because every one of these defects produces a plausible-looking number
+    rather than an error, a silent reversion is the dangerous case. So the
+    renderer re-checks all of them on every compute and refuses to produce a
+    figure from a reverted definition - see CORRECTED_EXPRESSIONS and
+    REMOVED_EXPRESSIONS in models/ke_tax_correction.py, which must be kept in
+    step with this file.
+-->
+<odoo>
+
+    <!--
+        Box 16 - Non-Deductible Input VAT.
+
+        Section 17 of the VAT Act apportions input tax on mixed supplies by the
+        share of turnover that is taxable. The shipped formula was
+
+            box_15.tax - (((box_1.tax + box_2.tax + box_3.base) / box_5.base) * box_15.tax)
+
+        which puts the VAT *charged* at 16% and 8% into the numerator of a ratio
+        whose denominator is turnover. For a trader with only standard-rated
+        sales the ratio collapses from 1.0 to roughly 0.16, so about 84% of the
+        mixed input-VAT pool is treated as non-deductible instead of none of it.
+        That understates box 17 and overstates box 22 - a real overpayment,
+        every period.
+
+        The correct numerator is taxable turnover, which box 6 already computes
+        as box_1.base + box_2.base + box_3.base, so the fix reuses it rather
+        than restating it.
+
+        There is deliberately no 90/10 de minimis here. Section 17(6) used to
+        allow the whole of the mixed pool when taxable supplies exceeded 90% of
+        total supplies and none of it below 10%; the Tax Laws (Amendment) Act,
+        2024 abolished both thresholds with effect from 27 December 2024, so
+        mixed input VAT is now claimed strictly in proportion to taxable
+        supplies. Do not put the thresholds back for a 2025+ period.
+    -->
+    <record id="l10n_ke.tax_report_non_deductible_input_vat_tax_tag"
+            model="account.report.expression">
+        <field name="formula">box_15.tax - ((box_6.base / box_5.base) * box_15.tax)</field>
+        <field name="subformula">ignore_zero_division</field>
+    </record>
+
+    <!--
+        Box 26 - Net VAT Payable / Credit Carried Forward.
+
+        The carry-forward is conditional on the period netting to a credit, and
+        the threshold is written in a currency. l10n_ke shipped RON - the
+        Romanian leu - which is the only occurrence of RON anywhere outside
+        l10n_ro, and l10n_ro does not use it. Every other localisation names its
+        own currency (EUR, CAD, BGN, NGN, RWF, TSH). Kenya's is KES.
+
+        Because the threshold is zero the practical effect depends on how the
+        currency resolves, which is precisely why it should not be left to
+        chance on a filed return.
+    -->
+    <record id="l10n_ke.tax_report_net_vat_payable_or_credit_carried_forward_carryover"
+            model="account.report.expression">
+        <field name="subformula">if_below(KES(0))</field>
+    </record>
+
+    <!--
+        Box 20 - Total Withholding VAT Credit.
+
+        Box 20 is the 2% withheld from us by our customers, so it is a
+        sales-side figure. Its tax column correctly reads the tag 'WH Sales',
+        applied by the sales tax SWT2. Its base column read 'WH base', which
+        only the purchase-side tax PWT2 ever applies - the opposite side of the
+        ledger.
+
+        There is nothing correct to point it at: SWT2's base repartition carries
+        no tag at all, so no sales-side withholding base exists to sum. Rather
+        than display the purchase-side figure under a sales-side heading, the
+        expression is removed and the column renders empty.
+
+        Only box_20.tax feeds box 22, so no filed figure changes either way.
+        This is a presentation fix, and it is the right one until the
+        withholding-VAT certificate register gives the base a real source.
+
+        Note: uninstalling this module does not restore the expression;
+        reinstalling l10n_ke does.
+    -->
+    <delete model="account.report.expression"
+            id="l10n_ke.tax_report_total_withholding_vat_credit_base_tag"/>
+
+</odoo>

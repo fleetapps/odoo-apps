@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.LockScreen">
+        <div class="o_bar_desk_body o_bar_desk_lock">
+            <div class="text-center mb-3">
+                <div class="fs-1 fw-bold lh-sm">Stock control</div>
+                <div class="text-muted" t-esc="desk.bar.day_label"/>
+            </div>
+            <t t-if="!state.employee">
+                <div class="text-center text-muted mb-2">Tap your name</div>
+                <div class="o_bar_desk_people">
+                    <button t-foreach="desk.employees" t-as="employee" t-key="employee.id"
+                            class="o_bar_desk_person" t-on-click="() => this.pick(employee)">
+                        <span class="o_bar_desk_avatar" t-esc="initials(employee.name)"/>
+                        <span class="o_bar_desk_person_name" t-esc="employee.name"/>
+                    </button>
+                </div>
+                <div t-if="!desk.employees.length" class="alert alert-warning">
+                    No one can sign in yet. A manager ticks "All bars" (or the locations) under Bar Desk on the
+                    employee's record and sets a PIN.
+                </div>
+            </t>
+            <div t-else="" class="o_bar_desk_pin">
+                <div class="text-center fs-4 fw-bold" t-esc="state.employee.name"/>
+                <div class="text-center text-muted mb-2">Your PIN</div>
+                <div class="o_bar_desk_pin_dots" aria-hidden="true">
+                    <span t-foreach="dots" t-as="filled" t-key="filled_index" t-att-class="{'o_filled': filled}"/>
+                </div>
+                <div t-if="state.error" class="alert alert-danger text-center py-2 my-2" role="alert" t-esc="state.error"/>
+                <div class="o_bar_desk_keys">
+                    <button t-foreach="pinKeys" t-as="key" t-key="key" class="btn o_bar_desk_key"
+                            t-att-class="key === 'ok' ? 'btn-primary' : 'btn-light'"
+                            t-att-disabled="state.busy" t-on-click="() => this.press(key)">
+                        <i t-if="key === 'back'" class="fa fa-long-arrow-left" aria-label="Delete"/>
+                        <t t-elif="key === 'ok'">OK</t>
+                        <t t-else="" t-esc="key"/>
+                    </button>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-light o_bar_desk_big flex-grow-1" t-on-click="notMe">Not me</button>
+                    <button t-if="state.employee.is_me and desk.isManager" class="btn btn-secondary o_bar_desk_big flex-grow-1"
+                            t-on-click="() => this.submit(true)">Continue as me</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

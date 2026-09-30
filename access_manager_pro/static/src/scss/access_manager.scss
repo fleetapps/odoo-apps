@@ -1,0 +1,51 @@
+// Access Manager Pro - UI switches applied through CSS classes.
+//
+// Two entry points feed these rules:
+//   * `<body>` classes toggled by access_manager.js from session_info
+//     (the GLOBAL, all-model switches);
+//   * a class placed by `get_view` directly on a form's `<chatter/>` node
+//     (the PER-MODEL chatter switches).
+//
+// The chatter button class names (`o-mail-Chatter-*`, `o-mail-Followers`)
+// come from the mail module and are stable across Odoo 17-19.
+
+%o_am_hidden {
+    display: none !important;
+}
+
+// --- Chatter (per-model class on the chatter node, and global body class) ---
+.o_am_hide_message .o-mail-Chatter-sendMessage,
+body.o_am_hide_message .o-mail-Chatter-sendMessage {
+    @extend %o_am_hidden;
+}
+.o_am_hide_note .o-mail-Chatter-logNote,
+body.o_am_hide_note .o-mail-Chatter-logNote {
+    @extend %o_am_hidden;
+}
+.o_am_hide_activity .o-mail-Chatter-activity,
+body.o_am_hide_activity .o-mail-Chatter-activity {
+    @extend %o_am_hidden;
+}
+.o_am_hide_followers .o-mail-Followers,
+body.o_am_hide_followers .o-mail-Followers {
+    @extend %o_am_hidden;
+}
+
+// --- "Add a Property" button (global) ---
+body.o_am_hide_add_property .o_field_property_add {
+    @extend %o_am_hidden;
+}
+
+// --- Favorites dropdown in the search bar (global) ---
+body.o_am_hide_favourites .o_favorite_menu,
+body.o_am_hide_favourites .o_searchview_dropdown_toggler.fa-star {
+    @extend %o_am_hidden;
+}
+
+// --- "Insert in Spreadsheet" entries (global) ---
+body.o_am_hide_spreadsheet .o_insert_list_spreadsheet_menu,
+body.o_am_hide_spreadsheet .o_insert_pivot_spreadsheet_menu,
+body.o_am_hide_spreadsheet .o-spreadsheet-insert,
+body.o_am_hide_spreadsheet [data-menu="insert-spreadsheet"] {
+    @extend %o_am_hidden;
+}

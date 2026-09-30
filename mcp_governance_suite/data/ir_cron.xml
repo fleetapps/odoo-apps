@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="cron_mcp_audit_purge" model="ir.cron">
+        <field name="name">AI MCP: purge old audit logs</field>
+        <field name="model_id" ref="model_mcp_audit_log"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_purge()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="cron_mcp_oauth_purge" model="ir.cron">
+        <field name="name">AI MCP: purge expired OAuth codes &amp; tokens</field>
+        <field name="model_id" ref="model_mcp_oauth_token"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_purge()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

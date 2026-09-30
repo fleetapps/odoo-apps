@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="payout_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.list</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <list decoration-success="state == 'reconciled'"
+                      decoration-warning="unmatched_count &gt; 0"
+                      decoration-danger="difference != 0">
+                    <field name="date"/>
+                    <field name="shopify_payout_id"/>
+                    <field name="instance_id"/>
+                    <field name="status"/>
+                    <field name="amount"/>
+                    <field name="fee_total" optional="show"/>
+                    <field name="difference" optional="show"/>
+                    <field name="matched_count"/>
+                    <field name="unmatched_count"/>
+                    <field name="state" widget="badge"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="payout_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.form</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_register_payments" type="object"
+                                string="Register Payments &amp; Book Fees"
+                                class="btn-primary"
+                                invisible="matched_count == 0"/>
+                        <button name="action_book_fees" type="object"
+                                string="Book Fees Only"
+                                invisible="fee_move_id or not fee_total"/>
+                        <button name="action_open_fee_move" type="object"
+                                string="Fee Entry" icon="fa-book"
+                                invisible="not fee_move_id"/>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1><field name="shopify_payout_id" readonly="1"/></h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="instance_id"/>
+                                <field name="date"/>
+                                <field name="status"/>
+                                <field name="currency_id"/>
+                            </group>
+                            <group>
+                                <field name="amount"/>
+                                <field name="charge_total"/>
+                                <field name="refund_total"/>
+                                <field name="fee_total"/>
+                                <field name="adjustment_total"/>
+                                <field name="net_total"/>
+                                <field name="difference"/>
+                                <field name="fee_move_id" readonly="1"
+                                       invisible="not fee_move_id"/>
+                            </group>
+                        </group>
+                        <field name="transaction_ids">
+                            <list>
+                                <field name="transaction_type"/>
+                                <field name="source_order_id"/>
+                                <field name="sale_order_id"/>
+                                <field name="invoice_id"/>
+                                <field name="amount"/>
+                                <field name="fee"/>
+                                <field name="net"/>
+                                <field name="matched" widget="boolean_toggle"/>
+                                <field name="currency_id" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="payout_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.payout.search</field>
+            <field name="model">shopify.bisync.payout</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="shopify_payout_id"/>
+                    <field name="instance_id"/>
+                    <filter name="filter_unreconciled" string="To Reconcile"
+                            domain="[('state', '=', 'imported')]"/>
+                    <filter name="filter_has_unmatched" string="Has Unmatched"
+                            domain="[('unmatched_count', '&gt;', 0)]"/>
+                    <filter name="filter_does_not_close" string="Does Not Close"
+                            domain="[('difference', '!=', 0)]"/>
+                    <group name="group_by">
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                        <filter name="group_state" string="Status"
+                                context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="payout_action" model="ir.actions.act_window">
+            <field name="name">Payouts</field>
+            <field name="res_model">shopify.bisync.payout</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No payouts imported</p>
+                <p>Shopify Payments payouts land here with their transactions, matched against your invoices. Enable <b>Import Payouts</b> on the store first.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_payouts" name="Payouts" parent="menu_operations"
+                  action="payout_action" sequence="40"/>
+
+    </data>
+</odoo>

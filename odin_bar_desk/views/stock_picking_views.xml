@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">stock.picking.form.odin.bar.desk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']/group" position="inside">
+                <group string="Bar Desk" name="bar_desk" invisible="not bar_employee_id and not bar_manual_move">
+                    <field name="bar_manual_move" readonly="1"/>
+                    <field name="bar_employee_id" invisible="not bar_employee_id"/>
+                    <field name="bar_reason_id" invisible="not bar_reason_id"/>
+                    <field name="bar_member_ref" invisible="not bar_member_ref"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_internal_search_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">stock.picking.search.odin.bar.desk</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter string="Moved by hand" name="manual_move" domain="[('bar_manual_move', '=', True)]"/>
+                <field name="bar_employee_id"/>
+                <group>
+                    <filter string="Trading day" name="group_bar_day" context="{'group_by': 'bar_business_date:day'}"/>
+                    <filter string="Logged by" name="group_bar_employee" context="{'group_by': 'bar_employee_id'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_bar_move_list" model="ir.ui.view">
+        <field name="name">stock.picking.list.bar.moves</field>
+        <field name="model">stock.picking</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <list string="Moves" create="0">
+                <field name="date_done" string="Logged at"/>
+                <field name="bar_business_date"/>
+                <field name="name"/>
+                <field name="location_id" string="From"/>
+                <field name="location_dest_id" string="To"/>
+                <field name="bar_reason_id" optional="show"/>
+                <field name="bar_member_ref" optional="hide"/>
+                <field name="bar_employee_id"/>
+                <field name="picking_type_id" optional="hide"/>
+                <field name="state" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_bar_moves" model="ir.actions.act_window">
+        <field name="name">Moves</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="view_picking_bar_move_list"/>
+        <field name="domain">[('bar_manual_move', '=', True)]</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No move logged yet</p>
+            <p>Stock moved between the club's locations or out of the club, logged
+            on the Bar Desk from the paper sheet.</p>
+        </field>
+    </record>
+</odoo>

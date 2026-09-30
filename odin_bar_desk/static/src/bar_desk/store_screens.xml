@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.StoreReceiveScreen">
+        <div class="o_bar_desk_body">
+            <t t-if="state.step === 'choose'">
+                <button class="btn btn-primary o_bar_desk_big w-100 mb-3" t-on-click="newDelivery">
+                    <i class="fa fa-plus me-2"/>New supplier delivery
+                </button>
+                <h2 class="o_bar_desk_section">Expected from suppliers</h2>
+                <div t-if="!state.receipts.length" class="text-muted py-2">Nothing expected.</div>
+                <button t-foreach="state.receipts" t-as="receipt" t-key="receipt.id" class="o_bar_desk_card"
+                        t-on-click="() => this.openReceipt(receipt)">
+                    <div class="fw-bold text-start" t-esc="receipt.partner or receipt.name"/>
+                    <div class="small text-muted text-start">
+                        <t t-if="receipt.billed">Rest of an invoice · </t>
+                        <t t-esc="receipt.line_count"/> items · <t t-esc="receipt.name"/>
+                    </div>
+                </button>
+            </t>
+
+            <t t-elif="state.step === 'supplier'">
+                <h2 class="o_bar_desk_section">Which supplier?</h2>
+                <input type="search" class="form-control form-control-lg mb-2" placeholder="Search a supplier"
+                       t-model="state.query" t-on-input="onQuery" autocomplete="off"/>
+                <button t-foreach="state.suppliers" t-as="supplier" t-key="supplier.id" class="o_bar_desk_card"
+                        t-on-click="() => this.pickSupplier(supplier)">
+                    <div class="fw-bold text-start" t-esc="supplier.name"/>
+                    <div t-if="supplier.supplies" class="small text-muted text-start" t-esc="supplier.supplies"/>
+                </button>
+            </t>
+
+            <t t-elif="state.step === 'items'">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn btn-light" aria-label="Change supplier" t-on-click="() => this.go('supplier')">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <h2 class="o_bar_desk_section m-0" t-esc="state.supplier.name"/>
+                </div>
+                <input type="file" class="d-none" accept="image/*,application/pdf" t-ref="invoiceFile"
+                       t-on-change="onInvoiceFile"/>
+                <div t-if="state.invoice" class="o_bar_desk_card d-flex align-items-center gap-2">
+                    <img t-if="state.invoice.preview" t-att-src="state.invoice.preview" alt="Invoice"
+                         style="width: 56px; height: 56px; object-fit: cover; border-radius: 8px;"/>
+                    <i t-else="" class="fa fa-file-pdf-o fa-2x"/>
+                    <span class="flex-grow-1">Invoice added</span>
+                    <button class="btn btn-link" t-on-click="removeInvoice">Remove</button>
+                </div>
+                <button t-else="" class="btn btn-light o_bar_desk_big w-100 mb-2" t-on-click="chooseInvoice">
+                    <i class="fa fa-camera me-2"/>Add a photo of the invoice (optional)
+                </button>
+                <div class="fw-bold mt-2 mb-1">What's on the invoice</div>
+                <ItemsEditor model="model" items="state.items" defaultUnit="packUnit"
+                             pickerTitle="state.supplier.name" onlyIds="state.supplierProducts"/>
+            </t>
+
+            <t t-elif="state.step === 'check'">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn btn-light" aria-label="Back to the invoice" t-on-click="() => this.go('items')">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <h2 class="o_bar_desk_section m-0">What arrived?</h2>
+                </div>
+                <div class="small text-muted mb-2">
+                    Filled in from the invoice. Tap a line if what arrived is different.
+                </div>
+                <LineList lines="checkLines" onTap.bind="tapCheckLine" onBump.bind="bumpCheckLine"/>
+            </t>
+
+            <t t-elif="state.step === 'receipt'">
+                <h2 class="o_bar_desk_section" t-esc="state.receipt.partner or state.receipt.name"/>
+                <div class="small text-muted mb-2">
+                    <t t-esc="state.receipt.name"/>. What is expected is filled in: tap a line if what arrived is different.
+                </div>
+                <LineList lines="receiptLines" onTap.bind="tapReceiptLine" onBump.bind="bumpReceiptLine"/>
+            </t>
+
+            <t t-elif="state.step === 'pay'">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn btn-light" aria-label="Back" t-on-click="backFromPay">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <h2 class="o_bar_desk_section m-0"
+                        t-esc="state.receipt ? (state.receipt.partner or state.receipt.name) : state.supplier.name"/>
+                </div>
+                <t t-if="missingItems.length">
+                    <div class="fw-bold mb-1">Missing on arrival:</div>
+                    <div t-foreach="missingItems" t-as="item" t-key="item.key" class="d-flex justify-content-between small">
+                        <span t-esc="item.name"/>
+                        <span class="text-nowrap ms-2 text-warning" t-esc="item.label"/>
+                    </div>
+                    <div class="fw-bold mt-3 mb-2">
+                        <t t-if="state.receipt">Is the rest still coming?</t>
+                        <t t-else="">The supplier will:</t>
+                    </div>
+                    <div class="d-flex gap-2 mb-3">
+                        <button class="btn o_bar_desk_big flex-grow-1"
+                                t-att-class="state.missing === 'coming' ? 'btn-primary' : 'btn-light'"
+                                t-on-click="() => this.state.missing = 'coming'">
+                            <t t-if="state.receipt">Still coming</t><t t-else="">Bring them later</t>
+                        </button>
+                        <button class="btn o_bar_desk_big flex-grow-1"
+                                t-att-class="state.missing === 'credit' ? 'btn-primary' : 'btn-light'"
+                                t-on-click="() => this.state.missing = 'credit'">
+                            <t t-if="state.receipt">Not coming</t><t t-else="">Send a credit note</t>
+                        </button>
+                    </div>
+                </t>
+                <t t-if="state.receipt and state.receipt.billed">
+                    <div class="text-muted mb-3">Already on an invoice: nothing to pay.</div>
+                    <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!canFinish"
+                            t-on-click="() => this.finish(false)">
+                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Done
+                    </button>
+                </t>
+                <t t-else="">
+                    <label class="fw-bold mb-1" for="o_bar_desk_supplier_ref">Invoice number (optional)</label>
+                    <input id="o_bar_desk_supplier_ref" type="text" class="form-control form-control-lg mb-3"
+                           t-model="state.supplierRef" autocomplete="off"/>
+                    <t t-if="!state.receipt">
+                        <label class="fw-bold mb-1" for="o_bar_desk_invoice_total">Invoice total</label>
+                        <input id="o_bar_desk_invoice_total" type="text" inputmode="decimal"
+                               class="form-control form-control-lg mb-3" placeholder="e.g. 24,500"
+                               t-model="state.total" autocomplete="off"/>
+                    </t>
+                    <div class="fw-bold mb-2">Paid?</div>
+                    <button class="btn btn-success o_bar_desk_big w-100 mb-2"
+                            t-att-disabled="!canFinish or !paymentAccount or (!state.receipt and !invoiceTotal)"
+                            t-on-click="() => this.finish('now')">
+                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Paid now<t t-if="paymentAccount"> · from <t t-esc="paymentAccount"/></t>
+                    </button>
+                    <button class="btn btn-light o_bar_desk_big w-100" t-att-disabled="!canFinish"
+                            t-on-click="() => this.finish('later')">Pay later</button>
+                    <div t-if="!state.receipt and !invoiceTotal" class="small text-muted mt-2">
+                        Type the invoice total to pay now.
+                    </div>
+                    <div t-if="!paymentAccount" class="small text-muted mt-2">
+                        Paid now needs the account suppliers are paid from: ask a manager to set it on the Main Store.
+                    </div>
+                </t>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div t-if="state.step === 'items'" class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!state.items.length" t-on-click="toCheck">
+                Next: check what arrived
+            </button>
+        </div>
+        <div t-if="state.step === 'check' or state.step === 'receipt'" class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-on-click="toPay">Next</button>
+        </div>
+        <Keypad t-if="state.keypad" t-key="state.keypad.key or state.keypad.line.move_id" product="state.keypad.product"
+                mode="'qty'" units="false" value="state.keypad.value" hint="state.keypad.hint"
+                onConfirm.bind="confirmKeypad" onClose="() => this.state.keypad = null"/>
+    </t>
+</templates>

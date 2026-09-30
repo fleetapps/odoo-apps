@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="instance_view_form" model="ir.ui.view">
+            <field name="name">shopify.bisync.instance.form</field>
+            <field name="model">shopify.bisync.instance</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <!-- Gated in setup order. Every one of these calls the
+                             Shopify API, so offering them on an unsaved or
+                             untested store only ever produced a raw API error.
+                             Test Connection is the only primary action: it is
+                             the gate the rest of the setup hangs off. -->
+                        <button name="action_connect_shopify" type="object"
+                                string="Connect to Shopify"
+                                invisible="not id or is_connected"
+                                groups="shopify_bisync.group_connector_admin" class="btn-primary"/>
+                        <button name="action_test_connection" type="object"
+                                string="Check Connection"
+                                invisible="not is_connected"
+                                class="btn-primary"/>
+                        <button name="action_connect_shopify" type="object"
+                                string="Reconnect" invisible="not is_connected"
+                                groups="shopify_bisync.group_connector_admin"
+                                confirm="This sends you back to Shopify to approve the connection again. Your settings and synced records are not affected. Continue?"/>
+                        <button name="action_register_webhooks" type="object"
+                                string="Register Webhooks"
+                                invisible="not connection_ok_on"/>
+                        <button name="action_fetch_locations" type="object"
+                                string="Fetch Locations"
+                                invisible="not connection_ok_on"/>
+                        <button name="action_fetch_publications" type="object"
+                                string="Fetch Sales Channels"
+                                invisible="not connection_ok_on"/>
+                        <button name="action_export_prices" type="object"
+                                string="Export Prices"
+                                invisible="sync_prices not in ['export', 'both'] or not connection_ok_on"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_jobs" type="object"
+                                    class="oe_stat_button" icon="fa-refresh">
+                                <field name="job_count" widget="statinfo"
+                                       string="Sync Jobs"/>
+                            </button>
+                        </div>
+                        <widget name="shopify_bisync_health"/>
+                        <div class="oe_title">
+                            <h1><field name="name" placeholder="My Shopify Store"/></h1>
+                        </div>
+                        <!-- Everything here is knowable at setup time and used
+                             to be discovered the expensive way: a wrong total
+                             on an imported order, a line landing on a
+                             placeholder product, stock that silently never
+                             left Odoo. Said once, before it happens. -->
+                        <div class="alert alert-warning" role="alert"
+                             invisible="not setup_warnings">
+                            <div class="fw-bold mb-1">
+                                <i class="fa fa-exclamation-triangle me-1"/>
+                                Worth fixing before you rely on this store
+                            </div>
+                            <field name="setup_warnings" nolabel="1"/>
+                        </div>
+                        <group>
+                            <group string="Connection">
+                                <field name="active" widget="boolean_toggle"/>
+                                <field name="shop_url"
+                                       placeholder="your-store.myshopify.com"/>
+                                <field name="client_id" password="True"
+                                       placeholder="paste from your Shopify app"
+                                       invisible="is_connected"/>
+                                <field name="client_secret" password="True"
+                                       placeholder="paste from your Shopify app"
+                                       invisible="is_connected"/>
+                                <field name="is_connected" invisible="1"/>
+                                <label for="oauth_app_url"
+                                       invisible="is_connected" groups="shopify_bisync.group_connector_admin"/>
+                                <div invisible="is_connected" groups="shopify_bisync.group_connector_admin">
+                                    <field name="oauth_app_url"
+                                           widget="CopyClipboardChar" readonly="1"
+                                           nolabel="1"/>
+                                </div>
+                                <label for="oauth_redirect_uri"
+                                       invisible="is_connected" groups="shopify_bisync.group_connector_admin"/>
+                                <div invisible="is_connected" groups="shopify_bisync.group_connector_admin">
+                                    <field name="oauth_redirect_uri"
+                                           widget="CopyClipboardChar" readonly="1"
+                                           nolabel="1"/>
+                                    <field name="oauth_redirect_uri_ok" invisible="1"/>
+                                    <div class="text-danger small mt-1"
+                                         invisible="oauth_redirect_uri_ok">
+                                        <i class="fa fa-exclamation-triangle me-1"/>
+                                        Shopify only sends people back to a secure
+                                        <b>https</b> address, and this one isn't. Don't copy
+                                        it into Shopify yet — it won't work.
+                                        <br/>
+                                        To fix it, turn on developer mode, then in
+                                        <b>Settings → Technical → Parameters → System
+                                        Parameters</b> set <code>web.base.url</code> to this
+                                        Odoo's public https address (no trailing slash), and
+                                        add a second parameter
+                                        <code>web.base.url.freeze</code> set to
+                                        <code>True</code>. Without the freeze, Odoo rewrites
+                                        the address at the next sign-in and this breaks
+                                        again.
+                                    </div>
+                                </div>
+                                <div colspan="2" class="alert alert-info mb-0" groups="shopify_bisync.group_connector_admin"
+                                     role="alert" invisible="is_connected or not id">
+                                    <p class="mb-2">
+                                        <b>First time? Create your Shopify app — you only
+                                        do this once, then every store reuses it.</b>
+                                    </p>
+                                    <ol class="mb-2 ps-3">
+                                        <li>
+                                            Go to the
+                                            <a href="https://shopify.dev/dashboard"
+                                               target="_blank" rel="noreferrer">Shopify Dev
+                                            Dashboard</a>, sign in with the account that
+                                            owns your store, and create an app. Name it
+                                            anything — only you will see it.
+                                        </li>
+                                        <li>
+                                            In the app, open <b>Settings</b> and set its
+                                            <b>App URL</b> to the App URL shown above.
+                                            Shopify rejects the connection if this and the
+                                            Redirect URL are on different addresses —
+                                            <i>"the redirect_uri and application url must
+                                            have matching hosts"</i>.
+                                        </li>
+                                        <li>
+                                            On the same page, paste the <b>Redirect URL</b>
+                                            shown above into the allowed redirection URLs.
+                                            It must match exactly, path included.
+                                        </li>
+                                        <li>
+                                            Under <b>Distribution</b>, choose
+                                            <b>Custom distribution</b> and pick your store.
+                                            This needs no review from Shopify.
+                                        </li>
+                                        <li>
+                                            Still in Settings, copy the app's
+                                            <b>Client ID</b> and <b>Client secret</b> into
+                                            the App Key and App Secret boxes above, and save.
+                                        </li>
+                                    </ol>
+                                    <p class="mb-0">
+                                        Then press <b>Connect to Shopify</b> at the top.
+                                        You'll approve the connection on Shopify's own
+                                        screen and come straight back here. Nothing syncs
+                                        until you approve, and you can change your mind
+                                        later by deactivating the store.
+                                    </p>
+                                </div>
+                                <div colspan="2" class="alert alert-info mb-0" groups="shopify_bisync.group_connector_admin"
+                                     role="alert" invisible="id">
+                                    Save this store first, then press
+                                    <b>Connect to Shopify</b>.
+                                </div>
+                                <div colspan="2" class="text-muted"
+                                     invisible="not is_connected">
+                                    <i class="fa fa-check text-success me-1"/>
+                                    Connected to Shopify. Nothing to fill in here —
+                                    use <b>Check Connection</b> if you think something
+                                    has stopped working.
+                                </div>
+                            </group>
+                            <group string="How Orders Land in Odoo">
+                                <field name="company_id"
+                                       groups="base.group_multi_company"/>
+                                <field name="warehouse_id"/>
+                                <field name="pricelist_id"/>
+                                <field name="admin_user_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="What Syncs" name="policies">
+                                <group>
+                                    <group string="Choose a direction for each">
+                                        <field name="sync_products"/>
+                                        <field name="sync_stock"/>
+                                        <field name="sync_prices"/>
+                                        <field name="sync_orders"/>
+                                    </group>
+                                    <group string="When both sides changed"
+                                           invisible="sync_products not in ['both'] and sync_stock not in ['both'] and sync_prices not in ['both']">
+                                        <field name="conflict_policy"/>
+                                        <div colspan="2" class="text-muted small">
+                                            Only applies when the same thing was
+                                            edited in both places between syncs.
+                                            Every decision is recorded in the
+                                            Conflict Log, so nothing changes
+                                            without a trace.
+                                        </div>
+                                    </group>
+                                </group>
+
+                                <!-- One toggle, not a wall. Most stores change
+                                     none of what follows, and putting it all on
+                                     screen at once was the single biggest reason
+                                     this form felt like a developer tool. -->
+                                <separator/>
+                                <group>
+                                    <field name="show_advanced"
+                                           widget="boolean_toggle"/>
+                                </group>
+                                <group invisible="not show_advanced">
+                                    <group string="Sending products to Shopify"
+                                           invisible="sync_products not in ['export', 'both']">
+                                        <field name="auto_export_new_products"/>
+                                        <field name="export_only_in_stock"/>
+                                        <field name="export_categories_as_collections"/>
+                                        <field name="export_status_default"/>
+                                        <field name="compare_at_policy"/>
+                                    </group>
+                                    <group string="Stock levels"
+                                           invisible="sync_stock not in ['export', 'both']">
+                                        <field name="stock_quantity_source"/>
+                                        <field name="stock_target_name"/>
+                                        <field name="stock_skip_zero"/>
+                                    </group>
+                                    <group string="What else to copy across">
+                                        <field name="sync_product_tags"/>
+                                        <field name="sync_product_category"/>
+                                        <field name="image_policy"/>
+                                        <field name="product_match_policy"/>
+                                    </group>
+                                    <group string="Catching up on missed changes">
+                                        <field name="scheduled_import_orders"/>
+                                        <field name="import_fulfillment_status"/>
+                                        <field name="notify_customer_on_fulfillment"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Orders &amp; Money" name="orders"
+                                  invisible="sync_orders == 'off'">
+                                <group>
+                                    <group string="What happens to an order that arrives">
+                                        <field name="confirm_policy"/>
+                                        <field name="invoice_policy"
+                                               invisible="confirm_policy != 'confirm_invoice'"/>
+                                        <field name="payment_journal_id"
+                                               invisible="confirm_policy != 'confirm_invoice'"
+                                               required="confirm_policy == 'confirm_invoice'"/>
+                                        <field name="fallback_product_id"/>
+                                    </group>
+                                    <group string="How it is named">
+                                        <field name="use_shopify_order_number"/>
+                                        <field name="order_ref_prefix"
+                                               invisible="use_shopify_order_number"/>
+                                    </group>
+                                </group>
+
+                                <separator/>
+                                <group>
+                                    <field name="show_advanced"
+                                           widget="boolean_toggle"/>
+                                </group>
+                                <group invisible="not show_advanced">
+                                    <group string="Taxes and discounts">
+                                        <field name="tax_policy"/>
+                                        <field name="itemize_taxes"
+                                               invisible="tax_policy != 'odoo'"/>
+                                        <field name="discount_policy"/>
+                                        <field name="adjustment_product_id"
+                                               required="tax_policy == 'shopify'"/>
+                                        <field name="discount_product_id"
+                                               invisible="discount_policy != 'separate'"
+                                               required="discount_policy == 'separate'"/>
+                                    </group>
+                                    <group string="Products used for extras">
+                                        <field name="tip_product_id"/>
+                                        <field name="duties_product_id"/>
+                                        <field name="fallback_carrier_id"/>
+                                    </group>
+                                    <group string="Customers and risk">
+                                        <field name="create_crm_lead"/>
+                                        <field name="risk_policy"/>
+                                    </group>
+                                    <group string="Sending changes back to Shopify">
+                                        <field name="push_paid_status"/>
+                                        <field name="push_cancellations"/>
+                                        <field name="cancel_restock"
+                                               invisible="not push_cancellations"/>
+                                        <field name="refund_export_policy"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Publishing" name="publishing"
+                                  invisible="not show_advanced">
+                                <group>
+                                    <field name="publish_policy"/>
+                                </group>
+                                <field name="publication_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_publication_id" readonly="1"/>
+                                        <field name="name"/>
+                                        <field name="publish" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Payouts" name="payouts"
+                                  invisible="not show_advanced and not import_payouts">
+                                <group>
+                                    <group>
+                                        <field name="import_payouts"/>
+                                        <field name="payout_auto_reconcile"
+                                               invisible="not import_payouts"/>
+                                    </group>
+                                    <group>
+                                        <field name="payout_journal_id"
+                                               invisible="not import_payouts"/>
+                                        <field name="payout_fee_journal_id"
+                                               invisible="not import_payouts"/>
+                                        <field name="payout_fee_account_id"
+                                               invisible="not import_payouts"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Locations" name="locations">
+                                <field name="location_map_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_location_id" readonly="1"/>
+                                        <field name="shopify_location_name"/>
+                                        <field name="warehouse_id"/>
+                                        <field name="stock_sync" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Carriers" name="carriers"
+                                  invisible="not show_advanced">
+                                <field name="carrier_map_ids">
+                                    <list editable="bottom">
+                                        <field name="shopify_code"/>
+                                        <field name="carrier_id"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Status" name="status">
+                                <group string="Last activity">
+                                    <field name="last_import_orders"/>
+                                    <field name="last_export_stock"/>
+                                    <field name="last_import_payouts"/>
+                                    <field name="connection_ok_on"/>
+                                    <field name="webhooks_registered_on"/>
+                                </group>
+                                <!-- Only relevant to stores connected before
+                                     the approval flow existed, or to older
+                                     Shopify apps that issued their own signing
+                                     secret. A merchant connecting today never
+                                     needs to look at this. -->
+                                <group string="Older setups"
+                                       groups="shopify_bisync.group_connector_admin">
+                                    <field name="webhook_secret" password="True"
+                                           string="Signing secret"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="instance_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.instance.list</field>
+            <field name="model">shopify.bisync.instance</field>
+            <field name="arch" type="xml">
+                <!-- The first screen anyone opens. It used to answer "what are
+                     these stores set to" and not "are they working", which is
+                     the only question anyone actually arrives with. -->
+                <list decoration-muted="not active"
+                      decoration-warning="active and not is_connected">
+                    <field name="name"/>
+                    <field name="shop_url"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="is_connected" string="Connected"
+                           widget="boolean_toggle" readonly="1"/>
+                    <field name="connection_ok_on" string="Last Checked"
+                           optional="show"/>
+                    <field name="sync_products" optional="show"/>
+                    <field name="sync_stock" optional="show"/>
+                    <field name="sync_orders" optional="show"/>
+                    <field name="conflict_policy" optional="hide"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="instance_action" model="ir.actions.act_window">
+            <field name="name">Shopify Stores</field>
+            <field name="res_model">shopify.bisync.instance</field>
+            <field name="view_mode">list,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">Connect your first Shopify store</p>
+                <p>Add your store, then press <b>Connect to Shopify</b>. You'll approve
+                   the connection on Shopify's own screen and come straight back — the
+                   same way you'd install any app on your store.</p>
+                <p>Before the first store, someone needs to create an app once in the
+                   <a href="https://shopify.dev/dashboard" target="_blank">Shopify Dev
+                   Dashboard</a> and copy its key and secret. Every store after that
+                   reuses the same two values, so it really is one click.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_root" name="Shopify Sync" sequence="66"
+                  web_icon="shopify_bisync,static/description/icon.png"
+                  groups="shopify_bisync.group_connector_user"/>
+        <menuitem id="menu_operations" name="Operations" parent="menu_root"
+                  sequence="10"/>
+        <menuitem id="menu_configuration" name="Configuration" parent="menu_root"
+                  sequence="90" groups="shopify_bisync.group_connector_admin"/>
+        <menuitem id="menu_instances" name="Stores" parent="menu_configuration"
+                  action="instance_action" sequence="10"/>
+
+    </data>
+</odoo>

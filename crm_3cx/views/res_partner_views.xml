@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0). -->
+<odoo>
+    <record id="view_partner_form_3cx" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.crm_3cx</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <sheet position="before">
+                <header>
+                    <button name="action_threecx_call" type="object" string="Call via 3CX" icon="fa-phone" class="btn-secondary"
+                            invisible="not phone"/>
+                </header>
+            </sheet>
+            <div name="button_box" position="inside">
+                <button class="oe_stat_button" type="object" name="action_view_threecx_calls" icon="fa-phone"
+                        invisible="not threecx_call_count">
+                    <field name="threecx_call_count" widget="statinfo" string="Calls"/>
+                </button>
+            </div>
+            <group name="sale" position="inside">
+                <field name="threecx_renewal_date"/>
+                <field name="threecx_policy_ref"/>
+            </group>
+        </field>
+    </record>
+</odoo>

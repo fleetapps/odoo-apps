@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ke_tax_classification_view_list" model="ir.ui.view">
+        <field name="name">ke.tax.classification.list</field>
+        <field name="model">ke.tax.classification</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="date_to and date_to &lt; current_date"
+                  decoration-bf="basis == 'item_code'">
+                <field name="basis"/>
+                <field name="tag_name"/>
+                <field name="item_tax_rate"/>
+                <field name="side"/>
+                <field name="label"/>
+                <field name="kra_band"/>
+                <field name="vat3_box"/>
+                <field name="tax_template_id"/>
+                <field name="rate"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="note" optional="show"/>
+                <field name="sequence" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="ke_tax_classification_view_form" model="ir.ui.view">
+        <field name="name">ke.tax.classification.form</field>
+        <field name="model">ke.tax.classification</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Keyed on">
+                            <field name="basis"/>
+                            <field name="tag_name"
+                                   invisible="basis != 'tag'"
+                                   required="basis == 'tag'"/>
+                            <field name="item_tax_rate"
+                                   invisible="basis != 'item_code'"
+                                   required="basis == 'item_code'"/>
+                            <field name="side"/>
+                            <field name="label" invisible="basis != 'tag'"/>
+                        </group>
+                        <group string="Resolves to">
+                            <field name="kra_band"/>
+                            <field name="vat3_box"/>
+                            <field name="tax_template_id"/>
+                            <field name="rate"/>
+                        </group>
+                        <group string="In force">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Why this row says what it says."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="ke_tax_classification_view_search" model="ir.ui.view">
+        <field name="name">ke.tax.classification.search</field>
+        <field name="model">ke.tax.classification</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="tag_name"/>
+                <field name="vat3_box"/>
+                <filter name="f_tags" string="Tax tags"
+                        domain="[('basis', '=', 'tag')]"/>
+                <filter name="f_items" string="Item code rates"
+                        domain="[('basis', '=', 'item_code')]"/>
+                <separator/>
+                <filter name="f_in_force" string="In force today"
+                        domain="['|', ('date_from', '=', False), ('date_from', '&lt;=', context_today().strftime('%Y-%m-%d')),
+                                 '|', ('date_to', '=', False), ('date_to', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="f_future" string="Not yet in force"
+                        domain="[('date_from', '&gt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <group>
+                    <filter name="group_basis" string="Keyed on"
+                            context="{'group_by': 'basis'}"/>
+                    <filter name="group_band" string="KRA Tax Type"
+                            context="{'group_by': 'kra_band'}"/>
+                    <filter name="group_box" string="VAT3 Box"
+                            context="{'group_by': 'vat3_box'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_tax_classification" model="ir.actions.act_window">
+        <field name="name">Supply Classification</field>
+        <field name="res_model">ke.tax.classification</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="ke_tax_classification_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                The classification table is empty
+            </p>
+            <p>
+                It normally ships with the module. If it is empty, upgrade
+                Kenya Tax Base — the VAT return and eTIMS both read it, and
+                without it neither can classify a supply.
+            </p>
+        </field>
+    </record>
+
+</odoo>

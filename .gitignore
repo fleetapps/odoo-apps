@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -54,6 +54,9 @@ cover/
 # Translations
 *.mo
 *.pot
+# ...but Odoo module translation templates/catalogs under i18n/ are shipped source
+!*/i18n/*.pot
+!*/i18n/*.po
 
 # Django stuff:
 *.log
@@ -216,3 +219,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Claude Code session state. shopify_bisync/.claude/worktrees/ holds full git
+# worktrees — nested checkouts of this repo — which must never be committed.
+.claude/
+
+# macOS Finder junk. These were tracked inside mcp_governance_suite and
+# ship to the App Store in the module zip.
+.DS_Store

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================== Capabilities ========= -->
+    <record id="mcp_capability_view_list" model="ir.ui.view">
+        <field name="name">mcp.capability.list</field>
+        <field name="model">mcp.capability</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="technical_name"/>
+                <field name="tool_count"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_capability_view_form" model="ir.ui.view">
+        <field name="name">mcp.capability.form</field>
+        <field name="model">mcp.capability</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Sales"/></h1>
+                    </div>
+                    <group>
+                        <field name="technical_name" placeholder="sales"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="description" placeholder="Business summary exposed to the AI…"/>
+                    <notebook>
+                        <page string="Tools" name="tools">
+                            <field name="tool_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="handler"/>
+                                    <field name="writes"/>
+                                    <field name="active" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_capability_action" model="ir.actions.act_window">
+        <field name="name">Capabilities</field>
+        <field name="res_model">mcp.capability</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- =================================================== Tools =========== -->
+    <record id="mcp_tool_view_list" model="ir.ui.view">
+        <field name="name">mcp.tool.list</field>
+        <field name="model">mcp.tool</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="capability_id"/>
+                <field name="name"/>
+                <field name="handler"/>
+                <field name="writes"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_tool_view_form" model="ir.ui.view">
+        <field name="name">mcp.tool.form</field>
+        <field name="model">mcp.tool</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="search_records"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="title"/>
+                            <field name="capability_id"/>
+                            <field name="handler"/>
+                        </group>
+                        <group>
+                            <field name="writes"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <separator string="Description (shown to the AI)"/>
+                    <field name="description"/>
+                    <separator string="Input JSON Schema"/>
+                    <field name="input_schema" placeholder="{&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: {}}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_tool_action" model="ir.actions.act_window">
+        <field name="name">Tools</field>
+        <field name="res_model">mcp.tool</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ================================================== Prompts ========== -->
+    <record id="mcp_prompt_view_list" model="ir.ui.view">
+        <field name="name">mcp.prompt.list</field>
+        <field name="model">mcp.prompt</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="persona"/>
+                <field name="capability_id"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_prompt_view_form" model="ir.ui.view">
+        <field name="name">mcp.prompt.form</field>
+        <field name="model">mcp.prompt</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="sales_pipeline_review"/></h1>
+                    </div>
+                    <group>
+                        <field name="title"/>
+                        <field name="persona"/>
+                        <field name="capability_id"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="description" placeholder="One line shown in the client's prompt picker"/>
+                    <separator string="Template"/>
+                    <field name="template" placeholder="Use {{argument}} placeholders…"/>
+                    <separator string="Arguments (JSON)"/>
+                    <field name="arguments_json" placeholder="[]"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_prompt_action" model="ir.actions.act_window">
+        <field name="name">Prompt Library</field>
+        <field name="res_model">mcp.prompt</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- =========================================== Business Context ======== -->
+    <record id="mcp_context_view_list" model="ir.ui.view">
+        <field name="name">mcp.context.list</field>
+        <field name="model">mcp.context</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="model_id"/>
+                <field name="capability_id"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="mcp_context_view_form" model="ir.ui.view">
+        <field name="name">mcp.context.form</field>
+        <field name="model">mcp.context</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="How our sales flow works"/></h1>
+                    </div>
+                    <group>
+                        <field name="model_id"/>
+                        <field name="capability_id"/>
+                        <field name="active"/>
+                    </group>
+                    <separator string="Business context (exposed to the AI)"/>
+                    <field name="body" placeholder="Explain what this data means in your business…"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="mcp_context_action" model="ir.actions.act_window">
+        <field name="name">Business Context</field>
+        <field name="res_model">mcp.context</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

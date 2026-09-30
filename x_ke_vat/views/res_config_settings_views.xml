@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- A block inside the existing Invoicing app rather than a settings
+             app of our own: this is configuration for the Kenyan chart of
+             accounts, and it belongs where someone setting up that chart is
+             already looking. Follows the pattern l10n_in uses. -->
+        <record id="res_config_settings_view_form_ke_vat" model="ir.ui.view">
+            <field name="name">res.config.settings.form.inherit.ke.vat</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//block[@name='fiscal_localization_setting_container']"
+                       position="after">
+                    <block title="Kenya VAT" name="ke_vat_setting_container"
+                           invisible="country_code != 'KE'">
+                        <setting string="Post the VAT entry on close"
+                                 help="Closing a VAT return always freezes its figures and sets the tax lock date. With this on, it also posts the period's VAT entry: output VAT (box 6) and input VAT (box 12) are cleared from their control accounts, the non-deductible share (boxes 14 and 16) is expensed, and the balance is box 18. Leave it off while you are running the module in parallel against an already-filed period.">
+                            <field name="ke_vat_post_on_close"/>
+                            <div class="content-group mt16"
+                                 invisible="not ke_vat_post_on_close">
+                                <div class="row">
+                                    <label for="ke_vat_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_journal_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_output_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_output_account_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_input_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_input_account_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_payable_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_payable_account_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_credit_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_credit_account_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_non_deductible_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_non_deductible_account_id"/>
+                                </div>
+                                <div class="row">
+                                    <label for="ke_vat_import_vat_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="ke_vat_import_vat_account_id"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Tax return lock date"
+                                 help="Set automatically when a VAT return is closed, and never lowered automatically. A new entry dated inside a locked period is moved to the first open day after it; changing the tax figures of an entry already inside it is refused. Reopening a return deliberately leaves the lock in place, so this is where you lift a lock you have decided to lift.">
+                            <field name="ke_vat_tax_lock_date"/>
+                        </setting>
+                    </block>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

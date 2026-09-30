@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_view_kanban_dashboard" model="ir.ui.view">
+        <field name="name">odin.bar.kanban.dashboard</field>
+        <field name="model">odin.bar</field>
+        <field name="arch" type="xml">
+            <kanban create="0" class="o_kanban_dashboard" can_open="0">
+                <field name="kind"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex align-items-baseline mb-2">
+                            <field name="name" class="fw-bold fs-4"/>
+                            <field name="kind" class="ms-2 text-muted"/>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button name="action_desk_counts" type="object" class="btn btn-light w-100 text-start">
+                                    <div class="fs-3" t-att-class="record.desk_to_approve_count.raw_value ? 'text-info' : ''">
+                                        <field name="desk_to_approve_count"/>
+                                    </div>
+                                    <div class="small text-muted">Counts to approve</div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button name="action_desk_unresolved" type="object" class="btn btn-light w-100 text-start">
+                                    <div class="fs-3" t-att-class="record.desk_unresolved_count.raw_value ? 'text-warning' : ''">
+                                        <field name="desk_unresolved_count"/>
+                                    </div>
+                                    <div class="small text-muted">Differences to explain</div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button name="action_desk_moves" type="object" class="btn btn-light w-100 text-start">
+                                    <div class="fs-3"><field name="desk_moves_today"/></div>
+                                    <div class="small text-muted">Moves today</div>
+                                </button>
+                            </div>
+                        </div>
+                        <footer class="mt-2 small text-muted d-block">
+                            <div>Last approved close: <field name="desk_last_closing_date"/></div>
+                            <div invisible="kind != 'bar'">Last POS day: <field name="desk_last_pos_date"/></div>
+                            <div class="text-warning" invisible="not desk_pos_missing_date">
+                                POS day missing: <field name="desk_pos_missing_date"/>
+                            </div>
+                            <div>Variance, last 7 days: <field name="desk_variance_week" widget="monetary"/></div>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="action_bar_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">odin.bar</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="odin_bar_view_kanban_dashboard"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No bar yet</p>
+            <p>Add your bars and your store under Configuration, then open the
+            Bar Desk to log moves and count.</p>
+        </field>
+    </record>
+
+    <record id="odin_bar_view_form_inherit_desk" model="ir.ui.view">
+        <field name="name">odin.bar.form.desk</field>
+        <field name="model">odin.bar</field>
+        <field name="inherit_id" ref="odin_bar_base.odin_bar_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_create_device_user" type="object" string="Create Desk login"
+                        groups="base.group_erp_manager"
+                        help="Create a shared login for a phone or tablet that stays signed in to the Desk. Set its password afterwards."/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Bar Desk" name="desk">
+                    <group invisible="kind != 'store'">
+                        <group string="Supplier deliveries">
+                            <field name="supplier_payment_journal_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Desk logins">
+                            <field name="device_user_ids" nolabel="1" colspan="2" readonly="1"
+                                   widget="many2many_tags"/>
+                        </group>
+                        <group string="Staff" groups="hr.group_hr_user">
+                            <field name="employee_ids" nolabel="1" colspan="2" widget="many2many_tags"
+                                   placeholder="Employees who sign in here with their PIN"/>
+                        </group>
+                    </group>
+                    <group string="Count sheet">
+                        <field name="sheet_product_ids" nolabel="1" colspan="2"
+                               context="{'default_bar_desk_ok': True}">
+                            <list>
+                                <field name="display_name" string="Product"/>
+                                <field name="categ_id"/>
+                                <field name="uom_id" string="Unit"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

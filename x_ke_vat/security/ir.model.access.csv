@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ke_vat_return_user,ke vat return user,model_ke_vat_return,x_ke_base.group_ke_tax_user,1,1,1,0
+access_ke_vat_return_manager,ke vat return manager,model_ke_vat_return,x_ke_base.group_ke_tax_manager,1,1,1,1
+access_ke_vat_return_line_user,ke vat return line user,model_ke_vat_return_line,x_ke_base.group_ke_tax_user,1,0,1,1
+access_ke_vat_return_line_manager,ke vat return line manager,model_ke_vat_return_line,x_ke_base.group_ke_tax_manager,1,1,1,1
+access_ke_vat_itax_batch_user,ke vat itax batch user,model_ke_vat_itax_batch,x_ke_base.group_ke_tax_user,1,1,1,1
+access_ke_vat_itax_batch_manager,ke vat itax batch manager,model_ke_vat_itax_batch,x_ke_base.group_ke_tax_manager,1,1,1,1
+access_ke_vat_itax_line_user,ke vat itax line user,model_ke_vat_itax_line,x_ke_base.group_ke_tax_user,1,1,1,1
+access_ke_vat_itax_line_manager,ke vat itax line manager,model_ke_vat_itax_line,x_ke_base.group_ke_tax_manager,1,1,1,1
+access_ke_vat_external_value_user,ke vat external value user,account.model_account_report_external_value,x_ke_base.group_ke_tax_user,1,1,1,0
+access_ke_vat_external_value_manager,ke vat external value manager,account.model_account_report_external_value,x_ke_base.group_ke_tax_manager,1,1,1,1
+access_ke_vat_report_user,ke vat report definition user,account.model_account_report,x_ke_base.group_ke_tax_user,1,0,0,0
+access_ke_vat_report_line_user,ke vat report line user,account.model_account_report_line,x_ke_base.group_ke_tax_user,1,0,0,0
+access_ke_vat_report_expression_user,ke vat report expression user,account.model_account_report_expression,x_ke_base.group_ke_tax_user,1,0,0,0
+access_ke_vat_report_column_user,ke vat report column user,account.model_account_report_column,x_ke_base.group_ke_tax_user,1,0,0,0

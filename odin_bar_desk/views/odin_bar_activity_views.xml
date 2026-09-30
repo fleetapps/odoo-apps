@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_activity_view_list" model="ir.ui.view">
+        <field name="name">odin.bar.activity.list</field>
+        <field name="model">odin.bar.activity</field>
+        <field name="arch" type="xml">
+            <list string="Bar Desk log" create="0" edit="0" delete="0">
+                <field name="date"/>
+                <field name="bar_id"/>
+                <field name="kind"/>
+                <field name="employee_id"/>
+                <field name="dest_bar_id" optional="show"/>
+                <field name="reason_id" optional="show"/>
+                <field name="variance_reason_id" optional="show"/>
+                <field name="member_ref" optional="show"/>
+                <field name="summary"/>
+                <field name="amount" sum="Total" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="user_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <button name="action_open_records" type="object" icon="fa-external-link" title="Open"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_bar_activity_view_form" model="ir.ui.view">
+        <field name="name">odin.bar.activity.form</field>
+        <field name="model">odin.bar.activity</field>
+        <field name="arch" type="xml">
+            <form string="Bar Desk action" create="0" edit="0" delete="0">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_records" type="object" class="oe_stat_button" icon="fa-external-link"
+                                string="Records"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="bar_id"/>
+                            <field name="dest_bar_id" invisible="not dest_bar_id"/>
+                            <field name="reason_id" invisible="not reason_id"/>
+                            <field name="variance_reason_id" invisible="not variance_reason_id"/>
+                            <field name="partner_id" invisible="not partner_id"/>
+                            <field name="member_ref" invisible="not member_ref"/>
+                            <field name="source_picking_id" invisible="not source_picking_id"/>
+                            <field name="count_id" invisible="not count_id"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="business_date"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                            <field name="amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="uuid" groups="base.group_no_one"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="summary"/>
+                        <field name="note" invisible="not note"/>
+                    </group>
+                    <field name="picking_ids" invisible="not picking_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="picking_type_id"/>
+                            <field name="location_id"/>
+                            <field name="location_dest_id"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                    <field name="scrap_ids" invisible="not scrap_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="product_id"/>
+                            <field name="scrap_qty"/>
+                            <field name="product_uom_id"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_bar_activity_view_search" model="ir.ui.view">
+        <field name="name">odin.bar.activity.search</field>
+        <field name="model">odin.bar.activity</field>
+        <field name="arch" type="xml">
+            <search string="Bar Desk log">
+                <field name="bar_id"/>
+                <field name="employee_id"/>
+                <field name="reason_id"/>
+                <field name="member_ref"/>
+                <field name="summary"/>
+                <filter string="Moves" name="moves" domain="[('kind', '=', 'move')]"/>
+                <filter string="Counts and corrections" name="counts" domain="[('kind', 'in', ('count', 'fix'))]"/>
+                <filter string="Differences explained" name="resolve" domain="[('kind', '=', 'resolve')]"/>
+                <filter string="Days approved" name="approve" domain="[('kind', '=', 'approve')]"/>
+                <filter string="Supplier deliveries" name="deliveries" domain="[('kind', '=', 'receive')]"/>
+                <filter string="Wrong PINs" name="pin_fail" domain="[('kind', '=', 'pin_fail')]"/>
+                <separator/>
+                <filter string="Date" name="date" date="date"/>
+                <group>
+                    <filter string="Location" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Kind" name="group_kind" context="{'group_by': 'kind'}"/>
+                    <filter string="Staff" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Trading day" name="group_day" context="{'group_by': 'business_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_bar_activity_action" model="ir.actions.act_window">
+        <field name="name">Bar Desk log</field>
+        <field name="res_model">odin.bar.activity</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

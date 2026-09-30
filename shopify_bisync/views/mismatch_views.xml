@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="mismatch_view_list" model="ir.ui.view">
+            <field name="name">shopify.bisync.mismatch.list</field>
+            <field name="model">shopify.bisync.mismatch</field>
+            <field name="arch" type="xml">
+                <list decoration-muted="resolved">
+                    <header>
+                        <button name="action_mark_resolved" type="object"
+                                string="Mark resolved"/>
+                    </header>
+                    <field name="last_seen" string="Last Seen"/>
+                    <field name="instance_id"/>
+                    <field name="kind"/>
+                    <field name="occurrence_count" string="Times"
+                           decoration-warning="occurrence_count > 5"/>
+                    <field name="reference"/>
+                    <field name="message"/>
+                    <field name="sale_order_id" optional="hide"/>
+                    <field name="create_date" string="First Seen"
+                           optional="hide"/>
+                    <field name="resolved" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="mismatch_view_search" model="ir.ui.view">
+            <field name="name">shopify.bisync.mismatch.search</field>
+            <field name="model">shopify.bisync.mismatch</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="reference"/>
+                    <field name="message"/>
+                    <filter name="filter_open" string="Open"
+                            domain="[('resolved', '=', False)]"/>
+                    <group name="group_by">
+                        <filter name="group_kind" string="Kind"
+                                context="{'group_by': 'kind'}"/>
+                        <filter name="group_instance" string="Store"
+                                context="{'group_by': 'instance_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="mismatch_action" model="ir.actions.act_window">
+            <field name="name">Mismatch Log</field>
+            <field name="res_model">shopify.bisync.mismatch</field>
+            <field name="view_mode">list</field>
+            <field name="context">{'search_default_filter_open': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">No mismatches — good</p>
+                <p>When an order line can't be matched to a product by binding, SKU or barcode, the line is kept and flagged here instead of being silently dropped.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_mismatch" name="Mismatch Log" parent="menu_operations"
+                  action="mismatch_action" sequence="30"/>
+
+    </data>
+</odoo>

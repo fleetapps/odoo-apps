@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_bar_dashboard"
+              name="Dashboard"
+              parent="odin_bar_base.menu_bar_root"
+              action="action_bar_dashboard"
+              groups="group_bar_desk_manager"
+              sequence="1"/>
+
+    <menuitem id="menu_bar_desk"
+              name="Bar Desk"
+              parent="odin_bar_base.menu_bar_root"
+              action="action_bar_desk_backend"
+              groups="group_bar_desk_manager"
+              sequence="5"/>
+
+    <menuitem id="menu_bar_counts"
+              name="Count approvals"
+              parent="odin_bar_base.menu_bar_root"
+              action="odin_bar_count_action"
+              groups="group_bar_desk_manager"
+              sequence="10"/>
+
+    <menuitem id="menu_bar_moves"
+              name="Moves"
+              parent="odin_bar_base.menu_bar_root"
+              action="action_bar_moves"
+              groups="group_bar_desk_manager"
+              sequence="20"/>
+
+    <menuitem id="menu_bar_reporting"
+              name="Reporting"
+              parent="odin_bar_base.menu_bar_root"
+              groups="group_bar_desk_manager"
+              sequence="60"/>
+
+    <menuitem id="menu_bar_stock_by_location"
+              name="Stock by location"
+              parent="menu_bar_reporting"
+              action="action_bar_stock_by_location"
+              sequence="10"/>
+
+    <menuitem id="menu_bar_stock_all_locations"
+              name="Stock, all locations"
+              parent="menu_bar_reporting"
+              action="action_bar_stock_all_locations"
+              sequence="20"/>
+
+    <menuitem id="menu_bar_stock_history"
+              name="Stock history"
+              parent="menu_bar_reporting"
+              action="action_bar_stock_history"
+              sequence="30"/>
+
+    <menuitem id="menu_bar_variance"
+              name="Variance"
+              parent="menu_bar_reporting"
+              action="odin_bar_count_line_variance_action"
+              sequence="40"/>
+
+    <menuitem id="menu_bar_activity_log"
+              name="Bar Desk log"
+              parent="menu_bar_reporting"
+              action="odin_bar_activity_action"
+              sequence="50"/>
+
+    <menuitem id="menu_bar_config_variance_reasons"
+              name="Variance reasons"
+              parent="odin_bar_base.menu_bar_config"
+              action="odin_bar_variance_reason_action"
+              sequence="15"/>
+
+    <menuitem id="menu_bar_config_reasons"
+              name="Moves out of the club"
+              parent="odin_bar_base.menu_bar_config"
+              action="odin_bar_reason_action"
+              sequence="20"/>
+
+    <menuitem id="menu_bar_config_products"
+              name="Desk products"
+              parent="odin_bar_base.menu_bar_config"
+              action="action_bar_desk_products"
+              sequence="30"/>
+</odoo>

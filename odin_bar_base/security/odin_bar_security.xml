@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_rule_company" model="ir.rule">
+        <field name="name">Bar: multi-company</field>
+        <field name="model_id" ref="model_odin_bar"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_bar_pos_day_rule_company" model="ir.rule">
+        <field name="name">Bar POS day: multi-company</field>
+        <field name="model_id" ref="model_odin_bar_pos_day"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

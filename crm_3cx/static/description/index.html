@@ -1,0 +1,22 @@
+<section class="container py-4">
+  <h2>3CX Phone System Integration</h2>
+  <p class="lead">Know who is calling, keep every call in Odoo, and never lose a missed call.</p>
+  <ul>
+    <li><b>Caller ID</b> — when a call rings, 3CX shows the Odoo contact, company or lead, with a link to the record.</li>
+    <li><b>Search Odoo from 3CX</b> — agents find contacts and leads by name, company, number or email in the 3CX Web Client and call them.</li>
+    <li><b>Call log</b> — every call lands in the chatter and under <i>CRM › Reporting › 3CX Calls</i>: by agent, day, type, duration, with the recording link and the 3CX AI summary when available.</li>
+    <li><b>Missed-call follow-up</b> — a missed call schedules a <i>Call back</i> activity; the next answered call closes it.</li>
+    <li><b>Chats too</b> — SMS, WhatsApp and live-chat conversations are logged.</li>
+    <li><b>Leads from the phone</b> — created from the 3CX client, or automatically for unknown callers.</li>
+    <li><b>Agents</b> — each user's 3CX extension on their user form; calls are logged in their name.</li>
+  </ul>
+  <h3>Setup</h3>
+  <ol>
+    <li>Install the module. <i>Settings › 3CX</i> shows the API key and a <b>Download 3cx_odoo.xml</b> link.</li>
+    <li>In the 3CX Admin Console, <i>Integrations › CRM › Add</i>, upload the file and enter the key.</li>
+    <li>Restart the 3CX System service and press <b>Test</b> with a number that exists in Odoo.</li>
+  </ol>
+  <p>Requires 3CX PRO or Enterprise (server-side CRM integration), V18 or V20. Goes beyond 3CX's built-in Odoo
+     template: leads and opportunities, activities, call reporting, agent mapping, one dedicated key instead of a
+     user API key. Started from the free <code>3cxcrm</code> module by Persevida S.L. / FL1 sro, AGPL-3.</p>
+</section>

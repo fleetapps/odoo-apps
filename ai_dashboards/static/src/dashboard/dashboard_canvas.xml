@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="ai_dashboards.Canvas">
+    <div class="o_ai_dash" t-ref="root"
+         t-att-class="state.loading ? 'o_ai_dash--busy' : ''">
+
+        <!-- Direct manipulation needs somewhere that says what has and has
+             not been written down. The form's own save indicator is up in the
+             breadcrumb, far from the tile you just changed, and easy to walk
+             away from without noticing. -->
+        <div t-if="hasUnsavedEdits"
+             class="o_ai_dash_unsaved alert alert-warning d-flex align-items-center">
+            <i class="fa fa-pencil me-2"/>
+            <span class="flex-grow-1">
+                You have changed this dashboard. Only you can see the changes
+                until you save them.
+            </span>
+            <button class="btn btn-sm btn-primary me-1"
+                    t-on-click="() => this.saveEdits()">Save changes</button>
+            <button class="btn btn-sm btn-link"
+                    t-on-click="() => this.discardEdits()">Discard</button>
+        </div>
+
+        <!-- Only ever a blank spinner on the very first load. Replacing a
+             dashboard you are reading with a spinner every time a filter
+             moves loses your place for no reason. -->
+        <div t-if="state.loading and !state.data" class="o_ai_dash_loading">
+            <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
+        </div>
+
+        <div t-elif="state.error" class="alert alert-danger">
+            <t t-esc="state.error"/>
+        </div>
+
+        <div t-elif="!state.data" class="o_ai_dash_blank">
+            <p class="text-muted">
+                Save this record to see the dashboard.
+            </p>
+        </div>
+
+        <t t-else="">
+            <!-- Filters, provenance, and the switch between reading this
+                 dashboard and rearranging it. -->
+            <div class="o_ai_dash_filters">
+                <div t-foreach="state.data.filters" t-as="flt" t-key="flt.key"
+                     class="o_ai_dash_filter">
+                    <label t-esc="flt.label"/>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.setFilter(flt.key, ev.target.value)">
+                        <option t-foreach="['this_month','this_quarter','this_year','last_month','last_quarter','last_year','last_7_days','last_30_days','last_90_days','all_time']"
+                                t-as="period" t-key="period"
+                                t-att-value="period"
+                                t-att-selected="(state.filters[flt.key] or flt.default) === period ? 'selected' : undefined">
+                            <t t-esc="period.replaceAll('_', ' ')"/>
+                        </option>
+                    </select>
+                </div>
+                <div t-if="anyComparable" class="o_ai_dash_filter">
+                    <label>Compare</label>
+                    <select class="form-select form-select-sm"
+                            t-on-change="(ev) => this.setCompare(ev.target.value)">
+                        <option t-foreach="compareModes" t-as="mode" t-key="mode[0]"
+                                t-att-value="mode[0]"
+                                t-att-selected="compareMode === mode[0] ? 'selected' : undefined">
+                            <t t-esc="mode[1]"/>
+                        </option>
+                    </select>
+                </div>
+
+                <div class="o_ai_dash_took text-muted">
+                    calculated in <t t-esc="state.data.took_ms"/>ms, as you
+                </div>
+
+                <!-- Editing is a mode you choose, not the state a dashboard
+                     sits in. A dashboard you have finished building is for
+                     reading, and controls on every tile get in the way of
+                     that. -->
+                <button t-if="isEditable and !state.editMode"
+                        class="btn btn-sm btn-link o_ai_dash_editswitch"
+                        title="Rearrange the tiles, rename them, change how they look"
+                        t-on-click="() => this.setEditMode(true)">
+                    <i class="fa fa-pencil me-1"/>Edit
+                </button>
+                <button t-if="showTools"
+                        class="btn btn-sm btn-secondary o_ai_dash_editswitch"
+                        t-on-click="() => this.setEditMode(false)">
+                    <i class="fa fa-check me-1"/>Done
+                </button>
+            </div>
+
+            <!-- The grid. 12 columns; each tile takes its own span. -->
+            <div class="o_ai_dash_grid">
+                <div t-foreach="widgets" t-as="widget" t-key="widget.id"
+                     class="o_ai_dash_tile"
+                     t-att-style="'grid-column: span ' + Math.min(12, widget.span || 6)">
+
+                    <div class="o_ai_dash_tile_head">
+                        <input t-if="state.editing === widget.id"
+                               t-ref="renamer"
+                               class="form-control form-control-sm"
+                               t-att-value="widget.title"
+                               aria-label="Tile name"
+                               t-on-keydown="(ev) => this.onRenameKey(ev, widget.id)"
+                               t-on-blur="(ev) => this.onRenameBlur(ev, widget.id)"/>
+                        <h4 t-else="" t-esc="widget.title"
+                            t-att-class="showTools ? 'o_ai_dash_renamable' : ''"
+                            t-att-title="showTools ? 'Double-click to rename' : undefined"
+                            t-on-dblclick="() => this.startRename(widget.id)"/>
+
+                        <div t-if="showTools" class="o_ai_dash_tools">
+                            <button class="btn btn-sm btn-link" title="Move earlier"
+                                    t-on-click="() => this.move(widget.id, -1)">
+                                <i class="fa fa-arrow-left"/>
+                            </button>
+                            <button class="btn btn-sm btn-link" title="Move later"
+                                    t-on-click="() => this.move(widget.id, 1)">
+                                <i class="fa fa-arrow-right"/>
+                            </button>
+                            <button class="btn btn-sm btn-link" title="Narrower"
+                                    t-on-click="() => this.resize(widget.id, -3)">
+                                <i class="fa fa-compress"/>
+                            </button>
+                            <button class="btn btn-sm btn-link" title="Wider"
+                                    t-on-click="() => this.resize(widget.id, 3)">
+                                <i class="fa fa-expand"/>
+                            </button>
+                            <!-- Colour earns a control of its own rather than
+                                 a menu line. "Next colour" buried in a menu is
+                                 not something anyone finds, and a swatch that
+                                 shows the current colour explains itself
+                                 without a label. -->
+                            <button class="o_ai_dash_swatch"
+                                    t-att-style="'background:' + paletteFor(widget)"
+                                    title="Change this tile's colour"
+                                    t-on-click="() => this.nextColor(widget)"/>
+                            <!-- Everything you do once, rather than while
+                                 arranging, lives behind this. -->
+                            <Dropdown items="tileMenu(widget)">
+                                <button class="btn btn-sm btn-link"
+                                        title="More options for this tile">
+                                    <i class="fa fa-ellipsis-v"/>
+                                </button>
+                            </Dropdown>
+                        </div>
+                    </div>
+
+                    <!-- Its figures are being fetched for the shape it has
+                         just been changed into. -->
+                    <div t-if="widget.calculating" class="o_ai_dash_msg">
+                        <i class="fa fa-circle-o-notch fa-spin me-1"/>
+                        Calculating&#8230;
+                    </div>
+
+                    <!-- A tile that failed says why, and does not take the
+                         page down with it. -->
+                    <div t-elif="widget.error" class="o_ai_dash_msg o_ai_dash_msg--error">
+                        <i class="fa fa-exclamation-triangle me-1"/>
+                        <t t-esc="widget.error"/>
+                    </div>
+
+                    <t t-elif="widget.type === 'kpi'">
+                        <div class="o_ai_dash_kpi"
+                             t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
+                             t-on-click="() => widget.drill ? this.drill(widget, null) : null">
+                            <div class="o_ai_dash_kpi_value"
+                                 t-esc="format(widget.value, widget)"/>
+                            <div t-if="delta(widget)" class="o_ai_dash_kpi_delta"
+                                 t-att-class="delta(widget).up ? 'text-success' : 'text-danger'">
+                                <i t-att-class="'fa me-1 ' + (delta(widget).up ? 'fa-arrow-up' : 'fa-arrow-down')"/>
+                                <t t-esc="delta(widget).value"/>
+                                <span t-if="delta(widget).absolute" class="text-muted ms-1">
+                                    — nothing in the comparison period
+                                </span>
+                                <span t-else="" class="text-muted ms-1">
+                                    <t t-esc="compareLabel"/> (<t t-esc="delta(widget).previous"/>)
+                                </span>
+                            </div>
+                        </div>
+                    </t>
+
+                    <t t-elif="widget.type === 'pivot'">
+                        <div t-if="widget.empty" class="o_ai_dash_msg">
+                            <t t-esc="widget.empty"/>
+                        </div>
+                        <t t-else="">
+                            <div class="o_ai_dash_tablewrap o_ai_dash_pivot">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="o_ai_dash_pivot_corner"/>
+                                            <th t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key" class="text-end">
+                                                <t t-esc="col.label"/>
+                                            </th>
+                                            <th class="text-end o_ai_dash_pivot_total">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="widget.pivot.rows.values" t-as="row"
+                                            t-key="row.key">
+                                            <th class="o_ai_dash_pivot_rowhead">
+                                                <t t-esc="row.label"/>
+                                            </th>
+                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key"
+                                                t-att-class="(cell(widget.pivot, row.key, col.key) === undefined ? 'text-end opacity-25' : 'text-end') + (widget.drill ? ' o_ai_dash_clickable' : '')"
+                                                t-att-title="widget.drill ? 'Open these records' : undefined"
+                                                t-on-click="() => widget.drill ? this.drillCell(widget, row, col) : null">
+                                                <t t-if="cell(widget.pivot, row.key, col.key) === undefined">·</t>
+                                                <t t-else="" t-esc="format(cell(widget.pivot, row.key, col.key), widget)"/>
+                                            </td>
+                                            <td class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.row_totals[row.key] || 0, widget)"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th class="o_ai_dash_pivot_rowhead">Total</th>
+                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
+                                                t-key="col.key" class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.col_totals[col.key] || 0, widget)"/>
+                                            </td>
+                                            <td class="text-end o_ai_dash_pivot_total">
+                                                <t t-esc="format(widget.pivot.grand_total, widget)"/>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <!-- Both axes page independently: "the next fifty
+                                 customers" and "the next twelve months" are
+                                 different questions. -->
+                            <div class="o_ai_dash_pager">
+                                <div class="o_ai_dash_pager_axis">
+                                    <span class="text-muted">Rows —
+                                        <t t-esc="axisRange(widget.pivot.rows)"/>
+                                    </span>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.rows.has_previous"
+                                            t-on-click="() => this.pageAxis(widget.id, 'row', -1)">
+                                        <i class="fa fa-chevron-left"/> Previous
+                                    </button>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.rows.has_more"
+                                            t-on-click="() => this.pageAxis(widget.id, 'row', 1)">
+                                        Next <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                                <div class="o_ai_dash_pager_axis">
+                                    <span class="text-muted">Columns —
+                                        <t t-esc="axisRange(widget.pivot.cols)"/>
+                                    </span>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.cols.has_previous"
+                                            t-on-click="() => this.pageAxis(widget.id, 'col', -1)">
+                                        <i class="fa fa-chevron-left"/> Previous
+                                    </button>
+                                    <button class="btn btn-sm btn-link"
+                                            t-att-disabled="!widget.pivot.cols.has_more"
+                                            t-on-click="() => this.pageAxis(widget.id, 'col', 1)">
+                                        Next <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+
+                    <t t-elif="widget.type === 'table'">
+                        <div t-if="widget.empty" class="o_ai_dash_msg">
+                            <t t-esc="widget.empty"/>
+                        </div>
+                        <div t-else="" class="o_ai_dash_tablewrap">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th t-foreach="widget.columns" t-as="col"
+                                            t-key="col_index" t-esc="col"/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="widget.rows" t-as="row" t-key="row_index"
+                                        t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
+                                        t-att-title="widget.drill ? 'Open these records' : undefined"
+                                        t-on-click="() => widget.drill ? this.drill(widget, widget.series[row_index] and widget.series[row_index].raw) : null">
+                                        <td t-foreach="row" t-as="cell" t-key="cell_index"
+                                            t-esc="cell"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <div t-if="widget.empty" class="o_ai_dash_msg">
+                            <t t-esc="widget.empty"/>
+                        </div>
+                        <div t-else="" class="o_ai_dash_chart">
+                            <canvas t-att-data-widget="widget.id"/>
+                        </div>
+                    </t>
+
+                    <div t-if="widget.compare_note" class="o_ai_dash_more">
+                        <t t-esc="widget.compare_note"/>
+                    </div>
+
+                    <div t-if="widget.has_more" class="o_ai_dash_more">
+                        Showing the top rows only — there are more.
+                    </div>
+                </div>
+            </div>
+
+            <p class="o_ai_dash_foot text-muted">
+                <i class="fa fa-lock me-1"/>
+                Every figure here was calculated just now, using your own Odoo
+                permissions.<t t-if="anyDrillable"> Click a bar, slice or number
+                to see the records behind it.</t>
+            </p>
+        </t>
+    </div>
+</t>
+
+</templates>

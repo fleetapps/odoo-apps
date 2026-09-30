@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_view_list" model="ir.ui.view">
+        <field name="name">odin.bar.list</field>
+        <field name="model">odin.bar</field>
+        <field name="arch" type="xml">
+            <list string="Bars">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="kind"/>
+                <field name="location_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_bar_view_form" model="ir.ui.view">
+        <field name="name">odin.bar.form</field>
+        <field name="model">odin.bar</field>
+        <field name="arch" type="xml">
+            <form string="Bar">
+                <header>
+                    <button name="action_autofill_setup" type="object" string="Fill from stock setup"
+                            help="Fill empty operation types, store and analytic account from existing names (ISS-code, RET-code, SAL-code)."/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box"/>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="alert alert-warning" role="alert" invisible="not setup_issues">
+                        <field name="setup_issues" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Bulls Eye"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code" placeholder="e.g. BE"/>
+                            <field name="kind" widget="radio" options="{'horizontal': true}"/>
+                            <field name="location_id"/>
+                            <field name="store_id" invisible="kind != 'bar'"/>
+                        </group>
+                        <group>
+                            <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Operation types" name="operation_types">
+                            <group>
+                                <group>
+                                    <field name="issue_type_id" invisible="kind != 'bar'"/>
+                                    <field name="return_type_id" invisible="kind != 'bar'"/>
+                                    <field name="sale_type_id" invisible="kind != 'bar'"/>
+                                    <field name="receipt_type_id" invisible="kind != 'store'"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="POS" name="pos" invisible="kind != 'bar'">
+                            <group>
+                                <group>
+                                    <field name="pos_required"/>
+                                    <field name="pos_group_name"/>
+                                    <field name="pos_suffix"/>
+                                    <field name="partner_id"/>
+                                    <field name="pos_start_date" invisible="not pos_required"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Trading day" name="trading_day">
+                            <group>
+                                <group>
+                                    <field name="day_start_hour" widget="float_time"/>
+                                    <field name="tz"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_bar_view_search" model="ir.ui.view">
+        <field name="name">odin.bar.search</field>
+        <field name="model">odin.bar</field>
+        <field name="arch" type="xml">
+            <search string="Bars">
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="location_id"/>
+                <filter string="Bars" name="bars" domain="[('kind', '=', 'bar')]"/>
+                <filter string="Stores" name="stores" domain="[('kind', '=', 'store')]"/>
+                <separator/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_bar_action" model="ir.actions.act_window">
+        <field name="name">Bars</field>
+        <field name="res_model">odin.bar</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Define your bars and your store</p>
+            <p>A bar ties a stock location to its operation types, analytic
+            account and POS mapping. Add the main store as a bar of kind Store.</p>
+        </field>
+    </record>
+</odoo>

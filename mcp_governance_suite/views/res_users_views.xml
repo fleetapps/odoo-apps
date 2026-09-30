@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_users_view_form_mcp" model="ir.ui.view">
+        <field name="name">res.users.form.mcp</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <field name="login" position="after">
+                <field name="mcp_scope_id"
+                       groups="mcp_governance_suite.group_mcp_admin"/>
+            </field>
+        </field>
+    </record>
+</odoo>

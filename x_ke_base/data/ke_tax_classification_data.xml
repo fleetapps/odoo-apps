@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What a Kenyan supply is, in both vocabularies at once.
+
+    Tag rows are derived from l10n_ke's own definitions: the box and column come
+    from data/account_tax_report_data.xml, the side and rate from the tax that
+    applies each tag in data/template/account.tax-ke.csv. All seventeen tags the
+    Kenyan returns reference are here.
+
+    Verify the tag NAMES against a real bake log before trusting them. The build
+    prints "PROBE <tax>: base tags = [...]" for each Kenyan tax, and that is the
+    only source that reflects the release actually installed. They are data here
+    so that a rename upstream is an edit to this file, not a code change.
+
+    Item-code rows translate l10n_ke's rate letters into KRA's, which collide and
+    disagree, and carry the petroleum rate over time. They are date-ranged
+    because instances are cut from a baked template and never upgraded: a
+    mapping resolved at install time would be wrong forever on every instance
+    deployed before the rate moved.
+-->
+<odoo>
+
+    <!-- ══════════════ Sales ══════════════ -->
+
+    <record id="tag_sales_16_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">16% Sales Base</field>
+        <field name="side">sale</field>
+        <field name="label">base</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_1</field>
+        <field name="tax_template_id">ST16</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="tag_sales_16_tax" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">16% Sales Tax</field>
+        <field name="side">sale</field>
+        <field name="label">tax</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_1</field>
+        <field name="tax_template_id">ST16</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">11</field>
+    </record>
+
+    <record id="tag_sales_8_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">8% Sales Base</field>
+        <field name="side">sale</field>
+        <field name="label">base</field>
+        <field name="kra_band">E</field>
+        <field name="vat3_box">box_2</field>
+        <field name="tax_template_id">ST8</field>
+        <field name="rate">8.0</field>
+        <field name="sequence">20</field>
+        <field name="note">Box 2 is the "other rate". In 2026 that is petroleum at the reduced rate.</field>
+    </record>
+
+    <record id="tag_sales_8_tax" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">8% Sales Tax</field>
+        <field name="side">sale</field>
+        <field name="label">tax</field>
+        <field name="kra_band">E</field>
+        <field name="vat3_box">box_2</field>
+        <field name="tax_template_id">ST8</field>
+        <field name="rate">8.0</field>
+        <field name="sequence">21</field>
+    </record>
+
+    <record id="tag_sales_zero_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Zero Rated Sales Base</field>
+        <field name="side">sale</field>
+        <field name="label">base</field>
+        <field name="kra_band">C</field>
+        <field name="vat3_box">box_3</field>
+        <field name="tax_template_id">ST0</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">30</field>
+        <field name="note">Exports belong here, not in box 4. ST0EXPORT ships tagged exempt and is corrected on install.</field>
+    </record>
+
+    <record id="tag_sales_exempt_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Exempt Sales Base</field>
+        <field name="side">sale</field>
+        <field name="label">base</field>
+        <field name="kra_band">A</field>
+        <field name="vat3_box">box_4</field>
+        <field name="tax_template_id">STEX</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">40</field>
+        <field name="note">KRA band A, not E. Odoo's own item-code letter E also means exempt, which is the collision this table exists to absorb.</field>
+    </record>
+
+    <!-- ══════════════ Purchases ══════════════ -->
+
+    <record id="tag_purchases_16_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">16% Purchases Base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_7</field>
+        <field name="tax_template_id">PT16</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <record id="tag_purchases_16_tax" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">16% Purchases Tax</field>
+        <field name="side">purchase</field>
+        <field name="label">tax</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_7</field>
+        <field name="tax_template_id">PT16</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">51</field>
+    </record>
+
+    <!-- The lower-case "p" is l10n_ke's, and it is load-bearing: tags are
+         matched by exact name. Do not tidy it. -->
+    <record id="tag_purchases_8_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">8% purchases Base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="kra_band">E</field>
+        <field name="vat3_box">box_8</field>
+        <field name="tax_template_id">PT8</field>
+        <field name="rate">8.0</field>
+        <field name="sequence">60</field>
+        <field name="note">Spelled with a lower-case p upstream. Matched by exact name.</field>
+    </record>
+
+    <record id="tag_purchases_8_tax" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">8% Purchases Tax</field>
+        <field name="side">purchase</field>
+        <field name="label">tax</field>
+        <field name="kra_band">E</field>
+        <field name="vat3_box">box_8</field>
+        <field name="tax_template_id">PT8</field>
+        <field name="rate">8.0</field>
+        <field name="sequence">61</field>
+    </record>
+
+    <record id="tag_purchases_zero_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Zero Rated Purchases Base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="kra_band">C</field>
+        <field name="vat3_box">box_9</field>
+        <field name="tax_template_id">PT0</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="tag_purchases_exempt_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Exempt Purchases Base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="kra_band">A</field>
+        <field name="vat3_box">box_10</field>
+        <field name="tax_template_id">PTEX</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">80</field>
+    </record>
+
+    <record id="tag_import_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Import Base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_13</field>
+        <field name="tax_template_id">PTIM16S</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">90</field>
+        <field name="note">VAT on imported services. iTax validates these against the customs system, and only at 16%.</field>
+    </record>
+
+    <record id="tag_import_tax" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">Import Tax</field>
+        <field name="side">purchase</field>
+        <field name="label">tax</field>
+        <field name="kra_band">B</field>
+        <field name="vat3_box">box_13</field>
+        <field name="tax_template_id">PTIM16S</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">91</field>
+    </record>
+
+    <!-- ══════════════ Withholding VAT ══════════════
+         No KRA band. Withholding is a settlement of an invoice, not a class of
+         supply: a sale subject to the 2% is still a 16% sale on the wire, and
+         giving these a taxTyCd would mis-declare it. -->
+
+    <record id="tag_wh_sales" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">WH Sales</field>
+        <field name="side">sale</field>
+        <field name="label">tax</field>
+        <field name="vat3_box">box_20</field>
+        <field name="tax_template_id">SWT2</field>
+        <field name="rate">2.0</field>
+        <field name="sequence">100</field>
+        <field name="note">The 2% our customers withheld from us, credited in box 20.</field>
+    </record>
+
+    <record id="tag_wh_base" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">WH base</field>
+        <field name="side">purchase</field>
+        <field name="label">base</field>
+        <field name="tax_template_id">PWT2</field>
+        <field name="rate">2.0</field>
+        <field name="sequence">110</field>
+        <field name="note">Purchases we withheld on, as an appointed agent. Feeds the withholding return, not the VAT3. Box 20's base column read this tag and was removed for that reason.</field>
+    </record>
+
+    <record id="tag_wh_2pc" model="ke.tax.classification">
+        <field name="basis">tag</field>
+        <field name="tag_name">WH 2%</field>
+        <field name="side">purchase</field>
+        <field name="label">tax</field>
+        <field name="tax_template_id">PWT2</field>
+        <field name="rate">2.0</field>
+        <field name="sequence">111</field>
+        <field name="note">Feeds the withholding return's two deadline sections.</field>
+    </record>
+
+    <!-- ══════════════ KRA item-code rate letters ══════════════
+         l10n_ke.item.code.tax_rate is a three-value selection whose letters
+         collide with the five-value tax-type list in OSCU specification 4.1 and
+         disagree with it everywhere except C. Reading that field straight onto
+         taxTyCd transmits exempt supplies as 8% and 8% petroleum as 16%.
+
+         The petroleum pair is the one that moves. Kenya cut VAT on petrol,
+         diesel and kerosene from 16% to 8% on 16 April 2026 and extended the
+         reduction twice, currently to 14 October 2026. Both windows ship, so an
+         instance baked today already knows what happens on the fifteenth.
+
+         If the reduction is extended a third time, edit the two rows below:
+         push the end date out and move the successor's start to match. There is
+         no upgrade path to instances, so this is a data edit on each one, or a
+         re-bake. -->
+
+    <record id="item_rate_zero_rated" model="ke.tax.classification">
+        <field name="basis">item_code</field>
+        <field name="item_tax_rate">C</field>
+        <field name="kra_band">C</field>
+        <field name="tax_template_id">ST0</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">200</field>
+        <field name="note">The only letter where Odoo and KRA agree.</field>
+    </record>
+
+    <record id="item_rate_exempt" model="ke.tax.classification">
+        <field name="basis">item_code</field>
+        <field name="item_tax_rate">E</field>
+        <field name="kra_band">A</field>
+        <field name="tax_template_id">STEX</field>
+        <field name="rate">0.0</field>
+        <field name="sequence">210</field>
+        <field name="note">Odoo calls exempt goods E. KRA's E is 8% and its exempt code is A. Transmitting E here would declare 8% VAT on an exempt supply.</field>
+    </record>
+
+    <record id="item_rate_petroleum_reduced" model="ke.tax.classification">
+        <field name="basis">item_code</field>
+        <field name="item_tax_rate">B</field>
+        <field name="date_from">2026-04-16</field>
+        <field name="date_to">2026-10-14</field>
+        <field name="kra_band">E</field>
+        <field name="tax_template_id">ST8</field>
+        <field name="rate">8.0</field>
+        <field name="sequence">220</field>
+        <field name="note">Reduced rate on petrol, diesel and kerosene. Odoo labels this letter "Taxable at 8%"; KRA's code for 8% is E, not B.</field>
+    </record>
+
+    <record id="item_rate_petroleum_standard" model="ke.tax.classification">
+        <field name="basis">item_code</field>
+        <field name="item_tax_rate">B</field>
+        <field name="date_from">2026-10-15</field>
+        <field name="kra_band">B</field>
+        <field name="tax_template_id">ST16</field>
+        <field name="rate">16.0</field>
+        <field name="sequence">221</field>
+        <field name="note">The reduction lapses and petroleum returns to the standard rate. Fuel products move from ST8 to ST16 and report in box 1 rather than box 2.</field>
+    </record>
+
+</odoo>
