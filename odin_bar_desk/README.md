@@ -112,7 +112,8 @@ card to count it, or, once counted, to explain its differences.
    there: spirits as full bottles (per size) then the tots left in the open
    bottle; beer as crates then loose bottles. **+** adds up what sits in
    different places: `30+35+33`. The difference shows on the line at once.
-3. **Differ (n)** lists what differs; **Add item not on the sheet** for
+3. **Differ** lists what differs, the search button finds a product, and
+   the **⋮** menu holds *Start over*; **Add item not on the sheet** for
    anything else found.
 4. It saves as you go. **Finish count** works once every line is entered;
    when something differs it goes straight to the differences.
