@@ -453,6 +453,14 @@ However, the connector should support linking a WhatsApp conversation to an exis
 
 Do not automatically create duplicate CRM records.
 
+[D8] Mode A also offers a manual **Create lead** action on a WhatsApp conversation (an extension beyond Enterprise parity, decided by the product owner). It never runs automatically:
+
+1. It looks for an existing open lead or opportunity of the same customer first (business-scoped user ID, phone number, contact; §15 step 3, §42). If one exists, the conversation is linked to it.
+2. Otherwise it creates a lead: Source = WhatsApp (§15), the user who clicked as salesperson, the customer's name, and the phone number or WhatsApp username.
+3. The conversation is linked to the lead and a note is posted in it.
+
+It does not change who is in the conversation, and it assigns no conversation owner: Mode A keeps no ownership (§6.1), and this is not the "Assign Lead" UX that §11 rules out. Automatic lead creation and assignment for every inbound conversation remains Lead Routing (Mode B).
+
 ### 13.1 Where WhatsApp appears in other apps [R10] [R11]
 
 [R10] Enterprise adds a **WhatsApp** button above the chatter composer on records. If the record's model has approved templates, the button opens a **Send WhatsApp Message** pop-up. This is part of Mode A parity (§59 scenario 8).
@@ -2233,6 +2241,8 @@ First produce a short Enterprise Reference Report containing:
 
 Only after this report is approved should the custom UI implementation begin.
 
+[D7] No Odoo 19 Enterprise database with WhatsApp is available yet. The product owner decided to build the whole connector now, backend and Discuss/chatter UI, from Odoo's documented Enterprise behavior (§4–§13 as refined) and Odoo Community's own Discuss. The Enterprise Reference Report and parity scenarios 1–10 (§59) are done before go-live, as soon as an Enterprise database is available, and the UI is adjusted to what they show.
+
 ## 66. Final Product Principle
 
 The connector has two personalities:
@@ -2342,6 +2352,8 @@ Where the v23.0 OpenAPI specification and the newer developer pages differ, the 
 | D1 | Reuse the Enterprise selection keys `whatsapp`, `whatsapp_message` and the `whatsapp` action type (§12.1). |
 | D2 | In Lead Routing, a conversation started by a salesperson with a template is owned by that salesperson; no round-robin. |
 | D6 | If that salesperson is not the lead's salesperson, the lead is reassigned to them; the owner always equals the lead's salesperson. |
+| D7 | Build the whole connector now from the documented Enterprise behavior; the Enterprise Reference Report and parity scenarios are done before go-live (§65). |
+| D8 | Mode A gets a manual "Create lead" action on a conversation, which finds an existing lead first (§13). |
 
 ### Design notes that avoid depending on unverified facts [N#]
 
