@@ -324,7 +324,7 @@ class TestDeskFlows(BarDeskCase):
         self.assertEqual(home["unchecked"], 1)
         titles = [item["title"] for item in home["timeline"]]
         self.assertIn("Roma", titles)
-        self.assertIn("Delivery from Main Store", titles)
+        self.assertIn("Stock in from Main Store", titles)
         roma = next(item for item in home["timeline"] if item["title"] == "Roma")
         self.assertEqual(roma["who"], "Mary")
         self.assertEqual(roma["time"], "20:00")

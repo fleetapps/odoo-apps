@@ -412,11 +412,26 @@ class OdinBarDesk(models.AbstractModel):
         bar, employee = self._desk_context(bar_id, token)
         day = bar._business_date()
         Picking = self.env["stock.picking"].sudo()
+        Request = self.env["odin.bar.request"].sudo()
         result = {
             "bar": self._desk_bar_info(bar),
             "employee": {"id": employee.id, "name": employee.name},
             "count": self._desk_count_status(bar, day),
             "timeline": self._desk_timeline(bar, day),
+            "requests_in": Request.search_count([("source_bar_id", "=", bar.id), ("state", "=", "open")]),
+            "asks_waiting": Request.search_count([("bar_id", "=", bar.id), ("state", "=", "open")]),
+            "asks_missing": len(
+                Request.search(
+                    [
+                        ("bar_id", "=", bar.id),
+                        ("state", "in", ("partial", "none")),
+                        ("passed_to_ids", "=", False),
+                        ("date", ">=", fields.Datetime.now() - timedelta(hours=16)),
+                    ]
+                )
+            ),
+            "can_order": bar.kind == "store"
+            and bool(employee.sudo().odin_bar_can_order or self._desk_is_manager()),
         }
         if bar.kind == "bar":
             result["unchecked"] = Picking.search_count(
@@ -425,6 +440,7 @@ class OdinBarDesk(models.AbstractModel):
         else:
             result["disputes"] = Picking.search_count(bar._desk_dispute_domain())
             result["receipts"] = Picking.search_count(self._desk_receipts_domain(bar))
+            result["payment_account"] = bar.supplier_payment_journal_id.name or ""
         return result
 
     @api.model
@@ -523,7 +539,7 @@ class OdinBarDesk(models.AbstractModel):
                     "date": fields.Datetime.to_string(picking.date_done),
                     "time": self._desk_time_label(bar, picking.date_done),
                     "icon": "fa-truck",
-                    "title": _("Delivery %(name)s", name=picking.name),
+                    "title": _("Stock in %(name)s", name=picking.name),
                     "detail": picking.location_id.display_name,
                     "who": picking.create_uid.name,
                 }
@@ -541,7 +557,10 @@ class OdinBarDesk(models.AbstractModel):
             "ack": _("Checked %(delivery)s: all correct", delivery=delivery),
             "dispute": _("Disputed %(delivery)s", delivery=delivery),
             "send": _("Sent to %(bar)s", bar=activity.dest_bar_id.name),
-            "receive": _("Received from %(supplier)s", supplier=activity.partner_id.name or "?"),
+            "receive": _("Supplier delivery from %(supplier)s", supplier=activity.partner_id.name or "?"),
+            "ask": _("Asked %(bar)s for stock", bar=activity.dest_bar_id.name),
+            "ask_none": _("Could not send to %(bar)s", bar=activity.dest_bar_id.name),
+            "order": _("Ordered from %(supplier)s", supplier=activity.partner_id.name or "?"),
             "dispute_accept": _("Dispute on %(delivery)s accepted", delivery=delivery),
             "dispute_reject": _("Dispute on %(delivery)s rejected", delivery=delivery),
         }
@@ -554,10 +573,17 @@ class OdinBarDesk(models.AbstractModel):
             "receive": "fa-download",
             "dispute_accept": "fa-check-circle",
             "dispute_reject": "fa-times-circle",
+            "ask": "fa-hand-paper-o",
+            "ask_none": "fa-ban",
+            "order": "fa-shopping-cart",
         }
         title = titles.get(activity.kind, activity.display_name)
         if incoming and activity.kind == "send":
-            title = _("Delivery from %(bar)s", bar=activity.bar_id.name)
+            title = _("Stock in from %(bar)s", bar=activity.bar_id.name)
+        elif incoming and activity.kind == "ask":
+            title = _("%(bar)s asked for stock", bar=activity.bar_id.name)
+        elif incoming and activity.kind == "ask_none":
+            title = _("%(bar)s did not have it", bar=activity.bar_id.name)
         elif incoming and activity.kind == "stock_out":
             title = _("Transfer from %(bar)s", bar=activity.bar_id.name)
         elif incoming and activity.kind == "dispute":
@@ -966,7 +992,7 @@ class OdinBarDesk(models.AbstractModel):
             or picking.state != "done"
             or not picking.bar_ack_state
         ):
-            raise UserError(_("This delivery is not for %(bar)s.", bar=bar.name))
+            raise UserError(_("This stock is not for %(bar)s.", bar=bar.name))
         return picking
 
     @api.model
@@ -1153,12 +1179,15 @@ class OdinBarDesk(models.AbstractModel):
         return [{"id": partner.id, "name": partner.display_name} for partner in partners]
 
     @api.model
-    def desk_store_receive(self, bar_id, token, uuid, partner_id, lines):
-        """Book a supplier delivery straight into the store, validated at once."""
+    def desk_store_receive(self, bar_id, token, uuid, partner_id, lines, paid=None, supplier_ref=None):
+        """Book a supplier delivery that came without an order straight into
+        the store, validated at once. ``paid`` ("now" or "later") also bills
+        it, paid from the store's account when "now"."""
         store, employee = self._desk_store(bar_id, token)
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
+        self._desk_check_payment(store, paid)
         picking_type = store.receipt_type_id
         if not picking_type:
             raise UserError(_("Set the receipt type on %(store)s first.", store=store.name))
@@ -1179,7 +1208,7 @@ class OdinBarDesk(models.AbstractModel):
                 "amount": self._desk_value(store, items),
             },
         )
-        self._desk_picking(
+        picking = self._desk_picking(
             store,
             picking_type,
             source,
@@ -1187,6 +1216,16 @@ class OdinBarDesk(models.AbstractModel):
             items,
             {"partner_id": partner.id, "bar_employee_id": employee.id, "bar_activity_id": activity.id},
         )
+        if paid:
+            self._desk_supplier_bill(
+                store,
+                partner,
+                [(product, uom, qty, self.env["purchase.order.line"]) for product, uom, qty in items],
+                paid,
+                supplier_ref,
+                activity,
+                origin=picking.name,
+            )
         return self._desk_result(activity)
 
     @api.model
@@ -1216,6 +1255,13 @@ class OdinBarDesk(models.AbstractModel):
         return picking
 
     @api.model
+    def _desk_receipt_uom(self, move):
+        """Unit a supplier delivery line is shown and entered in: the order's
+        (crates), not the single units Odoo books the receipt in."""
+        order_line = move.purchase_line_id if "purchase_line_id" in move._fields else False
+        return (order_line and order_line.product_uom_id) or move.product_uom
+
+    @api.model
     def desk_receipt(self, bar_id, token, picking_id):
         store, _employee = self._desk_store(bar_id, token)
         picking = self._desk_receipt_record(store, picking_id)
@@ -1229,33 +1275,40 @@ class OdinBarDesk(models.AbstractModel):
                     "move_id": move.id,
                     "product_id": move.product_id.id,
                     "name": move.product_id.display_name,
-                    "uom_id": move.product_uom.id,
-                    "uom_name": _short_uom(move.product_uom),
-                    "pack": move.product_uom != move.product_id.uom_id,
-                    "qty": move.product_uom_qty,
+                    "uom_id": uom.id,
+                    "uom_name": _short_uom(uom),
+                    "pack": uom != move.product_id.uom_id,
+                    "qty": move.product_uom._compute_quantity(move.product_uom_qty, uom),
                 }
                 for move in picking.move_ids.filtered(lambda move: move.state != "cancel")
+                for uom in [self._desk_receipt_uom(move)]
             ],
         }
 
     @api.model
-    def desk_receipt_validate(self, bar_id, token, uuid, picking_id, received):
-        """Validate a waiting receipt for what arrived (``received``: {move id:
-        quantity in the move's unit}). Anything still missing stays open as a
-        backorder."""
+    def desk_receipt_validate(
+        self, bar_id, token, uuid, picking_id, received, paid=None, supplier_ref=None, rest="coming"
+    ):
+        """Validate an expected supplier delivery for what arrived
+        (``received``: {move id: quantity in the unit desk_receipt shows}). What is short
+        stays expected (``rest`` "coming") or is cancelled ("not_coming").
+        ``paid`` ("now" or "later") bills what arrived at the order's prices,
+        paid from the store's account when "now"."""
         store, employee = self._desk_store(bar_id, token)
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
+        self._desk_check_payment(store, paid)
         picking = self._desk_receipt_record(store, picking_id)
         quantities = {int(move_id): float(qty or 0.0) for move_id, qty in (received or {}).items()}
         moves = picking.move_ids.filtered(lambda move: move.state not in ("done", "cancel"))
         if any(qty < 0 for qty in quantities.values()) or set(quantities) - set(moves.ids):
             raise UserError(_("These quantities do not match the receipt."))
+        shown = {move.id: self._desk_receipt_uom(move) for move in moves}
         items = [
-            (move.product_id, move.product_uom, quantities[move.id])
+            (move.product_id, shown[move.id], quantities[move.id])
             for move in moves
-            if move.id in quantities and not move.product_uom.is_zero(quantities[move.id])
+            if move.id in quantities and not shown[move.id].is_zero(quantities[move.id])
         ]
         if not items:
             raise UserError(_("Nothing was received."))
@@ -1273,7 +1326,42 @@ class OdinBarDesk(models.AbstractModel):
             },
         )
         picking.write({"bar_employee_id": employee.id, "bar_activity_id": activity.id})
-        self._desk_validate(picking, quantities)
+        purchase_lines = {move.id: move.purchase_line_id for move in moves}
+        self._desk_validate(
+            picking,
+            {
+                move.id: shown[move.id]._compute_quantity(quantities.get(move.id, 0.0), move.product_uom)
+                for move in moves
+            },
+        )
+        short = picking.backorder_ids.filtered(lambda backorder: backorder.state not in ("done", "cancel"))
+        if short and rest == "not_coming":
+            short.action_cancel()
+            order = picking.purchase_id
+            if order:
+                order.message_post(
+                    body=_(
+                        "%(supplier)s delivered short on %(receipt)s; the rest is not coming (%(who)s).",
+                        supplier=picking.partner_id.display_name,
+                        receipt=picking.name,
+                        who=employee.name,
+                    )
+                )
+        if paid:
+            self._desk_supplier_bill(
+                store,
+                picking.partner_id,
+                [
+                    (product, uom, qty, purchase_lines[move.id])
+                    for move in moves
+                    for product, uom, qty in [(move.product_id, shown[move.id], quantities.get(move.id, 0.0))]
+                    if not uom.is_zero(qty)
+                ],
+                paid,
+                supplier_ref,
+                activity,
+                origin=picking.purchase_id.name or picking.name,
+            )
         return self._desk_result(activity)
 
     @api.model

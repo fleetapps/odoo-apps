@@ -191,7 +191,7 @@ export class DeliveryScreen extends Component {
                 ? "No connection: saved on this device and sent automatically."
                 : changed.length
                   ? "Difference reported to the store."
-                  : "Delivery confirmed.",
+                  : "Stock in confirmed.",
             queued ? "warning" : "success"
         );
         this.props.app.back();

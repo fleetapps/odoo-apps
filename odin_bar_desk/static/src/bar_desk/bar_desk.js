@@ -9,6 +9,8 @@ import { DeliveriesScreen, DeliveryScreen } from "./delivery_screens";
 import { DeskModel } from "./desk_model";
 import { HomeScreen } from "./home_screen";
 import { LockScreen } from "./lock_screen";
+import { OrderScreen } from "./order_screen";
+import { AskScreen, RequestScreen, RequestsScreen } from "./request_screens";
 import { StockOutScreen } from "./stock_out_screen";
 import { DisputesScreen, StoreReceiveScreen, StoreSendScreen } from "./store_screens";
 import { initials } from "./utils";
@@ -22,11 +24,15 @@ const SCREENS = {
     home: { component: HomeScreen, title: "" },
     stockout: { component: StockOutScreen, title: "Stock out" },
     count: { component: CountScreen, title: "Count" },
-    deliveries: { component: DeliveriesScreen, title: "Deliveries" },
-    delivery: { component: DeliveryScreen, title: "Delivery" },
+    deliveries: { component: DeliveriesScreen, title: "Stock in" },
+    delivery: { component: DeliveryScreen, title: "Stock in" },
     send: { component: StoreSendScreen, title: "Send to bar" },
-    receive: { component: StoreReceiveScreen, title: "Receive" },
+    receive: { component: StoreReceiveScreen, title: "Supplier delivery" },
     disputes: { component: DisputesScreen, title: "Disputes" },
+    ask: { component: AskScreen, title: "Ask for stock" },
+    requests: { component: RequestsScreen, title: "Requests" },
+    request: { component: RequestScreen, title: "Requests" },
+    order: { component: OrderScreen, title: "Order" },
 };
 
 export class BarDesk extends Component {

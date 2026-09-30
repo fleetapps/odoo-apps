@@ -14,8 +14,8 @@ not part of this module (see *Not included*).
 | Who | Device | What they get |
 |---|---|---|
 | Bar staff | The bar's shared phone or tablet, logged in as the bar's Desk login | Only the Bar Desk, full screen, no Odoo menus. They sign in with name + PIN. |
-| Storekeeper | The Main Store device | The same Desk in store mode: Send to bar, Receive, Count store, Disputes. |
-| Manager | Their own Odoo login | The **Bar Control** app: Dashboard, Bar Desk (any bar), Count approvals, Stock-out log, Deliveries, POS import, Reporting. |
+| Storekeeper | The Main Store device | The same Desk in store mode: Requests, Send to bar, Supplier delivery, Order, Count store, Disputes. |
+| Manager | Their own Odoo login | The **Bar Control** app: Dashboard, Bar Desk (any bar), Count approvals, Stock-out log, Stock in (with Requests and Disputes), POS import, Reporting. |
 
 ## Setting up
 
@@ -45,6 +45,12 @@ not part of this module (see *Not included*).
    it a bar switcher.
 7. **Managers**: give them *Bar Desk / Manager*. Bar tablets get *Bar Desk /
    Staff*, their only group.
+8. **Ordering**: on each product's Inventory tab, set **Order in** (e.g. Crate
+   of 24, Bottle 750ml) and **Usual level at the store** (in that unit), and
+   put its supplier first on the Purchase tab. Tick **Can order from
+   suppliers** on the employees who order (e.g. the stock taker).
+9. **Paying suppliers**: on the Main Store's *Bar Desk* tab, set **Suppliers
+   are paid from** to the cash or M-Pesa journal that pays deliveries.
 
 ## Training walkthrough
 
@@ -52,8 +58,9 @@ not part of this module (see *Not included*).
 names. Tap your name, type your PIN, OK. Your name stays in the top corner:
 tap it to hand over. After 10 minutes without a touch the Desk locks itself.
 
-**Home.** Three tiles, **Stock out**, **Count** and **Deliveries**, the last
-with a "not checked" badge. Below them, **Today**: everything that happened at
+**Home.** Five tiles: **Stock out**, **Count**, **Stock in** (with a "not
+checked" badge), **Ask for stock** and **Requests** (with a badge when someone
+is waiting). Below them, **Today**: everything that happened at
 this bar today, who did it and when.
 
 **Stock out** (anything leaving other than a sale)
@@ -89,24 +96,53 @@ and only the ones the POS did not sell at the bar that day (see *Rules*).
 
 *Training line: "Count every night: full bottles, then tots in the open one."*
 
-**Deliveries** (optional check at the bar)
-1. **Deliveries** lists what came in over two weeks: *Not checked*,
-   *Confirmed* or *Disputed*.
+**Ask for stock** (a bar running low)
+1. Tap **Ask for stock**, then who to ask: the Main Store or another bar.
+2. Add the items and quantities, then **Ask Main Store**. Nothing moves yet.
+3. *Your asks* shows each one: *Waiting*, *Sent* or *Part sent*. When
+   something was not available, tap **Ask Bulls Eye** (or another bar) to pass
+   the rest on in one tap.
+4. What is sent arrives in **Stock in**, to check as usual.
+
+**Requests** (the store, or a bar that was asked)
+1. **Requests** shows a badge and the tablet beeps when someone asks.
+2. Open one: what was asked is filled in. Tap a line to change it, or set 0
+   when you don't have it.
+3. **Send to Bulls Eye**. It is sent at once. If you have none of it, **Don't
+   have any** tells them so they can ask elsewhere.
+
+*Training line: "Need stock? Ask for stock. Asked? Open Requests, Send."*
+
+**Stock in** (optional check at the bar)
+1. **Stock in** lists what came in from the store or another bar over two
+   weeks: *Not checked*, *Confirmed* or *Disputed*.
 2. Open one. Lines show what was sent.
 3. If everything matches, tap **All correct**.
 4. If not, tap a line and enter what arrived (the line turns orange), then
    **Report difference**.
 5. No time? Skip it. The stock is at the bar the moment it was sent.
 
-*Rule for staff: "If you don't check a delivery, any shortage in it counts
+*Rule for staff: "If you don't check stock in, any shortage in it counts
 against your bar."*
 
 **Store mode** (storekeeper)
 - **Send to bar**: pick the bar, add items (crates, bottles), then **Send to
   Bulls Eye**. It is validated at once and shows at the bar as *Not checked*.
-- **Receive**: a waiting purchase-order receipt, with ordered quantities
-  filled in, or **Delivery from a supplier** (pick the supplier, add items,
-  Done). Short receipts leave a backorder.
+- **Order** (staff allowed to order, e.g. at 15:00 after the stock take): one
+  card per supplier, with a list already filled in: the usual level less this
+  morning's count (adjusted for what moved since) and what is already on
+  order, in crates or bottles. Change anything, then **Send order to Kenya
+  Breweries**. The purchase order is confirmed and emailed to the supplier;
+  **Send on WhatsApp** opens the order as a message. **Order from another
+  supplier** starts an empty list.
+- **Supplier delivery**: *Expected from suppliers* lists the orders due. Open
+  one: the ordered quantities are filled in; correct what differs, **Next**.
+  If less came, answer **Is the rest still coming?** (*Still coming* keeps it
+  expected; *Not coming* closes it). Type the supplier's invoice number if you
+  have it, then **Paid now** (from the store's payment account) or **Pay
+  later**. Either way the supplier bill is made for what arrived, at the order
+  prices, so nothing is paid for goods that did not come. **Delivery without
+  an order** does the same for goods that came unannounced.
 - **Count store**: the same count flow, on `MS/Stock`.
 - **Disputes**: bars' reported differences. **Accept** when the goods never
   left the store, which moves them back. **Reject** leaves the variance with
@@ -177,15 +213,18 @@ against your bar."*
 | Roma / Event / Unpaid bill | Transfer of the reason's type (`ROMA` / `EVT` / `DEBT`) from the bar, validated |
 | Breakage / Spoiled / Flat / Expired | Scrap from the bar with the scrap reason |
 | Back to store | Bar's `RET-xx` transfer to the store, validated |
-| To another bar | `IBT` transfer to that bar, validated. Shows in its deliveries |
+| To another bar | `IBT` transfer to that bar, validated. Shows in its Stock in |
 | Send to bar (store) | Bar's `ISS-xx` transfer, validated |
-| Receive (store) | Receipt into the store, validated |
+| Ask for stock | Request (`odin.bar.request`); nothing moves |
+| Request answered | Store's `ISS-xx`, or `IBT` from a bar, to the asking bar, validated |
+| Order (store) | Confirmed purchase order delivering to the store, emailed |
+| Supplier delivery (store) | Receipt into the store, validated; supplier bill for what arrived, paid from the store's journal when *Paid now* |
 | Delivery disputed | Draft return (short) or draft transfer (extra), linked to the delivery |
 | Count approved | Inventory adjustment moves for the differences, linked to the count |
 
 Every record carries the staff member (`bar_employee_id`) and the Desk action
-(`bar_activity_id`). Deliveries carry `bar_ack_state`, who checked them and
-when.
+(`bar_activity_id`). Transfers into a bar carry `bar_ack_state`, who checked
+them and when.
 
 ## Open points
 

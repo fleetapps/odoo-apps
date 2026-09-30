@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.AskScreen">
+        <div class="o_bar_desk_body">
+            <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+            <t t-elif="state.data and !state.source">
+                <h2 class="o_bar_desk_section">Ask who?</h2>
+                <div class="o_bar_desk_tiles o_bar_desk_tiles_small">
+                    <button t-foreach="state.data.sources" t-as="source" t-key="source.id" class="o_bar_desk_tile"
+                            t-on-click="() => this.state.source = source">
+                        <i t-attf-class="fa {{ source.kind === 'store' ? 'fa-home' : 'fa-glass' }} o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label" t-esc="source.name"/>
+                    </button>
+                </div>
+                <h2 class="o_bar_desk_section mt-3">Your asks</h2>
+                <div t-if="!state.data.mine.length" class="text-muted py-2">Nothing asked today.</div>
+                <div t-foreach="state.data.mine" t-as="request" t-key="request.id" class="o_bar_desk_card o_bar_desk_ask">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-bold flex-grow-1">To <t t-esc="request.source"/></span>
+                        <span class="badge" t-att-class="{
+                            'text-bg-secondary': request.state === 'open',
+                            'text-bg-success': request.state === 'sent',
+                            'text-bg-warning': request.state === 'partial' or request.state === 'none'}"
+                              t-esc="labels[request.state]"/>
+                    </div>
+                    <div class="small text-muted">
+                        <t t-esc="request.time"/><t t-if="request.who"> · <t t-esc="request.who"/></t>
+                        <t t-if="request.answered_by"> · answered by <t t-esc="request.answered_by"/></t>
+                    </div>
+                    <div t-foreach="request.lines" t-as="line" t-key="line.id" class="d-flex justify-content-between small">
+                        <span t-esc="line.name"/>
+                        <span class="text-nowrap ms-2">
+                            <t t-if="request.state === 'open'" t-esc="moveQty(line.qty, line)"/>
+                            <t t-else="">
+                                <span t-if="line.missing_qty" class="text-warning">
+                                    <t t-esc="fmt(line.sent_qty)"/> of <t t-esc="moveQty(line.qty, line)"/>
+                                </span>
+                                <t t-else="" t-esc="moveQty(line.sent_qty, line)"/>
+                            </t>
+                        </span>
+                    </div>
+                    <div t-if="request.ask_next.length" class="mt-2">
+                        <div class="small mb-1">Not sent: ask somewhere else?</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button t-foreach="request.ask_next" t-as="source" t-key="source.id"
+                                    class="btn btn-outline-primary" t-att-disabled="state.busy"
+                                    t-on-click="() => this.passOn(request, source)">
+                                Ask <t t-esc="source.name"/>
+                            </button>
+                        </div>
+                    </div>
+                    <button t-if="request.state === 'open'" class="btn btn-link px-0 mt-1"
+                            t-on-click="() => this.cancel(request)">Cancel this ask</button>
+                </div>
+            </t>
+            <t t-elif="state.source">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn btn-light" aria-label="Change" t-on-click="() => this.state.source = null">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <h2 class="o_bar_desk_section m-0">Ask <t t-esc="state.source.name"/></h2>
+                </div>
+                <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'Ask ' + state.source.name"/>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div t-if="state.source" class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="state.busy or !state.items.length" t-on-click="ask">
+                <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Ask <t t-esc="state.source.name"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="odin_bar_desk.RequestsScreen">
+        <div class="o_bar_desk_body">
+            <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+            <div t-elif="state.error" class="alert alert-danger" role="alert" t-esc="state.error"/>
+            <div t-elif="!state.requests.length" class="text-muted text-center py-4">Nobody is waiting for stock.</div>
+            <button t-foreach="state.requests" t-as="request" t-key="request.id" class="o_bar_desk_card"
+                    t-on-click="() => this.open(request)">
+                <div class="fw-bold text-start"><t t-esc="request.bar"/> asks</div>
+                <div class="small text-muted text-start">
+                    <t t-esc="request.time"/><t t-if="request.who"> · <t t-esc="request.who"/></t>
+                    · <t t-esc="request.lines.length"/> items
+                </div>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="odin_bar_desk.RequestScreen">
+        <div class="o_bar_desk_body">
+            <h2 class="o_bar_desk_section"><t t-esc="request.bar"/> asks</h2>
+            <div class="small text-muted mb-2">
+                <t t-esc="request.time"/><t t-if="request.who"> · <t t-esc="request.who"/></t>.
+                Tap a line to change it; 0 if you don't have it.
+            </div>
+            <LineList lines="lines" onTap.bind="tap" onBump.bind="bump"/>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div class="o_bar_desk_footer">
+            <button t-if="sendingNothing" class="btn btn-warning o_bar_desk_big w-100" t-att-disabled="state.busy" t-on-click="send">
+                Don't have any
+            </button>
+            <button t-else="" class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="state.busy" t-on-click="send">
+                <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Send to <t t-esc="request.bar"/>
+            </button>
+        </div>
+        <Keypad t-if="state.keypad" t-key="state.keypad.line.id" product="state.keypad.product" mode="'qty'" units="false"
+                value="state.keypad.value" hint="'Asked: ' + moveQty(state.keypad.line.qty, state.keypad.line)"
+                onConfirm.bind="confirm" onClose="() => this.state.keypad = null"/>
+    </t>
+</templates>

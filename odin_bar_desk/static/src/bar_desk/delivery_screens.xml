@@ -9,11 +9,11 @@
     <t t-name="odin_bar_desk.DeliveriesScreen">
         <div class="o_bar_desk_body">
             <div class="text-muted small mb-2">
-                Checking is optional. A shortage in a delivery you don't check counts against this bar.
+                Stock sent to this bar by the store or another bar. Checking is optional: a shortage you don't check counts against this bar.
             </div>
             <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
             <div t-elif="state.error" class="alert alert-danger" role="alert" t-esc="state.error"/>
-            <div t-elif="!state.deliveries.length" class="text-muted text-center py-4">No delivery in the last two weeks.</div>
+            <div t-elif="!state.deliveries.length" class="text-muted text-center py-4">No stock in over the last two weeks.</div>
             <button t-foreach="state.deliveries" t-as="delivery" t-key="delivery.id" class="o_bar_desk_card"
                     t-on-click="() => this.open(delivery)">
                 <div class="d-flex align-items-center gap-2">

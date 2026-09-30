@@ -4,7 +4,7 @@ import { errorMessage, feedback } from "./desk_model";
 import { ItemsEditor } from "./items_editor";
 import { Keypad } from "./keypad";
 import { LineList } from "./line_list";
-import { moveQty } from "./utils";
+import { fmt, moveQty } from "./utils";
 
 /** Beer and sodas go out by the crate, spirits by the bottle. */
 function packUnit(product) {
@@ -74,6 +74,7 @@ export class StoreReceiveScreen extends Component {
         this.model = this.props.app.model;
         this.packUnit = packUnit;
         this.moveQty = moveQty;
+        this.fmt = fmt;
         this.state = useState({
             step: "choose",
             receipts: [],
@@ -84,9 +85,13 @@ export class StoreReceiveScreen extends Component {
             receipt: null,
             received: {},
             keypad: null,
+            itemsStep: null,
+            rest: null,
+            supplierRef: "",
             busy: false,
             error: "",
         });
+        this.desk = useState(this.model.state);
         onWillStart(() => this.loadReceipts());
         this.searchTimer = null;
     }
@@ -175,16 +180,43 @@ export class StoreReceiveScreen extends Component {
         this.state.keypad = null;
     }
 
-    async finish() {
-        const { receipt, supplier, items, received } = this.state;
+    get shortLines() {
+        const receipt = this.state.receipt;
+        if (!receipt) {
+            return [];
+        }
+        return receipt.lines.filter((line) => this.state.received[line.move_id] < line.qty - 1e-6);
+    }
+
+    get paymentAccount() {
+        return this.desk.home?.payment_account || "";
+    }
+
+    /** Lines are right: on to "Paid?" (and "rest still coming?" when short). */
+    review() {
+        Object.assign(this.state, {
+            itemsStep: this.state.step,
+            step: "pay",
+            rest: this.shortLines.length ? null : "coming",
+            error: "",
+        });
+    }
+
+    backFromPay() {
+        this.state.step = this.state.itemsStep;
+    }
+
+    async finish(paid) {
+        const { receipt, supplier, items, received, rest } = this.state;
+        const payment = { paid, supplier_ref: this.state.supplierRef.trim() || false };
         this.state.busy = true;
         this.state.error = "";
         let outcome;
         if (receipt) {
             outcome = await this.model.post(
                 "desk_receipt_validate",
-                { picking_id: receipt.id, received },
-                `Receive ${receipt.name}`
+                { picking_id: receipt.id, received, rest, ...payment },
+                `Supplier delivery ${receipt.name}`
             );
         } else {
             outcome = await this.model.post(
@@ -192,8 +224,9 @@ export class StoreReceiveScreen extends Component {
                 {
                     partner_id: supplier.id,
                     lines: items.map((item) => ({ product_id: item.productId, uom_id: item.uomId, qty: item.qty })),
+                    ...payment,
                 },
-                `Receive from ${supplier.name}`
+                `Supplier delivery from ${supplier.name}`
             );
         }
         this.state.busy = false;
@@ -202,7 +235,11 @@ export class StoreReceiveScreen extends Component {
             this.state.error = outcome.message;
             return;
         }
-        toast(this.props.app, outcome, "Received into the store.");
+        toast(
+            this.props.app,
+            outcome,
+            paid === "now" ? "Booked into the store and paid." : "Booked into the store; the bill waits for payment."
+        );
         this.props.app.home();
     }
 }

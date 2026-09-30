@@ -29,6 +29,21 @@ class ProductTemplate(models.Model):
     tots_per_bottle = fields.Float(
         "Tots per bottle", compute="_compute_tots_per_bottle", digits="Product Unit"
     )
+    bar_order_uom_id = fields.Many2one(
+        "uom.uom",
+        "Order in",
+        compute="_compute_bar_order_uom_id",
+        store=True,
+        readonly=False,
+        help="Unit this product is ordered from suppliers in, e.g. Crate of 24 or Bottle 750ml.",
+    )
+    bar_usual_qty = fields.Float(
+        "Usual level at the store",
+        digits="Product Unit",
+        help="How many (in the order unit) the Main Store should hold after a "
+        "supplier delivery. The Desk suggests ordering the difference. Leave 0 "
+        "to never suggest it.",
+    )
 
     def _bar_pack_uoms(self):
         """Packagings holding several stock units, smallest first: bottle sizes
@@ -54,6 +69,17 @@ class ProductTemplate(models.Model):
                 template.bar_bottle_uom_id = False
             else:
                 template.bar_bottle_uom_id = packs[:1]
+
+    @api.depends("bar_bottle_uom_id", "uom_id", "uom_ids")
+    def _compute_bar_order_uom_id(self):
+        for template in self:
+            allowed = template.uom_id | template._bar_pack_uoms()
+            if template.bar_order_uom_id and template.bar_order_uom_id in allowed:
+                template.bar_order_uom_id = template.bar_order_uom_id
+            else:
+                template.bar_order_uom_id = (
+                    template.bar_bottle_uom_id or template._bar_pack_uoms()[-1:] or template.uom_id
+                )
 
     @api.depends("bar_bottle_uom_id", "uom_id")
     def _compute_tots_per_bottle(self):
