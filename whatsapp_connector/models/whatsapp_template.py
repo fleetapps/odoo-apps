@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 
 # Statuses Meta is known to send; anything else is shown as received (N2).
 KNOWN_TEMPLATE_STATUSES = {
@@ -60,7 +60,7 @@ class WhatsappTemplate(models.Model):
     )
     header_text = fields.Char()
     header_attachment_id = fields.Many2one("ir.attachment", ondelete="set null")
-    body = fields.Text(required=True)
+    body = fields.Text()
     footer = fields.Char()
     button_ids = fields.One2many("whatsapp_connector.template.button", "template_id", copy=True)
     variable_ids = fields.One2many("whatsapp_connector.template.variable", "template_id", copy=True)
@@ -114,3 +114,77 @@ class WhatsappTemplateVariable(models.Model):
     )
     field_name = fields.Char("Field", help="Dotted path from the template's model, e.g. partner_id.name.")
     demo_value = fields.Char("Sample Value", required=True, default="Sample")
+
+
+class WhatsappTemplateSync(models.Model):
+    _inherit = "whatsapp_connector.template"
+
+    @api.model
+    def _wa_sync_account(self, account, meta_templates):
+        """Create or update the account's templates from Meta's template list (R25)."""
+        existing = self.with_context(active_test=False).search([("account_id", "=", account.id)])
+        by_id = {t.meta_template_id: t for t in existing if t.meta_template_id}
+        by_name = {(t.template_name, t.language_code): t for t in existing}
+        count = 0
+        for data in meta_templates:
+            name, language = data.get("name"), data.get("language")
+            if not name or not language:
+                continue
+            vals = self._wa_values_from_meta(data)
+            template = by_id.get(data.get("id")) or by_name.get((name, language))
+            if template:
+                template.write(vals)
+            else:
+                vals.update({
+                    "name": name.replace("_", " ").capitalize(),
+                    "template_name": name,
+                    "language_code": language,
+                    "account_id": account.id,
+                })
+                template = self.create(vals)
+            count += 1
+        return count
+
+    @api.model
+    def _wa_values_from_meta(self, data):
+        vals = {
+            "meta_template_id": data.get("id") or False,
+            "status": data.get("status") or False,
+        }
+        category = (data.get("category") or "").lower()
+        if category in ("marketing", "utility", "authentication"):
+            vals["category"] = category
+        quality = data.get("quality_score")
+        if quality:
+            vals["quality"] = quality.get("score") if isinstance(quality, dict) else str(quality)
+        buttons = []
+        for component in data.get("components") or []:
+            kind = (component.get("type") or "").upper()
+            if kind == "BODY":
+                vals["body"] = component.get("text") or ""
+            elif kind == "FOOTER":
+                vals["footer"] = component.get("text") or False
+            elif kind == "HEADER":
+                header_format = (component.get("format") or "TEXT").lower()
+                if header_format in ("text", "image", "video", "document", "location"):
+                    vals["header_type"] = header_format
+                vals["header_text"] = component.get("text") or False
+            elif kind == "BUTTONS":
+                for index, button in enumerate(component.get("buttons") or []):
+                    button_type = {
+                        "QUICK_REPLY": "quick_reply", "URL": "url", "PHONE_NUMBER": "phone_number",
+                    }.get((button.get("type") or "").upper())
+                    if not button_type:
+                        continue
+                    buttons.append({
+                        "sequence": index,
+                        "button_type": button_type,
+                        "text": button.get("text") or "",
+                        "website_url": button.get("url") or False,
+                        "url_type": "dynamic" if "{{" in (button.get("url") or "") else "static",
+                        "call_number": button.get("phone_number") or False,
+                    })
+        if "body" not in vals:
+            vals["body"] = ""
+        vals["button_ids"] = [Command.clear()] + [Command.create(b) for b in buttons]
+        return vals

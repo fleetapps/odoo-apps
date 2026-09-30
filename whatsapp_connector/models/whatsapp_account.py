@@ -1,6 +1,12 @@
+import logging
 import secrets
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
+
+from odoo.addons.whatsapp_connector.tools.meta_api import MetaApiError, WhatsAppApi
+
+_logger = logging.getLogger(__name__)
 
 WEBHOOK_ROUTE = "/whatsapp_connector/webhook"
 
@@ -115,7 +121,7 @@ class WhatsappAccount(models.Model):
     def _compute_notify_user_ids(self):
         for account in self:
             account.notify_user_ids = account.operator_ids.filtered(
-                lambda op: op.active and op.user_id.active
+                lambda op: op.active and op.user_id.active,
             ).user_id
 
     def _compute_counts(self):
@@ -131,7 +137,7 @@ class WhatsappAccount(models.Model):
     def action_open_conversations(self):
         self.ensure_one()
         action = self.env["ir.actions.act_window"]._for_xml_id(
-            "whatsapp_connector.action_whatsapp_conversations"
+            "whatsapp_connector.action_whatsapp_conversations",
         )
         action["domain"] = [("wa_account_id", "=", self.id)]
         return action
@@ -139,8 +145,116 @@ class WhatsappAccount(models.Model):
     def action_open_templates(self):
         self.ensure_one()
         action = self.env["ir.actions.act_window"]._for_xml_id(
-            "whatsapp_connector.action_whatsapp_template"
+            "whatsapp_connector.action_whatsapp_template",
         )
         action["domain"] = [("account_id", "=", self.id)]
         action["context"] = {"default_account_id": self.id}
         return action
+
+    # ------------------------------------------------------------------
+    # Test Connection (SPEC.md §34, R24)
+    # ------------------------------------------------------------------
+
+    def _api(self):
+        self.ensure_one()
+        return WhatsAppApi(self)
+
+    def action_test_connection(self):
+        """Check the number and the webhook subscription with Meta for real (§34)."""
+        self.ensure_one()
+        self._ensure_webhook_verify_token()
+        state, message, vals = self._wa_check_connection()
+        vals.update({
+            "connection_state": state,
+            "connection_message": message,
+            "connection_tested_at": fields.Datetime.now(),
+        })
+        self.sudo().write(vals)
+        return self._notify(
+            message, "success" if state == "connected" else "danger", sticky=state != "connected",
+        )
+
+    def _wa_check_connection(self):
+        tr = self.env._
+        vals = {}
+        try:
+            api_client = self._api()
+            number = api_client.get_phone_number()
+        except MetaApiError as e:
+            if e.is_token_error:
+                return "token_error", tr("Meta refused the access token: %s", e), vals
+            return "connection_error", tr("Meta refused the request: %s", e), vals
+        vals.update({
+            "phone_number": number.get("display_phone_number") or False,
+            "verified_name": number.get("verified_name") or False,
+            "quality_rating": number.get("quality_rating") or False,
+        })
+        number_status = (number.get("status") or "").upper()
+        if number_status and number_status != "CONNECTED":
+            return "connection_error", tr(
+                "Meta reports the number as %s: it must be CONNECTED to send and receive messages.",
+                number_status,
+            ), vals
+        try:
+            subscribed = api_client.get_subscribed_apps()
+        except MetaApiError as e:
+            return "webhook_error", tr("Could not read the app subscriptions: %s", e), vals
+        if self.app_id and self.app_id not in subscribed:
+            return "webhook_error", tr(
+                "The app %(app)s is not subscribed to this WhatsApp Business Account, so Meta "
+                "sends it no webhooks. Click Subscribe App, then set the Callback URL and Verify "
+                "Token in Meta's App Dashboard.", app=self.app_id,
+            ), vals
+        return "connected", tr(
+            "Connected. Meta will deliver messages to %(url)s once the webhook is configured in "
+            "the App Dashboard with this Verify Token. The Meta app must be Live: in Development "
+            "mode only test numbers can be messaged and some webhooks are not sent.",
+            url=self.callback_url,
+        ), vals
+
+    def action_subscribe_app(self):
+        self.ensure_one()
+        try:
+            self._api().subscribe_app()
+        except MetaApiError as e:
+            raise UserError(self.env._("Meta refused the subscription: %s", e)) from None
+        return self.action_test_connection()
+
+    def action_regenerate_verify_token(self):
+        for account in self.sudo():
+            account.webhook_verify_token = secrets.token_urlsafe(24)
+
+    # ------------------------------------------------------------------
+    # Templates (R25)
+    # ------------------------------------------------------------------
+
+    def action_sync_templates(self):
+        self.ensure_one()
+        try:
+            count = self._wa_sync_templates(raise_on_error=True)
+        except MetaApiError as e:
+            raise UserError(self.env._("Could not read the templates from Meta: %s", e)) from None
+        return self._notify(self.env._("%s templates synced from Meta.", count), "success")
+
+    def _wa_sync_templates(self, raise_on_error=False):
+        self.ensure_one()
+        try:
+            meta_templates = self._api().get_templates()
+        except MetaApiError:
+            if raise_on_error:
+                raise
+            _logger.warning("WhatsApp: template sync failed for account %s", self.id, exc_info=True)
+            return 0
+        return self.env["whatsapp_connector.template"].sudo()._wa_sync_account(self, meta_templates)
+
+    def _notify(self, message, kind, sticky=False):
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "message": message,
+                "type": kind,
+                "sticky": sticky,
+                "next": {"type": "ir.actions.client", "tag": "soft_reload"},
+            },
+        }

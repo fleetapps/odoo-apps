@@ -4,9 +4,8 @@ from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 
-from odoo.addons.whatsapp_connector.hooks import pre_init_hook
-
 from .common import WhatsappCase
+from odoo.addons.whatsapp_connector.hooks import pre_init_hook
 
 
 @tagged("post_install", "-at_install")

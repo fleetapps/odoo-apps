@@ -1,10 +1,20 @@
-from datetime import timedelta
+import logging
+from datetime import datetime, timedelta, timezone
 
-from odoo import api, fields, models
+from markupsafe import Markup
+
+from odoo import Command, api, fields, models
+from odoo.tools import plaintext2html
+
+_logger = logging.getLogger(__name__)
 
 # Meta's customer service window (SPEC.md §28, R34): free-form messages only
 # within 24 hours of the customer's last message or call.
 CUSTOMER_SERVICE_WINDOW = timedelta(hours=24)
+# Odoo's documented 15-day rule (SPEC.md §10, R6).
+NOTIFY_ALL_AFTER = timedelta(days=15)
+
+MEDIA_TYPES = ("image", "video", "audio", "document", "sticker")
 
 
 def is_whatsapp_channel(channel):
@@ -75,3 +85,322 @@ class DiscussChannel(models.Model):
 
     def _types_allowing_unfollow(self):
         return super()._types_allowing_unfollow() + ["whatsapp"]
+
+    # ------------------------------------------------------------------
+    # Conversation lookup and creation (SPEC.md §8, §22, §42, §43)
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _wa_find_conversation(self, account, bsuid=False, wa_id=False):
+        """The customer's current conversation: BSUID first, then WhatsApp ID (R16)."""
+        Channel = self.sudo().with_context(active_test=False)
+        base = [("channel_type", "=", "whatsapp"), ("wa_account_id", "=", account.id)]
+        for field, value in (("wa_bsuid", bsuid), ("wa_id", wa_id)):
+            if not value:
+                continue
+            for status in ("open", "closed"):
+                channel = Channel.search(
+                    base + [(field, "=", value), ("wa_status", "=", status)],
+                    order="wa_last_message_at desc, id desc", limit=1,
+                )
+                if channel:
+                    return channel
+        return Channel.browse()
+
+    @api.model
+    def _wa_get_or_create_conversation(self, account, identity):
+        """Return the open conversation for ``identity``, reopening or creating it.
+
+        ``identity`` holds bsuid, parent_bsuid, wa_id, phone (E.164), name and
+        username, whichever the webhook carried.
+        """
+        bsuid, wa_id = identity.get("bsuid"), identity.get("wa_id")
+        channel = self._wa_find_conversation(account, bsuid=bsuid, wa_id=wa_id)
+        if channel:
+            channel._wa_update_identity(identity)
+            if channel.wa_status == "closed":
+                channel._wa_reopen()
+            return channel, False
+        partner = self.env["res.partner"]._wa_find_or_create(
+            bsuid=bsuid, phone=identity.get("phone"), name=identity.get("name"),
+            username=identity.get("username"),
+        )
+        channel = self._wa_create_conversation(account, partner, identity)
+        return channel, True
+
+    @api.model
+    def _wa_create_conversation(self, account, partner, identity, members=None):
+        """Create a WhatsApp conversation.
+
+        ``members`` defaults to the account's Notify users (Mode A, §9); Lead
+        Routing passes the owner instead (§21).
+        """
+        if members is None:
+            members = self._wa_default_members(account)
+        bsuid, wa_id = identity.get("bsuid"), identity.get("wa_id")
+        vals = {
+            "name": partner.display_name or identity.get("phone") or bsuid,
+            "channel_type": "whatsapp",
+            "wa_account_id": account.id,
+            "wa_customer_key": self._wa_key(bsuid, wa_id),
+            "wa_bsuid": bsuid or False,
+            "wa_parent_bsuid": identity.get("parent_bsuid") or False,
+            "wa_id": wa_id or False,
+            "wa_customer_phone": identity.get("phone") or False,
+            "wa_username": identity.get("username") or False,
+            "wa_partner_id": partner.id,
+            "wa_status": "open",
+            "channel_member_ids": [
+                Command.create({"partner_id": p.id}) for p in members.partner_id
+            ],
+        }
+        creator = self.env.user.partner_id
+        channel = self.sudo().create(vals)
+        # discuss.channel.create() always adds the current user; the processing
+        # cron runs as OdooBot, who is not part of the conversation.
+        if creator not in members.partner_id:
+            channel.channel_member_ids.filtered(lambda m: m.partner_id == creator).sudo().unlink()
+        # Notify users start as listeners: once someone replies they are muted
+        # for 15 days (R6).
+        channel.channel_member_ids.sudo().write({"wa_participant": False})
+        return channel
+
+    @api.model
+    def _wa_default_members(self, account):
+        return account.notify_user_ids
+
+    @api.model
+    def _wa_key(self, bsuid, wa_id):
+        return bsuid or (f"wa:{wa_id}" if wa_id else False)
+
+    def _wa_update_identity(self, identity):
+        """Keep the conversation and contact up to date with what WhatsApp sent (R16)."""
+        self.ensure_one()
+        vals = {}
+        bsuid = identity.get("bsuid")
+        if bsuid and self.wa_bsuid != bsuid:
+            vals.update({"wa_bsuid": bsuid, "wa_customer_key": bsuid})
+        for key, field in (("parent_bsuid", "wa_parent_bsuid"), ("wa_id", "wa_id"),
+                           ("phone", "wa_customer_phone"), ("username", "wa_username")):
+            value = identity.get(key)
+            if value and self[field] != value:
+                vals[field] = value
+        if vals:
+            self.sudo().write(vals)
+        partner = self.wa_partner_id.sudo()
+        if partner:
+            pvals = {}
+            if bsuid and partner.wa_bsuid != bsuid:
+                pvals["wa_bsuid"] = bsuid
+            if identity.get("username") and partner.wa_username != identity["username"]:
+                pvals["wa_username"] = identity["username"]
+            if identity.get("phone") and not partner.phone:
+                pvals["phone"] = identity["phone"]
+                self._wa_flag_possible_duplicates(partner, identity["phone"])
+            if pvals:
+                partner.write(pvals)
+
+    def _wa_flag_possible_duplicates(self, partner, phone):
+        """A phone number arrived for a contact created without one (R16): flag, never merge."""
+        others = self.env["res.partner"].sudo().search([
+            ("phone_sanitized", "=", phone), ("id", "!=", partner.id),
+        ], limit=5)
+        if others:
+            links = Markup(", ").join(o._get_html_link() for o in others)
+            self.sudo().message_post(
+                body=Markup("%s %s") % (
+                    self.env._("This customer's phone number also belongs to"), links,
+                ),
+                message_type="notification",
+            )
+
+    def _wa_reopen(self):
+        """A closed conversation gets a new message: reopen it (SPEC.md §44)."""
+        for channel in self.sudo():
+            channel.wa_status = "open"
+        self.env.flush_all()
+
+    # ------------------------------------------------------------------
+    # Incoming messages (SPEC.md §8, §26, R20)
+    # ------------------------------------------------------------------
+
+    def _wa_receive(self, account, message, contact, identity):
+        """Post one incoming WhatsApp message in this conversation.
+
+        Returns the ``whatsapp_connector.message`` created, or an empty
+        recordset for messages that are not posted (reactions, system).
+        """
+        self.ensure_one()
+        WaMessage = self.env["whatsapp_connector.message"].sudo()
+        msg_type = message.get("type")
+        timestamp = self._wa_timestamp(message.get("timestamp"))
+        partner = self.wa_partner_id
+
+        if msg_type == "reaction":
+            self._wa_receive_reaction(account, message.get("reaction") or {}, partner)
+            return WaMessage
+        if msg_type == "system":
+            self._wa_receive_system(message.get("system") or {})
+            return WaMessage
+
+        if message.get("referral") and not self.wa_referral:
+            self.sudo().wa_referral = message["referral"]
+
+        body, media = self._wa_incoming_body(message)
+        parent = self._wa_find_mail_message(account, (message.get("context") or {}).get("id"))
+        self._wa_apply_notify_rule(timestamp)
+
+        wa_message = WaMessage.create({
+            "account_id": account.id,
+            "channel_id": self.id,
+            "external_message_id": message.get("id"),
+            "direction": "inbound",
+            "message_type": msg_type,
+            "sender": identity.get("phone") or identity.get("bsuid"),
+            "recipient": account.phone_number or account.phone_number_id,
+            "body": body,
+            "media_id": (media or {}).get("id"),
+            "context_message_id": (message.get("context") or {}).get("id"),
+            "status": "received",
+            "wa_timestamp": timestamp,
+            "media_download_state": "pending" if media else "none",
+            "error_code": str((message.get("errors") or [{}])[0].get("code") or "") or False,
+            "error_title": (message.get("errors") or [{}])[0].get("title") or False,
+        })
+        attachments = self.env["ir.attachment"]
+        if media:
+            attachments = wa_message._wa_download_media(media)
+
+        post_values = {
+            "body": plaintext2html(body) if body else "",
+            "message_type": "whatsapp_message",
+            "subtype_xmlid": "mail.mt_comment",
+            "author_id": partner.id,
+            "date": timestamp,
+            "attachment_ids": attachments.ids,
+        }
+        if parent:
+            post_values["parent_id"] = parent.id
+        mail_message = self.sudo().with_context(mail_create_nosubscribe=True).message_post(**post_values)
+        wa_message.mail_message_id = mail_message
+        if attachments:
+            attachments.sudo().write({"res_model": "discuss.channel", "res_id": self.id})
+        self.sudo().write({
+            "wa_last_message_at": timestamp,
+            "wa_last_customer_message_at": max(
+                filter(None, [self.wa_last_customer_message_at, timestamp]),
+            ),
+        })
+        return wa_message
+
+    @api.model
+    def _wa_timestamp(self, value):
+        try:
+            return datetime.fromtimestamp(int(value), tz=timezone.utc).replace(tzinfo=None)
+        except (TypeError, ValueError):
+            return fields.Datetime.now()
+
+    @api.model
+    def _wa_incoming_body(self, message):
+        """Text shown in Discuss for each Meta message type (R20), and the media, if any."""
+        msg_type = message.get("type")
+        content = message.get(msg_type) or {}
+        tr = self.env._
+        if msg_type == "text":
+            return content.get("body") or "", None
+        if msg_type in MEDIA_TYPES:
+            return content.get("caption") or "", content
+        if msg_type == "location":
+            parts = [content.get("name"), content.get("address")]
+            lat, lng = content.get("latitude"), content.get("longitude")
+            if lat is not None and lng is not None:
+                parts.append(f"https://maps.google.com/?q={lat},{lng}")
+            return "\n".join(p for p in parts if p) or tr("Location"), None
+        if msg_type == "contacts":
+            lines = []
+            for shared in message.get("contacts") or []:
+                name = (shared.get("name") or {}).get("formatted_name") or ""
+                phones = ", ".join(p.get("phone") for p in shared.get("phones") or [] if p.get("phone"))
+                lines.append(" ".join(filter(None, [name, phones])))
+            return tr("Shared contact: %s", "; ".join(lines)), None
+        if msg_type == "button":
+            return content.get("text") or content.get("payload") or "", None
+        if msg_type == "interactive":
+            reply = content.get(content.get("type")) or {}
+            return reply.get("title") or reply.get("id") or "", None
+        if msg_type == "order":
+            items = content.get("product_items") or []
+            lines = [
+                f"{item.get('quantity')} × {item.get('product_retailer_id')} "
+                f"({item.get('item_price')} {item.get('currency') or ''})".strip()
+                for item in items
+            ]
+            text = content.get("text") or ""
+            return "\n".join([tr("Order:")] + lines + ([text] if text else [])), None
+        error = (message.get("errors") or [{}])[0]
+        return tr("Message not supported by WhatsApp's API: %s", error.get("title") or msg_type), None
+
+    @api.model
+    def _wa_find_mail_message(self, account, external_id):
+        if not external_id:
+            return self.env["mail.message"]
+        wa = self.env["whatsapp_connector.message"].sudo().search([
+            ("account_id", "=", account.id), ("external_message_id", "=", external_id),
+        ], limit=1)
+        return wa.mail_message_id
+
+    def _wa_receive_reaction(self, account, reaction, partner):
+        target = self._wa_find_mail_message(account, reaction.get("message_id"))
+        if not target:
+            return
+        guest = self.env["mail.guest"]
+        emoji = reaction.get("emoji")
+        target = target.sudo()
+        # an empty emoji removes the customer's reaction
+        existing = self.env["mail.message.reaction"].sudo().search([
+            ("message_id", "=", target.id), ("partner_id", "=", partner.id),
+        ])
+        for old in existing:
+            if old.content != emoji:
+                target._message_reaction(old.content, "remove", partner, guest)
+        if emoji:
+            target._message_reaction(emoji, "add", partner, guest)
+
+    def _wa_receive_system(self, system):
+        """Identity changes (R16): update the conversation, never create a new one."""
+        identity = {}
+        if system.get("type") == "user_changed_number" and system.get("wa_id"):
+            identity["wa_id"] = system["wa_id"]
+            identity["phone"] = self.env["res.partner"]._wa_normalize_phone(system["wa_id"])
+        if system.get("user_id"):
+            identity["bsuid"] = system["user_id"]
+        if system.get("parent_user_id"):
+            identity["parent_bsuid"] = system["parent_user_id"]
+        if identity:
+            self._wa_update_identity(identity)
+        if system.get("body"):
+            self.sudo().message_post(body=system["body"], message_type="notification")
+
+    def _wa_apply_notify_rule(self, timestamp):
+        """Odoo's 15-day rule (SPEC.md §10, R6).
+
+        Members are notified by Discuss core. After 15 days without a reply from
+        a user, every Notify user is notified again: listeners' mutes have
+        expired by then, and Notify users who left the conversation come back.
+        """
+        self.ensure_one()
+        if self.wa_account_id.routing_mode == "lead":
+            return  # routed conversations notify their owner (§46)
+        last_reply = self.wa_last_user_message_at
+        if last_reply and timestamp - last_reply <= NOTIFY_ALL_AFTER:
+            return
+        members = self.channel_member_ids
+        missing = self._wa_default_members(self.wa_account_id).partner_id - members.partner_id
+        if missing:
+            self.sudo()._add_members(partners=missing, post_joined_message=False)
+            self.channel_member_ids.filtered(
+                lambda m: m.partner_id in missing,
+            ).sudo().write({"wa_participant": False})
+        members.filtered(lambda m: m.mute_until_dt and not m.wa_participant).sudo().write(
+            {"mute_until_dt": False},
+        )

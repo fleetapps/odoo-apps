@@ -1,6 +1,18 @@
+import base64
+import binascii
+import hashlib
+import logging
+import mimetypes
 from datetime import timedelta
 
 from odoo import api, fields, models
+
+from odoo.addons.whatsapp_connector.tools.meta_api import MetaApiError, WhatsAppApi
+
+_logger = logging.getLogger(__name__)
+
+# Meta: "Media IDs in webhooks expire after 7 days" (R22).
+MEDIA_ID_LIFETIME = timedelta(days=7)
 
 # Order in which Meta's statuses progress. A late webhook never moves a status
 # back (SPEC.md §24, R19): "delivered" after "read" is ignored.
@@ -110,3 +122,78 @@ class WhatsappMessage(models.Model):
             ttl = TTL_AUTHENTICATION if message.template_id.category == "authentication" else TTL_DEFAULT
             if message.sent_at + ttl < now:
                 message.status = "dropped"
+
+    # ------------------------------------------------------------------
+    # Incoming media (SPEC.md §51, R22)
+    # ------------------------------------------------------------------
+
+    def _wa_download_media(self, media):
+        """Download an incoming media file and return it as an attachment.
+
+        Two steps: the media ID gives a URL valid for 5 minutes, downloaded with
+        the access token. Failures stay "To download" and are retried by a cron
+        until the media ID expires (7 days).
+        """
+        self.ensure_one()
+        attachments = self.env["ir.attachment"]
+        try:
+            api_client = WhatsAppApi(self.account_id)
+            info = api_client.get_media_url(media["id"])
+            content, content_type = api_client.download_media(info["url"])
+        except (MetaApiError, KeyError) as e:
+            _logger.info("WhatsApp media %s not downloaded yet: %s", media.get("id"), e)
+            self.sudo().media_download_state = "pending"
+            return attachments
+        expected = media.get("sha256") or info.get("sha256")
+        if expected and not self._sha256_matches(content, expected):
+            self.sudo().write({
+                "media_download_state": "failed",
+                "error_title": self.env._("The downloaded file does not match Meta's checksum."),
+            })
+            return attachments
+        mimetype = (media.get("mime_type") or info.get("mime_type") or content_type or "")
+        mimetype = mimetype.split(";")[0].strip() or "application/octet-stream"
+        filename = media.get("filename") or self._default_filename(mimetype)
+        attachment = attachments.sudo().create({
+            "name": filename,
+            "raw": content,
+            "mimetype": mimetype,
+            "res_model": "discuss.channel" if self.channel_id else False,
+            "res_id": self.channel_id.id or False,
+        })
+        self.sudo().write({"attachment_id": attachment.id, "media_download_state": "done"})
+        return attachment
+
+    @api.model
+    def _sha256_matches(self, content, expected):
+        digest = hashlib.sha256(content).digest()
+        if expected == digest.hex():
+            return True
+        try:
+            return base64.b64decode(expected) == digest
+        except (binascii.Error, ValueError):
+            return False
+
+    def _default_filename(self, mimetype):
+        extension = mimetypes.guess_extension(mimetype) or ""
+        return f"whatsapp-{self.message_type or 'file'}{extension}"
+
+    @api.model
+    def _cron_retry_media(self):
+        """Retry media downloads until Meta's media ID expires (7 days)."""
+        now = fields.Datetime.now()
+        pending = self.search([("media_download_state", "=", "pending"), ("media_id", "!=", False)])
+        for message in pending:
+            if message.wa_timestamp and message.wa_timestamp + MEDIA_ID_LIFETIME < now:
+                message.write({
+                    "media_download_state": "failed",
+                    "error_title": self.env._("The media expired at Meta before it could be downloaded."),
+                })
+                continue
+            media = {"id": message.media_id}
+            attachment = message._wa_download_media(media)
+            if attachment and message.mail_message_id and message.channel_id:
+                message.channel_id.sudo()._message_update_content(
+                    message.mail_message_id.sudo(), body=None, attachment_ids=[attachment.id],
+                    strict=False,
+                )

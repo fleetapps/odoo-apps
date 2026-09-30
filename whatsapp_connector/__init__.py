@@ -1,5 +1,2 @@
-from . import controllers
-from . import models
-from . import tools
-from . import wizard
+from . import controllers, models, tools, wizard
 from .hooks import pre_init_hook

@@ -19,6 +19,9 @@
         <field name="model">whatsapp_connector.webhook.event</field>
         <field name="arch" type="xml">
             <form create="0" edit="0">
+                <header>
+                    <button name="action_retry" type="object" string="Process Again" invisible="state != 'error'"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="received_at"/>

@@ -1,9 +1,12 @@
-from . import whatsapp_account
-from . import whatsapp_operator
-from . import whatsapp_template
-from . import whatsapp_message
-from . import whatsapp_webhook_event
-from . import discuss_channel
-from . import mail_message
-from . import res_partner
-from . import crm_lead
+from . import (
+    crm_lead,
+    discuss_channel,
+    discuss_channel_member,
+    mail_message,
+    res_partner,
+    whatsapp_account,
+    whatsapp_message,
+    whatsapp_operator,
+    whatsapp_template,
+    whatsapp_webhook_event,
+)

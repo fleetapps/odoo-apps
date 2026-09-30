@@ -15,5 +15,5 @@ def pre_init_hook(env):
     if enterprise:
         raise UserError(env._(
             "WhatsApp Connector cannot be installed while Odoo's own WhatsApp app "
-            "is installed: both use the same Discuss conversations and message types."
+            "is installed: both use the same Discuss conversations and message types.",
         ))
