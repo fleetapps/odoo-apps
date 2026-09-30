@@ -199,10 +199,16 @@ class PosImport(models.Model):
             'pdf_line_count': len(result['lines']),
         }
 
+    def _pos_bar_records(self):
+        """Active bars of the company that the POS report lists: the Bar
+        Control bars with a POS group name."""
+        return self.env['odin.bar'].search([
+            ('company_id', '=', (self.company_id or self.env.company).id),
+            ('kind', '=', 'bar'), ('pos_group_name', '!=', False)])
+
     def _pos_bars(self):
         """Active bars of the company, by POS group name."""
-        bars = self.env['pos.import.bar'].search([('company_id', '=', self.company_id.id)])
-        return {bar.pos_group_name: bar for bar in bars}
+        return {bar.pos_group_name: bar for bar in self._pos_bar_records()}
 
     def _pos_parse_and_check(self, data):
         """Parse the PDF and apply every hard block that doesn't need the item
@@ -233,8 +239,8 @@ class PosImport(models.Model):
             bar = bars.get(group['name'])
             if not bar:
                 raise UserError(self.env._(
-                    "The group \"%(group)s\" isn't configured: add it under POS Import > "
-                    "Configuration > Bars.", group=group['name']))
+                    "The group \"%(group)s\" isn't configured: set it as the POS group name of a bar "
+                    "under Bar Control > Configuration > Bars.", group=group['name']))
             for sub in group['subgroups']:
                 for ln in sub['lines']:
                     if ln['bar_suffix'] != bar.pos_suffix:
@@ -302,6 +308,7 @@ class PosImport(models.Model):
         for bar in self.line_ids.bar_id:
             if not bar.active:
                 issues.append(self.env._("The bar %(bar)s has been archived.", bar=bar.name))
+        issues.extend(self.line_ids.bar_id.filtered('active')._pos_import_issues())
         if self.state == 'review':
             try:
                 self._pos_check_date(self.business_date, company)
@@ -386,7 +393,7 @@ class PosImport(models.Model):
             return formatLang(self.env, amount, digits=uom and max(0, -Decimal(str(uom.rounding)).as_tuple().exponent) or 2)
 
         by_bar = self._pos_lines_by_bar()
-        configured = self.env['pos.import.bar'].search([('company_id', '=', self.company_id.id)])
+        configured = self._pos_bar_records()
         blocking = self._pos_blocking_issues() if self.state == 'review' else []
         warnings = []
         day = format_date(self.env, self.business_date, date_format='EEEE d MMM y')
@@ -477,7 +484,7 @@ class PosImport(models.Model):
                  if any(l.product_id.type == 'consu' for l in lines if l.match_state == 'ok')}
         records = {
             'orders': len(by_bar),
-            'deliveries': [bar.picking_type_id.sequence_code or bar.picking_type_id.name for bar in by_bar if bar in goods],
+            'deliveries': [bar.sale_type_id.sequence_code or bar.sale_type_id.name for bar in by_bar if bar in goods],
             'invoices': 1,
         }
         if self.state in ('posted', 'cancelled'):
@@ -502,6 +509,12 @@ class PosImport(models.Model):
             'blocking': blocking,
             'warnings': warnings,
         }
+        if self.state == 'posted':
+            # Bar Control: what this day unblocks, and what undoing it would re-open.
+            bars = self.env['odin.bar.pos.day'].sudo().search([('pos_import_id', '=', self.id)]).bar_id
+            summary['bar_links'] = [link for bar in bars for link in bar._pos_day_waiting(self.business_date)]
+            if self.can_undo:
+                summary['undo_links'] = [link for bar in bars for link in bar._pos_day_dependents(self.business_date)]
         detail = {
             'state': self.state,
             'money': money_data,
@@ -565,7 +578,7 @@ class PosImport(models.Model):
         that would move a cent or two from one bar to another. Rounding each bar
         on its own keeps every bar's invoiced total (and so its analytic split)
         equal to its group total on the PDF, and the invoice equal to the grand total."""
-        return f"pos_import_bar,{bar.id}"
+        return f"odin_bar,{bar.id}"
 
     def _pos_order_line_values(self, bar, lines):
         """Order lines of one bar: price_unit = Net / Qty (tax included), plus a
@@ -619,10 +632,10 @@ class PosImport(models.Model):
                 'company_id': company.id,
                 'partner_id': partner.id,
                 'partner_invoice_id': partner.id,
-                'partner_shipping_id': bar.delivery_partner_id.id,
+                'partner_shipping_id': bar.partner_id.id,
                 'pricelist_id': pricelist.id,
                 'date_order': when,
-                'warehouse_id': (bar.picking_type_id.warehouse_id or bar.location_id.warehouse_id).id,
+                'warehouse_id': (bar.sale_type_id.warehouse_id or bar.location_id.warehouse_id).id,
                 'client_order_ref': f"{self.name} {bar.name}",
                 'origin': self.name,
                 'pos_import_id': self.id,
@@ -640,16 +653,19 @@ class PosImport(models.Model):
 
         # 3. Confirm. The deliveries are born with the bar's SAL operation type
         #    and the bar as source (see stock.rule), before any reservation.
+        #    They carry the trading day, so Bar Control places them on the day
+        #    sold, whenever they are posted.
         orders.action_confirm()
         pickings = orders.picking_ids
         for order in orders:
             bar = order.pos_import_bar_id
             for picking in order.picking_ids:
                 wrong = picking.move_ids.filtered(lambda m: m.location_id != bar.location_id)
-                if picking.picking_type_id != bar.picking_type_id or picking.location_id != bar.location_id or wrong:
+                if picking.picking_type_id != bar.sale_type_id or picking.location_id != bar.location_id or wrong:
                     raise UserError(self.env._(
                         "The delivery of %(bar)s would not take its stock from %(location)s.",
                         bar=bar.name, location=bar.location_id.display_name))
+        pickings.write({'bar_business_date': day})
 
         # 4. Quantities = demand, validate, then back-date to 23:59 of the day
         moves = pickings.move_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
@@ -691,6 +707,10 @@ class PosImport(models.Model):
             'invoice_id': invoice.id,
             'stock_result': self._pos_stock_outcome(orders),
         })
+        # 6. Tell Bar Control the day is in, for every bar of the report: a bar
+        #    without a line sold nothing that day.
+        for bar in self._pos_bar_records():
+            bar._mark_pos_posted(day, source=self.name, no_sales=bar not in by_bar).pos_import_id = self
         self.message_post(body=self.env._(
             "Day posted: %(orders)s, %(pickings)s, invoice %(invoice)s.",
             orders=", ".join(orders.mapped('name')), pickings=", ".join(pickings.mapped('name')),
@@ -758,7 +778,7 @@ class PosImport(models.Model):
                              skip_sms=True, force_period_date=day).button_validate()
         if returns.filtered(lambda p: p.state != 'done'):
             raise UserError(self.env._("The returns could not be validated."))
-        returns.write({'date_done': when})
+        returns.write({'date_done': when, 'bar_business_date': day})
         returns.move_ids.write({'date': when})
         returns.move_ids.move_line_ids.write({'date': when})
 
@@ -777,10 +797,20 @@ class PosImport(models.Model):
         orders.filtered('locked').action_unlock()
         orders.action_cancel()
 
+        # Bar Control: the day is no longer in. Counts approved on its sales
+        # go back for approval, their adjustments reversed.
+        pos_days = self.env['odin.bar.pos.day'].sudo().search([('pos_import_id', '=', self.id)])
+        reopened = [link['name'] for bar in pos_days.bar_id for link in bar._pos_day_dependents(day)]
+        for bar in pos_days.bar_id:
+            bar._unmark_pos_posted(day)
+
         self.write({'state': 'cancelled', 'refund_id': refund.id, 'return_picking_ids': [Command.set(returns.ids)]})
         self.message_post(body=self.env._(
             "Day undone: returns %(returns)s, credit note %(refund)s. The date can be imported again.",
             returns=", ".join(returns.mapped('name')), refund=refund.name))
+        if reopened:
+            self.message_post(body=self.env._(
+                "Bar counts sent back for approval: %(counts)s.", counts=", ".join(reopened)))
         return True
 
     # ------------------------------------------------------------------

@@ -1,7 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_pos_import_user,pos.import user,model_pos_import,group_pos_import_user,1,1,1,1
 access_pos_import_line_user,pos.import.line user,model_pos_import_line,group_pos_import_user,1,1,1,1
-access_pos_import_bar_user,pos.import.bar user,model_pos_import_bar,group_pos_import_user,1,0,0,0
-access_pos_import_bar_manager,pos.import.bar manager,model_pos_import_bar,group_pos_import_manager,1,1,1,1
+access_odin_bar_pos_import_manager,odin.bar POS import administrator,odin_bar_base.model_odin_bar,group_pos_import_manager,1,1,1,0
 access_pos_item_map_user,pos.item.map user,model_pos_item_map,group_pos_import_user,1,1,1,0
 access_pos_item_map_manager,pos.item.map manager,model_pos_item_map,group_pos_import_manager,1,1,1,1

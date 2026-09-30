@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_reason_view_list" model="ir.ui.view">
+        <field name="name">odin.bar.reason.list</field>
+        <field name="model">odin.bar.reason</field>
+        <field name="arch" type="xml">
+            <list string="Stock-out reasons" editable="bottom" decoration-warning="setup_issue">
+                <header>
+                    <button name="action_create_default_reasons" type="object" string="Add standard reasons"
+                            display="always"/>
+                </header>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="operation"/>
+                <field name="picking_type_id" required="operation in ('picking', 'transfer')"
+                       invisible="operation not in ('picking', 'transfer')"/>
+                <field name="scrap_tag_ids" widget="many2many_tags" invisible="operation != 'scrap'"/>
+                <field name="require_member"/>
+                <field name="default_unit"/>
+                <field name="icon" optional="hide"/>
+                <field name="setup_issue" string="Setup"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_bar_reason_view_search" model="ir.ui.view">
+        <field name="name">odin.bar.reason.search</field>
+        <field name="model">odin.bar.reason</field>
+        <field name="arch" type="xml">
+            <search string="Stock-out reasons">
+                <field name="name"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_bar_reason_action" model="ir.actions.act_window">
+        <field name="name">Stock-out reasons</field>
+        <field name="res_model">odin.bar.reason</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No stock-out reason yet</p>
+            <p>Reasons are created with the first bar of a company, mapped to the
+            ROMA, EVT, DEBT and IBT operation types and to your scrap reasons.</p>
+        </field>
+    </record>
+</odoo>

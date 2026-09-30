@@ -16,6 +16,7 @@ SEED_BARS = [
     ("Main Bar", "Main Bar", "M", "MS/Main Bar (MB)", "SAL-MB", "Main Bar", "Main Bar (MB)"),
 ]
 SEED_CSV = "gymkhana_pos_import/data/pos_item_map_seed.csv"
+SEED_TZ = "Africa/Nairobi"
 
 
 class ResCompany(models.Model):
@@ -82,29 +83,47 @@ class ResCompany(models.Model):
             self.write(vals)
 
     def _pos_import_seed_bars(self):
+        """Give the Bar Control bars their POS setup: POS group and suffix, SAL
+        operation type, delivery contact and analytic account. A bar is found
+        by its POS group or its location, and created when only the location
+        exists. Values already set are kept; nothing is guessed."""
         self.ensure_one()
-        Bar = self.env['pos.import.bar'].with_context(active_test=False)
-        for name, group, suffix, location, sal_code, contact, analytic in SEED_BARS:
-            if Bar.search_count([('company_id', '=', self.id), ('pos_group_name', '=', group)]):
-                continue
+        Bar = self.env['odin.bar'].with_context(active_test=False)
+        for name, group, suffix, location_name, sal_code, contact, analytic in SEED_BARS:
+            location = self._pos_import_find_one('stock.location', [
+                ('complete_name', '=', location_name), ('company_id', '=', self.id)])
             vals = {
-                'name': name, 'pos_group_name': group, 'pos_suffix': suffix, 'company_id': self.id,
-                'location_id': self._pos_import_find_one('stock.location', [
-                    ('complete_name', '=', location), ('company_id', '=', self.id)]).id,
-                'picking_type_id': self._pos_import_find_one('stock.picking.type', [
+                'pos_group_name': group,
+                'pos_suffix': suffix,
+                'sale_type_id': self._pos_import_find_one('stock.picking.type', [
                     ('sequence_code', '=', sal_code), ('code', '=', 'outgoing'),
                     ('company_id', '=', self.id)]).id,
-                'delivery_partner_id': self._pos_import_find_one('res.partner', [
+                'partner_id': self._pos_import_find_one('res.partner', [
                     ('name', '=', contact), ('parent_id', '=', self.pos_import_partner_id.id)]).id
                     if self.pos_import_partner_id else False,
                 'analytic_account_id': self._pos_import_find_one('account.analytic.account', [
                     ('name', '=', analytic), ('company_id', 'in', [self.id, False])]).id,
             }
-            if all(vals.values()):
-                Bar.create(vals)
+            bar = Bar.search([('company_id', '=', self.id), ('pos_group_name', '=', group)], limit=1)
+            if not bar and location:
+                bar = Bar.search([('location_id', '=', location.id)], limit=1)
+            code = sal_code.removeprefix('SAL-')
+            if bar:
+                bar.write({field: value for field, value in vals.items() if value and not bar[field]})
+            elif location and not Bar.search_count([('company_id', '=', self.id), ('code', '=', code)]):
+                bar = Bar.create({
+                    **{field: value for field, value in vals.items() if value},
+                    'name': name, 'code': code, 'location_id': location.id,
+                    'company_id': self.id, 'tz': SEED_TZ,
+                })
+                bar.action_autofill_setup()
             else:
-                missing = [k for k, v in vals.items() if not v]
-                _logger.warning("POS import: bar %s not seeded for %s, not found: %s", name, self.name, missing)
+                _logger.warning("POS import: bar %s not seeded for %s: location %s not found or code %s taken",
+                                name, self.name, location_name, code)
+                continue
+            missing = [field for field in vals if not bar[field]]
+            if missing:
+                _logger.warning("POS import: bar %s of %s still needs: %s", name, self.name, missing)
 
     def _pos_import_seed_item_map(self, rows):
         """Create one mapping per CSV row whose product_id exists in this

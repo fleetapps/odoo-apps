@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.Keypad">
+        <div class="o_bar_desk_sheet_backdrop" t-on-click.self="props.onClose">
+            <div class="o_bar_desk_sheet o_bar_desk_keypad">
+                <div class="d-flex align-items-start gap-2 mb-2">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold fs-5 lh-sm" t-esc="props.product.name"/>
+                        <div t-if="props.hint" class="text-muted small" t-esc="props.hint"/>
+                    </div>
+                    <button class="btn btn-link text-body fs-4 p-0 px-2" aria-label="Close" t-on-click="props.onClose">
+                        <i class="fa fa-times"/>
+                    </button>
+                </div>
+                <div class="o_bar_desk_fields">
+                    <button t-foreach="state.fields" t-as="field" t-key="field.key"
+                            class="o_bar_desk_field"
+                            t-att-class="{'o_active': field_index === state.active}"
+                            t-on-click="() => this.focus(field_index)">
+                        <span class="o_bar_desk_field_label" t-esc="field.label"/>
+                        <span class="o_bar_desk_field_value" t-esc="field.text || '0'"/>
+                    </button>
+                </div>
+                <div t-if="units.length > 1" class="o_bar_desk_chips mb-2">
+                    <button t-foreach="units" t-as="unit" t-key="unit.id"
+                            class="btn o_bar_desk_chip"
+                            t-att-class="unit.id === state.uomId ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.setUnit(unit)"
+                            t-esc="shortUnit(unit)"/>
+                </div>
+                <div class="o_bar_desk_keys">
+                    <button t-foreach="keys" t-as="key" t-key="key" class="btn btn-light o_bar_desk_key"
+                            t-on-click="() => this.press(key)">
+                        <i t-if="key === 'back'" class="fa fa-long-arrow-left" aria-label="Delete"/>
+                        <t t-else="" t-esc="key"/>
+                    </button>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button t-if="props.allowRemove" class="btn btn-outline-danger o_bar_desk_big flex-grow-0 px-3"
+                            t-on-click="props.onRemove" aria-label="Remove">
+                        <i class="fa fa-trash"/>
+                    </button>
+                    <button class="btn btn-primary o_bar_desk_big flex-grow-1" t-on-click="confirm">OK</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

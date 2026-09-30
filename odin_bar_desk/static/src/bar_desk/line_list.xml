@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.LineList">
+        <div class="o_bar_desk_lines">
+            <div t-if="!props.lines.length and props.empty" class="text-muted text-center py-4" t-esc="props.empty"/>
+            <div t-foreach="sections" t-as="section" t-key="section.key">
+                <div t-if="section.header" class="o_bar_desk_group" t-esc="section.header"/>
+                <div t-foreach="section.lines" t-as="line" t-key="line.key"
+                     class="o_bar_desk_line" t-attf-class="o_state_{{ line.state }}">
+                    <button t-if="props.onBump" class="o_bar_desk_bump" aria-label="One less"
+                            t-on-click="() => props.onBump(line, -1)">−</button>
+                    <button class="o_bar_desk_line_main" t-on-click="() => props.onTap(line)">
+                        <span class="o_bar_desk_line_text">
+                            <span class="o_bar_desk_line_name" t-esc="line.name"/>
+                            <span t-if="line.hint" class="o_bar_desk_line_hint" t-esc="line.hint"/>
+                        </span>
+                        <span class="o_bar_desk_line_qty" t-esc="line.label"/>
+                    </button>
+                    <button t-if="props.onBump" class="o_bar_desk_bump" aria-label="One more"
+                            t-on-click="() => props.onBump(line, 1)">+</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

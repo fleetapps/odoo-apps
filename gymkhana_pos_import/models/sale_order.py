@@ -5,7 +5,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     pos_import_id = fields.Many2one('pos.import', string="POS Import", readonly=True, copy=False, index='btree_not_null')
-    pos_import_bar_id = fields.Many2one('pos.import.bar', string="POS Bar", readonly=True, copy=False)
+    pos_import_bar_id = fields.Many2one('odin.bar', string="POS Bar", readonly=True, copy=False)
 
     def _prepare_confirmation_values(self):
         # An imported day keeps its business date as order date.

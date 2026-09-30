@@ -19,11 +19,11 @@ class StockRule(models.Model):
             product_id, product_qty, product_uom, location_dest_id, name, origin, company_id, values)
         bar_id = values.get('pos_import_bar_id')
         if bar_id:
-            bar = self.env['pos.import.bar'].browse(bar_id)
+            bar = self.env['odin.bar'].browse(bar_id)
             move_values.update({
                 'location_id': bar.location_id.id,
-                'picking_type_id': bar.picking_type_id.id,
+                'picking_type_id': bar.sale_type_id.id,
             })
-            if bar.picking_type_id.default_location_dest_id:
-                move_values['location_dest_id'] = bar.picking_type_id.default_location_dest_id.id
+            if bar.sale_type_id.default_location_dest_id:
+                move_values['location_dest_id'] = bar.sale_type_id.default_location_dest_id.id
         return move_values

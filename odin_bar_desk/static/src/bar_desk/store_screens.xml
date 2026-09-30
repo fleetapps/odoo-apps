@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.StoreSendScreen">
+        <div class="o_bar_desk_body">
+            <t t-if="!state.bar">
+                <h2 class="o_bar_desk_section">Which bar?</h2>
+                <div class="o_bar_desk_tiles o_bar_desk_tiles_small">
+                    <button t-foreach="bars" t-as="bar" t-key="bar.id" class="o_bar_desk_tile"
+                            t-on-click="() => this.state.bar = bar">
+                        <i class="fa fa-glass o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label" t-esc="bar.name"/>
+                    </button>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <button class="btn btn-light" aria-label="Change bar" t-on-click="() => this.state.bar = null">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <h2 class="o_bar_desk_section m-0">To <t t-esc="state.bar.name"/></h2>
+                </div>
+                <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'Send to ' + state.bar.name"/>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div t-if="state.bar" class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="state.busy or !state.items.length" t-on-click="send">
+                <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Send to <t t-esc="state.bar.name"/>
+            </button>
+        </div>
+    </t>
+
+    <t t-name="odin_bar_desk.StoreReceiveScreen">
+        <div class="o_bar_desk_body">
+            <t t-if="state.step === 'choose'">
+                <button class="btn btn-primary o_bar_desk_big w-100 mb-3" t-on-click="newReceipt">
+                    <i class="fa fa-plus me-2"/>Delivery from a supplier
+                </button>
+                <h2 class="o_bar_desk_section">Waiting receipts</h2>
+                <div t-if="!state.receipts.length" class="text-muted py-2">None waiting.</div>
+                <button t-foreach="state.receipts" t-as="receipt" t-key="receipt.id" class="o_bar_desk_card"
+                        t-on-click="() => this.openReceipt(receipt)">
+                    <div class="fw-bold text-start" t-esc="receipt.partner or receipt.name"/>
+                    <div class="small text-muted text-start">
+                        <t t-esc="receipt.name"/><t t-if="receipt.origin"> · <t t-esc="receipt.origin"/></t>
+                        · <t t-esc="receipt.line_count"/> items · due <t t-esc="receipt.day_label"/>
+                    </div>
+                </button>
+            </t>
+            <t t-elif="state.step === 'supplier'">
+                <h2 class="o_bar_desk_section">Which supplier?</h2>
+                <input type="search" class="form-control form-control-lg mb-2" placeholder="Search a supplier"
+                       t-model="state.query" t-on-input="onQuery" autocomplete="off"/>
+                <button t-foreach="state.suppliers" t-as="supplier" t-key="supplier.id" class="o_bar_desk_pick"
+                        t-on-click="() => this.pickSupplier(supplier)" t-esc="supplier.name"/>
+            </t>
+            <t t-elif="state.step === 'items'">
+                <h2 class="o_bar_desk_section">From <t t-esc="state.supplier.name"/></h2>
+                <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'From ' + state.supplier.name"/>
+            </t>
+            <t t-else="">
+                <h2 class="o_bar_desk_section" t-esc="state.receipt.partner or state.receipt.name"/>
+                <div class="small text-muted mb-2">
+                    <t t-esc="state.receipt.name"/><t t-if="state.receipt.origin"> · <t t-esc="state.receipt.origin"/></t>.
+                    Ordered quantities are filled in: correct what differs.
+                </div>
+                <LineList lines="receiptLines" onTap.bind="tapReceiptLine" onBump.bind="bumpReceiptLine"/>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div t-if="state.step === 'items' or state.step === 'receipt'" class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100"
+                    t-att-disabled="state.busy or (state.step === 'items' and !state.items.length)" t-on-click="finish">
+                <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Done
+            </button>
+        </div>
+        <Keypad t-if="state.keypad" t-key="state.keypad.line.move_id" product="state.keypad.product" mode="'qty'" units="false"
+                value="state.keypad.value" hint="'Ordered: ' + moveQty(state.keypad.line.qty, state.keypad.line)"
+                onConfirm.bind="confirmReceiptLine" onClose="() => this.state.keypad = null"/>
+    </t>
+
+    <t t-name="odin_bar_desk.DisputesScreen">
+        <div class="o_bar_desk_body">
+            <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+            <div t-elif="!state.disputes.length" class="text-muted text-center py-4">No open dispute.</div>
+            <div t-foreach="state.disputes" t-as="dispute" t-key="dispute.id" class="o_bar_desk_card">
+                <div class="fw-bold">
+                    <t t-esc="dispute.bar"/>: <t t-esc="dispute.short ? 'short on' : 'extra on'"/> <t t-esc="dispute.delivery"/>
+                </div>
+                <div class="small text-muted mb-2">
+                    <t t-esc="dispute.day_label"/><t t-if="dispute.raised_by"> · raised by <t t-esc="dispute.raised_by"/></t>
+                </div>
+                <div t-foreach="dispute.lines" t-as="line" t-key="line_index" class="d-flex justify-content-between">
+                    <span t-esc="line.name"/>
+                    <span class="fw-bold text-nowrap ms-2" t-esc="moveQty(line.qty, line)"/>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-light o_bar_desk_big flex-grow-1" t-att-disabled="state.busy"
+                            t-on-click="() => this.resolve(dispute, false)">Reject</button>
+                    <button class="btn btn-success o_bar_desk_big flex-grow-1" t-att-disabled="state.busy"
+                            t-on-click="() => this.resolve(dispute, true)">Accept</button>
+                </div>
+            </div>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+    </t>
+</templates>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_bar_pos_day_view_list_inherit_pos_import" model="ir.ui.view">
+        <field name="name">odin.bar.pos.day.list.pos.import</field>
+        <field name="model">odin.bar.pos.day</field>
+        <field name="inherit_id" ref="odin_bar_base.odin_bar_pos_day_view_list"/>
+        <field name="arch" type="xml">
+            <field name="source" position="after">
+                <field name="pos_import_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="odin_bar_pos_day_view_form_inherit_pos_import" model="ir.ui.view">
+        <field name="name">odin.bar.pos.day.form.pos.import</field>
+        <field name="model">odin.bar.pos.day</field>
+        <field name="inherit_id" ref="odin_bar_base.odin_bar_pos_day_view_form"/>
+        <field name="arch" type="xml">
+            <field name="source" position="after">
+                <field name="pos_import_id" invisible="not pos_import_id"/>
+            </field>
+        </field>
+    </record>
+</odoo>

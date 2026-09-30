@@ -57,7 +57,7 @@ class TestLiveCopy(TransactionCase):
                 expected[line.bar_id, product] += line.qty
         products = env['product.product'].union(*(p for _b, p in expected))
         bars = imp.line_ids.bar_id
-        warehouses_stock = bars.picking_type_id.warehouse_id.lot_stock_id
+        warehouses_stock = bars.sale_type_id.warehouse_id.lot_stock_id
 
         def on_hand(location, product):
             return sum(env['stock.quant'].search([
@@ -80,7 +80,7 @@ class TestLiveCopy(TransactionCase):
             revenue = invoice.invoice_line_ids.filtered(lambda l: l.sale_line_ids.order_id == order)
             self.assertAlmostEqual(-sum(revenue.mapped('balance')), order.amount_untaxed, places=2, msg=bar.name)
             for picking in order.picking_ids:
-                self.assertEqual(picking.picking_type_id, bar.picking_type_id)
+                self.assertEqual(picking.picking_type_id, bar.sale_type_id)
                 self.assertEqual(picking.move_ids.location_id, bar.location_id)
         for location in warehouses_stock:
             for product in products:

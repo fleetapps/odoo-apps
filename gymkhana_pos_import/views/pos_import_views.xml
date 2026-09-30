@@ -54,7 +54,7 @@
                     <button name="action_undo" string="Undo day" type="object"
                             groups="gymkhana_pos_import.group_pos_import_manager"
                             invisible="not can_undo"
-                            confirm="Undo this day? The deliveries are returned to the bars, the invoice is credited and the orders are cancelled. The date can then be imported again."/>
+                            confirm="Undo this day? The deliveries are returned to the bars, the invoice is credited and the orders are cancelled. Bar counts approved on this day's sales go back for approval. The date can then be imported again."/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,review,posted"/>
                 </header>
                 <sheet>

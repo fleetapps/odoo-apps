@@ -191,7 +191,11 @@ class TestReview(PosImportCommon):
         self.assertIn("price-included", " ".join(imp.review_summary['blocking']))
 
     def test_bar_without_sales_warns(self):
-        extra = self.bar['M'].copy({'name': "Roma", 'pos_group_name': "Roma", 'pos_suffix': 'RM'})
+        main = self.bar['M']
+        extra = main.copy({
+            'name': "Roma", 'code': 'RM', 'pos_group_name': "Roma", 'pos_suffix': 'RM',
+            'location_id': main.location_id.copy({'name': "Roma (RM)"}).id,
+        })
         imp = self._upload()
         self._fix_unmatched(imp)
         self.assertIn("Roma has no sales on this day.", imp.review_summary['warnings'])
@@ -249,7 +253,7 @@ class TestPostDay(PosImportCommon):
         for order in orders:
             bar = order.pos_import_bar_id
             self.assertEqual(order.partner_id, self.club)
-            self.assertEqual(order.partner_shipping_id, bar.delivery_partner_id)
+            self.assertEqual(order.partner_shipping_id, bar.partner_id)
             self.assertEqual(order.date_order, BUSINESS_DATETIME)
             self.assertAlmostEqual(order.amount_total, GROUP_NET[bar.pos_suffix], places=2)
             for line in order.order_line:
@@ -266,9 +270,9 @@ class TestPostDay(PosImportCommon):
         self.assertEqual(sorted(pickings.picking_type_id.mapped('sequence_code')), ['SAL-BB', 'SAL-BE', 'SAL-MB'])
         for picking in pickings:
             bar = picking.sale_id.pos_import_bar_id
-            self.assertIn(f"/{bar.picking_type_id.sequence_code}/", picking.name)
+            self.assertIn(f"/{bar.sale_type_id.sequence_code}/", picking.name)
             self.assertEqual(picking.location_id, bar.location_id)
-            self.assertEqual(picking.location_dest_id, bar.picking_type_id.default_location_dest_id)
+            self.assertEqual(picking.location_dest_id, bar.sale_type_id.default_location_dest_id)
             self.assertEqual(picking.move_ids.location_id, bar.location_id)
             self.assertEqual(picking.move_ids.move_line_ids.location_id, bar.location_id)
             self.assertEqual(picking.date_done, BUSINESS_DATETIME)
@@ -351,7 +355,7 @@ class TestPostDay(PosImportCommon):
         product = self.products["Coca-Cola 300ml"]
         orders = self.env['sale.order'].create([{
             'partner_id': self.club.id, 'partner_invoice_id': self.club.id,
-            'partner_shipping_id': bar.delivery_partner_id.id,
+            'partner_shipping_id': bar.partner_id.id,
             'order_line': [Command.create({'product_id': product.id, 'product_uom_qty': 1})],
         } for bar in self.bars])
         orders.action_confirm()
@@ -498,12 +502,12 @@ class TestInstallHook(PosImportCommon):
         self.assertEqual(self.company.pos_import_tax_ids, self.taxes)
         self.assertEqual(self.company.pos_import_rounding_product_id,
                          self.env.ref('gymkhana_pos_import.product_pos_rounding'))
-        bars = self.env['pos.import.bar'].search([('company_id', '=', self.company.id)])
+        bars = self.env['odin.bar'].search([('company_id', '=', self.company.id), ('pos_group_name', '!=', False)])
         self.assertEqual(sorted(bars.mapped('pos_suffix')), ['BB', 'BE', 'M'])
         for bar in bars:
             self.assertEqual(bar.location_id.complete_name, f"MS/{bar.name} ({'MB' if bar.pos_suffix == 'M' else bar.pos_suffix})")
-            self.assertEqual(bar.picking_type_id.sequence_code, f"SAL-{'MB' if bar.pos_suffix == 'M' else bar.pos_suffix}")
-            self.assertEqual(bar.delivery_partner_id.parent_id, self.club)
+            self.assertEqual(bar.sale_type_id.sequence_code, f"SAL-{'MB' if bar.pos_suffix == 'M' else bar.pos_suffix}")
+            self.assertEqual(bar.partner_id.parent_id, self.club)
             self.assertEqual(bar.analytic_account_id.name, bar.location_id.name)
         # The CSV's product ids belong to the live database: here they point to other
         # products (or nothing), so no mapping may be created from them.

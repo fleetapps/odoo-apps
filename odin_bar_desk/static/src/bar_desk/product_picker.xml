@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.ProductPicker">
+        <div class="o_bar_desk_overlay">
+            <div class="o_bar_desk_header">
+                <button class="o_bar_desk_header_btn" aria-label="Close" t-on-click="props.onClose">
+                    <i class="fa fa-times"/>
+                </button>
+                <div class="o_bar_desk_title" t-esc="props.title"/>
+            </div>
+            <div class="o_bar_desk_picker_search">
+                <input type="search" class="form-control form-control-lg" placeholder="Search a product"
+                       t-model="state.query" autocomplete="off"/>
+            </div>
+            <div class="o_bar_desk_chips o_bar_desk_chips_scroll px-3">
+                <button t-if="hasRanking" class="btn o_bar_desk_chip"
+                        t-att-class="state.categId === 'top' ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => this.setCategory('top')">Most used</button>
+                <button class="btn o_bar_desk_chip"
+                        t-att-class="state.categId === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => this.setCategory('all')">All</button>
+                <button t-foreach="categories" t-as="categ" t-key="categ.id" class="btn o_bar_desk_chip"
+                        t-att-class="state.categId === categ.id ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => this.setCategory(categ.id)" t-esc="categ.name"/>
+            </div>
+            <div class="o_bar_desk_body">
+                <div t-if="!products.length" class="text-muted text-center py-4">Nothing found.</div>
+                <button t-foreach="products" t-as="product" t-key="product.id"
+                        class="o_bar_desk_pick" t-on-click="() => props.onPick(product)">
+                    <span class="flex-grow-1 text-start" t-esc="product.name"/>
+                    <i t-if="isMarked(product)" class="fa fa-check text-success" aria-label="Already in the list"/>
+                </button>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -39,11 +39,6 @@
         <field name="model_id" ref="model_pos_import_line"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
-    <record id="rule_pos_import_bar_company" model="ir.rule">
-        <field name="name">POS import bar: multi-company</field>
-        <field name="model_id" ref="model_pos_import_bar"/>
-        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
-    </record>
     <record id="rule_pos_item_map_company" model="ir.rule">
         <field name="name">POS item mapping: multi-company</field>
         <field name="model_id" ref="model_pos_item_map"/>

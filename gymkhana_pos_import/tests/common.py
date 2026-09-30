@@ -87,7 +87,7 @@ class PosImportCommon(AccountTestInvoicingCommon):
         cls.club = cls.env['res.partner'].create({'name': "Nairobi Gymkhana", 'is_company': True, 'company_id': cls.company.id})
         plan = cls.env.ref('analytic.analytic_plan_projects')  # the live bars use the "Project" plan
         customers = cls.env.ref('stock.stock_location_customers')
-        cls.bars = cls.env['pos.import.bar']
+        cls.bars = cls.env['odin.bar']
         for code, (name, group, loc_name, sal_code) in BARS.items():
             location = cls.env['stock.location'].create({
                 'name': loc_name, 'usage': 'internal', 'location_id': cls.warehouse.view_location_id.id,
@@ -103,10 +103,11 @@ class PosImportCommon(AccountTestInvoicingCommon):
             contact = cls.env['res.partner'].create({'name': name, 'type': 'delivery', 'parent_id': cls.club.id})
             analytic = cls.env['account.analytic.account'].create({
                 'name': loc_name, 'plan_id': plan.id, 'company_id': cls.company.id})
-            cls.bars |= cls.env['pos.import.bar'].create({
-                'name': name, 'pos_group_name': group, 'pos_suffix': code, 'company_id': cls.company.id,
-                'location_id': location.id, 'picking_type_id': picking_type.id,
-                'delivery_partner_id': contact.id, 'analytic_account_id': analytic.id})
+            cls.bars |= cls.env['odin.bar'].create({
+                'name': name, 'code': sal_code[4:], 'pos_group_name': group, 'pos_suffix': code,
+                'company_id': cls.company.id, 'tz': 'Africa/Nairobi',
+                'location_id': location.id, 'sale_type_id': picking_type.id,
+                'partner_id': contact.id, 'analytic_account_id': analytic.id})
         cls.bar = {bar.pos_suffix: bar for bar in cls.bars}
 
         cls.company.write({
