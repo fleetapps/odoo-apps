@@ -11,7 +11,7 @@
         <field name="sequence">10</field>
         <field name="privilege_id" ref="res_groups_privilege_bar_desk"/>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        <field name="comment">Uses the Bar Desk on a bar's shared phone or tablet. Gives no access to stock itself.</field>
+        <field name="comment">Uses the Bar Desk on a shared phone or tablet with a PIN, for the locations the employee is allowed at. Gives no access to stock in Odoo itself.</field>
     </record>
 
     <!-- Deliberately not implying Staff: Staff carries the rules below that hide
@@ -23,11 +23,12 @@
         <field name="privilege_id" ref="res_groups_privilege_bar_desk"/>
         <field name="implied_ids" eval="[(4, ref('stock.group_stock_user'))]"/>
         <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
-        <field name="comment">Uses the Desk at any bar, approves counts and follows up deliveries and stock outs.</field>
+        <field name="comment">Uses the Desk for every location, logs moves, counts and approves the day.</field>
     </record>
 
-    <!-- Every internal user can read stock quantities in Odoo. Staff must not:
-         counts are blind, and the Desk does everything through its own methods. -->
+    <!-- Every internal user can read stock quantities in Odoo. A shared Desk
+         login must not browse stock: the Desk shows what it needs through its
+         own methods. -->
     <record id="stock_quant_rule_bar_desk_staff" model="ir.rule">
         <field name="name">Bar Desk staff: no stock quantities</field>
         <field name="model_id" ref="stock.model_stock_quant"/>
@@ -70,6 +71,24 @@
     <record id="odin_bar_reason_rule_company" model="ir.rule">
         <field name="name">Bar stock-out reason: multi-company</field>
         <field name="model_id" ref="model_odin_bar_reason"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_bar_variance_reason_rule_company" model="ir.rule">
+        <field name="name">Bar variance reason: multi-company</field>
+        <field name="model_id" ref="model_odin_bar_variance_reason"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_bar_stock_report_rule_company" model="ir.rule">
+        <field name="name">Stock by location: multi-company</field>
+        <field name="model_id" ref="model_odin_bar_stock_report"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_bar_stock_history_rule_company" model="ir.rule">
+        <field name="name">Stock history: multi-company</field>
+        <field name="model_id" ref="model_odin_bar_stock_history"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
 </odoo>

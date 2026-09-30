@@ -6,25 +6,16 @@ DEFAULT_REASONS = [
     ("roma", "Roma", "picking", "ROMA", (), False, "bottle", "fa-sign-out"),
     ("event", "Event", "picking", "EVT", (), False, "bottle", "fa-calendar"),
     ("debt", "Unpaid bill", "picking", "DEBT", (), True, "unit", "fa-user-times"),
-    ("breakage", "Breakage", "scrap", None, ("Breakage",), False, "bottle", "fa-chain-broken"),
-    ("spoiled", "Spoiled", "scrap", None, ("Spoilage", "Spoiled"), False, "bottle", "fa-tint"),
-    (
-        "flat",
-        "Flat/returned",
-        "scrap",
-        None,
-        ("Flat / Returned by guest", "Flat/returned", "Flat"),
-        False,
-        "unit",
-        "fa-undo",
-    ),
-    ("expired", "Expired", "scrap", None, ("Expired",), False, "bottle", "fa-hourglass-end"),
-    ("store", "Back to store", "return", None, (), False, "bottle", "fa-home"),
     ("transfer", "To another bar", "transfer", "IBT", (), False, "bottle", "fa-exchange"),
 ]
 
 
 class OdinBarReason(models.Model):
+    """Where stock can go when it leaves the club's locations other than as a
+    sale (Roma, an event, an unpaid bill): the destinations of a move logged
+    on the Desk. The "To another bar" row only names the operation type of
+    bar-to-bar moves."""
+
     _name = "odin.bar.reason"
     _description = "Bar Stock-out Reason"
     _order = "sequence, id"

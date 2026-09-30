@@ -353,38 +353,6 @@
     white-space: nowrap;
 }
 
-.o_bar_desk_timeline {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-
-    li {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.6rem;
-        padding: 0.6rem 0;
-        border-bottom: 1px solid var(--#{$prefix}border-color);
-    }
-}
-
-.o_bar_desk_timeline_time {
-    flex: 0 0 3rem;
-    color: var(--#{$prefix}secondary-color);
-    font-variant-numeric: tabular-nums;
-}
-
-.o_bar_desk_timeline_icon {
-    flex: 0 0 1.25rem;
-    margin-top: 0.2rem;
-    color: var(--#{$prefix}primary);
-    text-align: center;
-}
-
-.o_bar_desk_timeline_text {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
 // Sign-in -------------------------------------------------------------------
 
 .o_bar_desk_lock {
@@ -552,3 +520,287 @@
     flex: 1 1 6rem;
     min-width: 0;
 }
+
+// Day sheet -----------------------------------------------------------------
+
+.o_bar_desk_days {
+    display: flex;
+    gap: 0.4rem;
+    margin: -0.25rem -1rem 0;
+    padding: 0.25rem 1rem 0.5rem;
+    overflow-x: auto;
+}
+
+.o_bar_desk_day {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 2rem;
+    background-color: var(--#{$prefix}body-bg);
+    white-space: nowrap;
+
+    &.o_active {
+        border-color: var(--#{$prefix}primary);
+        background-color: var(--#{$prefix}primary);
+        color: #fff;
+
+        .text-success,
+        .text-warning {
+            color: #fff !important;
+        }
+    }
+}
+
+.o_bar_desk_step {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}tertiary-bg);
+}
+
+.o_bar_desk_step_head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+}
+
+.o_bar_desk_step_num {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background-color: var(--#{$prefix}secondary-bg);
+    font-weight: 700;
+
+    .o_done & {
+        background-color: var(--#{$prefix}success);
+        color: #fff;
+    }
+}
+
+.o_bar_desk_step_title {
+    flex: 1 1 auto;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.o_bar_desk_step_status {
+    color: var(--#{$prefix}secondary-color);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.o_bar_desk_pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 2rem;
+    font-weight: 600;
+
+    &.o_done {
+        background-color: var(--#{$prefix}success-bg-subtle);
+        color: var(--#{$prefix}success-text-emphasis);
+    }
+
+    &.o_attention {
+        background-color: var(--#{$prefix}warning-bg-subtle);
+        color: var(--#{$prefix}warning-text-emphasis);
+    }
+}
+
+.o_bar_desk_moves {
+    margin: 0 0 0.5rem;
+    padding: 0;
+    list-style: none;
+
+    li {
+        padding: 0.45rem 0;
+        border-bottom: 1px solid var(--#{$prefix}border-color);
+    }
+}
+
+.o_bar_desk_locations {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.o_bar_desk_location {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-height: 5.5rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+
+    &.o_progress {
+        border-color: var(--#{$prefix}primary-border-subtle);
+        background-color: var(--#{$prefix}primary-bg-subtle);
+    }
+
+    &.o_attention {
+        border-color: var(--#{$prefix}warning-border-subtle);
+        background-color: var(--#{$prefix}warning-bg-subtle);
+    }
+
+    &.o_done {
+        border-color: var(--#{$prefix}success-border-subtle);
+        background-color: var(--#{$prefix}success-bg-subtle);
+    }
+}
+
+.o_bar_desk_location_code {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.o_bar_desk_location_name {
+    font-size: 0.8rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_bar_desk_location_state {
+    margin-top: auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+// Moves, counts, differences ---------------------------------------------------
+
+.o_bar_desk_label {
+    margin-bottom: 0.35rem;
+    color: var(--#{$prefix}secondary-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.o_bar_desk_chip_big {
+    min-height: 2.9rem;
+    padding-inline: 1rem;
+    font-size: 1.05rem;
+}
+
+.o_bar_desk_same {
+    display: flex;
+    flex: 0 0 4.25rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    border: 0;
+    border-left: 1px solid var(--#{$prefix}border-color);
+    background-color: var(--#{$prefix}success-bg-subtle);
+    color: var(--#{$prefix}success-text-emphasis);
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    .fa {
+        font-size: 1.2rem;
+    }
+}
+
+.o_bar_desk_keypad_expected {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    color: var(--#{$prefix}secondary-color);
+    font-weight: 600;
+}
+
+.o_bar_desk_field_total {
+    color: var(--#{$prefix}secondary-color);
+    font-size: 1.1rem;
+}
+
+.o_bar_desk_suggestion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid var(--#{$prefix}info-border-subtle);
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}info-bg-subtle);
+}
+
+.o_bar_desk_diff {
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--#{$prefix}warning-border-subtle);
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}warning-bg-subtle);
+
+    &.o_done {
+        border-color: var(--#{$prefix}success-border-subtle);
+        background-color: var(--#{$prefix}success-bg-subtle);
+    }
+}
+
+.o_bar_desk_diff_main {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: var(--bar-desk-tap);
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    background: transparent;
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+}
+
+.o_bar_desk_diff_reason {
+    margin-top: 0.15rem;
+    color: var(--#{$prefix}success-text-emphasis);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.o_bar_desk_diff_body {
+    padding: 0 0.75rem 0.75rem;
+}
+
+.o_bar_desk_reasons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+}
+
+.o_bar_desk_reason {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.9rem;
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}body-bg);
+    text-align: left;
+
+    &.btn-primary {
+        background-color: var(--#{$prefix}primary);
+    }
+}
+
+.o_bar_desk_level {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--#{$prefix}border-color);
+
+    &.o_below {
+        box-shadow: inset 3px 0 0 var(--#{$prefix}danger);
+        padding-left: 0.6rem;
+    }
+}
+

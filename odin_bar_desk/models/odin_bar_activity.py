@@ -1,25 +1,21 @@
 from odoo import api, fields, models
 
 ACTIVITY_KINDS = [
-    ("stock_out", "Stock out"),
+    ("move", "Stock moved"),
     ("count", "Count submitted"),
-    ("ack", "Delivery confirmed"),
-    ("dispute", "Delivery disputed"),
-    ("send", "Sent to bar"),
+    ("fix", "Count corrected"),
+    ("resolve", "Difference explained"),
+    ("approve", "Day approved"),
     ("receive", "Received from supplier"),
-    ("dispute_accept", "Dispute accepted"),
-    ("dispute_reject", "Dispute rejected"),
     ("pin_fail", "Wrong PIN"),
-    ("ask", "Asked for stock"),
-    ("ask_none", "Could not send"),
 ]
 
 
 class OdinBarActivity(models.Model):
     """One row per Bar Desk action: who did what, where and when.
 
-    It is the Desk's audit trail, feeds the bar's timeline and the stock-out
-    log, and carries the client request id that makes retries safe: a request
+    It is the Desk's audit trail, feeds the day's timeline and the move log,
+    and carries the client request id that makes retries safe: a request
     replayed with the same id finds its row and returns it instead of posting
     again.
     """
@@ -42,8 +38,11 @@ class OdinBarActivity(models.Model):
     business_date = fields.Date("Trading day", index=True)
     employee_id = fields.Many2one("hr.employee", string="Staff", index="btree_not_null")
     user_id = fields.Many2one("res.users", string="Login", default=lambda self: self.env.user)
-    reason_id = fields.Many2one("odin.bar.reason", string="Reason", index="btree_not_null")
-    dest_bar_id = fields.Many2one("odin.bar", string="To bar", index="btree_not_null")
+    reason_id = fields.Many2one("odin.bar.reason", string="Out of the club", index="btree_not_null")
+    variance_reason_id = fields.Many2one(
+        "odin.bar.variance.reason", string="Variance reason", index="btree_not_null"
+    )
+    dest_bar_id = fields.Many2one("odin.bar", string="To", index="btree_not_null")
     partner_id = fields.Many2one("res.partner", string="Supplier")
     member_ref = fields.Char("Member")
     note = fields.Char()
@@ -53,7 +52,6 @@ class OdinBarActivity(models.Model):
     picking_ids = fields.One2many("stock.picking", "bar_activity_id", string="Transfers")
     scrap_ids = fields.One2many("stock.scrap", "bar_activity_id", string="Scraps")
     count_id = fields.Many2one("odin.bar.count", string="Count", index="btree_not_null")
-    request_id = fields.Many2one("odin.bar.request", string="Request", index="btree_not_null")
     bill_id = fields.Many2one("account.move", string="Supplier bill", index="btree_not_null")
     source_picking_id = fields.Many2one(
         "stock.picking", string="Delivery", index="btree_not_null"

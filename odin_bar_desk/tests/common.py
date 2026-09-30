@@ -143,6 +143,13 @@ class BarDeskCase(TransactionCase):
         cls.manager = new_test_user(
             cls.env, login="bar.manager", groups="odin_bar_desk.group_bar_desk_manager"
         )
+        # The stock controller: a manager login, working at every location.
+        cls.controller = new_test_user(
+            cls.env, login="controller", groups="odin_bar_desk.group_bar_desk_manager", tz="Africa/Nairobi"
+        )
+        cls.kim = Employee.create(
+            {"name": "Kim", "pin": "9999", "odin_bar_all": True, "user_id": cls.controller.id}
+        )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -150,6 +157,9 @@ class BarDeskCase(TransactionCase):
 
     def desk(self, user):
         return self.env["odin.bar.desk"].with_user(user)
+
+    def controller_token(self):
+        return self.login(self.controller, self.store, self.kim, "9999")
 
     def login(self, user, bar, employee, pin):
         result = self.desk(user).desk_login(bar.id, employee.id, pin)
@@ -233,18 +243,37 @@ class BarDeskCase(TransactionCase):
             "open_tots": open_tots,
         }
 
-    def submit_count(self, user, bar, employee, pin, lines, kind="closing"):
-        """Start, fill and submit a count from the Desk. Returns the count."""
+    def submit_count(self, user, bar, employee, pin, lines, business_date=None):
+        """Start, fill and submit a closing count from the Desk, for
+        ``business_date`` (default: the Desk's default, yesterday). Every
+        other line of the sheet is counted as zero. Returns the count."""
         token = self.login(user, bar, employee, pin)
         desk = self.desk(user)
-        data = desk.desk_count_start(bar.id, token, kind=kind)
+        data = desk.desk_count_start(
+            bar.id, token, business_date=business_date and str(business_date) or False
+        )
         counted = {line["product_id"] for line in lines}
-        if kind == "closing":
-            # Everything else on the sheet is counted as zero.
-            lines = lines + [
-                self.count_line(self.env["product.product"].browse(line["product_id"]))
-                for line in data["lines"]
-                if line["product_id"] not in counted
-            ]
+        lines = lines + [
+            self.count_line(self.env["product.product"].browse(line["product_id"]))
+            for line in data["lines"]
+            if line["product_id"] not in counted
+        ]
         desk.desk_count_submit(bar.id, token, self.uuid(), data["id"], lines)
         return self.env["odin.bar.count"].browse(data["id"])
+
+    def explain(self, counts, code="unexplained"):
+        """Give every difference of ``counts`` the reason ``code``, as the
+        controller does on the Desk before the day is approved."""
+        reason = self.env["odin.bar.variance.reason"].search(
+            [("code", "=", code), ("company_id", "=", self.company.id)]
+        )
+        for count in counts:
+            for line, diff in count._variances().items():
+                if not line.product_id.uom_id.is_zero(diff):
+                    line.variance_reason_id = reason
+        return reason
+
+    def approve(self, counts, code="unexplained"):
+        """Explain every difference, then approve as a manager."""
+        self.explain(counts, code)
+        counts.with_user(self.manager).action_approve()

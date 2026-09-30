@@ -173,9 +173,9 @@ class OdinBar(models.Model):
                 if not bar.store_id:
                     issues.append(_("No store: returns have nowhere to go."))
                 if not bar.issue_type_id:
-                    issues.append(_("No issue type: the store cannot send to this bar."))
+                    issues.append(_("No issue type: moves from the store use the inter-bar type."))
                 if not bar.return_type_id:
-                    issues.append(_("No return type: 'Back to store' and disputes are blocked."))
+                    issues.append(_("No return type: moves back to the store use the inter-bar type."))
                 if bar.pos_required and not bar.sale_type_id:
                     issues.append(_("No POS sales type for the POS importer."))
             elif not bar.receipt_type_id:
@@ -376,7 +376,8 @@ class OdinBar(models.Model):
     def _pos_moved_qty(self, products, day):
         """Net quantity of ``products`` that left this bar through transfers of
         trading day ``day`` (POS sales, less their returns), in each product's
-        unit. Kits appear as their components.
+        unit. Moves logged by hand (``bar_manual_move``) are not sales. Kits
+        appear as their components.
 
         :return: dict {product_id: quantity}
         """
@@ -401,6 +402,7 @@ class OdinBar(models.Model):
                   JOIN stock_picking picking ON picking.id = move.picking_id
                  WHERE move.state = 'done'
                    AND picking.bar_business_date = %(day)s
+                   AND NOT COALESCE(picking.bar_manual_move, FALSE)
                    AND move.product_id = ANY(%(products)s)
                    AND (ml.location_id = ANY(%(locations)s))
                        <> (ml.location_dest_id = ANY(%(locations)s))

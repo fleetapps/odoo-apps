@@ -18,7 +18,16 @@
                             t-att-class="{'o_active': field_index === state.active}"
                             t-on-click="() => this.focus(field_index)">
                         <span class="o_bar_desk_field_label" t-esc="field.label"/>
-                        <span class="o_bar_desk_field_value" t-esc="field.text || '0'"/>
+                        <span class="o_bar_desk_field_value">
+                            <t t-esc="field.text || '0'"/>
+                            <span t-if="total(field) !== null" class="o_bar_desk_field_total"> = <t t-esc="total(field)"/></span>
+                        </span>
+                    </button>
+                </div>
+                <div t-if="props.expected !== undefined" class="o_bar_desk_keypad_expected">
+                    Expected <t t-esc="props.expected"/>
+                    <button t-if="props.onSame" class="btn btn-sm btn-outline-success ms-2" t-on-click="props.onSame">
+                        <i class="fa fa-check me-1"/>Same
                     </button>
                 </div>
                 <div t-if="units.length > 1" class="o_bar_desk_chips mb-2">

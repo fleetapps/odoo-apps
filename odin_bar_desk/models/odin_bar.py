@@ -2,10 +2,7 @@ from datetime import timedelta
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import format_date
-
-# Deliveries older than this drop off the Desk and the dashboard.
-DELIVERY_DAYS = 14
+from odoo.tools import SQL, format_date
 
 
 class OdinBar(models.Model):
@@ -29,7 +26,7 @@ class OdinBar(models.Model):
         "product_id",
         string="Count sheet",
         domain=[("bar_desk_ok", "=", True)],
-        help="Products on this bar's closing count. Leave empty to count every "
+        help="Products on this location's closing count. Leave empty to count every "
         "product shown in the Bar Desk.",
     )
     currency_id = fields.Many2one(related="company_id.currency_id")
@@ -42,10 +39,9 @@ class OdinBar(models.Model):
         "on a supplier delivery.",
     )
 
-    desk_unchecked_count = fields.Integer("Not checked", compute="_compute_desk_dashboard")
     desk_to_approve_count = fields.Integer("To approve", compute="_compute_desk_dashboard")
-    desk_dispute_count = fields.Integer("Open disputes", compute="_compute_desk_dashboard")
-    desk_stock_out_today = fields.Integer("Stock outs today", compute="_compute_desk_dashboard")
+    desk_unresolved_count = fields.Integer("Differences to explain", compute="_compute_desk_dashboard")
+    desk_moves_today = fields.Integer("Moves today", compute="_compute_desk_dashboard")
     desk_last_closing_date = fields.Date("Last approved close", compute="_compute_desk_dashboard")
     desk_last_pos_date = fields.Date("Last POS day", compute="_compute_desk_dashboard")
     desk_pos_missing_date = fields.Date(
@@ -62,21 +58,20 @@ class OdinBar(models.Model):
         bars = super().create(vals_list)
         for company in bars.company_id:
             self.env["odin.bar.reason"].sudo()._create_default_reasons(company)
+            self.env["odin.bar.variance.reason"].sudo()._create_default_reasons(company)
         return bars
 
     def _compute_desk_dashboard(self):
-        Picking = self.env["stock.picking"].sudo()
         Count = self.env["odin.bar.count"].sudo()
-        Activity = self.env["odin.bar.activity"].sudo()
+        Picking = self.env["stock.picking"].sudo()
         PosDay = self.env["odin.bar.pos.day"].sudo()
         for bar in self:
             if not bar.id:
                 bar.update(
                     {
-                        "desk_unchecked_count": 0,
                         "desk_to_approve_count": 0,
-                        "desk_dispute_count": 0,
-                        "desk_stock_out_today": 0,
+                        "desk_unresolved_count": 0,
+                        "desk_moves_today": 0,
                         "desk_last_closing_date": False,
                         "desk_last_pos_date": False,
                         "desk_pos_missing_date": False,
@@ -86,6 +81,7 @@ class OdinBar(models.Model):
                 continue
             today = bar._business_date()
             start, end = bar._business_day_bounds(today)
+            waiting = Count.search([("bar_id", "=", bar.id), ("state", "in", ("submitted", "recount"))])
             last_close = Count.search(
                 [("bar_id", "=", bar.id), ("kind", "=", "closing"), ("state", "=", "approved")],
                 order="business_date desc",
@@ -100,19 +96,17 @@ class OdinBar(models.Model):
             )
             bar.update(
                 {
-                    "desk_unchecked_count": Picking.search_count(
-                        bar._desk_delivery_domain() + [("bar_ack_state", "=", "not_checked")]
-                    ),
-                    "desk_to_approve_count": Count.search_count(
-                        [("bar_id", "=", bar.id), ("state", "in", ("submitted", "recount"))]
-                    ),
-                    "desk_dispute_count": Picking.search_count(bar._desk_dispute_domain()),
-                    "desk_stock_out_today": Activity.search_count(
+                    "desk_to_approve_count": len(waiting),
+                    "desk_unresolved_count": sum(len(count._unresolved_lines()) for count in waiting),
+                    "desk_moves_today": Picking.search_count(
                         [
-                            ("bar_id", "=", bar.id),
-                            ("kind", "=", "stock_out"),
-                            ("date", ">=", start),
-                            ("date", "<", end),
+                            ("bar_manual_move", "=", True),
+                            ("state", "=", "done"),
+                            ("date_done", ">=", start),
+                            ("date_done", "<", end),
+                            "|",
+                            ("location_id", "=", bar.location_id.id),
+                            ("location_dest_id", "=", bar.location_id.id),
                         ]
                     ),
                     "desk_last_closing_date": last_close.business_date,
@@ -123,6 +117,91 @@ class OdinBar(models.Model):
                     "desk_variance_week": sum(week.mapped("diff_value")),
                 }
             )
+
+    # ------------------------------------------------------------------
+    # Expected stock of a closing count
+    # ------------------------------------------------------------------
+
+    def _count_breakdown(self, products, day, cutoff):
+        """How the stock expected at a closing count of trading day ``day``,
+        taken at the UTC datetime ``cutoff``, came about, per product in its
+        unit: {product_id: {"opening", "moved", "sold", "expected"}}.
+
+        - expected: the stock as the count sees it (``_stock_as_of``);
+        - sold: the POS sales of ``day``, less their returns;
+        - moved: transfers in (+) and out (-) since the previous count, i.e.
+          moves logged by hand for ``day``, and anything else done since the
+          previous closing count was submitted (a supplier delivery, a
+          transfer booked in Odoo), stock adjustments left out;
+        - opening: what the location started with, so that
+          opening + moved - sold = expected.
+        """
+        self.ensure_one()
+        result = {
+            product.id: {"opening": 0.0, "moved": 0.0, "sold": 0.0, "expected": 0.0} for product in products
+        }
+        if not products:
+            return result
+        expected = self._stock_as_of(products, cutoff, day, closing=True)
+        previous = self.env["odin.bar.count"].sudo().search(
+            [
+                ("bar_id", "=", self.id),
+                ("kind", "=", "closing"),
+                ("business_date", "<", day),
+                ("state", "in", ("submitted", "recount", "approved")),
+            ],
+            order="business_date desc, submitted_at desc",
+            limit=1,
+        )
+        since = previous.submitted_at or self._business_day_start(day)
+        location_ids = self.env["stock.location"].sudo().search(
+            [("id", "child_of", self.location_id.id)]
+        ).ids
+        self.env.flush_all()
+        self.env.cr.execute(
+            SQL(
+                """
+                SELECT move.product_id,
+                       SUM(CASE WHEN picking.bar_business_date = %(day)s
+                                     AND NOT COALESCE(picking.bar_manual_move, FALSE)
+                                THEN (CASE WHEN ml.location_id = ANY(%(locations)s)
+                                           THEN ml.quantity_product_uom ELSE -ml.quantity_product_uom END)
+                                ELSE 0 END),
+                       SUM(CASE WHEN (picking.bar_business_date = %(day)s
+                                      AND COALESCE(picking.bar_manual_move, FALSE))
+                                  OR (picking.bar_business_date IS NULL
+                                      AND NOT COALESCE(move.is_inventory, FALSE)
+                                      AND move.date > %(since)s
+                                      AND move.date <= %(cutoff)s)
+                                THEN (CASE WHEN ml.location_dest_id = ANY(%(locations)s)
+                                           THEN ml.quantity_product_uom ELSE -ml.quantity_product_uom END)
+                                ELSE 0 END)
+                  FROM stock_move_line ml
+                  JOIN stock_move move ON move.id = ml.move_id
+             LEFT JOIN stock_picking picking ON picking.id = move.picking_id
+                 WHERE move.state = 'done'
+                   AND move.product_id = ANY(%(products)s)
+                   AND (ml.location_id = ANY(%(locations)s))
+                       <> (ml.location_dest_id = ANY(%(locations)s))
+              GROUP BY move.product_id
+                """,
+                locations=location_ids,
+                products=products.ids,
+                day=day,
+                since=since,
+                cutoff=cutoff,
+            )
+        )
+        moved_sold = {product_id: (sold or 0.0, moved or 0.0) for product_id, sold, moved in self.env.cr.fetchall()}
+        for product in products:
+            uom = product.uom_id
+            sold, moved = moved_sold.get(product.id, (0.0, 0.0))
+            parts = result[product.id]
+            parts["expected"] = expected[product.id]
+            parts["sold"] = uom.round(sold)
+            parts["moved"] = uom.round(moved)
+            parts["opening"] = uom.round(parts["expected"] + parts["sold"] - parts["moved"])
+        return result
 
     # ------------------------------------------------------------------
     # POS days and counts
@@ -184,27 +263,6 @@ class OdinBar(models.Model):
     # Domains and product lists shared by the Desk and the backend
     # ------------------------------------------------------------------
 
-    def _desk_delivery_domain(self, days=DELIVERY_DAYS):
-        """Recent transfers into this bar that staff can check."""
-        self.ensure_one()
-        return [
-            ("location_dest_id", "=", self.location_id.id),
-            ("state", "=", "done"),
-            ("bar_ack_state", "!=", False),
-            ("date_done", ">=", fields.Datetime.now() - timedelta(days=days)),
-        ]
-
-    def _desk_dispute_domain(self):
-        """Open disputes (draft corrections) touching this bar or store."""
-        self.ensure_one()
-        return [
-            ("bar_dispute_origin_id", "!=", False),
-            ("state", "not in", ("done", "cancel")),
-            "|",
-            ("location_id", "=", self.location_id.id),
-            ("location_dest_id", "=", self.location_id.id),
-        ]
-
     def _desk_products(self):
         """Products staff can pick at this bar, in count sheet order."""
         self.ensure_one()
@@ -214,7 +272,7 @@ class OdinBar(models.Model):
         return products.sorted(lambda product: product._bar_sort_key())
 
     def _desk_sheet_products(self):
-        """Products on this bar's closing count, in count sheet order."""
+        """Products on this location's closing count, in count sheet order."""
         self.ensure_one()
         products = self.sheet_product_ids.filtered(lambda p: p.active and p.bar_desk_ok)
         if not products:
@@ -268,23 +326,21 @@ class OdinBar(models.Model):
             {"search_default_to_approve": 1},
         )
 
-    def action_desk_deliveries(self):
+    def action_desk_moves(self):
         self.ensure_one()
         return self._desk_window_action(
-            "odin_bar_desk.action_bar_deliveries",
-            [("location_dest_id", "=", self.location_id.id), ("bar_ack_state", "!=", False)],
-            {"search_default_not_checked": 1},
+            "odin_bar_desk.action_bar_moves",
+            [
+                ("bar_manual_move", "=", True),
+                "|",
+                ("location_id", "=", self.location_id.id),
+                ("location_dest_id", "=", self.location_id.id),
+            ],
         )
 
-    def action_desk_disputes(self):
+    def action_desk_unresolved(self):
         self.ensure_one()
         return self._desk_window_action(
-            "odin_bar_desk.action_bar_disputes", self._desk_dispute_domain()
-        )
-
-    def action_desk_stock_outs(self):
-        self.ensure_one()
-        return self._desk_window_action(
-            "odin_bar_desk.odin_bar_activity_stock_out_action",
-            [("bar_id", "=", self.id), ("kind", "=", "stock_out")],
+            "odin_bar_desk.odin_bar_count_line_variance_action",
+            [("bar_id", "=", self.id), ("count_id.state", "in", ("submitted", "recount"))],
         )

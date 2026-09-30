@@ -51,7 +51,7 @@
                     <div class="alert alert-info mb-3" role="status"
                          invisible="state not in ('submitted', 'recount') or not preview_ready">
                         Expected quantities are worked out as they stood when the count was submitted.
-                        Approving posts only the differences.
+                        Every difference needs a reason; approving posts only the differences, under their reasons.
                         <span invisible="kind != 'spot'">
                             Items the POS sold at the bar that day are left alone: sales come as one
                             total per day, so there is no telling how many were sold before the count.
@@ -83,15 +83,19 @@
                     </group>
                     <notebook>
                         <page string="Lines" name="lines">
-                            <field name="line_ids" readonly="1">
-                                <list decoration-muted="not touched or preview_skipped"
+                            <field name="line_ids" readonly="state not in ('submitted', 'recount')">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-muted="not touched or preview_skipped"
                                       decoration-danger="preview_diff_qty &lt; 0"
                                       decoration-success="preview_diff_qty &gt; 0">
-                                    <field name="product_id"/>
+                                    <field name="product_id" readonly="1"/>
                                     <field name="touched" column_invisible="1"/>
                                     <field name="counted_display"/>
                                     <field name="counted_qty"/>
                                     <field name="product_uom_id" string="Unit"/>
+                                    <field name="opening_qty" optional="hide" column_invisible="parent.state != 'approved'"/>
+                                    <field name="moved_qty" optional="hide" column_invisible="parent.state != 'approved'"/>
+                                    <field name="sold_qty" optional="hide" column_invisible="parent.state != 'approved'"/>
                                     <field name="preview_expected_qty" string="Expected"
                                            column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
                                     <field name="preview_diff_qty" string="Difference"
@@ -100,6 +104,12 @@
                                            column_invisible="parent.state != 'approved' and not parent.preview_ready"/>
                                     <field name="preview_skipped" string="Sold that day" widget="boolean"
                                            column_invisible="parent.kind != 'spot' or (parent.state != 'approved' and not parent.preview_ready)"/>
+                                    <field name="variance_reason_id" options="{'no_create': True}"
+                                           readonly="parent.state not in ('submitted', 'recount')"/>
+                                    <field name="variance_note" optional="show"
+                                           readonly="parent.state not in ('submitted', 'recount')"/>
+                                    <field name="accepted_expected" optional="hide" readonly="1"/>
+                                    <field name="recounted" optional="hide" readonly="1"/>
                                     <field name="currency_id" column_invisible="1"/>
                                 </list>
                             </field>
@@ -113,6 +123,7 @@
                                     <field name="location_dest_id"/>
                                     <field name="quantity"/>
                                     <field name="product_uom" string="Unit"/>
+                                    <field name="bar_variance_reason_id"/>
                                 </list>
                             </field>
                         </page>
@@ -143,7 +154,7 @@
                 <separator/>
                 <filter string="Trading day" name="business_date" date="business_date"/>
                 <group>
-                    <filter string="Bar" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Location" name="group_bar" context="{'group_by': 'bar_id'}"/>
                     <filter string="Trading day" name="group_day" context="{'group_by': 'business_date:day'}"/>
                     <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
                 </group>
@@ -159,8 +170,8 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No count waiting</p>
             <p>Counts submitted from the Bar Desk wait here for approval. Approval
-            posts the difference between what staff counted and what the system
-            expected when they counted.</p>
+            posts the difference between what was counted and what was expected
+            when it was counted, under the reason given for each difference.</p>
         </field>
     </record>
 
@@ -170,7 +181,7 @@
         <field name="arch" type="xml">
             <pivot string="Variance">
                 <field name="bar_id" type="col"/>
-                <field name="product_id" type="row"/>
+                <field name="variance_reason_id" type="row"/>
                 <field name="diff_value" type="measure"/>
                 <field name="diff_qty" type="measure"/>
             </pivot>
@@ -182,13 +193,21 @@
         <field name="model">odin.bar.count.line</field>
         <field name="arch" type="xml">
             <list string="Variance" create="0" edit="0">
-                <field name="count_id"/>
+                <field name="business_date"/>
+                <field name="bar_id"/>
                 <field name="product_id"/>
-                <field name="counted_qty"/>
+                <field name="opening_qty" optional="show"/>
+                <field name="moved_qty" optional="show"/>
+                <field name="sold_qty" optional="show"/>
                 <field name="expected_qty"/>
+                <field name="counted_qty"/>
                 <field name="diff_qty"/>
                 <field name="product_uom_id" string="Unit"/>
                 <field name="diff_value" sum="Total"/>
+                <field name="variance_reason_id"/>
+                <field name="variance_note" optional="show"/>
+                <field name="employee_id" optional="show"/>
+                <field name="count_id" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
             </list>
         </field>
@@ -200,12 +219,24 @@
         <field name="arch" type="xml">
             <search string="Variance">
                 <field name="product_id"/>
+                <field name="bar_id"/>
+                <field name="variance_reason_id"/>
+                <field name="employee_id"/>
                 <field name="count_id"/>
+                <filter string="Differences" name="differences" domain="[('diff_qty', '!=', 0)]"/>
                 <filter string="Losses" name="losses" domain="[('diff_qty', '&lt;', 0)]"/>
                 <filter string="Gains" name="gains" domain="[('diff_qty', '&gt;', 0)]"/>
+                <separator/>
+                <filter string="Tapped Same" name="accepted" domain="[('accepted_expected', '=', True)]"/>
+                <filter string="Corrected" name="recounted" domain="[('recounted', '=', True)]"/>
+                <separator/>
+                <filter string="Trading day" name="business_date" date="business_date"/>
                 <group>
+                    <filter string="Reason" name="group_reason" context="{'group_by': 'variance_reason_id'}"/>
                     <filter string="Product" name="group_product" context="{'group_by': 'product_id'}"/>
-                    <filter string="Bar" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Location" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Counted by" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Trading day" name="group_day" context="{'group_by': 'business_date:day'}"/>
                     <filter string="Count" name="group_count" context="{'group_by': 'count_id'}"/>
                 </group>
             </search>
@@ -217,9 +248,10 @@
         <field name="res_model">odin.bar.count.line</field>
         <field name="view_mode">pivot,list</field>
         <field name="domain">[('state', '=', 'approved')]</field>
+        <field name="context">{'search_default_differences': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No approved count yet</p>
-            <p>The differences posted by approved counts, by product and bar.</p>
+            <p>The differences posted by approved counts, by reason, location and product.</p>
         </field>
     </record>
 </odoo>

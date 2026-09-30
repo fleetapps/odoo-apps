@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.LevelsScreen">
+        <div class="o_bar_desk_body">
+            <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+            <t t-else="">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.filter = 'all'">All</button>
+                    <button class="btn o_bar_desk_chip" t-att-class="state.filter === 'below' ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.filter = 'below'">Below par (<t t-esc="belowCount"/>)</button>
+                    <input type="search" class="form-control o_bar_desk_find" placeholder="Find" aria-label="Find a product"
+                           t-model="state.query" autocomplete="off"/>
+                </div>
+                <p class="small text-muted mb-2">Club total against par, in bottles (btl) and crates (cr). Red means below par.</p>
+                <div t-if="!rows.length" class="text-muted text-center py-4">Nothing to show.</div>
+                <div t-foreach="rows" t-as="row" t-key="row.key" class="o_bar_desk_level" t-att-class="{'o_below': row.below}">
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span class="fw-bold flex-grow-1" t-esc="row.name"/>
+                        <span class="fw-bold text-nowrap" t-att-class="{'text-danger': row.negative}" t-esc="row.total"/>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 small">
+                        <span class="text-muted flex-grow-1" t-esc="row.locations || 'None in stock'"/>
+                        <span t-if="row.par" class="text-muted text-nowrap">par <t t-esc="row.par"/></span>
+                    </div>
+                    <div t-if="row.reorder" class="small fw-bold text-danger">Reorder <t t-esc="row.reorder"/></div>
+                </div>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+    </t>
+</templates>

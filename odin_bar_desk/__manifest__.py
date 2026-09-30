@@ -1,11 +1,13 @@
 {
     "name": "Bar Desk",
-    "summary": "Phone-first bar stock desk: stock outs, blind counts with "
-    "manager approval, delivery checks and a store mode",
+    "summary": "Phone-first stock control for bars: log moves, count every "
+    "location against the expected stock, explain differences, approve the day",
     "description": """
-Phone-first stock desk for bars: staff record stock outs, count the bar
-blind at night and check deliveries on a shared tablet with a PIN; the store
-sends stock to bars; managers approve counts in Bar Control. See README.md.
+Phone-first stock desk for a club's bars and store, run by one stock
+controller: log the day's moves between locations, count every location the
+next morning against the stock expected (last count + moves - POS sales),
+give each difference a reason, and approve the day. Supplier deliveries are
+received at the store against the invoice. See README.md.
 """,
     "version": "19.0.1.1.0",
     "category": "Inventory/Inventory",
@@ -17,11 +19,12 @@ sends stock to bars; managers approve counts in Bar Control. See README.md.
         "security/ir.model.access.csv",
         "views/bar_desk_actions.xml",
         "views/odin_bar_count_views.xml",
-        "views/odin_bar_request_views.xml",
         "views/odin_bar_activity_views.xml",
         "views/odin_bar_reason_views.xml",
+        "views/odin_bar_variance_reason_views.xml",
         "views/odin_bar_views.xml",
         "views/stock_picking_views.xml",
+        "views/odin_bar_report_views.xml",
         "views/product_views.xml",
         "views/hr_employee_views.xml",
         "views/res_partner_views.xml",

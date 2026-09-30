@@ -8,9 +8,10 @@
                 <field name="date"/>
                 <field name="bar_id"/>
                 <field name="kind"/>
-                <field name="reason_id" optional="show"/>
                 <field name="employee_id"/>
                 <field name="dest_bar_id" optional="show"/>
+                <field name="reason_id" optional="show"/>
+                <field name="variance_reason_id" optional="show"/>
                 <field name="member_ref" optional="show"/>
                 <field name="summary"/>
                 <field name="amount" sum="Total" optional="show"/>
@@ -36,8 +37,9 @@
                         <group>
                             <field name="kind"/>
                             <field name="bar_id"/>
-                            <field name="reason_id" invisible="not reason_id"/>
                             <field name="dest_bar_id" invisible="not dest_bar_id"/>
+                            <field name="reason_id" invisible="not reason_id"/>
+                            <field name="variance_reason_id" invisible="not variance_reason_id"/>
                             <field name="partner_id" invisible="not partner_id"/>
                             <field name="member_ref" invisible="not member_ref"/>
                             <field name="source_picking_id" invisible="not source_picking_id"/>
@@ -90,31 +92,21 @@
                 <field name="reason_id"/>
                 <field name="member_ref"/>
                 <field name="summary"/>
-                <filter string="Stock outs" name="stock_out" domain="[('kind', '=', 'stock_out')]"/>
-                <filter string="Stock in and supplier deliveries" name="deliveries" domain="[('kind', 'in', ('ack', 'dispute', 'send', 'receive', 'dispute_accept', 'dispute_reject'))]"/>
-                <filter string="Counts" name="counts" domain="[('kind', '=', 'count')]"/>
+                <filter string="Moves" name="moves" domain="[('kind', '=', 'move')]"/>
+                <filter string="Counts and corrections" name="counts" domain="[('kind', 'in', ('count', 'fix'))]"/>
+                <filter string="Differences explained" name="resolve" domain="[('kind', '=', 'resolve')]"/>
+                <filter string="Days approved" name="approve" domain="[('kind', '=', 'approve')]"/>
+                <filter string="Supplier deliveries" name="deliveries" domain="[('kind', '=', 'receive')]"/>
                 <filter string="Wrong PINs" name="pin_fail" domain="[('kind', '=', 'pin_fail')]"/>
                 <separator/>
                 <filter string="Date" name="date" date="date"/>
                 <group>
-                    <filter string="Bar" name="group_bar" context="{'group_by': 'bar_id'}"/>
-                    <filter string="Reason" name="group_reason" context="{'group_by': 'reason_id'}"/>
+                    <filter string="Location" name="group_bar" context="{'group_by': 'bar_id'}"/>
+                    <filter string="Kind" name="group_kind" context="{'group_by': 'kind'}"/>
                     <filter string="Staff" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Trading day" name="group_day" context="{'group_by': 'business_date:day'}"/>
                 </group>
             </search>
-        </field>
-    </record>
-
-    <record id="odin_bar_activity_stock_out_action" model="ir.actions.act_window">
-        <field name="name">Stock-out log</field>
-        <field name="res_model">odin.bar.activity</field>
-        <field name="view_mode">list,form</field>
-        <field name="context">{'search_default_stock_out': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No stock out yet</p>
-            <p>Everything staff take out of a bar other than a sale: Roma, events,
-            unpaid bills, breakage and the rest, with who did it and when.</p>
         </field>
     </record>
 

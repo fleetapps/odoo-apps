@@ -2,6 +2,14 @@ import { Component, useState } from "@odoo/owl";
 import { fmt, shortUnit, unitsOf } from "./utils";
 
 const MAX_LENGTH = 7;
+const MAX_SUM_LENGTH = 40;
+
+/** "30+35+33" adds up to 98; a plain number is itself. */
+export function addUp(text) {
+    return (text || "")
+        .split("+")
+        .reduce((total, part) => total + Math.max(0, parseFloat(part) || 0), 0);
+}
 
 /**
  * Bottom sheet keypad.
@@ -21,6 +29,8 @@ export class Keypad extends Component {
         hint: { type: String, optional: true },
         units: { type: Boolean, optional: true },
         allowRemove: { type: Boolean, optional: true },
+        expected: { type: String, optional: true },
+        onSame: { type: Function, optional: true },
         onConfirm: Function,
         onRemove: { type: Function, optional: true },
         onClose: Function,
@@ -81,7 +91,9 @@ export class Keypad extends Component {
     }
 
     get keys() {
-        return ["7", "8", "9", "4", "5", "6", "1", "2", "3", ".", "0", "back"];
+        // Counts add up what sits in several places (fridge + shelf + crates): 30+35+33.
+        const extra = this.props.mode === "count" ? "+" : ".";
+        return ["7", "8", "9", "4", "5", "6", "1", "2", "3", extra, "0", "back"];
     }
 
     setUnit(unit) {
@@ -95,21 +107,28 @@ export class Keypad extends Component {
 
     press(key) {
         const field = this.state.fields[this.state.active];
-        let text = this.state.fresh ? "" : field.text;
+        // "+" keeps what is there, to add to it; any other key starts afresh on a new field.
+        let text = this.state.fresh && key !== "+" ? "" : field.text;
         if (key === "back") {
             text = text.slice(0, -1);
+        } else if (key === "+") {
+            text = text && !text.endsWith("+") ? `${text}+` : text;
         } else if (key === ".") {
             text = text.includes(".") ? text : `${text || "0"}.`;
         } else {
             text = text === "0" ? key : text + key;
         }
-        field.text = text.slice(0, MAX_LENGTH);
+        field.text = text.slice(0, text.includes("+") ? MAX_SUM_LENGTH : MAX_LENGTH);
         this.state.fresh = false;
     }
 
     number(key) {
         const field = this.state.fields.find((f) => f.key === key);
-        return Math.max(0, parseFloat(field?.text) || 0);
+        return addUp(field?.text);
+    }
+
+    total(field) {
+        return field.text.includes("+") ? addUp(field.text) : null;
     }
 
     confirm() {

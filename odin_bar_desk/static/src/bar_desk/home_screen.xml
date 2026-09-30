@@ -1,108 +1,145 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <t t-name="odin_bar_desk.HomeTile">
-        <button class="o_bar_desk_tile" t-on-click="() => this.open(screen)">
-            <i t-attf-class="fa {{ icon }} o_bar_desk_tile_icon"/>
-            <span class="o_bar_desk_tile_label" t-esc="label"/>
-            <span t-if="subtitle" class="o_bar_desk_tile_sub" t-esc="subtitle"/>
-            <span t-if="badge" class="o_bar_desk_badge" t-esc="badge"/>
-        </button>
+    <t t-name="odin_bar_desk.Step">
+        <section class="o_bar_desk_step" t-att-class="{'o_done': done}">
+            <div class="o_bar_desk_step_head">
+                <span class="o_bar_desk_step_num">
+                    <i t-if="done" class="fa fa-check" aria-label="Done"/>
+                    <t t-else="" t-esc="num"/>
+                </span>
+                <span class="o_bar_desk_step_title" t-esc="title"/>
+                <span t-if="status" class="o_bar_desk_step_status" t-esc="status"/>
+            </div>
+            <t t-out="0"/>
+        </section>
     </t>
 
     <t t-name="odin_bar_desk.HomeScreen">
         <div class="o_bar_desk_body">
             <t t-if="home">
-                <div t-foreach="home.count.recounts" t-as="recount" t-key="recount.business_date + recount.kind"
-                     class="alert alert-warning d-flex align-items-center gap-2" role="alert">
-                    <i class="fa fa-repeat"/>
-                    <div>
-                        <div class="fw-bold">Recount requested for <t t-esc="recount.day_label"/></div>
-                        <div t-if="recount.note" class="small" t-esc="recount.note"/>
+                <div class="o_bar_desk_days" role="tablist" aria-label="Trading day">
+                    <button t-foreach="home.days" t-as="day" t-key="day.date" role="tab"
+                            class="btn o_bar_desk_day"
+                            t-att-class="{'o_active': day.date === home.day.date}"
+                            t-att-aria-selected="day.date === home.day.date"
+                            t-on-click="() => this.setDay(day.date)">
+                        <span t-esc="day.label"/>
+                        <i t-if="day.state === 'approved'" class="fa fa-check-circle text-success ms-1" aria-label="Approved"/>
+                        <i t-elif="day.state === 'open'" class="fa fa-circle-o text-warning ms-1" aria-label="Started"/>
+                    </button>
+                </div>
+                <h2 class="o_bar_desk_section mt-2">
+                    Closing <t t-esc="home.day.label"/>
+                </h2>
+                <div t-if="home.approved" class="alert alert-success py-2" role="status">
+                    <i class="fa fa-check-circle me-1"/> This day is approved.
+                </div>
+
+                <t t-call="odin_bar_desk.Step">
+                    <t t-set="num" t-value="1"/>
+                    <t t-set="title" t-value="'POS sales'"/>
+                    <t t-set="done" t-value="posDone"/>
+                    <t t-set="status" t-value="posDone ? 'All in' : 'Missing'"/>
+                    <div class="o_bar_desk_chips">
+                        <t t-foreach="posLocations" t-as="loc" t-key="loc.id">
+                            <span t-if="loc.pos === 'posted'" class="o_bar_desk_pill o_done">
+                                <t t-esc="loc.code"/> <i class="fa fa-check" aria-label="In"/>
+                            </span>
+                            <button t-elif="loc.can_import_pos" class="btn btn-warning o_bar_desk_chip"
+                                    t-on-click="() => this.importPos(loc)">
+                                Import <t t-esc="loc.code"/> · <t t-esc="loc.pos_missing_label"/>
+                            </button>
+                            <span t-else="" class="o_bar_desk_pill o_attention">
+                                <t t-esc="loc.code"/> missing <t t-esc="loc.pos_missing_label"/>
+                            </span>
+                        </t>
                     </div>
+                </t>
+
+                <t t-call="odin_bar_desk.Step">
+                    <t t-set="num" t-value="2"/>
+                    <t t-set="title" t-value="'Moves'"/>
+                    <t t-set="done" t-value="home.approved"/>
+                    <t t-set="status" t-value="home.moves.length ? home.moves.length + ' logged' : 'None yet'"/>
+                    <ul t-if="home.moves.length" class="o_bar_desk_moves">
+                        <li t-foreach="moves" t-as="move" t-key="move.id">
+                            <div class="fw-bold">
+                                <t t-esc="move.from"/> <i class="fa fa-long-arrow-right mx-1" aria-label="to"/> <t t-esc="move.to"/>
+                            </div>
+                            <div class="small text-muted" t-esc="move.summary"/>
+                            <div class="small text-muted"><t t-esc="move.time"/> · <t t-esc="move.who"/></div>
+                        </li>
+                    </ul>
+                    <button t-if="home.moves.length > 3 and !state.allMoves" class="btn btn-link px-0"
+                            t-on-click="() => this.state.allMoves = true">
+                        Show all <t t-esc="home.moves.length"/>
+                    </button>
+                    <button class="btn btn-outline-primary o_bar_desk_big w-100" t-att-disabled="home.approved"
+                            t-on-click="() => this.open('move')">
+                        <i class="fa fa-plus me-2"/>Log a move
+                    </button>
+                </t>
+
+                <t t-call="odin_bar_desk.Step">
+                    <t t-set="num" t-value="3"/>
+                    <t t-set="title" t-value="'Counts'"/>
+                    <t t-set="done" t-value="countsDone"/>
+                    <t t-set="status" t-value="home.counted + ' of ' + home.locations.length"/>
+                    <div class="o_bar_desk_locations">
+                        <button t-foreach="home.locations" t-as="loc" t-key="loc.id"
+                                class="o_bar_desk_location" t-att-class="countTone(loc)"
+                                t-att-disabled="loc.state === 'approved'"
+                                t-on-click="() => this.openLocation(loc)">
+                            <span class="o_bar_desk_location_code" t-esc="loc.code"/>
+                            <span class="o_bar_desk_location_name" t-esc="loc.name"/>
+                            <span class="o_bar_desk_location_state" t-esc="countLine(loc)"/>
+                        </button>
+                    </div>
+                </t>
+
+                <t t-call="odin_bar_desk.Step">
+                    <t t-set="num" t-value="4"/>
+                    <t t-set="title" t-value="'Differences'"/>
+                    <t t-set="done" t-value="countsDone and !home.unresolved"/>
+                    <t t-set="status" t-value="home.unresolved ? home.unresolved + ' to explain' : (home.differences ? 'All explained' : '')"/>
+                    <button class="btn o_bar_desk_big w-100"
+                            t-att-class="home.unresolved ? 'btn-warning' : 'btn-outline-secondary'"
+                            t-att-disabled="!home.differences or home.approved"
+                            t-on-click="() => this.open('differences')">
+                        <t t-if="home.unresolved">Explain <t t-esc="home.unresolved"/> difference<t t-if="home.unresolved > 1">s</t></t>
+                        <t t-elif="home.differences">Review differences</t>
+                        <t t-else="">No differences yet</t>
+                    </button>
+                </t>
+
+                <t t-call="odin_bar_desk.Step">
+                    <t t-set="num" t-value="5"/>
+                    <t t-set="title" t-value="'Approve'"/>
+                    <t t-set="done" t-value="home.approved"/>
+                    <t t-set="status" t-value="''"/>
+                    <button t-if="!home.approved" class="btn btn-primary o_bar_desk_big w-100"
+                            t-att-disabled="!home.can_approve or state.busy" t-on-click="approve">
+                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>
+                        Approve <t t-esc="home.day.label"/>
+                    </button>
+                    <div t-if="home.approve_blocked" class="small text-muted mt-1" t-esc="home.approve_blocked"/>
+                </t>
+
+                <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+
+                <div class="o_bar_desk_tiles o_bar_desk_tiles_small mt-3">
+                    <button t-if="home.store_id" class="o_bar_desk_tile" t-on-click="() => this.open('receive')">
+                        <i class="fa fa-download o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label">Supplier delivery</span>
+                        <span class="o_bar_desk_tile_sub" t-esc="home.receipts ? home.receipts + ' expected' : 'Into the store'"/>
+                        <span t-if="home.receipts" class="o_bar_desk_badge" t-esc="home.receipts"/>
+                    </button>
+                    <button class="o_bar_desk_tile" t-on-click="() => this.open('levels')">
+                        <i class="fa fa-bar-chart o_bar_desk_tile_icon"/>
+                        <span class="o_bar_desk_tile_label">Stock levels</span>
+                        <span class="o_bar_desk_tile_sub">Every location, against par</span>
+                    </button>
                 </div>
-                <div class="o_bar_desk_tiles">
-                    <t t-if="desk.bar.kind === 'bar'">
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'stockout'"/>
-                            <t t-set="icon" t-value="'fa-sign-out'"/>
-                            <t t-set="label" t-value="'Stock out'"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'count'"/>
-                            <t t-set="icon" t-value="'fa-list-ol'"/>
-                            <t t-set="label" t-value="'Count'"/>
-                            <t t-set="subtitle" t-value="countLine"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'deliveries'"/>
-                            <t t-set="icon" t-value="'fa-truck'"/>
-                            <t t-set="label" t-value="'Stock in'"/>
-                            <t t-set="subtitle" t-value="home.unchecked ? home.unchecked + ' not checked' : 'All checked'"/>
-                            <t t-set="badge" t-value="home.unchecked"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'ask'"/>
-                            <t t-set="icon" t-value="'fa-hand-paper-o'"/>
-                            <t t-set="label" t-value="'Ask for stock'"/>
-                            <t t-set="subtitle" t-value="askLine"/>
-                            <t t-set="badge" t-value="home.asks_missing"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'requests'"/>
-                            <t t-set="icon" t-value="'fa-inbox'"/>
-                            <t t-set="label" t-value="'Requests'"/>
-                            <t t-set="subtitle" t-value="home.requests_in ? home.requests_in + ' to answer' : 'None waiting'"/>
-                            <t t-set="badge" t-value="home.requests_in"/>
-                        </t>
-                    </t>
-                    <t t-else="">
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'requests'"/>
-                            <t t-set="icon" t-value="'fa-inbox'"/>
-                            <t t-set="label" t-value="'Requests'"/>
-                            <t t-set="subtitle" t-value="home.requests_in ? home.requests_in + ' to answer' : 'None waiting'"/>
-                            <t t-set="badge" t-value="home.requests_in"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'send'"/>
-                            <t t-set="icon" t-value="'fa-truck'"/>
-                            <t t-set="label" t-value="'Send to bar'"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'receive'"/>
-                            <t t-set="icon" t-value="'fa-download'"/>
-                            <t t-set="label" t-value="'Supplier delivery'"/>
-                            <t t-set="subtitle" t-value="home.receipts ? home.receipts + ' expected' : 'From a supplier'"/>
-                            <t t-set="badge" t-value="home.receipts"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'count'"/>
-                            <t t-set="icon" t-value="'fa-list-ol'"/>
-                            <t t-set="label" t-value="'Count store'"/>
-                            <t t-set="subtitle" t-value="countLine"/>
-                        </t>
-                        <t t-call="odin_bar_desk.HomeTile">
-                            <t t-set="screen" t-value="'disputes'"/>
-                            <t t-set="icon" t-value="'fa-exclamation-triangle'"/>
-                            <t t-set="label" t-value="'Disputes'"/>
-                            <t t-set="subtitle" t-value="home.disputes ? home.disputes + ' to decide' : 'None open'"/>
-                            <t t-set="badge" t-value="home.disputes"/>
-                        </t>
-                    </t>
-                </div>
-                <h2 class="o_bar_desk_section">Today</h2>
-                <div t-if="!home.timeline.length" class="text-muted py-3">Nothing yet today.</div>
-                <ul class="o_bar_desk_timeline">
-                    <li t-foreach="home.timeline" t-as="item" t-key="item.id">
-                        <span class="o_bar_desk_timeline_time" t-esc="item.time"/>
-                        <i t-attf-class="fa {{ item.icon }} o_bar_desk_timeline_icon"/>
-                        <span class="o_bar_desk_timeline_text">
-                            <span class="fw-bold" t-esc="item.title"/>
-                            <span t-if="item.detail" class="d-block small text-muted" t-esc="item.detail"/>
-                            <span t-if="item.who" class="d-block small" t-esc="item.who"/>
-                        </span>
-                    </li>
-                </ul>
             </t>
             <div t-else="" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
         </div>

@@ -5,13 +5,13 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { CountScreen } from "./count_screen";
-import { DeliveriesScreen, DeliveryScreen } from "./delivery_screens";
 import { DeskModel } from "./desk_model";
+import { DifferencesScreen } from "./differences_screen";
 import { HomeScreen } from "./home_screen";
+import { LevelsScreen } from "./levels_screen";
 import { LockScreen } from "./lock_screen";
-import { AskScreen, RequestScreen, RequestsScreen } from "./request_screens";
-import { StockOutScreen } from "./stock_out_screen";
-import { DisputesScreen, StoreReceiveScreen, StoreSendScreen } from "./store_screens";
+import { MoveScreen } from "./move_screen";
+import { StoreReceiveScreen } from "./store_screens";
 import { initials } from "./utils";
 
 /** Back to the PIN screen after this long without a touch, so a shared
@@ -20,17 +20,12 @@ const IDLE_LOCK_DELAY = 10 * 60 * 1000;
 const TOAST_DELAY = 3500;
 
 const SCREENS = {
-    home: { component: HomeScreen, title: "" },
-    stockout: { component: StockOutScreen, title: "Stock out" },
+    home: { component: HomeScreen, title: "Stock control" },
+    move: { component: MoveScreen, title: "Log a move" },
     count: { component: CountScreen, title: "Count" },
-    deliveries: { component: DeliveriesScreen, title: "Stock in" },
-    delivery: { component: DeliveryScreen, title: "Stock in" },
-    send: { component: StoreSendScreen, title: "Send to bar" },
+    differences: { component: DifferencesScreen, title: "Differences" },
+    levels: { component: LevelsScreen, title: "Stock levels" },
     receive: { component: StoreReceiveScreen, title: "Supplier delivery" },
-    disputes: { component: DisputesScreen, title: "Disputes" },
-    ask: { component: AskScreen, title: "Ask for stock" },
-    requests: { component: RequestsScreen, title: "Requests" },
-    request: { component: RequestScreen, title: "Requests" },
 };
 
 export class BarDesk extends Component {
@@ -68,19 +63,27 @@ export class BarDesk extends Component {
     }
 
     get title() {
-        return SCREENS[this.screen.name].title || this.desk.bar?.name || "";
+        return SCREENS[this.screen.name].title;
     }
 
     get subtitle() {
-        const bar = this.desk.bar;
-        if (!bar) {
+        const day = this.desk.home?.day;
+        if (!day) {
             return "";
         }
-        return this.screen.name === "home" ? bar.day_label : `${bar.name} · ${bar.day_label}`;
+        if (this.screen.name === "levels" || this.screen.name === "receive") {
+            return "Now";
+        }
+        return `Closing ${day.label}`;
     }
 
     go(name, params = {}) {
         this.nav.stack.push({ name, params });
+    }
+
+    /** Swap the current screen for another, e.g. a finished count for its differences. */
+    replace(name, params = {}) {
+        this.nav.stack.splice(this.nav.stack.length - 1, 1, { name, params });
     }
 
     back() {
@@ -127,11 +130,6 @@ export class BarDesk extends Component {
 
     switchStaff() {
         this.model.lock();
-        this.home();
-    }
-
-    async switchBar(barId) {
-        await this.model.openBar(barId);
         this.home();
     }
 

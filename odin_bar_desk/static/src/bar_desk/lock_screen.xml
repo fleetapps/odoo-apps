@@ -3,14 +3,8 @@
     <t t-name="odin_bar_desk.LockScreen">
         <div class="o_bar_desk_body o_bar_desk_lock">
             <div class="text-center mb-3">
-                <div class="fs-1 fw-bold lh-sm" t-esc="desk.bar.name"/>
+                <div class="fs-1 fw-bold lh-sm">Stock control</div>
                 <div class="text-muted" t-esc="desk.bar.day_label"/>
-            </div>
-            <div t-if="desk.bars.length > 1 and !state.employee" class="mb-3">
-                <select class="form-select form-select-lg" aria-label="Bar" t-on-change="switchBar">
-                    <option t-foreach="desk.bars" t-as="bar" t-key="bar.id" t-att-value="bar.id"
-                            t-att-selected="bar.id === desk.bar.id" t-esc="bar.name"/>
-                </select>
             </div>
             <t t-if="!state.employee">
                 <div class="text-center text-muted mb-2">Tap your name</div>
@@ -22,7 +16,8 @@
                     </button>
                 </div>
                 <div t-if="!desk.employees.length" class="alert alert-warning">
-                    No one can sign in here yet. A manager adds staff to this bar on their employee record.
+                    No one can sign in yet. A manager ticks "All bars" (or the locations) under Bar Desk on the
+                    employee's record and sets a PIN.
                 </div>
             </t>
             <div t-else="" class="o_bar_desk_pin">

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.MoveScreen">
+        <div class="o_bar_desk_body">
+            <div class="o_bar_desk_label">From</div>
+            <div class="o_bar_desk_chips mb-3">
+                <button t-foreach="locations" t-as="loc" t-key="loc.id"
+                        class="btn o_bar_desk_chip o_bar_desk_chip_big"
+                        t-att-class="state.fromId === loc.id ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => this.pickFrom(loc)">
+                    <t t-esc="loc.name"/>
+                </button>
+            </div>
+
+            <div class="o_bar_desk_label">To</div>
+            <div class="o_bar_desk_chips mb-2">
+                <button t-foreach="locations" t-as="loc" t-key="loc.id"
+                        class="btn o_bar_desk_chip o_bar_desk_chip_big"
+                        t-att-class="state.toId === loc.id ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-att-disabled="state.fromId === loc.id"
+                        t-on-click="() => this.pickTo(loc)">
+                    <t t-esc="loc.name"/>
+                </button>
+            </div>
+            <div t-if="destinations.length" class="o_bar_desk_chips mb-3">
+                <span class="small text-muted me-1 align-self-center">Out of the club:</span>
+                <button t-foreach="destinations" t-as="dest" t-key="dest.id"
+                        class="btn o_bar_desk_chip"
+                        t-att-class="state.destinationId === dest.id ? 'btn-primary' : 'btn-outline-secondary'"
+                        t-on-click="() => this.pickDestination(dest)">
+                    <i t-attf-class="fa {{ dest.icon }} me-1"/><t t-esc="dest.name"/>
+                </button>
+            </div>
+            <input t-if="destination and destination.require_member" type="text" class="form-control form-control-lg mb-3"
+                   placeholder="Member name or number" aria-label="Member" t-model="state.member"/>
+
+            <t t-if="sheetDayOpen">
+                <div class="o_bar_desk_label">When</div>
+                <div class="o_bar_desk_chips mb-1">
+                    <button class="btn o_bar_desk_chip"
+                            t-att-class="state.onSheetDay ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.onSheetDay = true">
+                        <t t-esc="home.day.label"/> (before the count)
+                    </button>
+                    <button class="btn o_bar_desk_chip"
+                            t-att-class="!state.onSheetDay ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.onSheetDay = false">
+                        Today (after the count)
+                    </button>
+                </div>
+                <div class="small text-muted mb-3">
+                    <t t-if="state.onSheetDay">The counts of <t t-esc="home.day.label"/> expect this move.</t>
+                    <t t-else="">Counts already taken are not affected.</t>
+                </div>
+            </t>
+
+            <div class="o_bar_desk_label">Items</div>
+            <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'Add to the move'"/>
+            <input type="text" class="form-control mt-3" placeholder="Note (optional)" aria-label="Note"
+                   t-model="state.note"/>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div class="o_bar_desk_footer">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!canSave" t-on-click="save">
+                <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>
+                Save move
+            </button>
+        </div>
+    </t>
+</templates>
