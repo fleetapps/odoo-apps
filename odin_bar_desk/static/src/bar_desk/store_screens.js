@@ -82,6 +82,11 @@ export class StoreReceiveScreen extends Component {
             this.state.receipts = await this.model.fetch("desk_receipts", { bar_id: this.storeId });
         } catch (error) {
             this.state.error = errorMessage(error);
+            return;
+        }
+        if (!this.state.receipts.length) {
+            // Nothing expected: the only thing to do is book a new delivery.
+            await this.newDelivery();
         }
     }
 

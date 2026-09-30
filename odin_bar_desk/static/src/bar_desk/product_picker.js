@@ -13,6 +13,7 @@ export class ProductPicker extends Component {
         onClose: Function,
         onlyIds: { type: Object, optional: true },
         markedIds: { type: Object, optional: true },
+        hint: { type: Function, optional: true },
     };
 
     setup() {

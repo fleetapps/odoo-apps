@@ -1,19 +1,6 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { errorMessage } from "./desk_model";
-import { fmt, normalize, packShort } from "./utils";
-
-/** The unit stock is ordered and compared to par in: bottles for spirits,
- * crates for beer and sodas, units for the rest. */
-function bulkUnit(product) {
-    if (product.poured) {
-        return { name: "btl", factor: product.bottles[0].factor };
-    }
-    if (product.packs.length) {
-        const pack = product.packs[0];
-        return { name: packShort(pack), factor: pack.factor };
-    }
-    return { name: "", factor: 1 };
-}
+import { bulkUnit, fmt, normalize } from "./utils";
 
 /**
  * Stock at every location and in total, in bottles and crates, against the

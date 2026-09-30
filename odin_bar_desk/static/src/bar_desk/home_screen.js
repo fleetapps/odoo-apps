@@ -21,9 +21,10 @@ const COUNT_STATES = {
 };
 
 /**
- * The day sheet: one trading day, closed the next morning in five steps.
- * POS sales in, moves logged, every location counted, every difference
- * explained, then the day approved. Each step says whether it is done.
+ * The day sheet: one trading day, closed the next morning in three steps.
+ * Moves logged; every location counted, its POS sales in and its
+ * differences explained (each card says where it stands and opens what is
+ * next for it); then the day approved.
  */
 export class HomeScreen extends Component {
     static template = "odin_bar_desk.HomeScreen";
@@ -67,20 +68,25 @@ export class HomeScreen extends Component {
         return new Date(year, month - 1, date);
     }
 
-    get anyCounted() {
-        return this.home.locations.some((location) => ["submitted", "recount", "approved"].includes(location.state));
-    }
-
     get home() {
         return this.desk.home;
     }
 
-    get posLocations() {
-        return this.home.locations.filter((location) => location.pos !== "none");
+    get posMissing() {
+        return this.home.locations.filter((location) => location.pos === "missing");
     }
 
-    get posDone() {
-        return this.posLocations.every((location) => location.pos === "posted");
+    get posMissingNames() {
+        return this.posMissing.map((location) => location.name).join(", ");
+    }
+
+    get canImportAll() {
+        return this.posMissing.every((location) => location.can_import_pos);
+    }
+
+    get countsStatus() {
+        const counted = `${this.home.counted} of ${this.home.locations.length}`;
+        return this.home.unresolved ? `${counted} · ${this.home.unresolved} to explain` : counted;
     }
 
     get countsDone() {
@@ -136,7 +142,7 @@ export class HomeScreen extends Component {
             return;
         }
         if (location.state === "submitted" || location.state === "recount") {
-            this.props.app.go("differences", { locationId: location.id, title: location.name });
+            this.props.app.go("differences", { locationId: location.id });
         } else {
             this.props.app.go("count", { barId: location.id, title: location.name });
         }

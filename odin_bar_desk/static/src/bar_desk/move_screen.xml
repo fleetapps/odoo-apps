@@ -2,7 +2,12 @@
 <templates xml:space="preserve">
     <t t-name="odin_bar_desk.MoveScreen">
         <div class="o_bar_desk_body">
-            <div class="o_bar_desk_label">From</div>
+            <div class="d-flex align-items-center">
+                <div class="o_bar_desk_label flex-grow-1">From</div>
+                <button class="btn btn-link btn-sm px-0 mb-1" t-att-disabled="!state.fromId or !state.toId" t-on-click="swap">
+                    <i class="fa fa-exchange fa-rotate-90 me-1"/>Swap
+                </button>
+            </div>
             <div class="o_bar_desk_grid mb-3">
                 <button t-foreach="locations" t-as="loc" t-key="loc.id"
                         class="btn o_bar_desk_chip o_bar_desk_chip_big"
@@ -55,7 +60,8 @@
             </t>
 
             <div class="o_bar_desk_label">Items</div>
-            <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'Add to the move'"/>
+            <ItemsEditor model="model" items="state.items" defaultUnit="packUnit" pickerTitle="'Add to the move'"
+                         pickerHint="pickerHint"/>
             <input type="text" class="form-control mt-3" placeholder="Note (optional)" aria-label="Note"
                    t-model="state.note"/>
             <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>

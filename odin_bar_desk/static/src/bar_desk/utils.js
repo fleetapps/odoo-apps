@@ -65,6 +65,26 @@ function inPacks(product, qty) {
     return rest ? `${full} ${packShort(pack)} + ${fmt(rest)}` : `${full} ${packShort(pack)}`;
 }
 
+/** The unit stock is ordered and compared to par in: bottles for spirits,
+ * crates for beer and sodas, units for the rest. */
+export function bulkUnit(product) {
+    if (product.poured) {
+        return { name: "btl", factor: product.bottles[0].factor };
+    }
+    if (product.packs.length) {
+        const pack = product.packs[0];
+        return { name: packShort(pack), factor: pack.factor };
+    }
+    return { name: "", factor: 1 };
+}
+
+/** A stock quantity in bulk units, to one decimal: "12 btl", "3.5 cr", "40". */
+export function bulkLabel(product, qty) {
+    const unit = bulkUnit(product);
+    const value = fmt(Math.round((qty / unit.factor) * 10) / 10);
+    return unit.name ? `${value} ${unit.name}` : value;
+}
+
 /** What a count line says, e.g. "3 btl + 12 tots", "48 (1 cr + 23)". */
 export function countLabel(product, line) {
     if (!line?.touched) {

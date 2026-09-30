@@ -37,27 +37,6 @@
 
                 <t t-call="odin_bar_desk.Step">
                     <t t-set="num" t-value="1"/>
-                    <t t-set="title" t-value="'POS sales'"/>
-                    <t t-set="done" t-value="posDone"/>
-                    <t t-set="status" t-value="posDone ? 'All in' : 'Missing'"/>
-                    <div class="o_bar_desk_chips">
-                        <t t-foreach="posLocations" t-as="loc" t-key="loc.id">
-                            <span t-if="loc.pos === 'posted'" class="o_bar_desk_pill o_done">
-                                <t t-esc="loc.code"/> <i class="fa fa-check" aria-label="In"/>
-                            </span>
-                            <button t-elif="loc.can_import_pos" class="btn btn-warning o_bar_desk_chip"
-                                    t-on-click="() => this.importPos(loc)">
-                                Import <t t-esc="loc.code"/> · <t t-esc="loc.pos_missing_label"/>
-                            </button>
-                            <span t-else="" class="o_bar_desk_pill o_attention">
-                                <t t-esc="loc.code"/> missing <t t-esc="loc.pos_missing_label"/>
-                            </span>
-                        </t>
-                    </div>
-                </t>
-
-                <t t-call="odin_bar_desk.Step">
-                    <t t-set="num" t-value="2"/>
                     <t t-set="title" t-value="'Moves'"/>
                     <t t-set="done" t-value="home.approved or home.moves.length or countsDone"/>
                     <t t-set="status" t-value="home.moves.length ? home.moves.length + ' logged' : 'None logged'"/>
@@ -81,38 +60,38 @@
                 </t>
 
                 <t t-call="odin_bar_desk.Step">
-                    <t t-set="num" t-value="3"/>
+                    <t t-set="num" t-value="2"/>
                     <t t-set="title" t-value="'Counts'"/>
-                    <t t-set="done" t-value="countsDone"/>
-                    <t t-set="status" t-value="home.counted + ' of ' + home.locations.length"/>
+                    <t t-set="done" t-value="countsDone and !home.unresolved"/>
+                    <t t-set="status" t-value="countsStatus"/>
                     <div class="o_bar_desk_locations">
-                        <button t-foreach="home.locations" t-as="loc" t-key="loc.id"
-                                class="o_bar_desk_location" t-att-class="countTone(loc)"
-                                t-att-disabled="loc.state === 'approved'"
-                                t-on-click="() => this.openLocation(loc)">
-                            <span class="o_bar_desk_location_code" t-esc="loc.code"/>
-                            <span class="o_bar_desk_location_name" t-esc="loc.name"/>
-                            <span class="o_bar_desk_location_state" t-esc="countLine(loc)"/>
-                        </button>
+                        <div t-foreach="home.locations" t-as="loc" t-key="loc.id" class="o_bar_desk_location_cell">
+                            <button class="o_bar_desk_location" t-att-class="countTone(loc)"
+                                    t-att-disabled="loc.state === 'approved'"
+                                    t-on-click="() => this.openLocation(loc)">
+                                <span class="o_bar_desk_location_code" t-esc="loc.code"/>
+                                <span class="o_bar_desk_location_name" t-esc="loc.name"/>
+                                <span class="o_bar_desk_location_state" t-esc="countLine(loc)"/>
+                                <span t-if="loc.pos === 'posted'" class="o_bar_desk_location_pos o_done">
+                                    POS <i class="fa fa-check" aria-label="in"/>
+                                </span>
+                                <span t-elif="loc.pos === 'missing'" class="o_bar_desk_location_pos o_attention">
+                                    No POS
+                                </span>
+                            </button>
+                            <button t-if="loc.pos === 'missing' and loc.can_import_pos" class="btn btn-warning btn-sm w-100 mt-1"
+                                    t-on-click="() => this.importPos(loc)">
+                                <i class="fa fa-upload me-1"/>Import POS · <t t-esc="loc.pos_missing_label"/>
+                            </button>
+                        </div>
+                    </div>
+                    <div t-if="posMissing.length and !canImportAll" class="small text-muted mt-2">
+                        POS sales not in yet for <t t-esc="posMissingNames"/>: a manager imports them.
                     </div>
                 </t>
 
-                <t t-if="anyCounted" t-call="odin_bar_desk.Step">
-                    <t t-set="num" t-value="4"/>
-                    <t t-set="title" t-value="'Differences'"/>
-                    <t t-set="done" t-value="countsDone and !home.unresolved"/>
-                    <t t-set="status" t-value="home.unresolved ? home.unresolved + ' to explain' : (home.differences ? 'All explained' : 'None so far')"/>
-                    <button t-if="home.differences and !home.approved" class="btn o_bar_desk_big w-100"
-                            t-att-class="home.unresolved ? 'btn-warning' : 'btn-outline-secondary'"
-                            t-on-click="() => this.open('differences')">
-                        <t t-if="home.unresolved">Explain <t t-esc="home.unresolved"/> difference<t t-if="home.unresolved > 1">s</t></t>
-                        <t t-else="">Review differences</t>
-                    </button>
-                    <div t-elif="!home.differences" class="small text-muted">Every count so far matches what was expected.</div>
-                </t>
-
                 <t t-call="odin_bar_desk.Step">
-                    <t t-set="num" t-value="anyCounted ? 5 : 4"/>
+                    <t t-set="num" t-value="3"/>
                     <t t-set="title" t-value="'Approve'"/>
                     <t t-set="done" t-value="home.approved"/>
                     <t t-set="status" t-value="''"/>
@@ -126,21 +105,19 @@
 
                 <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
 
-                <div class="o_bar_desk_tiles o_bar_desk_tiles_small mt-3">
-                    <button t-if="home.store_id" class="o_bar_desk_tile" t-on-click="() => this.open('receive')">
-                        <i class="fa fa-download o_bar_desk_tile_icon"/>
-                        <span class="o_bar_desk_tile_label">Supplier delivery</span>
-                        <span class="o_bar_desk_tile_sub" t-esc="home.receipts ? home.receipts + ' expected' : 'Into the store'"/>
-                        <span t-if="home.receipts" class="o_bar_desk_badge" t-esc="home.receipts"/>
-                    </button>
-                    <button class="o_bar_desk_tile" t-on-click="() => this.open('levels')">
-                        <i class="fa fa-bar-chart o_bar_desk_tile_icon"/>
-                        <span class="o_bar_desk_tile_label">Stock levels</span>
-                        <span class="o_bar_desk_tile_sub">Every location, against par</span>
-                    </button>
-                </div>
             </t>
             <div t-else="" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
         </div>
+        <nav t-if="home" class="o_bar_desk_footer o_bar_desk_tabbar" aria-label="More">
+            <button class="o_bar_desk_tab" t-on-click="() => this.open('levels')">
+                <i class="fa fa-bar-chart"/>
+                <span>Stock levels</span>
+            </button>
+            <button t-if="home.store_id" class="o_bar_desk_tab" t-on-click="() => this.open('receive')">
+                <i class="fa fa-truck"/>
+                <span>Supplier delivery</span>
+                <span t-if="home.receipts" class="o_bar_desk_badge" t-esc="home.receipts"/>
+            </button>
+        </nav>
     </t>
 </templates>

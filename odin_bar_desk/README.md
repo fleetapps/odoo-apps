@@ -16,16 +16,15 @@ Odoo 19 Community. Depends on `odin_bar_base`, `hr` and `purchase_stock`.
 > = the stock expected this morning. Counted − expected = the difference to explain.
 
 Each morning the controller closes the day before on the Desk's **day
-sheet**, in five steps that each show whether they are done:
+sheet**, in three steps that each show whether they are done:
 
-1. **POS sales**: yesterday's POS report imported for every bar (*Bar
-   Control → POS import*; the Desk shows which are missing and, for a
-   manager, opens the import).
-2. **Moves**: what the paper sheet says moved between the store and the
+1. **Moves**: what the paper sheet says moved between the store and the
    bars, or out of the club.
-3. **Counts**: every location, each line showing what is expected.
-4. **Differences**: a reason for each.
-5. **Approve**: the differences are posted to stock under their reasons.
+2. **Counts**: a card per location. Each card shows whether that bar's POS
+   sales are in (a manager imports a missing day from the card), then its
+   count, each line showing what is expected, then a reason for each
+   difference.
+3. **Approve**: the differences are posted to stock under their reasons.
 
 ## Who sees what
 
@@ -85,16 +84,14 @@ sheet**, in five steps that each show whether they are done:
 (on a shared tablet: your PIN). One sign-in covers every location. After 10
 minutes without a touch the Desk locks itself.
 
-**The day sheet.** It opens on yesterday (*Closing Sun 27 Sep*); the chips
-on top reach the three days before and today. A tick marks an approved day.
+**The day sheet.** It opens on yesterday (*Closing Sun 27 Sep*); the day
+chips on top reach the three days before and today. A tick marks an approved
+day. **Stock levels** and **Supplier delivery** sit in the bar at the bottom.
 
-**1. POS sales.** A chip per bar: green when the day's POS sales are in.
-Counting does not wait for them, but approval does.
-
-**2. Log a move** (from the paper sheet)
-1. **From**: Main Store, Bulls Eye, Banda Bar or Main Bar. **To**: another
-   location, or *Out of the club*: Roma, Event, Unpaid bill (asks for the
-   member).
+**1. Log a move** (from the paper sheet)
+1. **From** starts on Main Store; **To**: another location, or *Out of the
+   club*: Roma, Event, Unpaid bill (asks for the member). **Swap** turns the
+   move round. The product list shows what the From location holds.
 2. **When**: *Sun 27 Sep (before the count)*, the default while yesterday is
    open: the counts expect it. *Today (after the count)* for stock that moved
    after the locations were counted.
@@ -103,7 +100,11 @@ Counting does not wait for them, but approval does.
 
 *Training line: "From, to, items, Save."*
 
-**3. Counts.** Tap a location card.
+**2. Counts.** A card per location says where it stands: *Not counted*,
+*Counting · 12/40*, *2 of 3 to explain*, *Counted · matches*, and whether its
+POS sales are in (**POS ✓**, or **No POS** with an **Import POS** button for a
+manager). Counting does not wait for the POS sales, but approval does. Tap a
+card to count it, or, once counted, to explain its differences.
 1. The list follows the paper sheet. Each line shows **Expected 182 tots ·
    had 125 · moved +66 · sold 9**: the last count, what moved in or out since,
    what the POS sold.
@@ -118,8 +119,9 @@ Counting does not wait for them, but approval does.
 
 *Training line: "Same when it matches, count it when it doesn't."*
 
-**4. Differences.** Every line that differs, with its value. Tap one and
-pick why:
+**Differences** (from a counted card, or straight after *Finish count*).
+Every line that differs, with its value; the chips on top switch between
+locations or show them all. Tap one and pick why:
 - **Breakage, Spillage, Complimentary, Staff drink, POS error, Unexplained**:
   recorded (with an optional note) and posted under that reason at approval.
   Nobody is charged.
@@ -131,11 +133,12 @@ When one location is short by exactly what another has too much of (a crate
 of Tusker gone from Bulls Eye, a crate too many at Main Bar), the screen
 suggests the missed move: **Record BE → MB** fixes both lines.
 
-**5. Approve.** Enabled once the POS sales are in, every location is
+**3. Approve.** Enabled once the POS sales are in, every location is
 counted and every difference has a reason. Any manager can approve. The
 differences are posted to stock, dated when each location was counted.
 
-**Supplier delivery** (at the store), with the supplier's invoice in hand:
+**Supplier delivery** (at the store), with the supplier's invoice in hand.
+It opens on the deliveries expected, or straight on the suppliers when none is:
 1. **New supplier delivery**, then the supplier. Each shows what it supplies.
 2. Optional: **Add a photo of the invoice**. It is kept on the bill.
 3. **What's on the invoice**: each item and its quantity (crates, bottles).
