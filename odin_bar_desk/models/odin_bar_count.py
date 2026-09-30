@@ -10,14 +10,16 @@ MANAGER_GROUP = "odin_bar_desk.group_bar_desk_manager"
 
 
 class OdinBarCount(models.Model):
-    """A blind stock count taken at a bar or the store.
+    """A stock count taken at a bar or the store.
 
-    A closing count covers every product on the bar's count sheet at the end
-    of a trading day; a spot count covers a few products at any time. Staff
-    never see expected quantities. On approval the expected quantity is worked
-    out as it stood when the count was submitted, and only the difference is
-    posted, so stock that moved after the count (the next morning's delivery,
-    say) is kept.
+    A closing count covers every product on the location's count sheet for a
+    trading day; the stock controller takes it the next morning, seeing for
+    each line the quantity expected (the last count, plus what moved in, less
+    what moved out and what the POS sold). A spot count covers a few products
+    at any time. Every difference gets a reason before approval; approval
+    works the expected quantity out as it stood when the count was submitted
+    and posts only the difference, so stock that moved after the count is
+    kept.
     """
 
     _name = "odin.bar.count"
@@ -143,7 +145,46 @@ class OdinBarCount(models.Model):
                 "Approve or cancel %(count)s first: counts are approved in the order they were taken.",
                 count=earlier.name,
             )
+        # After the earlier counts, since approving them changes what this one expects.
+        unresolved = self._unresolved_lines()
+        if unresolved:
+            return _(
+                "%(count)s: give a reason for %(lines)s difference(s) before approving.",
+                count=self.name,
+                lines=len(unresolved),
+            )
         return False
+
+    def _variances(self):
+        """{line: difference in the product's unit} for the entered lines of
+        this submitted count, against the stock expected when it was
+        submitted. Lines the POS sold that day are left out of a spot count."""
+        self.ensure_one()
+        lines = self.line_ids.filtered("touched")
+        if self.state not in ("submitted", "recount") or not lines:
+            return {}
+        sold = self._pos_sold_products(lines.product_id)
+        expected = self.bar_id._stock_as_of(
+            lines.product_id - sold, self.submitted_at, self.business_date, closing=self.kind == "closing"
+        )
+        result = {}
+        for line in lines:
+            if line.product_id in sold:
+                continue
+            uom = line.product_id.uom_id
+            result[line] = uom.round(line.counted_qty - expected.get(line.product_id.id, 0.0))
+        return result
+
+    def _unresolved_lines(self):
+        """Lines that differ from the expected quantity and have no reason yet."""
+        self.ensure_one()
+        return self.env["odin.bar.count.line"].union(
+            *[
+                line
+                for line, diff in self._variances().items()
+                if not line.product_id.uom_id.is_zero(diff) and not line.variance_reason_id
+            ]
+        )
 
     def _pos_sold_products(self, products):
         """Products a spot count leaves alone: the POS sold them at the bar
@@ -206,7 +247,12 @@ class OdinBarCount(models.Model):
             self.business_date,
             closing=self.kind == "closing",
         )
-        diffs = {}
+        breakdown = (
+            self.bar_id._count_breakdown(lines.product_id - sold, self.business_date, self.submitted_at)
+            if self.kind == "closing"
+            else {}
+        )
+        diffs, reasons = {}, {}
         for line in lines:
             product = line.product_id.with_company(company)
             cost = product.standard_price
@@ -217,9 +263,13 @@ class OdinBarCount(models.Model):
                 continue
             expected_qty = expected.get(product.id, 0.0)
             diff = product.uom_id.round(line.counted_qty - expected_qty)
+            parts = breakdown.get(product.id, {})
             line.write(
                 {
                     "expected_qty": expected_qty,
+                    "opening_qty": parts.get("opening", 0.0),
+                    "moved_qty": parts.get("moved", 0.0),
+                    "sold_qty": parts.get("sold", 0.0),
                     "diff_qty": diff,
                     "unit_cost": cost,
                     "diff_value": company.currency_id.round(diff * cost),
@@ -228,12 +278,13 @@ class OdinBarCount(models.Model):
             )
             if not product.uom_id.is_zero(diff):
                 diffs[product] = diff
-        self._create_adjustment_moves(diffs, self.name)
+                reasons[product] = line.variance_reason_id
+        self._create_adjustment_moves(diffs, self.name, reasons)
         self.write(
             {"state": "approved", "approved_by_id": self.env.uid, "approved_at": fields.Datetime.now()}
         )
 
-    def _create_adjustment_moves(self, diffs, name):
+    def _create_adjustment_moves(self, diffs, name, reasons=None):
         """Inventory moves changing the bar's stock by ``diffs`` ({product:
         signed quantity in its unit}), dated when the count was submitted, so
         later counts see them in their own "as of" position whatever order
@@ -265,6 +316,7 @@ class OdinBarCount(models.Model):
                     "inventory_name": name,
                     "picked": True,
                     "bar_count_id": self.id,
+                    "bar_variance_reason_id": (reasons or {}).get(product, self.env["odin.bar.variance.reason"]).id,
                     "move_line_ids": [
                         (
                             0,
@@ -312,7 +364,16 @@ class OdinBarCount(models.Model):
                 _("%(count)s (reopened)", count=count.name),
             )
             count.line_ids.write(
-                {"expected_qty": 0.0, "diff_qty": 0.0, "unit_cost": 0.0, "diff_value": 0.0, "skipped": False}
+                {
+                    "expected_qty": 0.0,
+                    "opening_qty": 0.0,
+                    "moved_qty": 0.0,
+                    "sold_qty": 0.0,
+                    "diff_qty": 0.0,
+                    "unit_cost": 0.0,
+                    "diff_value": 0.0,
+                    "skipped": False,
+                }
             )
             count.write({"state": "submitted", "approved_by_id": False, "approved_at": False})
             count.message_post(body=reason)
@@ -371,6 +432,23 @@ class OdinBarCountLine(models.Model):
     )
     counted_display = fields.Char("Counted as", compute="_compute_counted_display")
     expected_qty = fields.Float("Expected", readonly=True, digits="Product Unit")
+    opening_qty = fields.Float(
+        "Opening", readonly=True, digits="Product Unit", help="Stock at the previous count."
+    )
+    moved_qty = fields.Float(
+        "Moved", readonly=True, digits="Product Unit", help="Moved in (+) or out (-) since the previous count."
+    )
+    sold_qty = fields.Float("Sold", readonly=True, digits="Product Unit", help="POS sales of the trading day.")
+    accepted_expected = fields.Boolean(
+        "Tapped Same",
+        help="The line was filled in with the Same button (counted as expected) rather than typed.",
+    )
+    recounted = fields.Boolean("Corrected", help="The count of this line was corrected after it was submitted.")
+    variance_reason_id = fields.Many2one(
+        "odin.bar.variance.reason", string="Reason", index="btree_not_null", check_company=True
+    )
+    variance_note = fields.Char("Note")
+    employee_id = fields.Many2one(related="count_id.employee_id", string="Counted by", store=True)
     diff_qty = fields.Float("Difference", readonly=True, digits="Product Unit")
     unit_cost = fields.Float("Unit cost", readonly=True, digits="Product Price")
     diff_value = fields.Monetary("Variance", readonly=True, currency_field="currency_id")

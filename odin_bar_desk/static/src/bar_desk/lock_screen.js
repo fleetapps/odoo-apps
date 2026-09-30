@@ -78,9 +78,4 @@ export class LockScreen extends Component {
             this.state.busy = false;
         }
     }
-
-    async switchBar(ev) {
-        await this.props.app.switchBar(parseInt(ev.target.value));
-        this.notMe();
-    }
 }

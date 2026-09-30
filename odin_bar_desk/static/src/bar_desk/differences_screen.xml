@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.DifferencesScreen">
+        <div class="o_bar_desk_body">
+            <div t-if="state.loading" class="text-center text-muted py-5"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+            <t t-else="">
+                <div t-if="locations.length > 1" class="o_bar_desk_chips mb-2">
+                    <button class="btn o_bar_desk_chip" t-att-class="!state.locationId ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.locationId = null">All</button>
+                    <button t-foreach="locations" t-as="loc" t-key="loc.id" class="btn o_bar_desk_chip"
+                            t-att-class="state.locationId === loc.id ? 'btn-primary' : 'btn-outline-secondary'"
+                            t-on-click="() => this.state.locationId = loc.id" t-esc="loc.name"/>
+                </div>
+                <p class="small text-muted mb-2">
+                    <t t-if="unresolved"><t t-esc="unresolved"/> left to explain. Tap a line, then why.</t>
+                    <t t-elif="state.lines.length">Every difference has a reason.</t>
+                </p>
+
+                <div t-foreach="suggestions" t-as="suggestion" t-key="suggestion_index" class="o_bar_desk_suggestion">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold"><i class="fa fa-lightbulb-o me-1"/>A move nobody logged?</div>
+                        <div class="small">
+                            <t t-esc="suggestion.product.name"/>: <t t-esc="suggestion.from.name"/> is short
+                            <t t-esc="suggestion.label"/>, <t t-esc="suggestion.to.name"/> has <t t-esc="suggestion.label"/> too many.
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" t-att-disabled="state.busy" t-on-click="() => this.acceptSuggestion(suggestion)">
+                        Record <t t-esc="suggestion.from.code"/> → <t t-esc="suggestion.to.code"/>
+                    </button>
+                </div>
+
+                <div t-if="!lines.length" class="text-muted text-center py-4">No differences.</div>
+                <div t-foreach="lines" t-as="line" t-key="line.line_id" class="o_bar_desk_diff"
+                     t-att-class="{'o_done': line.reason_id, 'o_open': state.openLine === line.line_id}">
+                    <button class="o_bar_desk_diff_main" t-on-click="() => this.toggle(line)">
+                        <span class="o_bar_desk_line_text">
+                            <span class="o_bar_desk_line_name"><t t-esc="line.name"/></span>
+                            <span class="o_bar_desk_line_hint">
+                                <t t-esc="line.bar.code"/> · expected <t t-esc="line.expectedLabel"/> · counted <t t-esc="line.countedDetail"/>
+                                <t t-if="line.recounted"> · corrected</t>
+                                <t t-if="line.accepted"> · tapped Same</t>
+                            </span>
+                            <span t-if="line.reasonName" class="o_bar_desk_diff_reason">
+                                <i class="fa fa-check me-1"/><t t-esc="line.reasonName"/>
+                                <t t-if="line.note"> · <t t-esc="line.note"/></t>
+                            </span>
+                        </span>
+                        <span class="o_bar_desk_line_qty text-end">
+                            <span t-att-class="line.diff &lt; 0 ? 'text-danger' : 'text-success'" t-esc="line.diffLabel"/>
+                            <span class="d-block small text-muted fw-normal"><t t-esc="desk.home.currency"/> <t t-esc="money(line.value)"/></span>
+                        </span>
+                    </button>
+                    <div t-if="state.openLine === line.line_id" class="o_bar_desk_diff_body">
+                        <div class="o_bar_desk_reasons">
+                            <button t-foreach="reasons" t-as="reason" t-key="reason.id" class="btn o_bar_desk_reason"
+                                    t-att-class="line.reason_id === reason.id ? 'btn-primary' : 'btn-outline-secondary'"
+                                    t-on-click="() => this.explain(line, reason)">
+                                <i t-attf-class="fa {{ reason.icon }}"/>
+                                <span t-esc="reason.name"/>
+                            </button>
+                        </div>
+                        <input t-if="line.reason_id" type="text" class="form-control mt-2" placeholder="Note (optional)"
+                               aria-label="Note" t-att-value="line.note" t-on-change="(ev) => this.saveNote(line, ev)"/>
+                    </div>
+                </div>
+            </t>
+            <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
+        </div>
+        <div class="o_bar_desk_footer">
+            <button class="btn o_bar_desk_big w-100" t-att-class="unresolved ? 'btn-outline-secondary' : 'btn-primary'"
+                    t-on-click="done">
+                <t t-if="unresolved">Back to the day (<t t-esc="unresolved"/> left)</t>
+                <t t-else="">Done</t>
+            </button>
+        </div>
+        <Keypad t-if="state.keypad" t-key="state.keypad.line.line_id" product="state.keypad.product" mode="'count'"
+                value="state.keypad.value" hint="'Correct the count. The line is checked again.'"
+                onConfirm.bind="confirmRecount" onClose="() => this.state.keypad = null"/>
+    </t>
+</templates>

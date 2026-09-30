@@ -29,6 +29,14 @@ class ProductTemplate(models.Model):
     tots_per_bottle = fields.Float(
         "Tots per bottle", compute="_compute_tots_per_bottle", digits="Product Unit"
     )
+    bar_bulk_uom_id = fields.Many2one(
+        "uom.uom",
+        "Bulk unit",
+        compute="_compute_bar_bulk_uom_id",
+        store=True,
+        help="Unit stock reports and par levels read in: the counting bottle for "
+        "spirits, the smallest crate for beer and sodas, none for the rest.",
+    )
 
     def _bar_pack_uoms(self):
         """Packagings holding several stock units, smallest first: bottle sizes
@@ -54,6 +62,11 @@ class ProductTemplate(models.Model):
                 template.bar_bottle_uom_id = False
             else:
                 template.bar_bottle_uom_id = packs[:1]
+
+    @api.depends("bar_bottle_uom_id", "uom_id", "uom_ids")
+    def _compute_bar_bulk_uom_id(self):
+        for template in self:
+            template.bar_bulk_uom_id = template.bar_bottle_uom_id or template._bar_pack_uoms()[:1]
 
     @api.depends("bar_bottle_uom_id", "uom_id")
     def _compute_tots_per_bottle(self):

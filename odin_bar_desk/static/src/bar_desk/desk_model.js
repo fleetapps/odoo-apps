@@ -107,6 +107,8 @@ export class DeskModel {
             token: null,
             catalog: null,
             home: null,
+            // Trading day the day sheet shows; null means the server's default (yesterday).
+            day: null,
             outbox: readJSON(browser.localStorage, this.outboxKey, []),
             sending: false,
         });
@@ -117,10 +119,6 @@ export class DeskModel {
     destroy() {
         browser.removeEventListener("online", this.onOnline);
         browser.clearTimeout(this.retryTimer);
-    }
-
-    get isStore() {
-        return this.state.bar?.kind === "store";
     }
 
     call(method, kwargs = {}) {
@@ -209,7 +207,7 @@ export class DeskModel {
     async signIn(token, employee) {
         const kwargs = { bar_id: this.state.bar.id, token };
         const [home, catalog] = await Promise.all([
-            this.call("desk_home", kwargs),
+            this.call("desk_home", { ...kwargs, business_date: this.state.day || false }),
             this.call("desk_catalog", kwargs),
         ]);
         this.productsById = new Map(catalog.products.map((product) => [product.id, product]));
@@ -234,8 +232,27 @@ export class DeskModel {
     }
 
     async loadHome() {
-        this.state.home = await this.fetch("desk_home");
+        this.state.home = await this.fetch("desk_home", { business_date: this.state.day || false });
         this.state.bar = this.state.home.bar;
+    }
+
+    /** Show another trading day on the day sheet. */
+    async setDay(date) {
+        this.state.day = date;
+        await this.loadHome();
+    }
+
+    /** The trading day on screen, as the server named it. */
+    get dayDate() {
+        return this.state.home?.day.date;
+    }
+
+    location(barId) {
+        return (this.state.catalog?.locations || []).find((location) => location.id === barId);
+    }
+
+    varianceReason(reasonId) {
+        return (this.state.catalog?.variance_reasons || []).find((reason) => reason.id === reasonId);
     }
 
     product(productId) {
@@ -263,7 +280,7 @@ export class DeskModel {
             label,
             created: Date.now(),
             employee: this.state.employee?.name,
-            kwargs: { ...kwargs, uuid, bar_id: this.state.bar.id, token: this.state.token },
+            kwargs: { bar_id: this.state.bar.id, ...kwargs, uuid, token: this.state.token },
         };
         this.state.outbox.push(entry);
         this.saveOutbox();

@@ -39,22 +39,26 @@ class TestCountApproval(BarDeskCase):
                     self.count_line(self.jameson, bottles={self.uom_750: 1}, open_tots=10),
                     self.count_line(self.tusker, units=40),
                 ],
+                DAY1,
             )
         with freeze_time("2026-09-28 06:00:00"):  # 09:00 next morning: store delivery, then the day's POS
+            self.device_store.odin_bar_ids = self.bar_be
+            self.sam.odin_bar_ids |= self.bar_be
             token = self.login(self.device_store, self.store, self.sam, "4321")
-            self.desk(self.device_store).desk_store_send(
+            self.desk(self.device_store).desk_move(
                 self.store.id,
                 token,
                 self.uuid(),
-                self.bar_be.id,
+                self.store.id,
                 [
                     {"product_id": self.jameson.id, "uom_id": self.uom_1l.id, "qty": 2},
                     {"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 1},
                 ],
+                to_bar_id=self.bar_be.id,
             )
             self.pos_sales(self.bar_be, DAY1, [(self.jameson, 12), (self.tusker, 8)])
         with freeze_time("2026-09-28 07:00:00"):
-            count.with_user(self.manager).action_approve()
+            self.approve(count)
 
         self.assertEqual(count.state, "approved")
         self.assertEqual(count.approved_by_id, self.manager)
@@ -84,12 +88,12 @@ class TestCountApproval(BarDeskCase):
             self.pos_sales(self.bar_bb, DAY1, [(self.jameson, 30)])
         with freeze_time("2026-09-27 20:00:00"):
             counted = [self.count_line(self.jameson, bottles={self.uom_750: 2}, open_tots=18)]
-            count_be = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", counted)
-            count_bb = self.submit_count(self.device_bb, self.bar_bb, self.john, "5678", counted)
+            count_be = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", counted, DAY1)
+            count_bb = self.submit_count(self.device_bb, self.bar_bb, self.john, "5678", counted, DAY1)
         with freeze_time("2026-09-28 06:00:00"):  # BE's import runs the next morning
             self.pos_sales(self.bar_be, DAY1, [(self.jameson, 30)])
         with freeze_time("2026-09-28 07:00:00"):
-            (count_be | count_bb).with_user(self.manager).action_approve()
+            self.approve(count_be | count_bb)
 
         for count, location in ((count_be, self.loc_be), (count_bb, self.loc_bb)):
             line = self.line(count, self.jameson)
@@ -104,7 +108,7 @@ class TestCountApproval(BarDeskCase):
             self.opening_stock(self.loc_be, [(self.jameson, 100)])
         with freeze_time("2026-09-27 20:00:00"):
             count = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=90)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=90)], DAY1
             )
         with freeze_time("2026-09-29 06:00:00"):
             self.pos_sales(self.bar_be, DAY1, [(self.jameson, 10)])
@@ -114,31 +118,9 @@ class TestCountApproval(BarDeskCase):
         self.assertEqual(self.line(count, self.jameson).diff_qty, 0)
         self.assertEqual(self.qty(self.jameson, self.loc_be), 65)
 
-    def test_spot_count_only_adjusts_counted_items(self):
-        with freeze_time("2026-09-27 05:00:00"):
-            self.opening_stock(self.loc_be, [(self.jameson, 50), (self.gordons, 25), (self.tusker, 24)])
-        with freeze_time("2026-09-27 15:00:00"):  # 18:00, mid-shift
-            count = self.submit_count(
-                self.device_be,
-                self.bar_be,
-                self.mary,
-                "1234",
-                [self.count_line(self.jameson, bottles={self.uom_750: 1}, open_tots=20)],
-                kind="spot",
-            )
-        self.assertEqual(count.kind, "spot")
-        self.assertEqual(count.line_ids.product_id, self.jameson)
-        self.bar_be._mark_pos_posted(DAY1, no_sales=True)
-        with freeze_time("2026-09-28 06:00:00"):
-            count.with_user(self.manager).action_approve()
-        self.assertEqual(count.move_ids.product_id, self.jameson)
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 45)
-        self.assertEqual(self.qty(self.gordons, self.loc_be), 25)
-        self.assertEqual(self.qty(self.tusker, self.loc_be), 24)
-
     def test_closing_approval_waits_for_the_pos_import(self):
         with freeze_time("2026-09-27 20:00:00"):
-            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
         count = count.with_user(self.manager)
         message = "Post the POS import for Bulls Eye on Sun 27 Sep before approving this count."
         self.assertEqual(count.approve_blocked_reason, message)
@@ -156,9 +138,9 @@ class TestCountApproval(BarDeskCase):
         with freeze_time("2026-09-27 12:00:00"):
             self.opening_stock(self.loc_store, [(self.tusker, 100)])
             count = self.submit_count(
-                self.device_store, self.store, self.sam, "4321", [self.count_line(self.tusker, units=96)]
+                self.device_store, self.store, self.sam, "4321", [self.count_line(self.tusker, units=96)], DAY1
             )
-            count.with_user(self.manager).action_approve()
+            self.approve(count)
         self.assertEqual(self.qty(self.tusker, self.loc_store), 96)
 
     def test_counts_are_approved_in_order(self):
@@ -170,18 +152,18 @@ class TestCountApproval(BarDeskCase):
             self.opening_stock(self.loc_be, [(self.jameson, 50)])
         with freeze_time("2026-09-27 20:00:00"):
             first_day = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=45)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=45)], DAY1
             )
         with freeze_time("2026-09-28 20:00:00"):
             second_day = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=45)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=45)], DAY2
             )
         second_day = second_day.with_user(self.manager)
         self.assertIn(first_day.name, second_day.approve_blocked_reason)
         with self.assertRaisesRegex(UserError, "first"):
             second_day.action_approve()
         with freeze_time("2026-09-29 07:00:00"):
-            first_day.with_user(self.manager).action_approve()
+            self.approve(first_day)
             second_day.invalidate_recordset(["approve_blocked_reason"])
             second_day.action_approve()
         self.assertEqual(self.line(first_day, self.jameson).diff_qty, -5)
@@ -192,9 +174,9 @@ class TestCountApproval(BarDeskCase):
     def test_one_approved_closing_count_per_bar_and_day(self):
         self.bar_be._mark_pos_posted(DAY1)
         with freeze_time("2026-09-27 20:00:00"):
-            first = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            first = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
         with freeze_time("2026-09-27 20:30:00"):
-            second = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            second = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
         # The new closing count replaces the one still waiting.
         self.assertEqual(first.state, "cancel")
         self.assertEqual(first.replaced_by_id, second)
@@ -202,7 +184,7 @@ class TestCountApproval(BarDeskCase):
         with freeze_time("2026-09-27 21:00:00"):
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
             with self.assertRaisesRegex(UserError, "already approved"):
-                self.desk(self.device_be).desk_count_start(self.bar_be.id, token)
+                self.desk(self.device_be).desk_count_start(self.bar_be.id, token, business_date=str(DAY1))
         # The database refuses a second approved closing count even if forced.
         with self.assertRaises(psycopg2.IntegrityError), mute_logger("odoo.sql_db"), self.env.cr.savepoint():
             first.sudo().write({"state": "approved"})
@@ -210,14 +192,14 @@ class TestCountApproval(BarDeskCase):
 
     def test_recount_is_replaced_by_the_new_count(self):
         with freeze_time("2026-09-27 20:00:00"):
-            first = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            first = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
             first.with_user(self.manager).action_request_recount()
             self.assertEqual(first.state, "recount")
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
-            home = self.desk(self.device_be).desk_home(self.bar_be.id, token)
-            self.assertEqual(home["count"]["recounts"][0]["business_date"], "2026-09-27")
+            home = self.desk(self.device_be).desk_home(self.bar_be.id, token, str(DAY1))
+            self.assertEqual(home["locations"][0]["state"], "recount")
         with freeze_time("2026-09-27 21:00:00"):
-            second = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            second = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
         self.assertEqual(first.state, "cancel")
         self.assertEqual(first.replaced_by_id, second)
         self.assertEqual(second.state, "submitted")
@@ -226,7 +208,7 @@ class TestCountApproval(BarDeskCase):
         with freeze_time("2026-09-27 20:00:00"):
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
             desk = self.desk(self.device_be)
-            data = desk.desk_count_start(self.bar_be.id, token)
+            data = desk.desk_count_start(self.bar_be.id, token, business_date=str(DAY1))
             self.assertEqual(len(data["lines"]), 3)
             with self.assertRaisesRegex(UserError, "2 items are not counted yet"):
                 desk.desk_count_submit(
@@ -242,15 +224,18 @@ class TestCountApproval(BarDeskCase):
             )
         self.assertEqual(self.env["odin.bar.count"].browse(data["id"]).state, "submitted")
 
-    def test_count_is_blind_and_resumable(self):
+    def test_count_shows_expected_and_is_resumable(self):
         with freeze_time("2026-09-27 05:00:00"):
             self.opening_stock(self.loc_be, [(self.jameson, 50)])
-        with freeze_time("2026-09-27 20:00:00"):
+        with freeze_time("2026-09-28 07:00:00"):  # 10:00 the next morning
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
             desk = self.desk(self.device_be)
             data = desk.desk_count_start(self.bar_be.id, token)
+            # The morning count closes yesterday by default.
             self.assertEqual(data["day_label"], "Sun 27 Sep")
-            self.assertNotIn("expected", str(data))
+            jameson = next(line for line in data["lines"] if line["product_id"] == self.jameson.id)
+            self.assertEqual(jameson["expected"], 50)
+            self.assertEqual(jameson["opening"], 50)
             desk.desk_count_save(
                 self.bar_be.id, token, data["id"], [self.count_line(self.jameson, bottles={self.uom_750: 1})]
             )
@@ -264,12 +249,15 @@ class TestCountApproval(BarDeskCase):
             self.assertNotEqual(fresh["id"], data["id"])
             self.assertEqual(self.env["odin.bar.count"].browse(data["id"]).state, "cancel")
 
-    def test_counts_before_six_belong_to_the_previous_day(self):
-        with freeze_time("2026-09-27 23:30:00"):  # 02:30 on the 28th at the bar
+    def test_only_recent_days_can_be_counted(self):
+        with freeze_time("2026-09-28 07:00:00"):
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
-            data = self.desk(self.device_be).desk_count_start(self.bar_be.id, token)
-        self.assertEqual(data["business_date"], "2026-09-27")
-        self.assertEqual(data["day_label"], "Sun 27 Sep")
+            desk = self.desk(self.device_be)
+            self.assertEqual(desk.desk_count_start(self.bar_be.id, token, "2026-09-25")["business_date"], "2026-09-25")
+            with self.assertRaisesRegex(UserError, "last 3 trading days"):
+                desk.desk_count_start(self.bar_be.id, token, "2026-09-24")
+            with self.assertRaisesRegex(UserError, "last 3 trading days"):
+                desk.desk_count_start(self.bar_be.id, token, "2026-09-29")
 
     def test_full_bottles_of_several_sizes(self):
         with freeze_time("2026-09-27 20:00:00"):
@@ -279,6 +267,7 @@ class TestCountApproval(BarDeskCase):
                 self.mary,
                 "1234",
                 [self.count_line(self.jameson, bottles={self.uom_750: 2, self.uom_1l: 1}, open_tots=5)],
+                DAY1,
             )
         line = self.line(count, self.jameson)
         self.assertEqual(line.full_bottles, 3)

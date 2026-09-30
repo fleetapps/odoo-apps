@@ -1,3 +1,5 @@
+from datetime import date
+
 import psycopg2
 
 from odoo import Command
@@ -6,6 +8,8 @@ from odoo.tests import freeze_time, tagged
 from odoo.tools import mute_logger
 
 from .common import BarDeskCase
+
+DAY1 = date(2026, 9, 27)  # a Sunday
 
 
 @tagged("post_install", "-at_install")
@@ -19,243 +23,133 @@ class TestDeskFlows(BarDeskCase):
         super().setUp()
         self.opening_stock(self.loc_store, [(self.jameson, 1000), (self.gordons, 500), (self.tusker, 480)])
         self.opening_stock(self.loc_be, [(self.jameson, 100), (self.tusker, 48)])
-        self.be_token = self.login(self.device_be, self.bar_be, self.mary, "1234")
-        self.bb_token = self.login(self.device_bb, self.bar_bb, self.john, "5678")
+        self.token = self.controller_token()
         self.store_token = self.login(self.device_store, self.store, self.sam, "4321")
 
-    def stock_out(self, reason_code, lines, request=None, **kwargs):
-        return self.desk(self.device_be).desk_stock_out(
-            self.bar_be.id, self.be_token, request or self.uuid(), self.reasons[reason_code].id, lines, **kwargs
-        )
-
-    def send_to_be(self, lines):
-        result = self.desk(self.device_store).desk_store_send(
-            self.store.id, self.store_token, self.uuid(), self.bar_be.id, lines
+    def move(self, source, lines, to=None, reason=None, request=None, **kwargs):
+        result = self.desk(self.controller).desk_move(
+            self.store.id,
+            self.token,
+            request or self.uuid(),
+            source.id,
+            lines,
+            to_bar_id=to.id if to else False,
+            reason_id=reason.id if reason else False,
+            **kwargs,
         )
         return self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
+
+    # ------------------------------------------------------------------
+    # Moves
+    # ------------------------------------------------------------------
+
+    def test_moves_between_locations_use_the_bars_operation_types(self):
+        lines = [{"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 2}]
+        issue = self.move(self.store, lines, to=self.bar_be)
+        back = self.move(self.bar_be, [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 1}], to=self.store)
+        across = self.move(self.bar_be, [{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": 10}], to=self.bar_bb)
+        self.assertEqual(issue.picking_type_id, self.type_iss_be)
+        self.assertEqual(back.picking_type_id, self.type_ret_be)
+        self.assertEqual(across.picking_type_id, self.type_ibt)
+        for picking in issue | back | across:
+            self.assertEqual(picking.state, "done")
+            self.assertTrue(picking.bar_manual_move)
+            self.assertEqual(picking.bar_employee_id, self.kim)
+            self.assertFalse(picking.bar_business_date)
+        self.assertEqual(across.location_id, self.loc_be)
+        self.assertEqual(across.location_dest_id, self.loc_bb)
+        self.assertEqual(self.qty(self.jameson, self.loc_be), 100 + 50 - 10)
+        self.assertEqual(self.qty(self.jameson, self.loc_bb), 10)
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 480 + 24)
+
+    def test_moves_out_of_the_club(self):
+        roma = self.move(
+            self.bar_be, [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 6}], reason=self.reasons["roma"]
+        )
+        self.assertEqual(roma.picking_type_id, self.type_roma)
+        self.assertEqual(roma.location_dest_id, self.loc_roma)
+        self.assertEqual(roma.bar_reason_id, self.reasons["roma"])
+        lines = [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 2}]
+        with self.assertRaisesRegex(UserError, "member"):
+            self.move(self.bar_be, lines, reason=self.reasons["debt"])
+        debt = self.move(self.bar_be, lines, reason=self.reasons["debt"], member_ref=" M-1024 ")
+        self.assertEqual(debt.bar_member_ref, "M-1024")
+        self.assertEqual(self.qty(self.tusker, self.loc_be), 40)
+        # Only "issue out" reasons are destinations: bar-to-bar is a location.
+        with self.assertRaisesRegex(UserError, "where the stock went"):
+            self.move(self.bar_be, lines, reason=self.reasons["transfer"])
+
+    def test_a_move_can_belong_to_the_day_being_closed(self):
+        with freeze_time("2026-09-28 07:00:00"):  # 10:00, the morning after
+            picking = self.move(
+                self.store,
+                [{"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 2}],
+                to=self.bar_be,
+                business_date=str(DAY1),
+            )
+        self.assertEqual(picking.bar_business_date, DAY1)
+        # It is not a POS sale of that day.
+        self.assertEqual(self.bar_be._pos_moved_qty(self.jameson, DAY1)[self.jameson.id], 0)
+
+    def test_no_move_into_an_approved_day(self):
+        self.bar_be._mark_pos_posted(DAY1, no_sales=True)
+        with freeze_time("2026-09-28 07:00:00"):
+            count = self.submit_count(self.controller, self.bar_be, self.kim, "9999", [], DAY1)
+            self.approve(count)
+            lines = [{"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 1}]
+            with self.assertRaisesRegex(UserError, "already approved at Bulls Eye"):
+                self.move(self.store, lines, to=self.bar_be, business_date=str(DAY1))
+            # On today it is fine.
+            self.assertTrue(self.move(self.store, lines, to=self.bar_be))
+
+    def test_moves_refuse_bad_lines(self):
+        with self.assertRaisesRegex(UserError, "not offered"):
+            self.move(self.bar_be, [{"product_id": self.not_on_desk.id, "qty": 1}], to=self.store)
+        with self.assertRaisesRegex(UserError, "not a unit"):
+            self.move(
+                self.bar_be, [{"product_id": self.tusker.id, "uom_id": self.uom_750.id, "qty": 1}], to=self.store
+            )
+        with self.assertRaisesRegex(UserError, "negative"):
+            self.move(self.bar_be, [{"product_id": self.tusker.id, "qty": -1}], to=self.store)
+        with self.assertRaisesRegex(UserError, "at least one"):
+            self.move(self.bar_be, [{"product_id": self.tusker.id, "qty": 0}], to=self.store)
+        with self.assertRaisesRegex(UserError, "another location"):
+            self.move(self.bar_be, [{"product_id": self.tusker.id, "qty": 1}], to=self.bar_be)
 
     # ------------------------------------------------------------------
     # Retries
     # ------------------------------------------------------------------
 
     def test_retry_with_the_same_request_id_posts_once(self):
-        lines = [{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": 2}]
         request = self.uuid()
-        first = self.stock_out("roma", lines, request)
-        second = self.stock_out("roma", lines, request)
+        lines = [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 3}]
+        first = self.move(self.bar_be, lines, to=self.store, request=request)
+        second = self.move(self.bar_be, lines, to=self.store, request=request)
         self.assertEqual(first, second)
+        self.assertEqual(self.qty(self.tusker, self.loc_be), 45)
         self.assertEqual(self.env["odin.bar.activity"].search_count([("uuid", "=", request)]), 1)
-        self.assertEqual(
-            self.env["stock.picking"].search_count([("bar_activity_id", "=", first["activity_id"])]), 1
-        )
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 98)
 
-    def test_retry_of_a_count_and_of_a_delivery_check(self):
-        desk_be = self.desk(self.device_be)
-        count = desk_be.desk_count_start(self.bar_be.id, self.be_token, kind="spot")
-        lines = [self.count_line(self.jameson, open_tots=99)]
+    def test_retry_of_a_count(self):
+        desk = self.desk(self.controller)
+        count = desk.desk_count_start(self.bar_be.id, self.token)
         request = self.uuid()
-        first = desk_be.desk_count_submit(self.bar_be.id, self.be_token, request, count["id"], lines)
-        second = desk_be.desk_count_submit(self.bar_be.id, self.be_token, request, count["id"], lines)
-        self.assertEqual(first, second)
-        self.assertEqual(self.env["odin.bar.activity"].search_count([("count_id", "=", count["id"])]), 1)
-
-        delivery = self.send_to_be([{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 1}])
-        request = self.uuid()
-        received = {delivery.move_ids.id: 20}
-        first = desk_be.desk_delivery_check(self.bar_be.id, self.be_token, request, delivery.id, received)
-        second = desk_be.desk_delivery_check(self.bar_be.id, self.be_token, request, delivery.id, received)
-        self.assertEqual(first, second)
-        self.assertEqual(len(delivery.bar_dispute_ids), 1)
+        lines = [self.count_line(self.jameson, open_tots=100), self.count_line(self.gordons), self.count_line(self.tusker, units=48)]
+        first = desk.desk_count_submit(self.bar_be.id, self.token, request, count["id"], lines)
+        second = desk.desk_count_submit(self.bar_be.id, self.token, request, count["id"], lines)
+        self.assertEqual(first["activity_id"], second["activity_id"])
 
     def test_a_request_id_is_unique_in_the_database(self):
         request = self.uuid()
-        activity = self.env["odin.bar.activity"].create({"kind": "ack", "bar_id": self.bar_be.id, "uuid": request})
-        # A concurrent duplicate cannot see the first row yet: it hits the
-        # unique index and is retried in a fresh transaction, which replays.
+        activity = self.env["odin.bar.desk"]._desk_begin(request, {"kind": "move", "bar_id": self.bar_be.id})
         with self.assertRaises(ConcurrencyError), mute_logger("odoo.sql_db"):
-            self.env["odin.bar.desk"]._desk_begin(request, {"kind": "ack", "bar_id": self.bar_be.id})
+            self.env["odin.bar.desk"]._desk_begin(request, {"kind": "move", "bar_id": self.bar_be.id})
         self.assertEqual(self.env["odin.bar.desk"]._desk_replay(request), activity)
         with self.assertRaises(psycopg2.IntegrityError), mute_logger("odoo.sql_db"), self.env.cr.savepoint():
-            self.env["odin.bar.activity"].create({"kind": "ack", "bar_id": self.bar_bb.id, "uuid": request})
+            self.env["odin.bar.activity"].create({"kind": "move", "bar_id": self.bar_be.id, "uuid": request})
+            self.env.flush_all()
 
     # ------------------------------------------------------------------
-    # Stock out
-    # ------------------------------------------------------------------
-
-    def test_issue_out_reasons_post_validated_transfers(self):
-        result = self.stock_out(
-            "roma",
-            [
-                {"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 1},
-                {"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 6},
-            ],
-        )
-        picking = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
-        self.assertEqual(picking.state, "done")
-        self.assertEqual(picking.picking_type_id, self.type_roma)
-        self.assertEqual(picking.location_id, self.loc_be)
-        self.assertEqual(picking.location_dest_id, self.loc_roma)
-        self.assertEqual(picking.bar_employee_id, self.mary)
-        self.assertEqual(picking.bar_reason_id, self.reasons["roma"])
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 75)
-        self.assertEqual(self.qty(self.tusker, self.loc_be), 42)
-        activity = self.env["odin.bar.activity"].browse(result["activity_id"])
-        self.assertAlmostEqual(activity.amount, 25 * 80.0 + 6 * 150.0)
-
-    def test_unpaid_bill_needs_a_member(self):
-        lines = [{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": 3}]
-        with self.assertRaisesRegex(UserError, "member"):
-            self.stock_out("debt", lines)
-        result = self.stock_out("debt", lines, member_ref="M1234 Otieno")
-        picking = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
-        self.assertEqual(picking.picking_type_id, self.type_debt)
-        self.assertEqual(picking.bar_member_ref, "M1234 Otieno")
-        self.assertIn("M1234 Otieno", picking.origin)
-
-    def test_scrap_reasons_post_scraps(self):
-        result = self.stock_out("breakage", [{"product_id": self.jameson.id, "uom_id": self.uom_1l.id, "qty": 1}])
-        scrap = self.env["odin.bar.activity"].browse(result["activity_id"]).scrap_ids
-        self.assertEqual(scrap.state, "done")
-        self.assertEqual(scrap.location_id, self.loc_be)
-        self.assertEqual(scrap.scrap_reason_tag_ids.name, "Breakage")
-        self.assertEqual(scrap.bar_employee_id, self.mary)
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 67)
-
-    def test_back_to_store(self):
-        result = self.stock_out("store", [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 12}])
-        picking = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
-        self.assertEqual(picking.picking_type_id, self.type_ret_be)
-        self.assertEqual(picking.location_dest_id, self.loc_store)
-        self.assertEqual(picking.state, "done")
-        self.assertEqual(self.qty(self.tusker, self.loc_store), 492)
-
-    def test_transfer_to_another_bar_shows_in_its_deliveries(self):
-        lines = [{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": 10}]
-        with self.assertRaisesRegex(UserError, "Pick the bar"):
-            self.stock_out("transfer", lines)
-        with self.assertRaisesRegex(UserError, "Pick the bar"):
-            self.stock_out("transfer", lines, dest_bar_id=self.bar_be.id)
-        result = self.stock_out("transfer", lines, dest_bar_id=self.bar_bb.id)
-        picking = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
-        self.assertEqual(picking.picking_type_id, self.type_ibt)
-        self.assertEqual(picking.location_dest_id, self.loc_bb)
-        self.assertEqual(picking.bar_ack_state, "not_checked")
-        deliveries = self.desk(self.device_bb).desk_deliveries(self.bar_bb.id, self.bb_token)
-        self.assertEqual([delivery["id"] for delivery in deliveries], picking.ids)
-        self.assertEqual(deliveries[0]["source"], "Bulls Eye")
-        home = self.desk(self.device_bb).desk_home(self.bar_bb.id, self.bb_token)
-        self.assertEqual(home["unchecked"], 1)
-        self.assertIn("Transfer from Bulls Eye", [item["title"] for item in home["timeline"]])
-
-    def test_stock_out_refuses_bad_lines(self):
-        cases = [
-            ([], "at least one item"),
-            ([{"product_id": self.not_on_desk.id, "qty": 1}], "not offered"),
-            ([{"product_id": self.jameson.id, "uom_id": self.uom_crate.id, "qty": 1}], "not a unit"),
-            ([{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": -1}], "negative"),
-        ]
-        for lines, message in cases:
-            with self.assertRaisesRegex(UserError, message):
-                self.stock_out("breakage", lines)
-
-    # ------------------------------------------------------------------
-    # Deliveries
-    # ------------------------------------------------------------------
-
-    def test_confirm_a_delivery(self):
-        delivery = self.send_to_be([{"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 2}])
-        self.assertEqual(delivery.state, "done")
-        self.assertEqual(delivery.picking_type_id, self.type_iss_be)
-        self.assertEqual(delivery.bar_ack_state, "not_checked")
-        # Stock is at the bar whether or not anyone checks.
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 150)
-        desk = self.desk(self.device_be)
-        detail = desk.desk_delivery(self.bar_be.id, self.be_token, delivery.id)
-        self.assertEqual(detail["lines"][0]["qty"], 2)
-        self.assertEqual(detail["lines"][0]["uom_id"], self.uom_750.id)
-        desk.desk_delivery_check(self.bar_be.id, self.be_token, self.uuid(), delivery.id)
-        self.assertEqual(delivery.bar_ack_state, "confirmed")
-        self.assertEqual(delivery.bar_ack_employee_id, self.mary)
-        self.assertTrue(delivery.bar_ack_date)
-        with self.assertRaisesRegex(UserError, "already checked"):
-            desk.desk_delivery_check(self.bar_be.id, self.be_token, self.uuid(), delivery.id)
-
-    def test_dispute_a_shortage_then_accept_or_reject(self):
-        desk = self.desk(self.device_be)
-        store_desk = self.desk(self.device_store)
-        first = self.send_to_be(
-            [
-                {"product_id": self.jameson.id, "uom_id": self.uom_750.id, "qty": 2},
-                {"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 24},
-            ]
-        )
-        jameson_move = first.move_ids.filtered(lambda move: move.product_id == self.jameson)
-        desk.desk_delivery_check(self.bar_be.id, self.be_token, self.uuid(), first.id, {jameson_move.id: 1})
-        self.assertEqual(first.bar_ack_state, "disputed")
-        dispute = first.bar_dispute_ids
-        self.assertEqual(dispute.state, "draft")
-        self.assertEqual(dispute.picking_type_id, self.type_ret_be)
-        self.assertEqual((dispute.location_id, dispute.location_dest_id), (self.loc_be, self.loc_store))
-        self.assertEqual(dispute.move_ids.product_uom_qty, 1)
-        self.assertEqual(dispute.move_ids.product_uom, self.uom_750)
-        self.assertEqual(dispute.bar_dispute_state, "pending")
-        # Nothing moves until the store decides.
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 150)
-
-        disputes = store_desk.desk_disputes(self.store.id, self.store_token)
-        self.assertEqual([item["id"] for item in disputes], dispute.ids)
-        self.assertTrue(disputes[0]["short"])
-        self.assertEqual(disputes[0]["bar"], "Bulls Eye")
-        store_desk.desk_dispute_resolve(self.store.id, self.store_token, self.uuid(), dispute.id, True)
-        self.assertEqual(dispute.state, "done")
-        self.assertEqual(dispute.bar_dispute_state, "accepted")
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 125)
-        self.assertEqual(first.bar_ack_state, "disputed")
-
-        second = self.send_to_be([{"product_id": self.jameson.id, "uom_id": self.uom_tot.id, "qty": 10}])
-        desk.desk_delivery_check(self.bar_be.id, self.be_token, self.uuid(), second.id, {second.move_ids.id: 7})
-        store_desk.desk_dispute_resolve(
-            self.store.id, self.store_token, self.uuid(), second.bar_dispute_ids.id, False
-        )
-        self.assertEqual(second.bar_dispute_ids.state, "cancel")
-        self.assertEqual(second.bar_dispute_ids.bar_dispute_state, "rejected")
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 135)  # the variance stays with the bar
-
-    def test_dispute_a_surplus(self):
-        delivery = self.send_to_be([{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 24}])
-        self.desk(self.device_be).desk_delivery_check(
-            self.bar_be.id, self.be_token, self.uuid(), delivery.id, {delivery.move_ids.id: 25}
-        )
-        extra = delivery.bar_dispute_ids
-        self.assertEqual(extra.picking_type_id, self.type_iss_be)
-        self.assertEqual((extra.location_id, extra.location_dest_id), (self.loc_store, self.loc_be))
-        self.assertEqual(extra.move_ids.product_uom_qty, 1)
-        disputes = self.desk(self.device_store).desk_disputes(self.store.id, self.store_token)
-        self.assertFalse(disputes[0]["short"])
-
-    def test_dispute_on_a_transfer_goes_back_to_the_sending_bar(self):
-        result = self.stock_out(
-            "transfer",
-            [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 12}],
-            dest_bar_id=self.bar_bb.id,
-        )
-        transfer = self.env["odin.bar.activity"].browse(result["activity_id"]).picking_ids
-        self.desk(self.device_bb).desk_delivery_check(
-            self.bar_bb.id, self.bb_token, self.uuid(), transfer.id, {transfer.move_ids.id: 10}
-        )
-        dispute = transfer.bar_dispute_ids
-        self.assertEqual(dispute.picking_type_id, self.type_ibt)
-        self.assertEqual((dispute.location_id, dispute.location_dest_id), (self.loc_bb, self.loc_be))
-        self.assertEqual(dispute.move_ids.product_uom_qty, 2)
-
-    def test_a_bar_only_checks_its_own_deliveries(self):
-        delivery = self.send_to_be([{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 6}])
-        with self.assertRaisesRegex(UserError, "not for Banda Bar"):
-            self.desk(self.device_bb).desk_delivery(self.bar_bb.id, self.bb_token, delivery.id)
-
-    # ------------------------------------------------------------------
-    # Store mode
+    # Supplier deliveries at the store
     # ------------------------------------------------------------------
 
     def test_receive_from_a_supplier(self):
@@ -301,37 +195,41 @@ class TestDeskFlows(BarDeskCase):
         backorder = self.env["stock.picking"].search([("backorder_id", "=", receipt.id)])
         self.assertEqual(backorder.move_ids.product_uom_qty, 2)
 
-    def test_store_actions_are_store_only(self):
-        lines = [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 1}]
+    def test_supplier_deliveries_go_to_the_store_only(self):
+        token = self.login(self.device_be, self.bar_be, self.mary, "1234")
         with self.assertRaisesRegex(UserError, "store"):
-            self.desk(self.device_be).desk_store_send(self.bar_be.id, self.be_token, self.uuid(), self.bar_bb.id, lines)
-        with self.assertRaisesRegex(UserError, "bar"):
-            self.desk(self.device_store).desk_stock_out(
-                self.store.id, self.store_token, self.uuid(), self.reasons["roma"].id, lines
+            self.desk(self.device_be).desk_receipts(self.bar_be.id, token)
+
+    # ------------------------------------------------------------------
+    # Day sheet and catalogue
+    # ------------------------------------------------------------------
+
+    def test_day_sheet(self):
+        with freeze_time("2026-09-28 07:00:00"):  # 10:00 on Monday: closing Sunday
+            self.bar_be._mark_pos_posted(DAY1, no_sales=True)
+            self.move(
+                self.store,
+                [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 1}],
+                to=self.bar_be,
+                business_date=str(DAY1),
             )
-
-    # ------------------------------------------------------------------
-    # Home and catalogue
-    # ------------------------------------------------------------------
-
-    def test_home_shows_the_day(self):
-        with freeze_time("2026-09-27 17:00:00"):  # 20:00 at the bar
-            self.stock_out("roma", [{"product_id": self.tusker.id, "uom_id": self.uom_unit.id, "qty": 2}])
-            self.send_to_be([{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 1}])
-            token = self.login(self.device_be, self.bar_be, self.mary, "1234")
-            home = self.desk(self.device_be).desk_home(self.bar_be.id, token)
-        self.assertEqual(home["bar"]["day_label"], "Sun 27 Sep")
-        self.assertEqual(home["unchecked"], 1)
-        titles = [item["title"] for item in home["timeline"]]
-        self.assertIn("Roma", titles)
-        self.assertIn("Stock in from Main Store", titles)
-        roma = next(item for item in home["timeline"] if item["title"] == "Roma")
-        self.assertEqual(roma["who"], "Mary")
-        self.assertEqual(roma["time"], "20:00")
-        self.assertEqual(home["count"]["state"], "none")
+            home = self.desk(self.controller).desk_home(self.store.id, self.token)
+        self.assertEqual(home["day"], {"date": "2026-09-27", "label": "Sun 27 Sep", "is_today": False})
+        self.assertEqual([day["label"] for day in home["days"]], ["Fri 25 Sep", "Sat 26 Sep", "Yesterday", "Today"])
+        self.assertEqual([loc["code"] for loc in home["locations"]], ["MS", "BB", "BE"])
+        pos = {loc["code"]: loc["pos"] for loc in home["locations"]}
+        self.assertEqual(pos, {"MS": "none", "BE": "posted", "BB": "missing"})
+        self.assertEqual(len(home["moves"]), 1)
+        self.assertEqual(home["moves"][0]["from"], "Main Store")
+        self.assertEqual(home["moves"][0]["to"], "Bulls Eye")
+        self.assertEqual(home["moves"][0]["who"], "Kim")
+        self.assertEqual(home["counted"], 0)
+        self.assertFalse(home["can_approve"])
+        self.assertIn("Banda Bar", home["approve_blocked"])
+        self.assertEqual(home["store_id"], self.store.id)
 
     def test_catalog(self):
-        catalog = self.desk(self.device_be).desk_catalog(self.bar_be.id, self.be_token)
+        catalog = self.desk(self.controller).desk_catalog(self.store.id, self.token)
         products = {product["id"]: product for product in catalog["products"]}
         self.assertNotIn(self.not_on_desk.id, products)
         jameson = products[self.jameson.id]
@@ -341,17 +239,16 @@ class TestDeskFlows(BarDeskCase):
         tusker = products[self.tusker.id]
         self.assertFalse(tusker["poured"])
         self.assertEqual([uom["id"] for uom in tusker["packs"]], [self.uom_crate.id])
+        self.assertEqual([loc["code"] for loc in catalog["locations"]], ["MS", "BB", "BE"])
+        self.assertEqual({d["name"] for d in catalog["destinations"]}, {"Roma", "Event", "Unpaid bill"})
         self.assertEqual(
-            {reason["code"] for reason in catalog["reasons"]},
-            {"roma", "event", "debt", "breakage", "spoiled", "flat", "expired", "store", "transfer"},
+            [reason["code"] for reason in catalog["variance_reasons"]],
+            ["breakage", "spillage", "complimentary", "staff", "missed_move", "miscount", "pos_error", "unexplained"],
         )
-        self.assertFalse([reason for reason in catalog["reasons"] if reason["setup_issue"]])
-        self.assertEqual([bar["id"] for bar in catalog["bars"]], self.bar_bb.ids)
 
-    def test_count_sheet_follows_the_bar_setting(self):
+    def test_count_sheet_follows_the_location_setting(self):
         self.bar_bb.sheet_product_ids = [Command.set([self.tusker.id, self.jameson.id])]
-        self.tusker.categ_id.bar_count_sequence = 1
-        count = self.desk(self.device_bb).desk_count_start(self.bar_bb.id, self.bb_token)
+        count = self.desk(self.controller).desk_count_start(self.bar_bb.id, self.token)
         self.assertEqual({line["product_id"] for line in count["lines"]}, {self.tusker.id, self.jameson.id})
 
     def test_defaults_map_to_the_existing_setup(self):
@@ -362,6 +259,7 @@ class TestDeskFlows(BarDeskCase):
         self.assertEqual(self.store.receipt_type_id, self.warehouse.in_type_id)
         self.assertEqual(self.reasons["event"].picking_type_id, self.type_evt)
         self.assertEqual(self.reasons["transfer"].picking_type_id, self.type_ibt)
+        self.assertEqual(set(self.reasons), {"roma", "event", "debt", "transfer"})
         self.assertFalse(self.bar_be.setup_issues)
         self.assertEqual(self.jameson.bar_bottle_uom_id, self.uom_750)
         self.assertEqual(self.jameson.tots_per_bottle, 25)

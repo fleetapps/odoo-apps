@@ -4,6 +4,11 @@ export function fmt(value) {
     return String(rounded);
 }
 
+/** Money as staff read it: -2,061, 3,642. */
+export function money(value) {
+    return Math.round(Number(value) || 0).toLocaleString("en-US");
+}
+
 /** "Bottle 750ml" reads as "750ml" next to a number; other units stay as they are. */
 export function shortUnit(unit) {
     return unit.name.replace(/^bottle\s+/i, "");
@@ -65,6 +70,50 @@ export function countLabel(product, line) {
         parts.push(`${fmt(line.open_tots)} ${stockUnitLabel(product, line.open_tots)}`);
     }
     return parts.join(" + ") || "0";
+}
+
+/** What a count line adds up to, in the stock unit (tots, units). */
+export function countedQty(product, line) {
+    if (!line?.touched) {
+        return 0;
+    }
+    if (!product.poured) {
+        return line.unit_qty || 0;
+    }
+    let total = line.open_tots || 0;
+    for (const bottle of product.bottles) {
+        total += (line.bottle_detail?.[bottle.id] || 0) * bottle.factor;
+    }
+    return total;
+}
+
+/** A count line holding exactly ``qty`` of the stock unit: full bottles of
+ * the counting size plus the rest in the open bottle, or plain units. */
+export function countLineFor(product, qty) {
+    const line = { ...emptyCountLine(), touched: true };
+    if (product.poured) {
+        const bottle = product.bottles[0];
+        const full = Math.floor(qty / bottle.factor + 1e-9);
+        line.bottle_detail = full ? { [bottle.id]: full } : {};
+        line.open_tots = Math.round((qty - full * bottle.factor) * 100) / 100;
+    } else {
+        line.unit_qty = qty;
+    }
+    return line;
+}
+
+/** A quantity in the stock unit as staff read it: "182 tots", "48". */
+export function stockLabel(product, qty) {
+    if (product.uom.name.toLowerCase() === "tot") {
+        return `${fmt(qty)} ${Math.abs(qty) === 1 ? "tot" : "tots"}`;
+    }
+    return fmt(qty);
+}
+
+/** A signed difference: "+3", "−40 tots". */
+export function diffLabel(product, qty) {
+    const sign = qty > 0 ? "+" : qty < 0 ? "−" : "";
+    return `${sign}${stockLabel(product, Math.abs(qty))}`;
 }
 
 /** A count line with one more (or one less) full bottle, or unit. */

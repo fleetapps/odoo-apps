@@ -1,11 +1,17 @@
 """Server side of the Bar Desk client action.
 
-Staff logins have no rights on stock models. Everything the Desk does goes
+The Desk is the stock controller's tool: one person logs the day's stock
+moves between the club's locations, counts every location the next morning
+against the stock expected, explains each difference, and a manager approves
+the day.
+
+Desk logins may have no rights on stock models. Everything the Desk does goes
 through the public ``desk_*`` methods below, which
 
-1. check that the login may act for the bar it names (staff logins only for
-   their own bar, whatever the client sends),
-2. check the signed staff token the PIN sign-in returned,
+1. check that the login may act for the location it names (a shared login
+   only for its own locations, whatever the client sends),
+2. check the signed staff token the PIN sign-in returned and that the staff
+   member may work at that location,
 3. then act as superuser, in one transaction, stamping every record with the
    staff member.
 
@@ -16,6 +22,7 @@ twice.
 """
 
 import time
+from collections import defaultdict
 from datetime import timedelta
 
 import psycopg2
@@ -32,16 +39,16 @@ TOKEN_SCOPE = "odin_bar_desk.staff"
 TOKEN_HOURS = 16
 PIN_MAX_FAILURES = 5
 PIN_LOCK_MINUTES = 5
-CLOSING_DAYS_BACK = 2
+# Closing counts can be taken for today and this many trading days back.
+DAYS_BACK = 3
 MOST_USED_DAYS = 30
 MOST_USED_LIMIT = 12
-TIMELINE_LIMIT = 60
 LIST_LIMIT = 50
 
 
 class DeskSessionError(AccessError):
-    """The staff sign-in is missing, expired or not valid for this bar. The
-    Desk goes back to the PIN screen when it gets this error."""
+    """The staff sign-in is missing, expired or not valid for this company.
+    The Desk goes back to the PIN screen when it gets this error."""
 
 
 def _short_uom(uom):
@@ -66,23 +73,24 @@ class OdinBarDesk(models.AbstractModel):
             raise AccessError(_("You are not allowed to use the Bar Desk."))
 
     @api.model
-    def _desk_bar(self, bar_id):
-        """The bar this login may act for, as superuser in the bar's company."""
+    def _desk_login_bars(self):
+        """Locations this login may open, in Desk order."""
         user = self.env.user
+        if self._desk_is_manager():
+            bars = self.env["odin.bar"].sudo().search([("company_id", "in", user.company_ids.ids)])
+        else:
+            bars = user._odin_desk_bars()
+        return bars.sorted(lambda bar: (bar.kind != "store", bar.sequence, bar.name, bar.id))
+
+    @api.model
+    def _desk_bar(self, bar_id):
+        """The location this login may act for, as superuser in its company."""
         self._desk_check_group()
         bar = self.env["odin.bar"].sudo().browse(int(bar_id or 0)).exists()
         if not bar or not bar.active:
-            raise AccessError(_("This bar does not exist or is archived."))
-        if self._desk_is_manager():
-            if bar.company_id not in user.company_ids:
-                raise AccessError(_("You do not have access to %(bar)s.", bar=bar.name))
-        elif bar not in user._odin_desk_bars():
-            raise AccessError(
-                _(
-                    "This login can only be used for %(bars)s.",
-                    bars=", ".join(user._odin_desk_bars().mapped("name")) or _("no bar"),
-                )
-            )
+            raise AccessError(_("This location does not exist or is archived."))
+        if bar not in self._desk_login_bars():
+            raise AccessError(_("This login cannot be used for %(bar)s.", bar=bar.name))
         return bar.with_company(bar.company_id)
 
     @api.model
@@ -112,22 +120,24 @@ class OdinBarDesk(models.AbstractModel):
 
     @api.model
     def _desk_token(self, bar, employee):
+        """A sign-in valid at every location of ``bar``'s company the staff
+        member may work at, for this login."""
         expiry = int(time.time()) + TOKEN_HOURS * 3600
-        payload = f"{self.env.uid}.{bar.id}.{employee.id}.{expiry}"
+        payload = f"{self.env.uid}.{bar.company_id.id}.{employee.id}.{expiry}"
         return f"{payload}.{hmac_sign(self.env(su=True), TOKEN_SCOPE, payload)}"
 
     @api.model
     def _desk_employee(self, bar, token):
-        """The staff member the token was signed for, if it is valid here."""
+        """The staff member the token was signed for, if it may act at ``bar``."""
         try:
-            uid, bar_id, employee_id, expiry, signature = str(token or "").split(".")
+            uid, company_id, employee_id, expiry, signature = str(token or "").split(".")
             expected = hmac_sign(
-                self.env(su=True), TOKEN_SCOPE, ".".join((uid, bar_id, employee_id, expiry))
+                self.env(su=True), TOKEN_SCOPE, ".".join((uid, company_id, employee_id, expiry))
             )
             valid = (
                 consteq(signature.encode(), expected.encode())
                 and int(uid) == self.env.uid
-                and int(bar_id) == bar.id
+                and int(company_id) == bar.company_id.id
                 and int(expiry) > time.time()
             )
         except ValueError:
@@ -135,14 +145,25 @@ class OdinBarDesk(models.AbstractModel):
         if not valid:
             raise DeskSessionError(_("Please sign in again."))
         employee = self.env["hr.employee"].sudo().browse(int(employee_id)).exists()
-        if not employee or not employee.active or not self._desk_employee_allowed(bar, employee):
+        if not employee or not employee.active:
             raise DeskSessionError(_("Please sign in again."))
+        if not self._desk_employee_allowed(bar, employee):
+            raise UserError(_("%(name)s does not work at %(bar)s.", name=employee.name, bar=bar.name))
         return employee
 
     @api.model
     def _desk_context(self, bar_id, token):
         bar = self._desk_bar(bar_id)
         return bar, self._desk_employee(bar, token)
+
+    @api.model
+    def _desk_other_bar(self, bar, other_id):
+        """Another location of ``bar``'s company this login and signed-in staff
+        member may act for."""
+        other = self.env["odin.bar"].sudo().browse(int(other_id or 0)).exists()
+        if not other or not other.active or other.company_id != bar.company_id:
+            raise UserError(_("Pick a location."))
+        return self._desk_bar(other.id)
 
     # ------------------------------------------------------------------
     # Formatting helpers
@@ -294,25 +315,6 @@ class OdinBarDesk(models.AbstractModel):
         if picking.state != "done":
             raise UserError(_("%(picking)s could not be validated.", picking=picking.name))
 
-    @api.model
-    def _desk_scrap(self, bar, items, reason, vals):
-        Scrap = self.env["stock.scrap"].sudo().with_company(bar.company_id)
-        scraps = Scrap.browse()
-        for product, uom, qty in items:
-            scrap = Scrap.create(
-                dict(
-                    vals,
-                    product_id=product.id,
-                    product_uom_id=uom.id,
-                    scrap_qty=qty,
-                    location_id=bar.location_id.id,
-                    scrap_reason_tag_ids=[Command.set(reason.scrap_tag_ids.ids)],
-                    origin=reason.name,
-                )
-            )
-            scrap.do_scrap()
-            scraps |= scrap
-        return scraps
 
     # ------------------------------------------------------------------
     # Start-up and sign-in
@@ -320,29 +322,22 @@ class OdinBarDesk(models.AbstractModel):
 
     @api.model
     def desk_boot(self):
-        """Bars this login can open."""
+        """Locations this login can open, and the one to sign in at."""
         user = self.env.user
         self._desk_check_group()
-        manager = self._desk_is_manager()
+        bars = self._desk_login_bars()
         own = user.sudo().odin_bar_id
-        if manager:
-            bars = self.env["odin.bar"].sudo().search([("company_id", "in", user.company_ids.ids)])
-        else:
-            bars = user._odin_desk_bars().sorted(lambda bar: (bar.sequence, bar.name, bar.id))
         current = own if own in bars else bars[:1]
         return {
             "user_name": user.name,
-            "is_manager": manager,
-            "bars": [
-                {"id": bar.id, "name": bar.name, "code": bar.code, "kind": bar.kind}
-                for bar in bars
-            ],
+            "is_manager": self._desk_is_manager(),
+            "bars": [{"id": bar.id, "name": bar.name, "code": bar.code, "kind": bar.kind} for bar in bars],
             "bar_id": current.id,
         }
 
     @api.model
     def desk_open_bar(self, bar_id):
-        """The sign-in screen of a bar: who can sign in there."""
+        """The sign-in screen: who can sign in here."""
         bar = self._desk_bar(bar_id)
         return {
             "bar": self._desk_bar_info(bar),
@@ -404,47 +399,31 @@ class OdinBarDesk(models.AbstractModel):
         }
 
     # ------------------------------------------------------------------
-    # Home
+    # The day sheet
     # ------------------------------------------------------------------
 
     @api.model
-    def desk_home(self, bar_id, token):
-        bar, employee = self._desk_context(bar_id, token)
-        day = bar._business_date()
-        Picking = self.env["stock.picking"].sudo()
-        Request = self.env["odin.bar.request"].sudo()
-        result = {
-            "bar": self._desk_bar_info(bar),
-            "employee": {"id": employee.id, "name": employee.name},
-            "count": self._desk_count_status(bar, day),
-            "timeline": self._desk_timeline(bar, day),
-            "requests_in": Request.search_count([("source_bar_id", "=", bar.id), ("state", "=", "open")]),
-            "asks_waiting": Request.search_count([("bar_id", "=", bar.id), ("state", "=", "open")]),
-            "asks_missing": len(
-                Request.search(
-                    [
-                        ("bar_id", "=", bar.id),
-                        ("state", "in", ("partial", "none")),
-                        ("passed_to_ids", "=", False),
-                        ("date", ">=", fields.Datetime.now() - timedelta(hours=16)),
-                    ]
-                )
-            ),
-        }
-        if bar.kind == "bar":
-            result["unchecked"] = Picking.search_count(
-                bar._desk_delivery_domain() + [("bar_ack_state", "=", "not_checked")]
+    def _desk_day(self, bar, business_date=False):
+        """The trading day to work on: ``business_date``, by default yesterday,
+        since the day is closed the next morning."""
+        today = bar._business_date()
+        day = fields.Date.to_date(business_date) if business_date else today - timedelta(days=1)
+        if not today - timedelta(days=DAYS_BACK) <= day <= today:
+            raise UserError(
+                _("Only the last %(days)s trading days and today can be worked on.", days=DAYS_BACK)
             )
-        else:
-            result["disputes"] = Picking.search_count(bar._desk_dispute_domain())
-            result["receipts"] = Picking.search_count(self._desk_receipts_domain(bar))
-            result["payment_account"] = bar.supplier_payment_journal_id.name or ""
-        return result
+        return day
 
     @api.model
-    def _desk_count_status(self, bar, day):
-        Count = self.env["odin.bar.count"].sudo()
-        latest = Count.search(
+    def _desk_day_bars(self, bar):
+        """The locations on the day sheet: every location of ``bar``'s company
+        this login may open, the store first."""
+        return self._desk_login_bars().filtered(lambda other: other.company_id == bar.company_id)
+
+    @api.model
+    def _desk_closing(self, bar, day):
+        """The closing count of ``bar`` for ``day`` that stands, if any."""
+        return self.env["odin.bar.count"].sudo().search(
             [
                 ("bar_id", "=", bar.id),
                 ("kind", "=", "closing"),
@@ -454,152 +433,174 @@ class OdinBarDesk(models.AbstractModel):
             order="id desc",
             limit=1,
         )
-        recounts = Count.search(
-            [("bar_id", "=", bar.id), ("state", "=", "recount")], order="business_date desc"
+
+    @api.model
+    def _desk_count_differences(self, count):
+        """(differences, unresolved) of a count: lines that differ from the
+        expected quantity, and those of them without a reason."""
+        if count.state == "approved":
+            lines = count.line_ids.filtered(lambda line: not line.product_uom_id.is_zero(line.diff_qty))
+            return len(lines), 0
+        if count.state not in ("submitted", "recount"):
+            return 0, 0
+        differing = [
+            line for line, diff in count._variances().items() if not line.product_id.uom_id.is_zero(diff)
+        ]
+        return len(differing), len([line for line in differing if not line.variance_reason_id])
+
+    @api.model
+    def _desk_day_state(self, bars, day):
+        """'approved' when every location's closing count for ``day`` is
+        approved, 'open' when some counting started, 'none' otherwise."""
+        states = [self._desk_closing(bar, day).state for bar in bars]
+        if states and all(state == "approved" for state in states):
+            return "approved"
+        return "open" if any(states) else "none"
+
+    @api.model
+    def _desk_location_name(self, location):
+        bar = self.env["odin.bar"].sudo().search([("location_id", "=", location.id)], limit=1)
+        return bar.name or location.name
+
+    @api.model
+    def _desk_move_info(self, bar, picking):
+        destination = picking.bar_reason_id.name or self._desk_location_name(picking.location_dest_id)
+        if picking.bar_member_ref:
+            destination = f"{destination}: {picking.bar_member_ref}"
+        return {
+            "id": picking.id,
+            "name": picking.name,
+            "time": self._desk_time_label(bar, picking.date_done),
+            "day_label": self._desk_day_label(picking.bar_business_date) if picking.bar_business_date else "",
+            "from": self._desk_location_name(picking.location_id),
+            "to": destination,
+            "summary": self._desk_summary(
+                [(move.product_id, move.product_uom, move.quantity) for move in picking.move_ids if move.state == "done"]
+            ),
+            "who": picking.bar_employee_id.name or picking.create_uid.name,
+        }
+
+    @api.model
+    def _desk_day_moves(self, bar, day):
+        """Moves logged by hand for ``day``, or on ``day`` without a trading day."""
+        start, end = bar._business_day_bounds(day)
+        pickings = self.env["stock.picking"].sudo().search(
+            [
+                ("company_id", "=", bar.company_id.id),
+                ("bar_manual_move", "=", True),
+                ("state", "=", "done"),
+                "|",
+                ("bar_business_date", "=", day),
+                "&",
+                ("bar_business_date", "=", False),
+                "&",
+                ("date_done", ">=", start),
+                ("date_done", "<", end),
+            ],
+            order="date_done desc, id desc",
+            limit=LIST_LIMIT,
         )
-        days = []
-        for back in range(CLOSING_DAYS_BACK + 1):
-            other_day = day - timedelta(days=back)
-            other = latest if back == 0 else Count.search(
-                [
-                    ("bar_id", "=", bar.id),
-                    ("kind", "=", "closing"),
-                    ("business_date", "=", other_day),
-                    ("state", "!=", "cancel"),
-                ],
-                order="id desc",
-                limit=1,
+        return [self._desk_move_info(bar, picking) for picking in pickings]
+
+    @api.model
+    def desk_home(self, bar_id, token, business_date=False):
+        """The day sheet: POS sales, moves, counts and differences of every
+        location for trading day ``business_date`` (default yesterday), and
+        whether the day can be approved."""
+        bar, employee = self._desk_context(bar_id, token)
+        day = self._desk_day(bar, business_date)
+        today = bar._business_date()
+        bars = self._desk_day_bars(bar)
+        locations = []
+        for location in bars:
+            count = self._desk_closing(location, day)
+            differences, unresolved = self._desk_count_differences(count)
+            pos_missing = location._pos_missing_day(day) if location._pos_tracked() else False
+            locations.append(
+                {
+                    "id": location.id,
+                    "name": location.name,
+                    "code": location.code,
+                    "kind": location.kind,
+                    "count_id": count.id,
+                    "state": count.state or "none",
+                    "counted": count.counted_count,
+                    "total": count.line_count,
+                    "differences": differences,
+                    "unresolved": unresolved,
+                    "pos": "none" if not location._pos_tracked() else ("missing" if pos_missing else "posted"),
+                    "pos_missing_label": self._desk_day_label(pos_missing) if pos_missing else "",
+                    "can_import_pos": bool(pos_missing and self._desk_is_manager() and location._pos_import_action(pos_missing)),
+                }
             )
+        not_counted = [loc["name"] for loc in locations if loc["state"] in ("none", "draft")]
+        pos_missing = [loc for loc in locations if loc["pos"] == "missing"]
+        unresolved = sum(loc["unresolved"] for loc in locations)
+        approved = bool(locations) and all(loc["state"] == "approved" for loc in locations)
+        blocked = False
+        if approved:
+            blocked = _("The day is approved.")
+        elif pos_missing:
+            blocked = _(
+                "Import the POS sales of %(bars)s first.",
+                bars=", ".join(f"{loc['name']} ({loc['pos_missing_label']})" for loc in pos_missing),
+            )
+        elif not_counted:
+            blocked = _("Count %(bars)s first.", bars=", ".join(not_counted))
+        elif unresolved:
+            blocked = _("Give a reason for the %(count)s difference(s) left.", count=unresolved)
+        elif not self._desk_is_manager():
+            blocked = _("A manager approves the day.")
+        store = bars.filtered(lambda other: other.kind == "store")[:1]
+        days = []
+        for back in range(DAYS_BACK, -1, -1):
+            other_day = today - timedelta(days=back)
+            label = {0: _("Today"), 1: _("Yesterday")}.get(back) or self._desk_day_label(other_day)
             days.append(
                 {
-                    "business_date": fields.Date.to_string(other_day),
-                    "day_label": self._desk_day_label(other_day),
-                    "state": other.state or "none",
+                    "date": fields.Date.to_string(other_day),
+                    "label": label,
+                    "state": self._desk_day_state(bars, other_day),
                 }
             )
         return {
-            "business_date": fields.Date.to_string(day),
-            "day_label": self._desk_day_label(day),
-            "state": latest.state or "none",
-            "counted": latest.counted_count,
-            "total": latest.line_count,
+            "bar": self._desk_bar_info(bar),
+            "employee": {"id": employee.id, "name": employee.name},
+            "is_manager": self._desk_is_manager(),
+            "currency": bar.company_id.currency_id.symbol or bar.company_id.currency_id.name,
+            "day": {
+                "date": fields.Date.to_string(day),
+                "label": self._desk_day_label(day),
+                "is_today": day == today,
+            },
             "days": days,
-            "recounts": [
-                {
-                    "business_date": fields.Date.to_string(count.business_date),
-                    "day_label": self._desk_day_label(count.business_date),
-                    "kind": count.kind,
-                    "note": count.note or "",
-                }
-                for count in recounts
-            ],
+            "locations": locations,
+            "moves": self._desk_day_moves(bar, day),
+            "counted": len(locations) - len(not_counted),
+            "differences": sum(loc["differences"] for loc in locations),
+            "unresolved": unresolved,
+            "approved": approved,
+            "can_approve": not blocked,
+            "approve_blocked": blocked or "",
+            "store_id": store.id,
+            "payment_account": store.supplier_payment_journal_id.name or "",
+            "receipts": self.env["stock.picking"].sudo().search_count(self._desk_receipts_domain(store))
+            if store
+            else 0,
         }
 
     @api.model
-    def _desk_timeline(self, bar, day):
-        """What happened at this bar during trading day ``day``, newest first."""
-        start, end = bar._business_day_bounds(day)
-        activities = (
-            self.env["odin.bar.activity"]
-            .sudo()
-            .search(
-                [
-                    ("kind", "!=", "pin_fail"),
-                    ("date", ">=", start),
-                    ("date", "<", end),
-                    "|",
-                    ("bar_id", "=", bar.id),
-                    ("dest_bar_id", "=", bar.id),
-                ],
-                limit=TIMELINE_LIMIT,
-            )
-        )
-        items = [self._desk_timeline_item(bar, activity) for activity in activities]
-        # Deliveries booked in the backend rather than from a Desk.
-        for picking in (
-            self.env["stock.picking"]
-            .sudo()
-            .search(
-                [
-                    ("location_dest_id", "=", bar.location_id.id),
-                    ("state", "=", "done"),
-                    ("bar_ack_state", "!=", False),
-                    ("bar_activity_id", "=", False),
-                    ("date_done", ">=", start),
-                    ("date_done", "<", end),
-                ],
-                limit=TIMELINE_LIMIT,
-            )
-        ):
-            items.append(
-                {
-                    "id": f"picking-{picking.id}",
-                    "date": fields.Datetime.to_string(picking.date_done),
-                    "time": self._desk_time_label(bar, picking.date_done),
-                    "icon": "fa-truck",
-                    "title": _("Stock in %(name)s", name=picking.name),
-                    "detail": picking.location_id.display_name,
-                    "who": picking.create_uid.name,
-                }
-            )
-        items.sort(key=lambda item: item["date"], reverse=True)
-        return items[:TIMELINE_LIMIT]
-
-    @api.model
-    def _desk_timeline_item(self, bar, activity):
-        incoming = activity.dest_bar_id == bar and activity.bar_id != bar
-        delivery = activity.source_picking_id.name or ""
-        titles = {
-            "stock_out": activity.reason_id.name or _("Stock out"),
-            "count": _("Count submitted"),
-            "ack": _("Checked %(delivery)s: all correct", delivery=delivery),
-            "dispute": _("Disputed %(delivery)s", delivery=delivery),
-            "send": _("Sent to %(bar)s", bar=activity.dest_bar_id.name),
-            "receive": _("Supplier delivery from %(supplier)s", supplier=activity.partner_id.name or "?"),
-            "ask": _("Asked %(bar)s for stock", bar=activity.dest_bar_id.name),
-            "ask_none": _("Could not send to %(bar)s", bar=activity.dest_bar_id.name),
-            "dispute_accept": _("Dispute on %(delivery)s accepted", delivery=delivery),
-            "dispute_reject": _("Dispute on %(delivery)s rejected", delivery=delivery),
-        }
-        icons = {
-            "stock_out": activity.reason_id.icon or "fa-sign-out",
-            "count": "fa-list-ol",
-            "ack": "fa-check",
-            "dispute": "fa-exclamation-triangle",
-            "send": "fa-truck",
-            "receive": "fa-download",
-            "dispute_accept": "fa-check-circle",
-            "dispute_reject": "fa-times-circle",
-            "ask": "fa-hand-paper-o",
-            "ask_none": "fa-ban",
-        }
-        title = titles.get(activity.kind, activity.display_name)
-        if incoming and activity.kind == "send":
-            title = _("Stock in from %(bar)s", bar=activity.bar_id.name)
-        elif incoming and activity.kind == "ask":
-            title = _("%(bar)s asked for stock", bar=activity.bar_id.name)
-        elif incoming and activity.kind == "ask_none":
-            title = _("%(bar)s did not have it", bar=activity.bar_id.name)
-        elif incoming and activity.kind == "stock_out":
-            title = _("Transfer from %(bar)s", bar=activity.bar_id.name)
-        elif incoming and activity.kind == "dispute":
-            title = _("%(bar)s disputed %(delivery)s", bar=activity.bar_id.name, delivery=delivery)
-        elif activity.kind == "count" and activity.count_id:
-            title = _("%(count)s submitted", count=dict(
-                activity.count_id._fields["kind"]._description_selection(self.env)
-            )[activity.count_id.kind])
-        detail = activity.summary or ""
-        if activity.member_ref:
-            detail = _("%(member)s · %(detail)s", member=activity.member_ref, detail=detail)
-        return {
-            "id": f"activity-{activity.id}",
-            "date": fields.Datetime.to_string(activity.date),
-            "time": self._desk_time_label(bar, activity.date),
-            "icon": icons.get(activity.kind, "fa-circle"),
-            "title": title,
-            "detail": detail,
-            "who": activity.employee_id.name or activity.user_id.name,
-        }
+    def desk_pos_import(self, bar_id, token, location_id, business_date):
+        """The backend action that imports the missing POS day of a location."""
+        bar, _employee = self._desk_context(bar_id, token)
+        if not self._desk_is_manager():
+            raise AccessError(_("Only a manager imports POS sales."))
+        location = self._desk_other_bar(bar, location_id)
+        missing = location._pos_missing_day(self._desk_day(bar, business_date))
+        action = missing and location._pos_import_action(missing)
+        if not action:
+            raise UserError(_("The POS sales of %(bar)s are already in.", bar=location.name))
+        return action
 
     # ------------------------------------------------------------------
     # Catalogue
@@ -607,52 +608,47 @@ class OdinBarDesk(models.AbstractModel):
 
     @api.model
     def desk_catalog(self, bar_id, token):
-        """Products, categories, reasons and bars the screens pick from."""
+        """Products, categories, locations and reasons the screens pick from."""
         bar, _employee = self._desk_context(bar_id, token)
         products = bar._desk_products()
-        sheet_ids = set(bar._desk_sheet_products().ids)
         ranks = self._desk_most_used(bar, products)
         infos = products._bar_desk_info()
         for position, info in enumerate(infos):
             info["position"] = position
-            info["on_sheet"] = info["id"] in sheet_ids
             info["rank"] = ranks.get(info["id"], 0)
-        categories = []
-        for category in products.categ_id.sorted(
-            lambda c: (c.bar_count_sequence, c.complete_name or "")
-        ):
-            categories.append({"id": category.id, "name": category.name})
-        other_bars = (
-            self.env["odin.bar"]
-            .sudo()
-            .search([("company_id", "=", bar.company_id.id), ("kind", "=", "bar"), ("id", "!=", bar.id)])
-        )
-        result = {
+        categories = [
+            {"id": category.id, "name": category.name}
+            for category in products.categ_id.sorted(lambda c: (c.bar_count_sequence, c.complete_name or ""))
+        ]
+        company = [("company_id", "=", bar.company_id.id)]
+        destinations = self.env["odin.bar.reason"].sudo().search(company + [("operation", "=", "picking")])
+        variance_reasons = self.env["odin.bar.variance.reason"].sudo().search(company)
+        return {
             "products": infos,
             "categories": categories,
-            "bars": [{"id": other.id, "name": other.name} for other in other_bars],
-            "reasons": [],
-        }
-        if bar.kind == "bar":
-            reasons = self.env["odin.bar.reason"].sudo().search([("company_id", "=", bar.company_id.id)])
-            result["reasons"] = [
+            "locations": [
+                {"id": other.id, "name": other.name, "code": other.code, "kind": other.kind}
+                for other in self._desk_day_bars(bar)
+            ],
+            "destinations": [
                 {
                     "id": reason.id,
                     "name": reason.name,
-                    "code": reason.code,
-                    "operation": reason.operation,
                     "icon": reason.icon or "fa-sign-out",
                     "require_member": reason.require_member,
-                    "default_unit": reason.default_unit,
                     "setup_issue": reason.setup_issue or "",
                 }
-                for reason in reasons
-            ]
-        return result
+                for reason in destinations
+            ],
+            "variance_reasons": [
+                {"id": reason.id, "name": reason.name, "code": reason.code, "action": reason.action, "icon": reason.icon}
+                for reason in variance_reasons
+            ],
+        }
 
     @api.model
     def _desk_most_used(self, bar, products):
-        """{product id: rank} for the products that moved most at this bar lately."""
+        """{product id: rank} for the products that moved most in the company lately."""
         groups = (
             self.env["stock.move"]
             .sudo()
@@ -661,9 +657,7 @@ class OdinBarDesk(models.AbstractModel):
                     ("state", "=", "done"),
                     ("date", ">=", fields.Datetime.now() - timedelta(days=MOST_USED_DAYS)),
                     ("product_id", "in", products.ids),
-                    "|",
-                    ("location_id", "=", bar.location_id.id),
-                    ("location_dest_id", "=", bar.location_id.id),
+                    ("company_id", "=", bar.company_id.id),
                 ],
                 ["product_id"],
                 ["__count"],
@@ -674,83 +668,126 @@ class OdinBarDesk(models.AbstractModel):
         return {product.id: rank for rank, (product, _count) in enumerate(groups, start=1)}
 
     # ------------------------------------------------------------------
-    # Stock out
+    # Moves
     # ------------------------------------------------------------------
 
     @api.model
-    def desk_stock_out(
-        self, bar_id, token, uuid, reason_id, lines, dest_bar_id=False, member_ref=False, note=False
+    def _desk_move_type(self, source, dest):
+        """Operation type for stock going from location ``source`` to ``dest``:
+        the store's issue to that bar, the bar's return to the store, the
+        inter-bar type, or the warehouse's internal type."""
+        if source.kind == "store" and dest.issue_type_id:
+            return dest.issue_type_id
+        if dest.kind == "store" and source.return_type_id:
+            return source.return_type_id
+        PickingType = self.env["stock.picking.type"].sudo()
+        company = [("company_id", "=", source.company_id.id)]
+        reason = self.env["odin.bar.reason"].sudo().search(company + [("operation", "=", "transfer")], limit=1)
+        picking_type = (
+            reason.picking_type_id
+            or PickingType.search(company + [("sequence_code", "=", "IBT")], limit=1)
+            or source.location_id.warehouse_id.int_type_id
+            or PickingType.search(company + [("code", "=", "internal")], limit=1)
+        )
+        if not picking_type:
+            raise UserError(_("There is no internal transfer type to move stock with."))
+        return picking_type
+
+    @api.model
+    def _desk_check_day_open(self, bars, day):
+        for bar in bars:
+            if self._desk_closing(bar, day).state == "approved":
+                raise UserError(
+                    _(
+                        "%(day)s is already approved at %(bar)s. Log the move on today instead.",
+                        day=self._desk_day_label(day),
+                        bar=bar.name,
+                    )
+                )
+
+    @api.model
+    def desk_move(
+        self,
+        bar_id,
+        token,
+        uuid,
+        from_bar_id,
+        lines,
+        to_bar_id=False,
+        reason_id=False,
+        business_date=False,
+        member_ref=False,
+        note=False,
     ):
-        """Record stock leaving the bar other than through a POS sale. Posted
-        and validated at once."""
+        """Log stock moved from one location to another location of the club,
+        or out of the club (``reason_id``: Roma, an event, an unpaid bill).
+        Posted and validated at once. With ``business_date`` the move belongs
+        to that trading day (typically yesterday, from the paper sheet): the
+        closing counts of that day expect it, whenever it is logged. Without,
+        it is placed by the time it is logged."""
         bar, employee = self._desk_context(bar_id, token)
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
-        if bar.kind != "bar":
-            raise UserError(_("Stock outs are recorded at a bar."))
-        reason = self.env["odin.bar.reason"].sudo().browse(int(reason_id or 0)).exists()
-        if not reason or not reason.active or reason.company_id != bar.company_id:
-            raise UserError(_("Pick a reason."))
-        member_ref = (member_ref or "").strip()
-        if reason.require_member and not member_ref:
-            raise UserError(_("Enter the member name or number."))
-        items = self._desk_items(bar, lines)
-
+        source = self._desk_other_bar(bar, from_bar_id)
+        self._desk_employee(source, token)
+        reason = self.env["odin.bar.reason"]
         dest_bar = self.env["odin.bar"]
-        picking_type = destination = False
-        if reason.operation == "transfer":
-            dest_bar = self.env["odin.bar"].sudo().browse(int(dest_bar_id or 0)).exists()
-            if (
-                not dest_bar
-                or dest_bar == bar
-                or dest_bar.kind != "bar"
-                or not dest_bar.active
-                or dest_bar.company_id != bar.company_id
-            ):
-                raise UserError(_("Pick the bar the stock goes to."))
-            picking_type, destination = reason.picking_type_id, dest_bar.location_id
-        elif reason.operation == "return":
-            picking_type = bar.return_type_id
-            destination = bar.store_id.location_id or picking_type.default_location_dest_id
-            if not picking_type or not destination:
-                raise UserError(_("Set the return type and the store on %(bar)s first.", bar=bar.name))
-        elif reason.operation == "picking":
+        member_ref = (member_ref or "").strip()
+        if reason_id:
+            reason = self.env["odin.bar.reason"].sudo().browse(int(reason_id)).exists()
+            if not reason or not reason.active or reason.company_id != bar.company_id or reason.operation != "picking":
+                raise UserError(_("Pick where the stock went."))
+            if reason.require_member and not member_ref:
+                raise UserError(_("Enter the member name or number."))
             picking_type = reason.picking_type_id
             destination = picking_type.default_location_dest_id
-        if reason.operation == "scrap" and not reason.scrap_tag_ids:
-            raise UserError(_("Set a scrap reason on %(reason)s first.", reason=reason.name))
-        if reason.operation in ("picking", "transfer") and not (picking_type and destination):
-            raise UserError(
-                _("Set the operation type and its destination on %(reason)s first.", reason=reason.name)
-            )
-
+            if not picking_type or not destination:
+                raise UserError(_("Set the operation type and its destination on %(reason)s first.", reason=reason.name))
+        else:
+            dest_bar = self._desk_other_bar(bar, to_bar_id)
+            self._desk_employee(dest_bar, token)
+            if dest_bar == source:
+                raise UserError(_("The stock must go to another location."))
+            picking_type = self._desk_move_type(source, dest_bar)
+            destination = dest_bar.location_id
+        day = False
+        if business_date:
+            day = self._desk_day(bar, business_date)
+            self._desk_check_day_open(source | dest_bar, day)
+        items = self._desk_items(source, lines)
         activity = self._desk_begin(
             uuid,
             {
-                "kind": "stock_out",
-                "bar_id": bar.id,
-                "employee_id": employee.id,
-                "business_date": bar._business_date(),
-                "reason_id": reason.id,
+                "kind": "move",
+                "bar_id": source.id,
                 "dest_bar_id": dest_bar.id,
+                "reason_id": reason.id,
+                "employee_id": employee.id,
+                "business_date": day or source._business_date(),
                 "member_ref": member_ref or False,
                 "note": (note or "").strip() or False,
                 "summary": self._desk_summary(items),
-                "amount": self._desk_value(bar, items),
+                "amount": self._desk_value(source, items),
             },
         )
-        vals = {
-            "bar_employee_id": employee.id,
-            "bar_activity_id": activity.id,
-            "bar_reason_id": reason.id,
-        }
-        if reason.operation == "scrap":
-            self._desk_scrap(bar, items, reason, vals)
-        else:
-            origin = reason.name if not member_ref else f"{reason.name}: {member_ref}"
-            vals.update(origin=origin, bar_member_ref=member_ref or False, note=activity.note or False)
-            self._desk_picking(bar, picking_type, bar.location_id, destination, items, vals)
+        self._desk_picking(
+            source,
+            picking_type,
+            source.location_id,
+            destination,
+            items,
+            {
+                "bar_employee_id": employee.id,
+                "bar_activity_id": activity.id,
+                "bar_manual_move": True,
+                "bar_business_date": day,
+                "bar_reason_id": reason.id,
+                "bar_member_ref": member_ref or False,
+                "note": activity.note or False,
+                "origin": _("Logged on the Desk by %(name)s", name=employee.name),
+            },
+        )
         return self._desk_result(activity)
 
     # ------------------------------------------------------------------
@@ -758,52 +795,35 @@ class OdinBarDesk(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def desk_count_start(self, bar_id, token, kind="closing", business_date=False, restart=False):
-        """Open the count to work on: the draft already started (a closing
-        count is shared by everyone at the bar, a spot count belongs to whoever
-        started it) or a new one. ``restart`` drops the draft and starts over."""
+    def desk_count_start(self, bar_id, token, business_date=False, restart=False):
+        """Open the closing count of this location for ``business_date``
+        (default yesterday): the draft already started, or a new one.
+        ``restart`` drops the draft and starts over."""
         bar, employee = self._desk_context(bar_id, token)
-        if kind not in ("closing", "spot"):
-            raise UserError(_("Unknown kind of count."))
-        today = bar._business_date()
-        day = fields.Date.to_date(business_date) if business_date and kind == "closing" else today
-        if not today - timedelta(days=CLOSING_DAYS_BACK) <= day <= today:
-            raise UserError(_("Closing counts can only be taken for the last three trading days."))
+        day = self._desk_day(bar, business_date)
         Count = self.env["odin.bar.count"].sudo()
-        if kind == "closing" and Count.search_count(
-            [
-                ("bar_id", "=", bar.id),
-                ("kind", "=", "closing"),
-                ("business_date", "=", day),
-                ("state", "=", "approved"),
-            ],
-            limit=1,
-        ):
+        if self._desk_closing(bar, day).state == "approved":
             raise UserError(
-                _("The closing count for %(day)s is already approved.", day=self._desk_day_label(day))
+                _("The count of %(bar)s for %(day)s is already approved.", bar=bar.name, day=self._desk_day_label(day))
             )
-        domain = [
-            ("bar_id", "=", bar.id),
-            ("kind", "=", kind),
-            ("business_date", "=", day),
-            ("state", "=", "draft"),
-        ]
-        if kind == "spot":
-            domain.append(("employee_id", "=", employee.id))
-        count = Count.search(domain, order="id desc", limit=1)
+        count = Count.search(
+            [("bar_id", "=", bar.id), ("kind", "=", "closing"), ("business_date", "=", day), ("state", "=", "draft")],
+            order="id desc",
+            limit=1,
+        )
         if count and restart:
             count.state = "cancel"
             count = Count.browse()
         if not count:
-            count = self._desk_count_create(bar, employee, kind, day)
+            count = self._desk_count_create(bar, employee, day)
         return self._desk_count_data(count)
 
     @api.model
-    def _desk_count_create(self, bar, employee, kind, day):
-        products = bar._desk_sheet_products() if kind == "closing" else self.env["product.product"]
+    def _desk_count_create(self, bar, employee, day):
+        products = bar._desk_sheet_products()
         vals = {
             "bar_id": bar.id,
-            "kind": kind,
+            "kind": "closing",
             "business_date": day,
             "employee_id": employee.id,
             "line_ids": [
@@ -815,25 +835,33 @@ class OdinBarDesk(models.AbstractModel):
             with self.env.cr.savepoint():
                 return self.env["odin.bar.count"].sudo().create(vals)
         except psycopg2.errors.UniqueViolation as exc:
-            # Someone else at the bar started the same closing count a moment ago.
+            # Someone else started the same closing count a moment ago.
             raise ConcurrencyError("closing count already started") from exc
 
     @api.model
     def _desk_count_data(self, count):
+        bar = count.bar_id
+        cutoff = count.submitted_at or fields.Datetime.now()
+        breakdown = bar._count_breakdown(count.line_ids.product_id, count.business_date, cutoff)
+        pos_missing = bar._pos_missing_day(count.business_date)
         return {
             "id": count.id,
             "name": count.name,
             "kind": count.kind,
             "state": count.state,
+            "bar": {"id": bar.id, "name": bar.name, "code": bar.code, "kind": bar.kind},
             "business_date": fields.Date.to_string(count.business_date),
             "day_label": self._desk_day_label(count.business_date),
+            "pos_missing_label": self._desk_day_label(pos_missing) if pos_missing else "",
             "lines": [
                 {
                     "product_id": line.product_id.id,
                     "touched": line.touched,
+                    "accepted": line.accepted_expected,
                     "unit_qty": line.unit_qty,
                     "bottle_detail": line.bottle_detail or {},
                     "open_tots": line.open_tots,
+                    **breakdown.get(line.product_id.id, {}),
                 }
                 for line in count.line_ids
             ],
@@ -872,7 +900,13 @@ class OdinBarDesk(models.AbstractModel):
 
     @api.model
     def _desk_count_line_vals(self, product, data):
-        vals = {"touched": bool(data.get("touched", True)), "unit_qty": 0.0, "open_tots": 0.0, "bottle_detail": False}
+        vals = {
+            "touched": bool(data.get("touched", True)),
+            "accepted_expected": bool(data.get("accepted")),
+            "unit_qty": 0.0,
+            "open_tots": 0.0,
+            "bottle_detail": False,
+        }
         if product.bar_bottle_uom_id:
             sizes = {str(uom.id) for uom in product.product_tmpl_id._bar_pack_uoms()}
             detail = {}
@@ -902,9 +936,9 @@ class OdinBarDesk(models.AbstractModel):
 
     @api.model
     def desk_count_submit(self, bar_id, token, uuid, count_id, lines=None):
-        """Hand the count to the manager. A closing count must have every line
-        entered, zeros included; it replaces any earlier submission for the
-        same bar and day that is still waiting."""
+        """Finish a closing count: every line entered, zeros included. It
+        replaces any earlier submission for the same location and day that is
+        still waiting. Returns how many lines differ from the expected stock."""
         bar, employee = self._desk_context(bar_id, token)
         replay = self._desk_replay(uuid)
         if replay:
@@ -919,10 +953,6 @@ class OdinBarDesk(models.AbstractModel):
                     count=len(untouched),
                 )
             )
-        if count.kind == "spot":
-            untouched.unlink()
-            if not count.line_ids:
-                raise UserError(_("Count at least one item."))
         activity = self._desk_begin(
             uuid,
             {
@@ -932,179 +962,282 @@ class OdinBarDesk(models.AbstractModel):
                 "business_date": count.business_date,
                 "count_id": count.id,
                 "summary": _(
-                    "%(kind)s for %(day)s: %(lines)s items",
-                    kind=dict(count._fields["kind"]._description_selection(self.env))[count.kind],
+                    "%(bar)s for %(day)s: %(lines)s items",
+                    bar=bar.name,
                     day=self._desk_day_label(count.business_date),
                     lines=len(count.line_ids),
                 ),
             },
         )
-        if count.kind == "closing":
-            self.env["odin.bar.count"].sudo().search(
-                [
-                    ("bar_id", "=", bar.id),
-                    ("kind", "=", "closing"),
-                    ("business_date", "=", count.business_date),
-                    ("state", "in", ("submitted", "recount")),
-                    ("id", "!=", count.id),
-                ]
-            ).write({"state": "cancel", "replaced_by_id": count.id})
-        count.write(
-            {"state": "submitted", "submitted_at": fields.Datetime.now(), "employee_id": employee.id}
-        )
-        return self._desk_result(activity)
+        self.env["odin.bar.count"].sudo().search(
+            [
+                ("bar_id", "=", bar.id),
+                ("kind", "=", count.kind),
+                ("business_date", "=", count.business_date),
+                ("state", "in", ("submitted", "recount")),
+                ("id", "!=", count.id),
+            ]
+        ).write({"state": "cancel", "replaced_by_id": count.id})
+        count.write({"state": "submitted", "submitted_at": fields.Datetime.now(), "employee_id": employee.id})
+        result = self._desk_result(activity)
+        result["differences"] = self._desk_count_differences(count)[0]
+        return result
 
     # ------------------------------------------------------------------
-    # Deliveries into a bar
+    # Differences
     # ------------------------------------------------------------------
 
     @api.model
-    def _desk_source_name(self, picking):
-        source_bar = self.env["odin.bar"].sudo().search(
-            [("location_id", "=", picking.location_id.id)], limit=1
-        )
-        return source_bar.name or picking.location_id.display_name
+    def _desk_open_counts(self, bar, day, location=None):
+        counts = self.env["odin.bar.count"].sudo()
+        for other in location or self._desk_day_bars(bar):
+            count = self._desk_closing(other, day)
+            if count.state in ("submitted", "recount"):
+                counts |= count
+        return counts
 
     @api.model
-    def _desk_delivery_head(self, bar, picking):
+    def desk_differences(self, bar_id, token, business_date=False, location_id=False):
+        """Lines of the day's submitted counts that differ from the expected
+        stock, with their reason if they have one, and the missed moves the
+        differences suggest: the same product short at one location by
+        exactly what another has too much of."""
+        bar, _employee = self._desk_context(bar_id, token)
+        day = self._desk_day(bar, business_date)
+        location = self._desk_other_bar(bar, location_id) if location_id else None
+        counts = self._desk_open_counts(bar, day, location)
+        lines = []
+        for count in counts.sorted(lambda c: (c.bar_id.kind != "store", c.bar_id.sequence, c.bar_id.id)):
+            breakdown = count.bar_id._count_breakdown(
+                count.line_ids.product_id, count.business_date, count.submitted_at
+            )
+            for line, diff in count._variances().items():
+                product = line.product_id.with_company(count.company_id)
+                if product.uom_id.is_zero(diff):
+                    continue
+                parts = breakdown.get(product.id, {})
+                lines.append(
+                    {
+                        "line_id": line.id,
+                        "count_id": count.id,
+                        "bar": {"id": count.bar_id.id, "name": count.bar_id.name, "code": count.bar_id.code},
+                        "product_id": product.id,
+                        "counted": line.counted_qty,
+                        "expected": parts.get("expected", line.counted_qty - diff),
+                        "opening": parts.get("opening", 0.0),
+                        "moved": parts.get("moved", 0.0),
+                        "sold": parts.get("sold", 0.0),
+                        "diff": diff,
+                        "value": count.company_id.currency_id.round(diff * product.standard_price),
+                        "reason_id": line.variance_reason_id.id,
+                        "note": line.variance_note or "",
+                        "recounted": line.recounted,
+                        "accepted": line.accepted_expected,
+                        "unit_qty": line.unit_qty,
+                        "bottle_detail": line.bottle_detail or {},
+                        "open_tots": line.open_tots,
+                    }
+                )
+        suggestions = []
+        by_product = defaultdict(list)
+        for line in lines:
+            if not line["reason_id"]:
+                by_product[line["product_id"]].append(line)
+        for product_id, product_lines in by_product.items():
+            uom = self.env["product.product"].browse(product_id).uom_id
+            used = set()
+            for short in sorted(product_lines, key=lambda l: l["diff"]):
+                if short["diff"] >= 0 or short["line_id"] in used:
+                    continue
+                for extra in product_lines:
+                    if (
+                        extra["line_id"] not in used
+                        and extra["diff"] > 0
+                        and extra["bar"]["id"] != short["bar"]["id"]
+                        and uom.compare(extra["diff"], -short["diff"]) == 0
+                    ):
+                        used |= {short["line_id"], extra["line_id"]}
+                        suggestions.append(
+                            {
+                                "product_id": product_id,
+                                "qty": extra["diff"],
+                                "from": short["bar"],
+                                "to": extra["bar"],
+                            }
+                        )
+                        break
         return {
-            "id": picking.id,
-            "name": picking.name,
-            "source": self._desk_source_name(picking),
-            "time": self._desk_time_label(bar, picking.date_done),
-            "day_label": self._desk_day_label(bar._business_date(picking.date_done)),
-            "state": picking.bar_ack_state,
-            "line_count": len(picking.move_ids.filtered(lambda move: move.state == "done")),
-            "sent_by": picking.bar_employee_id.name or picking.create_uid.name,
-            "checked_by": picking.bar_ack_employee_id.name or "",
+            "day": {"date": fields.Date.to_string(day), "label": self._desk_day_label(day)},
+            "lines": lines,
+            "suggestions": suggestions,
         }
 
     @api.model
-    def _desk_delivery_record(self, bar, picking_id):
-        picking = self.env["stock.picking"].sudo().browse(int(picking_id or 0)).exists()
-        if (
-            not picking
-            or picking.location_dest_id != bar.location_id
-            or picking.state != "done"
-            or not picking.bar_ack_state
-        ):
-            raise UserError(_("This stock is not for %(bar)s.", bar=bar.name))
-        return picking
+    def _desk_open_line(self, bar, token, line_id):
+        """A line of a submitted count of ``bar``'s company, and who may change it."""
+        line = self.env["odin.bar.count.line"].sudo().browse(int(line_id or 0)).exists()
+        if not line or line.count_id.company_id != bar.company_id:
+            raise UserError(_("This count line does not exist."))
+        if line.count_id.state not in ("submitted", "recount"):
+            raise UserError(_("%(count)s is not waiting for approval any more.", count=line.count_id.name))
+        location = self._desk_bar(line.count_id.bar_id.id)
+        return line, location, self._desk_employee(location, token)
 
     @api.model
-    def desk_deliveries(self, bar_id, token):
+    def desk_explain(self, bar_id, token, line_id, reason_id=False, note=False):
+        """Give a difference its reason (or clear it). Recorded only: the
+        difference is posted under this reason when the day is approved."""
         bar, _employee = self._desk_context(bar_id, token)
-        if bar.kind != "bar":
-            return []
-        pickings = self.env["stock.picking"].sudo().search(
-            bar._desk_delivery_domain(), order="date_done desc", limit=LIST_LIMIT
-        )
-        return [self._desk_delivery_head(bar, picking) for picking in pickings]
-
-    @api.model
-    def desk_delivery(self, bar_id, token, picking_id):
-        bar, _employee = self._desk_context(bar_id, token)
-        picking = self._desk_delivery_record(bar, picking_id)
-        result = self._desk_delivery_head(bar, picking)
-        result["lines"] = [
+        line, location, employee = self._desk_open_line(bar, token, line_id)
+        reason = self.env["odin.bar.variance.reason"]
+        if reason_id:
+            reason = reason.sudo().browse(int(reason_id)).exists()
+            if not reason or not reason.active or reason.company_id != bar.company_id:
+                raise UserError(_("Pick a reason."))
+        note = (note or "").strip()[:200]
+        line.write({"variance_reason_id": reason.id, "variance_note": note or False})
+        self.env["odin.bar.activity"].sudo().create(
             {
-                "move_id": move.id,
-                "product_id": move.product_id.id,
-                "name": move.product_id.display_name,
-                "uom_id": move.product_uom.id,
-                "uom_name": _short_uom(move.product_uom),
-                "pack": move.product_uom != move.product_id.uom_id,
-                "qty": move.quantity,
+                "kind": "resolve",
+                "bar_id": location.id,
+                "employee_id": employee.id,
+                "business_date": line.count_id.business_date,
+                "count_id": line.count_id.id,
+                "variance_reason_id": reason.id,
+                "note": note or False,
+                "summary": _(
+                    "%(product)s: %(reason)s", product=line.product_id.display_name, reason=reason.name or _("no reason")
+                ),
             }
-            for move in picking.move_ids.filtered(lambda move: move.state == "done")
-        ]
-        result["disputes"] = [
-            {"name": dispute.name, "state": dispute.bar_dispute_state} for dispute in picking.bar_dispute_ids
-        ]
-        return result
+        )
+        return {"line_id": line.id, "reason_id": reason.id, "note": note}
 
     @api.model
-    def desk_delivery_check(self, bar_id, token, uuid, picking_id, received=None):
-        """Confirm a delivery, or dispute it with what actually arrived.
+    def desk_count_fix(self, bar_id, token, line_id, value):
+        """Correct the count of one line of a submitted count (a counting
+        mistake). The line loses its reason: it is checked again."""
+        bar, _employee = self._desk_context(bar_id, token)
+        line, location, employee = self._desk_open_line(bar, token, line_id)
+        before = line.counted_display
+        vals = self._desk_count_line_vals(line.product_id, dict(value or {}, touched=True, accepted=False))
+        line.write(dict(vals, recounted=True, variance_reason_id=False, variance_note=False))
+        self.env["odin.bar.activity"].sudo().create(
+            {
+                "kind": "fix",
+                "bar_id": location.id,
+                "employee_id": employee.id,
+                "business_date": line.count_id.business_date,
+                "count_id": line.count_id.id,
+                "summary": _(
+                    "%(product)s: %(before)s → %(after)s",
+                    product=line.product_id.display_name,
+                    before=before or "0",
+                    after=line.counted_display or "0",
+                ),
+            }
+        )
+        return {"line_id": line.id, "counted": line.counted_qty}
 
-        ``received`` maps move ids to the quantity counted, in the move's unit;
-        moves left out arrived as sent. A shortage becomes a draft return from
-        the bar to where the delivery came from, a surplus a draft transfer the
-        other way. The sender validates the draft (the goods never left) or
-        cancels it (the variance stays with the bar)."""
+    # ------------------------------------------------------------------
+    # Approval
+    # ------------------------------------------------------------------
+
+    @api.model
+    def desk_approve_day(self, bar_id, token, uuid, business_date):
+        """Approve the closing counts of every location for the day at once:
+        each difference is posted as a stock adjustment under its reason."""
         bar, employee = self._desk_context(bar_id, token)
+        if not self._desk_is_manager():
+            raise AccessError(_("Only a manager approves the day."))
         replay = self._desk_replay(uuid)
         if replay:
             return self._desk_result(replay)
-        picking = self._desk_delivery_record(bar, picking_id)
-        if picking.bar_ack_state != "not_checked":
-            raise UserError(
-                _(
-                    "%(delivery)s was already checked by %(who)s.",
-                    delivery=picking.name,
-                    who=picking.bar_ack_employee_id.name or _("someone else"),
-                )
-            )
-        received = {int(move_id): float(qty or 0.0) for move_id, qty in (received or {}).items()}
-        short, extra = [], []
-        for move in picking.move_ids.filtered(lambda move: move.state == "done"):
-            if move.id not in received:
-                continue
-            if received[move.id] < 0:
-                raise UserError(_("Quantities cannot be negative."))
-            diff = move.product_uom.round(received[move.id] - move.quantity)
-            if move.product_uom.compare(diff, 0) < 0:
-                short.append((move.product_id, move.product_uom, -diff))
-            elif move.product_uom.compare(diff, 0) > 0:
-                extra.append((move.product_id, move.product_uom, diff))
-        source_bar = self.env["odin.bar"].sudo().search([("location_id", "=", picking.location_id.id)], limit=1)
-        from_store = not source_bar or source_bar.kind == "store"
-        back_type = bar.return_type_id if from_store else picking.picking_type_id
-        if short and not back_type:
-            raise UserError(_("Set the return type on %(bar)s first.", bar=bar.name))
-
-        summary = []
-        if short:
-            summary.append(_("Short: %(items)s", items=self._desk_summary(short)))
-        if extra:
-            summary.append(_("Extra: %(items)s", items=self._desk_summary(extra)))
+        day = self._desk_day(bar, business_date)
+        bars = self._desk_day_bars(bar)
+        counts = self.env["odin.bar.count"].sudo()
+        not_counted = []
+        for location in bars:
+            count = self._desk_closing(location, day)
+            if count.state in ("submitted", "recount", "approved"):
+                counts |= count
+            else:
+                not_counted.append(location.name)
+        if not_counted:
+            raise UserError(_("Count %(bars)s first.", bars=", ".join(not_counted)))
+        waiting = counts.filtered(lambda count: count.state in ("submitted", "recount")).sorted("submitted_at")
+        if not waiting:
+            raise UserError(_("%(day)s is already approved.", day=self._desk_day_label(day)))
+        for count in waiting:
+            reason = count._approve_blocked_reason()
+            if reason:
+                raise UserError(reason)
         activity = self._desk_begin(
             uuid,
             {
-                "kind": "dispute" if summary else "ack",
+                "kind": "approve",
                 "bar_id": bar.id,
-                "dest_bar_id": source_bar.id,
                 "employee_id": employee.id,
-                "business_date": bar._business_date(),
-                "source_picking_id": picking.id,
-                "summary": "; ".join(summary),
+                "business_date": day,
+                "summary": _("%(day)s: %(bars)s", day=self._desk_day_label(day), bars=", ".join(waiting.bar_id.mapped("code"))),
             },
         )
-        vals = {
-            "bar_employee_id": employee.id,
-            "bar_activity_id": activity.id,
-            "bar_dispute_origin_id": picking.id,
-            "origin": picking.name,
-        }
-        if short:
-            self._desk_picking(
-                bar, back_type, bar.location_id, picking.location_id, short, vals, validate=False
-            )
-        if extra:
-            self._desk_picking(
-                bar, picking.picking_type_id, picking.location_id, bar.location_id, extra, vals, validate=False
-            )
-        picking.write(
-            {
-                "bar_ack_state": "disputed" if summary else "confirmed",
-                "bar_ack_employee_id": employee.id,
-                "bar_ack_date": fields.Datetime.now(),
-            }
-        )
-        return self._desk_result(activity)
+        waiting.sudo().action_approve()
+        activity.amount = sum(waiting.mapped("diff_value"))
+        result = self._desk_result(activity)
+        result["variance"] = activity.amount
+        return result
 
     # ------------------------------------------------------------------
-    # Store mode
+    # Stock levels
+    # ------------------------------------------------------------------
+
+    @api.model
+    def desk_stock_levels(self, bar_id, token):
+        """Stock of every Desk product at each location, the club total and
+        the reorder level (par), in each product's unit."""
+        bar, _employee = self._desk_context(bar_id, token)
+        bars = self._desk_day_bars(bar)
+        products = bar._desk_products()
+        Quant = self.env["stock.quant"].sudo()
+        qty = defaultdict(dict)
+        for location in bars:
+            for product, quantity in Quant._read_group(
+                [("location_id", "child_of", location.location_id.id), ("product_id", "in", products.ids)],
+                ["product_id"],
+                ["quantity:sum"],
+            ):
+                qty[product.id][location.id] = product.uom_id.round(quantity)
+        par = {
+            product.id: min_qty
+            for product, min_qty in self.env["stock.warehouse.orderpoint"]
+            .sudo()
+            ._read_group(
+                [("product_id", "in", products.ids), ("company_id", "=", bar.company_id.id)],
+                ["product_id"],
+                ["product_min_qty:sum"],
+            )
+        }
+        rows = []
+        for product in products:
+            by_location = qty.get(product.id, {})
+            total = sum(by_location.values())
+            if not by_location and not par.get(product.id):
+                continue
+            rows.append(
+                {
+                    "product_id": product.id,
+                    "qty": {str(location_id): value for location_id, value in by_location.items()},
+                    "total": product.uom_id.round(total),
+                    "par": par.get(product.id, 0.0),
+                }
+            )
+        return {
+            "locations": [{"id": other.id, "name": other.name, "code": other.code} for other in bars],
+            "rows": rows,
+        }
+
+    # ------------------------------------------------------------------
+    # Supplier deliveries at the store
     # ------------------------------------------------------------------
 
     @api.model
@@ -1121,42 +1254,6 @@ class OdinBarDesk(models.AbstractModel):
             ("location_dest_id", "=", store.location_id.id),
             ("state", "in", ("confirmed", "waiting", "assigned")),
         ]
-
-    @api.model
-    def desk_store_send(self, bar_id, token, uuid, dest_bar_id, lines):
-        """Issue stock from the store to a bar, validated at once. It shows at
-        the bar as a delivery to check."""
-        store, employee = self._desk_store(bar_id, token)
-        replay = self._desk_replay(uuid)
-        if replay:
-            return self._desk_result(replay)
-        dest = self.env["odin.bar"].sudo().browse(int(dest_bar_id or 0)).exists()
-        if not dest or dest.kind != "bar" or not dest.active or dest.company_id != store.company_id:
-            raise UserError(_("Pick the bar to send to."))
-        if not dest.issue_type_id:
-            raise UserError(_("Set the issue type on %(bar)s first.", bar=dest.name))
-        items = self._desk_items(store, lines)
-        activity = self._desk_begin(
-            uuid,
-            {
-                "kind": "send",
-                "bar_id": store.id,
-                "dest_bar_id": dest.id,
-                "employee_id": employee.id,
-                "business_date": store._business_date(),
-                "summary": self._desk_summary(items),
-                "amount": self._desk_value(store, items),
-            },
-        )
-        self._desk_picking(
-            store,
-            dest.issue_type_id,
-            store.location_id,
-            dest.location_id,
-            items,
-            {"bar_employee_id": employee.id, "bar_activity_id": activity.id},
-        )
-        return self._desk_result(activity)
 
     @api.model
     def desk_receipts(self, bar_id, token):
@@ -1295,67 +1392,4 @@ class OdinBarDesk(models.AbstractModel):
                 activity,
                 origin=picking.purchase_id.name or picking.name,
             )
-        return self._desk_result(activity)
-
-    @api.model
-    def desk_disputes(self, bar_id, token):
-        """Open disputes raised by bars against the store's deliveries."""
-        store, _employee = self._desk_store(bar_id, token)
-        pickings = self.env["stock.picking"].sudo().search(
-            store._desk_dispute_domain(), order="id desc", limit=LIST_LIMIT
-        )
-        Bar = self.env["odin.bar"].sudo()
-        result = []
-        for picking in pickings:
-            other = picking.location_id if picking.location_dest_id == store.location_id else picking.location_dest_id
-            result.append(
-                {
-                    "id": picking.id,
-                    "name": picking.name,
-                    "delivery": picking.bar_dispute_origin_id.name,
-                    "bar": Bar.search([("location_id", "=", other.id)], limit=1).name or other.display_name,
-                    "short": picking.location_dest_id == store.location_id,
-                    "raised_by": picking.bar_employee_id.name or "",
-                    "day_label": self._desk_day_label(store._business_date(picking.create_date)),
-                    "lines": [
-                        {
-                            "name": move.product_id.display_name,
-                            "qty": move.product_uom_qty,
-                            "uom_name": _short_uom(move.product_uom),
-                            "pack": move.product_uom != move.product_id.uom_id,
-                        }
-                        for move in picking.move_ids
-                    ],
-                }
-            )
-        return result
-
-    @api.model
-    def desk_dispute_resolve(self, bar_id, token, uuid, picking_id, accept):
-        """Accept a dispute (the goods never left: validate the correction)
-        or reject it (cancel it: the variance stays with the bar)."""
-        store, employee = self._desk_store(bar_id, token)
-        replay = self._desk_replay(uuid)
-        if replay:
-            return self._desk_result(replay)
-        picking = self.env["stock.picking"].sudo().browse(int(picking_id or 0)).exists()
-        if not picking or not picking.filtered_domain(store._desk_dispute_domain()):
-            raise UserError(_("This dispute is not open at %(store)s.", store=store.name))
-        other = picking.location_id if picking.location_dest_id == store.location_id else picking.location_dest_id
-        activity = self._desk_begin(
-            uuid,
-            {
-                "kind": "dispute_accept" if accept else "dispute_reject",
-                "bar_id": store.id,
-                "dest_bar_id": self.env["odin.bar"].sudo().search([("location_id", "=", other.id)], limit=1).id,
-                "employee_id": employee.id,
-                "business_date": store._business_date(),
-                "source_picking_id": picking.bar_dispute_origin_id.id,
-                "summary": picking.name,
-            },
-        )
-        if accept:
-            self._desk_validate(picking)
-        else:
-            picking.action_cancel()
         return self._desk_result(activity)

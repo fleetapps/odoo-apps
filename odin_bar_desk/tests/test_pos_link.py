@@ -23,7 +23,7 @@ class TestPosLink(BarDeskCase):
         count, so a count waits for every day since the bar's first POS day."""
         self.bar_be._mark_pos_posted(DAY1, no_sales=True)
         with freeze_time("2026-09-29 20:00:00"):
-            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY3)
         self.assertEqual(count.business_date, DAY3)
         self.bar_be._mark_pos_posted(DAY3, no_sales=True)
         count = count.with_user(self.manager)
@@ -51,16 +51,16 @@ class TestPosLink(BarDeskCase):
             self.opening_stock(self.loc_be, [(self.jameson, 100)])
         with freeze_time("2026-09-27 20:00:00"):
             day1 = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=68)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=68)], DAY1
             )
         with freeze_time("2026-09-28 06:00:00"):
             # The import says 30 tots were sold; in truth it was 32.
             wrong = self.pos_sales(self.bar_be, DAY1, [(self.jameson, 30)])
-            day1.with_user(self.manager).action_approve()
+            self.approve(day1)
         self.assertEqual(self.line(day1, self.jameson).diff_qty, -2)
         with freeze_time("2026-09-28 20:00:00"):
             day2 = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=60)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.jameson, open_tots=60)], DAY2
             )
         with freeze_time("2026-09-29 06:00:00"):
             self.pos_sales(self.bar_be, DAY2, [(self.jameson, 8)])
@@ -98,11 +98,13 @@ class TestPosLink(BarDeskCase):
             self.opening_stock(self.loc_be, [(self.tusker, 48)])
         with freeze_time("2026-09-27 20:00:00"):
             count = self.submit_count(
-                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.tusker, units=40)]
+                self.device_be, self.bar_be, self.mary, "1234", [self.count_line(self.tusker, units=40)], DAY1
             )
         self.bar_be._mark_pos_posted(DAY1, no_sales=True)
-        count.with_user(self.manager).action_approve()
+        self.approve(count, "breakage")
         self.assertEqual(self.line(count, self.tusker).diff_qty, -8)
+        breakage = self.env["stock.move"].search([("bar_count_id", "=", count.id)])
+        self.assertEqual(breakage.bar_variance_reason_id.code, "breakage")
         with freeze_time("2026-09-28 06:00:00"):
             self.pos_sales(self.bar_be, DAY1, [(self.tusker, 8)])
         self.assertEqual(count.state, "submitted")
@@ -110,50 +112,9 @@ class TestPosLink(BarDeskCase):
         self.assertEqual(self.line(count, self.tusker).diff_qty, 0)
         self.assertEqual(self.qty(self.tusker, self.loc_be), 40)
 
-    def test_spot_count_leaves_items_sold_that_day(self):
-        """Sales come as one total per day, so a mid-shift spot count cannot
-        tell how many of them came before it: what sold that day is left for
-        the closing count, the rest is adjusted."""
-        with freeze_time("2026-09-27 05:00:00"):
-            self.opening_stock(self.loc_be, [(self.jameson, 50), (self.gordons, 25), (self.tusker, 24)])
-        with freeze_time("2026-09-27 15:00:00"):  # 18:00, mid-shift
-            count = self.submit_count(
-                self.device_be,
-                self.bar_be,
-                self.mary,
-                "1234",
-                [
-                    self.count_line(self.jameson, bottles={self.uom_750: 1}, open_tots=20),
-                    self.count_line(self.gordons, open_tots=20),
-                ],
-                kind="spot",
-            )
-        count = count.with_user(self.manager)
-        self.assertEqual(
-            count.approve_blocked_reason,
-            "Post the POS import for Bulls Eye on Sun 27 Sep before approving this count.",
-        )
-        with freeze_time("2026-09-28 06:00:00"):
-            self.pos_sales(self.bar_be, DAY1, [(self.jameson, 12), (self.tusker, 6)])
-        count.invalidate_recordset()
-        count.line_ids.invalidate_recordset()
-        self.assertTrue(self.line(count, self.jameson).preview_skipped)
-        self.assertFalse(self.line(count, self.gordons).preview_skipped)
-        self.assertEqual(self.line(count, self.gordons).preview_diff_qty, -5)
-        with freeze_time("2026-09-28 07:00:00"):
-            count.action_approve()
-        jameson = self.line(count, self.jameson)
-        self.assertTrue(jameson.skipped)
-        self.assertEqual((jameson.expected_qty, jameson.diff_qty), (0, 0))
-        self.assertEqual(self.line(count, self.gordons).diff_qty, -5)
-        self.assertEqual(count.move_ids.product_id, self.gordons)
-        self.assertEqual(self.qty(self.jameson, self.loc_be), 38)
-        self.assertEqual(self.qty(self.gordons, self.loc_be), 20)
-        self.assertEqual(self.qty(self.tusker, self.loc_be), 18)
-
     def test_links_for_the_import_screen(self):
         with freeze_time("2026-09-27 20:00:00"):
-            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
+            count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [], DAY1)
         self.assertFalse(self.bar_be._pos_day_waiting(DAY1))
         self.bar_be._mark_pos_posted(DAY1, no_sales=True)
         self.assertEqual(

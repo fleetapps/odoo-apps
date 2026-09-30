@@ -25,62 +25,6 @@ function toast(app, outcome, message) {
     }
 }
 
-/** Store: pick the bar, add items, Send. Validated at once. */
-export class StoreSendScreen extends Component {
-    static template = "odin_bar_desk.StoreSendScreen";
-    static components = { ItemsEditor };
-    static props = { app: Object, params: { type: Object, optional: true } };
-
-    setup() {
-        this.model = this.props.app.model;
-        this.desk = useState(this.model.state);
-        this.packUnit = packUnit;
-        this.state = useState({ bar: null, items: [], busy: false, error: "" });
-    }
-
-    get bars() {
-        return this.desk.catalog?.bars || [];
-    }
-
-    async send() {
-        const { bar, items } = this.state;
-        this.state.busy = true;
-        this.state.error = "";
-        const outcome = await this.model.post(
-            "desk_store_send",
-            {
-                dest_bar_id: bar.id,
-                lines: items.map((item) => ({ product_id: item.productId, uom_id: item.uomId, qty: item.qty })),
-            },
-            `Send to ${bar.name}`
-        );
-        this.state.busy = false;
-        if (outcome.status === "failed") {
-            feedback(false);
-            this.state.error = outcome.message;
-            return;
-        }
-        toast(this.props.app, outcome, `Sent to ${bar.name}.`);
-        this.props.app.home();
-    }
-}
-
-/** Photos are made small before they travel: a phone photo is several MB. */
-async function readInvoice(file) {
-    if (!file.type.startsWith("image/")) {
-        const dataUrl = await getDataURLFromFile(file);
-        return { name: file.name, mimetype: file.type, data: dataUrl.split(",")[1], preview: "" };
-    }
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-    return { name: "Supplier invoice.jpg", mimetype: "image/jpeg", data: dataUrl.split(",")[1], preview: dataUrl };
-}
-
 /**
  * Store: a supplier delivery, checked against the supplier's invoice.
  *
@@ -98,6 +42,8 @@ export class StoreReceiveScreen extends Component {
     setup() {
         this.model = this.props.app.model;
         this.desk = useState(this.model.state);
+        // Supplier deliveries always go into the store, whichever location the Desk signed in at.
+        this.storeId = this.model.state.home.store_id;
         this.packUnit = packUnit;
         this.moveQty = moveQty;
         this.fmt = fmt;
@@ -132,7 +78,7 @@ export class StoreReceiveScreen extends Component {
 
     async loadReceipts() {
         try {
-            this.state.receipts = await this.model.fetch("desk_receipts");
+            this.state.receipts = await this.model.fetch("desk_receipts", { bar_id: this.storeId });
         } catch (error) {
             this.state.error = errorMessage(error);
         }
@@ -157,7 +103,7 @@ export class StoreReceiveScreen extends Component {
 
     async searchSuppliers() {
         try {
-            this.state.suppliers = await this.model.fetch("desk_suppliers", { query: this.state.query });
+            this.state.suppliers = await this.model.fetch("desk_suppliers", { bar_id: this.storeId, query: this.state.query });
         } catch (error) {
             this.state.error = errorMessage(error);
         }
@@ -167,7 +113,7 @@ export class StoreReceiveScreen extends Component {
         Object.assign(this.state, { supplier, items: [], supplierProducts: new Set() });
         this.go("items");
         try {
-            const ids = await this.model.fetch("desk_supplier_products", { partner_id: supplier.id });
+            const ids = await this.model.fetch("desk_supplier_products", { bar_id: this.storeId, partner_id: supplier.id });
             this.state.supplierProducts = new Set(ids);
         } catch {
             // Offline: every product is offered.
@@ -280,7 +226,7 @@ export class StoreReceiveScreen extends Component {
 
     async openReceipt(receipt) {
         try {
-            const detail = await this.model.fetch("desk_receipt", { picking_id: receipt.id });
+            const detail = await this.model.fetch("desk_receipt", { bar_id: this.storeId, picking_id: receipt.id });
             Object.assign(this.state, {
                 receipt: { ...detail, billed: receipt.billed },
                 received: Object.fromEntries(detail.lines.map((line) => [line.move_id, line.qty])),
@@ -352,6 +298,7 @@ export class StoreReceiveScreen extends Component {
             outcome = await this.model.post(
                 "desk_receipt_validate",
                 {
+                    bar_id: this.storeId,
                     picking_id: receipt.id,
                     received,
                     rest: missing === "credit" ? "not_coming" : "coming",
@@ -364,6 +311,7 @@ export class StoreReceiveScreen extends Component {
             outcome = await this.model.post(
                 "desk_supplier_delivery",
                 {
+                    bar_id: this.storeId,
                     partner_id: supplier.id,
                     lines: items.map((item) => ({
                         product_id: item.productId,
@@ -394,58 +342,5 @@ export class StoreReceiveScreen extends Component {
             paid === "now" ? "In the store and paid." : "In the store. The bill waits for payment."
         );
         this.props.app.home();
-    }
-}
-
-/** Store: bars' disputes on deliveries. Accept when the goods never left. */
-export class DisputesScreen extends Component {
-    static template = "odin_bar_desk.DisputesScreen";
-    static props = { app: Object, params: { type: Object, optional: true } };
-
-    setup() {
-        this.model = this.props.app.model;
-        this.moveQty = moveQty;
-        this.state = useState({ loading: true, disputes: [], busy: false, error: "" });
-        onWillStart(() => this.load());
-    }
-
-    async load() {
-        try {
-            this.state.disputes = await this.model.fetch("desk_disputes");
-        } catch (error) {
-            this.state.error = errorMessage(error);
-        } finally {
-            this.state.loading = false;
-        }
-    }
-
-    async resolve(dispute, accept) {
-        const confirmed = await this.props.app.confirm(
-            accept ? "Accept the dispute?" : "Reject the dispute?",
-            accept
-                ? dispute.short
-                    ? "The goods never left the store: they come back into store stock."
-                    : "The extra goods were sent: they are added to the delivery."
-                : "Nothing changes: the difference stays with the bar.",
-            accept ? "Accept" : "Reject"
-        );
-        if (!confirmed) {
-            return;
-        }
-        this.state.busy = true;
-        this.state.error = "";
-        const outcome = await this.model.post(
-            "desk_dispute_resolve",
-            { picking_id: dispute.id, accept },
-            `${accept ? "Accept" : "Reject"} ${dispute.name}`
-        );
-        this.state.busy = false;
-        if (outcome.status === "failed") {
-            feedback(false);
-            this.state.error = outcome.message;
-            return;
-        }
-        toast(this.props.app, outcome, accept ? "Dispute accepted." : "Dispute rejected.");
-        await this.load();
     }
 }

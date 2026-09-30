@@ -1,5 +1,7 @@
+from datetime import timedelta
+
 from odoo import Command
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import freeze_time, new_test_user, tagged
 
 from odoo.addons.odin_bar_desk.models.odin_bar_desk import DeskSessionError
@@ -18,16 +20,16 @@ class TestDeskAccess(BarDeskCase):
             lambda: desk.desk_login(self.bar_bb.id, self.john.id, "5678"),
             lambda: desk.desk_home(self.bar_bb.id, token),
             lambda: desk.desk_catalog(self.bar_bb.id, token),
-            lambda: desk.desk_stock_out(self.bar_bb.id, token, self.uuid(), self.reasons["breakage"].id, lines),
+            lambda: desk.desk_move(self.bar_be.id, token, self.uuid(), self.bar_bb.id, lines, to_bar_id=self.bar_be.id),
+            lambda: desk.desk_move(self.bar_be.id, token, self.uuid(), self.bar_be.id, lines, to_bar_id=self.bar_bb.id),
             lambda: desk.desk_count_start(self.bar_bb.id, token),
-            lambda: desk.desk_deliveries(self.bar_bb.id, token),
-            lambda: desk.desk_store_send(self.store.id, token, self.uuid(), self.bar_bb.id, lines),
+            lambda: desk.desk_differences(self.bar_be.id, token, False, self.bar_bb.id),
+            lambda: desk.desk_receipts(self.store.id, token),
         ]
         for call in calls:
             with self.assertRaises(AccessError):
                 call()
         self.assertFalse(self.env["odin.bar.activity"].search([("bar_id", "=", self.bar_bb.id)]))
-        self.assertFalse(self.env["stock.scrap"].search([("location_id", "=", self.loc_bb.id)]))
 
     def test_desk_list_only_offers_the_device_bar(self):
         boot = self.desk(self.device_be).desk_boot()
@@ -37,6 +39,26 @@ class TestDeskAccess(BarDeskCase):
         self.assertEqual(
             {bar["id"] for bar in manager_boot["bars"]}, set((self.store | self.bar_be | self.bar_bb).ids)
         )
+
+    def test_one_sign_in_covers_every_location_of_the_staff_member(self):
+        token = self.controller_token()
+        desk = self.desk(self.controller)
+        for bar in (self.store, self.bar_be, self.bar_bb):
+            desk.desk_count_start(bar.id, token)
+        # On a login that opens every location, someone allowed at Bulls Eye
+        # only cannot act for Banda Bar with the same sign-in.
+        tablet = new_test_user(
+            self.env,
+            login="club.tablet",
+            groups="odin_bar_desk.group_bar_desk_staff",
+            odin_bar_id=self.store.id,
+            odin_bar_ids=[Command.set((self.bar_be | self.bar_bb).ids)],
+        )
+        self.mary.odin_bar_ids = [Command.set((self.store | self.bar_be).ids)]
+        token = self.login(tablet, self.store, self.mary, "1234")
+        self.desk(tablet).desk_count_start(self.bar_be.id, token)
+        with self.assertRaisesRegex(UserError, "Mary does not work at Banda Bar"):
+            self.desk(tablet).desk_count_start(self.bar_bb.id, token)
 
     def test_token_is_tied_to_login_bar_staff_and_time(self):
         with freeze_time("2026-09-27 10:00:00"):
@@ -53,13 +75,14 @@ class TestDeskAccess(BarDeskCase):
             with self.assertRaises(DeskSessionError):
                 desk.desk_home(self.bar_be.id, token)
         with freeze_time("2026-09-27 11:00:00"):
-            self.mary.odin_bar_ids = [Command.clear()]
+            self.mary.active = False
             with self.assertRaises(DeskSessionError):
                 desk.desk_home(self.bar_be.id, token)
 
     def test_staff_cannot_see_stock(self):
-        """Counts are blind: a staff login cannot read stock levels or history,
-        not even the quantities every internal user normally sees."""
+        """A shared Desk login cannot browse stock in Odoo, not even the
+        quantities every internal user normally sees: the Desk shows what it
+        needs through its own methods."""
         self.opening_stock(self.loc_be, [(self.jameson, 50)])
         for model in ("stock.picking", "stock.move", "odin.bar.count", "odin.bar.count.line", "odin.bar.activity"):
             with self.assertRaises(AccessError):
@@ -138,9 +161,17 @@ class TestDeskAccess(BarDeskCase):
         self.assertEqual(desk.desk_home(self.bar_bb.id, token)["employee"]["name"], "Boss")
 
     def test_only_managers_approve(self):
+        self.bar_be._mark_pos_posted(self.bar_be._business_date() - timedelta(days=1), no_sales=True)
         count = self.submit_count(self.device_be, self.bar_be, self.mary, "1234", [])
         stock_user = new_test_user(self.env, login="stockman", groups="stock.group_stock_user")
         with self.assertRaises(AccessError):
             count.with_user(stock_user).action_approve()
         with self.assertRaises(AccessError):
             count.with_user(self.device_be).action_approve()
+        token = self.login(self.device_be, self.bar_be, self.mary, "1234")
+        home = self.desk(self.device_be).desk_home(self.bar_be.id, token)
+        self.assertEqual(home["approve_blocked"], "A manager approves the day.")
+        with self.assertRaisesRegex(AccessError, "Only a manager"):
+            self.desk(self.device_be).desk_approve_day(
+                self.bar_be.id, token, self.uuid(), home["day"]["date"]
+            )

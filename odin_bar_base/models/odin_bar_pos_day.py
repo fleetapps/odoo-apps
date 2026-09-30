@@ -46,6 +46,7 @@ class OdinBarPosDay(models.Model):
                     [
                         ("bar_business_date", "=", day.business_date),
                         ("location_id", "=", day.bar_id.location_id.id),
+                        ("bar_manual_move", "=", False),
                     ]
                 )
             else:

@@ -3,10 +3,11 @@ from . import res_users
 from . import hr_employee
 from . import res_partner
 from . import odin_bar_reason
+from . import odin_bar_variance_reason
 from . import odin_bar
 from . import odin_bar_activity
 from . import odin_bar_count
-from . import odin_bar_request
 from . import stock
 from . import odin_bar_desk
 from . import odin_bar_desk_supply
+from . import odin_bar_reports
