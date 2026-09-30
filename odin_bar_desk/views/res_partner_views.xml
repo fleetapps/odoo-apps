@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_odin_bar_desk" model="ir.ui.view">
+        <field name="name">res.partner.form.odin.bar.desk</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <page name="sales_purchases" position="inside">
+                <group string="Bar Desk supplier deliveries" name="bar_desk_supplies">
+                    <field name="bar_supplies" placeholder="e.g. Beers and spirits"/>
+                    <field name="bar_supply_categ_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+            </page>
+        </field>
+    </record>
+</odoo>

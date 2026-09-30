@@ -10,7 +10,6 @@
                     <field name="odin_bar_all"/>
                     <field name="odin_bar_ids" widget="many2many_tags" options="{'no_create': True}"
                            invisible="odin_bar_all"/>
-                    <field name="odin_bar_can_order"/>
                     <div colspan="2" class="text-muted small">
                         Staff sign in at these bars with the PIN above.
                     </div>

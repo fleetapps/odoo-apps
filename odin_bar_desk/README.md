@@ -14,7 +14,7 @@ not part of this module (see *Not included*).
 | Who | Device | What they get |
 |---|---|---|
 | Bar staff | The bar's shared phone or tablet, logged in as the bar's Desk login | Only the Bar Desk, full screen, no Odoo menus. They sign in with name + PIN. |
-| Storekeeper | The Main Store device | The same Desk in store mode: Requests, Send to bar, Supplier delivery, Order, Count store, Disputes. |
+| Storekeeper | The Main Store device | The same Desk in store mode: Requests, Send to bar, Supplier delivery, Count store, Disputes. |
 | Manager | Their own Odoo login | The **Bar Control** app: Dashboard, Bar Desk (any bar), Count approvals, Stock-out log, Stock in (with Requests and Disputes), POS import, Reporting. |
 
 ## Setting up
@@ -45,10 +45,12 @@ not part of this module (see *Not included*).
    it a bar switcher.
 7. **Managers**: give them *Bar Desk / Manager*. Bar tablets get *Bar Desk /
    Staff*, their only group.
-8. **Ordering**: on each product's Inventory tab, set **Order in** (e.g. Crate
-   of 24, Bottle 750ml) and **Usual level at the store** (in that unit), and
-   put its supplier first on the Purchase tab. Tick **Can order from
-   suppliers** on the employees who order (e.g. the stock taker).
+8. **Suppliers**: on each supplier's *Sales & Purchase* tab, **Supplies** is
+   what the Desk shows on its tile (e.g. Beers and spirits) and **Supplies
+   product categories** the products listed first when booking its delivery.
+   Installing the module fills both for Dhostana's suppliers (Khetias, Soys,
+   Mega Wines, Rosso Bianco, Siddham Wines, Sky City, Highridge, Benchmark,
+   Muji, Geeta, Ishano, Outlook Index, Tony West, Rwathia).
 9. **Paying suppliers**: on the Main Store's *Bar Desk* tab, set **Suppliers
    are paid from** to the cash or M-Pesa journal that pays deliveries.
 
@@ -128,21 +130,27 @@ against your bar."*
 **Store mode** (storekeeper)
 - **Send to bar**: pick the bar, add items (crates, bottles), then **Send to
   Bulls Eye**. It is validated at once and shows at the bar as *Not checked*.
-- **Order** (staff allowed to order, e.g. at 15:00 after the stock take): one
-  card per supplier, with a list already filled in: the usual level less this
-  morning's count (adjusted for what moved since) and what is already on
-  order, in crates or bottles. Change anything, then **Send order to Kenya
-  Breweries**. The purchase order is confirmed and emailed to the supplier;
-  **Send on WhatsApp** opens the order as a message. **Order from another
-  supplier** starts an empty list.
-- **Supplier delivery**: *Expected from suppliers* lists the orders due. Open
-  one: the ordered quantities are filled in; correct what differs, **Next**.
-  If less came, answer **Is the rest still coming?** (*Still coming* keeps it
-  expected; *Not coming* closes it). Type the supplier's invoice number if you
-  have it, then **Paid now** (from the store's payment account) or **Pay
-  later**. Either way the supplier bill is made for what arrived, at the order
-  prices, so nothing is paid for goods that did not come. **Delivery without
-  an order** does the same for goods that came unannounced.
+- **Supplier delivery**, with the supplier's invoice in hand:
+  1. **New supplier delivery**, then the supplier. Each shows what it
+     supplies (Water, Spirits, Beers and spirits...).
+  2. Optional: **Add a photo of the invoice** (camera or PDF). It is kept on
+     the bill.
+  3. **What's on the invoice**: add each item and its quantity (crates,
+     bottles). The supplier's products are listed first; **Other products**
+     shows the rest.
+  4. **What arrived?** Everything is filled in from the invoice: tap a line
+     only if what arrived is different.
+  5. If something is missing, **The supplier will**: *Bring them later* (the
+     rest stays under *Expected from suppliers*, already billed) or *Send a
+     credit note* (a draft credit note waits for the supplier's).
+  6. Invoice number (optional) and **Invoice total**, then **Paid now** (from
+     the store's payment account) or **Pay later**.
+
+  What arrived goes into the store at once. The supplier bill follows the
+  invoice. If the invoice total differs from Odoo's prices, the bill waits in
+  draft for a manager to check the prices (a payment made now is kept and
+  matched then). *Expected from suppliers* lists what is still to come; open
+  one when it arrives, nothing more is paid for it.
 - **Count store**: the same count flow, on `MS/Stock`.
 - **Disputes**: bars' reported differences. **Accept** when the goods never
   left the store, which moves them back. **Reject** leaves the variance with
@@ -217,8 +225,7 @@ against your bar."*
 | Send to bar (store) | Bar's `ISS-xx` transfer, validated |
 | Ask for stock | Request (`odin.bar.request`); nothing moves |
 | Request answered | Store's `ISS-xx`, or `IBT` from a bar, to the asking bar, validated |
-| Order (store) | Confirmed purchase order delivering to the store, emailed |
-| Supplier delivery (store) | Receipt into the store, validated; supplier bill for what arrived, paid from the store's journal when *Paid now* |
+| Supplier delivery (store) | Receipt into the store for what arrived, validated; supplier bill for what the invoice lists, paid from the store's journal when *Paid now*; an expected receipt (bring later) or a draft credit note (credit) for what was missing; the invoice photo attached |
 | Delivery disputed | Draft return (short) or draft transfer (extra), linked to the delivery |
 | Count approved | Inventory adjustment moves for the differences, linked to the count |
 

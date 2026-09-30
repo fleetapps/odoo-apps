@@ -1,5 +1,5 @@
 from odoo.exceptions import UserError
-from odoo.tests import freeze_time, tagged
+from odoo.tests import tagged
 
 from .common import BarDeskCase
 
@@ -104,126 +104,99 @@ class TestAskForStock(BarDeskCase):
 
 
 @tagged("post_install", "-at_install")
-class TestOrderAndPay(BarDeskCase):
-    """Order from suppliers at 15:00, receive and pay the next day."""
+class TestSupplierDelivery(BarDeskCase):
+    """The store books a supplier delivery against the supplier's invoice."""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.supplier = cls.env["res.partner"].create(
-            {"name": "Kenya Breweries", "email": "orders@kbl.example", "phone": "0712 345678"}
-        )
+        beer = cls.env["product.category"].create({"name": "Beer, RTD & Cider"})
+        cls.tusker.write({"categ_id": beer.id, "supplier_taxes_id": [(5, 0, 0)]})
+        cls.supplier = cls.env["res.partner"].create({"name": "Tony West", "is_company": True, "supplier_rank": 1})
+        cls.env["res.partner"]._bar_seed_suppliers()
         cls.env["product.supplierinfo"].create(
             {"partner_id": cls.supplier.id, "product_tmpl_id": cls.tusker.product_tmpl_id.id, "price": 100.0}
         )
-        cls.tusker.write({"bar_order_uom_id": cls.uom_crate.id, "bar_usual_qty": 5})
-        cls.sam.odin_bar_can_order = True
-        cls.cash = cls.env["account.journal"].search(
+        cls.journal = cls.env["account.journal"].search(
             [("type", "in", ("cash", "bank")), ("company_id", "=", cls.company.id)], limit=1
         )
-        cls.store.supplier_payment_journal_id = cls.cash
+        cls.store.supplier_payment_journal_id = cls.journal
 
     def setUp(self):
         super().setUp()
         self.token = self.login(self.device_store, self.store, self.sam, "4321")
         self.desk_store = self.desk(self.device_store)
 
-    def suggestion(self):
-        data = self.desk_store.desk_order_suggestions(self.store.id, self.token)
-        return next((s for s in data["suppliers"] if s["id"] == self.supplier.id), None)
-
-    def order(self, crates):
-        result = self.desk_store.desk_order_send(
+    def deliver(self, invoiced, received, **kwargs):
+        result = self.desk_store.desk_supplier_delivery(
             self.store.id,
             self.token,
             self.uuid(),
             self.supplier.id,
-            [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": crates}],
+            [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "invoiced": invoiced, "received": received}],
+            **kwargs,
         )
-        return result, self.env["odin.bar.activity"].browse(result["activity_id"]).purchase_id
+        return self.env["odin.bar.activity"].browse(result["activity_id"]), result
 
-    def test_suggestion_starts_from_this_mornings_count(self):
-        with freeze_time("2026-09-30 05:00:00"):
-            self.opening_stock(self.loc_store, [(self.tusker, 60)])
-        with freeze_time("2026-09-30 07:00:00"):  # 10:00 stock take: 20 left, not approved yet
-            self.submit_count(
-                self.device_store, self.store, self.sam, "4321", [self.count_line(self.tusker, units=20)]
-            )
-        with freeze_time("2026-09-30 12:00:00"):  # 15:00
-            line = self.suggestion()["lines"][0]
-            # usual 5 crates = 120; 20 counted -> 100 more -> 5 crates of 24
-            self.assertEqual((line["product_id"], line["uom_id"], line["qty"]), (self.tusker.id, self.uom_crate.id, 5))
-            result, order = self.order(4)
-        self.assertEqual(order.state, "purchase")
-        self.assertEqual(order.picking_type_id, self.store.receipt_type_id)
-        self.assertEqual(order.order_line.product_qty, 4)
-        self.assertEqual(order.order_line.price_unit, 2400.0)
-        self.assertTrue(result["order"]["emailed"])
-        self.assertTrue(result["order"]["whatsapp"].startswith("https://wa.me/"))
-        self.assertIn("4 × Crate of 24", result["order"]["text"])
-        with freeze_time("2026-09-30 12:05:00"):
-            again = self.suggestion()
-        self.assertEqual(again["lines"][0]["qty"], 1, "what is on order counts: 100 - 96 -> 1 crate")
-        self.assertEqual(again["ordered"][0]["name"], order.name)
+    def bills(self, move_type="in_invoice"):
+        return self.env["account.move"].search([("partner_id", "=", self.supplier.id), ("move_type", "=", move_type)])
 
-    def test_only_staff_who_order_see_it(self):
-        self.sam.odin_bar_can_order = False
-        self.assertFalse(self.desk_store.desk_home(self.store.id, self.token)["can_order"])
-        with self.assertRaisesRegex(UserError, "allowed to order"):
-            self.desk_store.desk_order_suggestions(self.store.id, self.token)
+    def test_suppliers_show_what_they_supply(self):
+        self.assertEqual(self.supplier.bar_supplies, "Beers and spirits")
+        suppliers = self.desk_store.desk_suppliers(self.store.id, self.token)
+        info = next(s for s in suppliers if s["id"] == self.supplier.id)
+        self.assertEqual(info["supplies"], "Beers and spirits")
+        ids = self.desk_store.desk_supplier_products(self.store.id, self.token, self.supplier.id)
+        self.assertEqual(ids, self.tusker.ids, "their beer, not the spirits of another category")
 
-    def receive(self, order, received_crates, paid, rest="coming", ref=False):
-        receipt = order.picking_ids
-        detail = self.desk_store.desk_receipt(self.store.id, self.token, receipt.id)
-        move_id = detail["lines"][0]["move_id"]
-        self.desk_store.desk_receipt_validate(
-            self.store.id, self.token, self.uuid(), receipt.id, {move_id: received_crates},
-            paid=paid, supplier_ref=ref, rest=rest,
+    def test_all_arrived_paid_now(self):
+        activity, result = self.deliver(
+            5, 5, paid="now", amount=12000, supplier_ref="TW-101",
+            invoice={"name": "invoice.jpg", "mimetype": "image/jpeg", "data": "aGVsbG8="},
         )
-        return receipt
-
-    def test_short_delivery_not_coming_paid_now(self):
-        _result, order = self.order(5)
-        receipt = self.receive(order, 4, "now", rest="not_coming", ref="KBL-778")
-        self.assertEqual(receipt.state, "done")
-        self.assertEqual(self.qty(self.tusker, self.loc_store), 96)
-        self.assertEqual(receipt.backorder_ids.state, "cancel")
-        bill = order.invoice_ids
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 120)
+        bill = self.bills()
         self.assertEqual(bill.state, "posted")
-        self.assertEqual(bill.ref, "KBL-778")
-        self.assertEqual(bill.invoice_line_ids.quantity, 4)
-        self.assertEqual(bill.invoice_line_ids.price_unit, 2400.0)
+        self.assertEqual(bill.ref, "TW-101")
+        self.assertEqual(bill.amount_untaxed, 12000.0)
         self.assertIn(bill.payment_state, ("paid", "in_payment"))
-        self.assertEqual(order.order_line.qty_received, 4)
-        self.assertEqual(order.order_line.qty_invoiced, 4)
+        self.assertTrue(result["bill"]["paid"])
+        attached = self.env["ir.attachment"].search([("res_model", "=", "account.move"), ("res_id", "=", bill.id)])
+        self.assertEqual(attached.name, "invoice.jpg")
 
-    def test_short_delivery_still_coming_pay_later(self):
-        _result, order = self.order(5)
-        receipt = self.receive(order, 3, "later")
-        self.assertEqual(receipt.backorder_ids.state, "assigned", "the rest stays expected")
-        receipts = self.desk_store.desk_receipts(self.store.id, self.token)
-        self.assertEqual([r["id"] for r in receipts], receipt.backorder_ids.ids)
-        bill = order.invoice_ids
-        self.assertEqual(bill.payment_state, "not_paid")
-        self.assertEqual(bill.invoice_line_ids.quantity, 3)
+    def test_short_still_coming(self):
+        self.deliver(5, 4, missing="coming", paid="later")
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 96)
+        self.assertEqual(self.bills().invoice_line_ids.quantity, 5, "the bill follows the invoice")
+        expected = self.desk_store.desk_receipts(self.store.id, self.token)
+        self.assertEqual(len(expected), 1)
+        self.assertTrue(expected[0]["billed"])
+        detail = self.desk_store.desk_receipt(self.store.id, self.token, expected[0]["id"])
+        self.assertEqual((detail["lines"][0]["qty"], detail["lines"][0]["uom_id"]), (1, self.uom_crate.id))
+        # The last crate comes the next day: nothing more is billed.
+        self.desk_store.desk_receipt_validate(
+            self.store.id, self.token, self.uuid(), expected[0]["id"], {detail["lines"][0]["move_id"]: 1}, paid="now"
+        )
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 120)
+        self.assertEqual(len(self.bills()), 1)
+
+    def test_short_credit_note(self):
+        self.deliver(5, 4, missing="credit", paid="later")
+        self.assertFalse(self.desk_store.desk_receipts(self.store.id, self.token))
+        refund = self.bills("in_refund")
+        self.assertEqual(refund.state, "draft", "waits for the supplier's credit note")
+        self.assertEqual(refund.invoice_line_ids.quantity, 1)
+
+    def test_invoice_total_differs_from_odoo_prices(self):
+        self.deliver(5, 5, paid="now", amount=12500)
+        bill = self.bills()
+        self.assertEqual(bill.state, "draft", "a manager checks the prices")
+        payment = self.env["account.payment"].search([("partner_id", "=", self.supplier.id)])
+        self.assertEqual(payment.amount, 12500.0)
+        self.assertNotEqual(payment.state, "draft")
 
     def test_paid_now_needs_the_payment_account(self):
         self.store.supplier_payment_journal_id = False
-        _result, order = self.order(1)
         with self.assertRaisesRegex(UserError, "account suppliers are paid from"):
-            self.receive(order, 1, "now")
-        self.assertEqual(order.picking_ids.state, "assigned", "nothing was received")
-
-    def test_delivery_without_an_order(self):
-        self.desk_store.desk_store_receive(
-            self.store.id,
-            self.token,
-            self.uuid(),
-            self.supplier.id,
-            [{"product_id": self.tusker.id, "uom_id": self.uom_crate.id, "qty": 2}],
-            paid="later",
-        )
-        self.assertEqual(self.qty(self.tusker, self.loc_store), 48)
-        bill = self.env["account.move"].search([("partner_id", "=", self.supplier.id), ("move_type", "=", "in_invoice")])
-        self.assertEqual(bill.amount_untaxed, 4800.0)
-        self.assertEqual(bill.payment_state, "not_paid")
+            self.deliver(1, 1, paid="now", amount=2400)
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 0)

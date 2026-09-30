@@ -9,7 +9,6 @@ import { DeliveriesScreen, DeliveryScreen } from "./delivery_screens";
 import { DeskModel } from "./desk_model";
 import { HomeScreen } from "./home_screen";
 import { LockScreen } from "./lock_screen";
-import { OrderScreen } from "./order_screen";
 import { AskScreen, RequestScreen, RequestsScreen } from "./request_screens";
 import { StockOutScreen } from "./stock_out_screen";
 import { DisputesScreen, StoreReceiveScreen, StoreSendScreen } from "./store_screens";
@@ -32,7 +31,6 @@ const SCREENS = {
     ask: { component: AskScreen, title: "Ask for stock" },
     requests: { component: RequestsScreen, title: "Requests" },
     request: { component: RequestScreen, title: "Requests" },
-    order: { component: OrderScreen, title: "Order" },
 };
 
 export class BarDesk extends Component {
