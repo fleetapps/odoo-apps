@@ -1006,3 +1006,25 @@
         background-color: var(--#{$prefix}tertiary-bg);
     }
 }
+
+// Ready to approve: the Approve step stays in view at the bottom of the
+// sheet, however long the moves list above it runs.
+.o_bar_desk_step.o_ready {
+    position: sticky;
+    bottom: 0.5rem;
+    z-index: 2;
+    margin-bottom: 0;
+    box-shadow: 0 -0.25rem 1rem rgba(0, 0, 0, 0.12);
+}
+
+// Narrow phones: the avatar alone, so the screen title keeps its room
+// (the full name is on its tooltip and on the sign-in screen).
+@media (max-width: 420px) {
+    .o_bar_desk_staff {
+        padding-right: 0.25rem;
+    }
+
+    .o_bar_desk_staff_name {
+        display: none;
+    }
+}

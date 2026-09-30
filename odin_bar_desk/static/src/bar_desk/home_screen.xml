@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="odin_bar_desk.Step">
-        <section class="o_bar_desk_step" t-att-class="{'o_done': done}">
+        <section class="o_bar_desk_step" t-att-class="{'o_done': done, 'o_ready': ready}">
             <div class="o_bar_desk_step_head">
                 <span class="o_bar_desk_step_num">
                     <i t-if="done" class="fa fa-check" aria-label="Done"/>
@@ -91,6 +91,7 @@
                 </t>
 
                 <t t-call="odin_bar_desk.Step">
+                    <t t-set="ready" t-value="home.can_approve and !home.approved"/>
                     <t t-set="num" t-value="3"/>
                     <t t-set="title" t-value="'Approve'"/>
                     <t t-set="done" t-value="home.approved"/>

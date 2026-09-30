@@ -54,14 +54,15 @@ export function packShort(pack) {
     return name.toLowerCase().startsWith("crate") ? "cr" : name;
 }
 
-/** Units in crates, for beer and sodas: "1 cr + 7", "2 cr", "" under a crate. */
+/** Units in crates, for beer and sodas: "1 cr + 7", "2 cr", "" under one crate. */
 function inPacks(product, qty) {
     const pack = product.poured ? null : product.packs[0];
-    if (!pack || pack.factor <= 1 || Math.abs(qty) < pack.factor) {
+    if (!pack || pack.factor <= 1 || qty < pack.factor) {
+        // Under a crate, or below zero: the plain number says it better.
         return "";
     }
-    const full = Math.floor(Math.abs(qty) / pack.factor + 1e-9);
-    const rest = Math.round((Math.abs(qty) - full * pack.factor) * 100) / 100;
+    const full = Math.floor(qty / pack.factor + 1e-9);
+    const rest = Math.round((qty - full * pack.factor) * 100) / 100;
     return rest ? `${full} ${packShort(pack)} + ${fmt(rest)}` : `${full} ${packShort(pack)}`;
 }
 
