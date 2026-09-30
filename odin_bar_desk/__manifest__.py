@@ -7,7 +7,7 @@ Phone-first stock desk for bars: staff record stock outs, count the bar
 blind at night and check deliveries on a shared tablet with a PIN; the store
 sends stock to bars; managers approve counts in Bar Control. See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "license": "GPL-3",
