@@ -118,11 +118,16 @@ class TestAccess(WhatsappCase):
 
 @tagged("post_install", "-at_install")
 class TestCommunityCorePaths(WhatsappCase):
-    """Odoo 19 Community core already handles the reused keys (R9); these must keep working."""
+    """Odoo 19 Community core already handles the reused keys (R9); these must keep working.
+
+    Messages are posted with ``wa_skip_send``: these test core paths, not sending.
+    """
 
     def test_members_get_push_recipients(self):
         channel = self._make_channel(self.user_a.partner_id | self.user_b.partner_id)
-        message = channel.with_user(self.user_a).message_post(body="Hi", message_type="whatsapp_message")
+        message = channel.with_user(self.user_a).with_context(wa_skip_send=True).message_post(
+            body="Hi", message_type="whatsapp_message",
+        )
         recipients = channel._notify_get_recipients(message, msg_vals={
             "message_type": "whatsapp_message", "author_id": self.user_a.partner_id.id,
             "partner_ids": [],
@@ -137,7 +142,9 @@ class TestCommunityCorePaths(WhatsappCase):
 
     def test_extra_notifications(self):
         channel = self._make_channel(self.user_a.partner_id | self.user_b.partner_id)
-        message = channel.with_user(self.user_a).message_post(body="Hi", message_type="whatsapp_message")
+        message = channel.with_user(self.user_a).with_context(wa_skip_send=True).message_post(
+            body="Hi", message_type="whatsapp_message",
+        )
         recipients_data = [{"active": True, "id": self.user_b.partner_id.id, "notif": "inbox"}]
         extra = channel._notify_get_recipients_for_extra_notifications(message, recipients_data, msg_vals={
             "message_type": "whatsapp_message", "author_id": self.user_a.partner_id.id,
@@ -146,7 +153,9 @@ class TestCommunityCorePaths(WhatsappCase):
 
     def test_channel_fetched(self):
         channel = self._make_channel(self.user_a.partner_id | self.user_b.partner_id)
-        message = channel.with_user(self.user_a).message_post(body="Hi", message_type="whatsapp_message")
+        message = channel.with_user(self.user_a).with_context(wa_skip_send=True).message_post(
+            body="Hi", message_type="whatsapp_message",
+        )
         channel.with_user(self.user_b).channel_fetched()
         member_b = channel.channel_member_ids.filtered(lambda m: m.partner_id == self.user_b.partner_id)
         member_b.invalidate_recordset(["fetched_message_id"])

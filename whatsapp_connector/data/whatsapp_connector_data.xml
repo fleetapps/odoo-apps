@@ -16,6 +16,15 @@
             <field name="interval_type">minutes</field>
         </record>
 
+        <record id="ir_cron_send_messages" model="ir.cron">
+            <field name="name">WhatsApp: send queued messages</field>
+            <field name="model_id" ref="model_whatsapp_connector_message"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_send_queued()</field>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+        </record>
+
         <record id="ir_cron_retry_media" model="ir.cron">
             <field name="name">WhatsApp: retry media downloads</field>
             <field name="model_id" ref="model_whatsapp_connector_message"/>

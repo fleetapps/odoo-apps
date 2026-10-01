@@ -59,5 +59,27 @@
             <field name="model_id" ref="model_whatsapp_connector_account"/>
             <field name="domain_force">[("company_id", "in", company_ids)]</field>
         </record>
+
+        <record id="rule_template_company" model="ir.rule">
+            <field name="name">WhatsApp Template: multi-company</field>
+            <field name="model_id" ref="model_whatsapp_connector_template"/>
+            <field name="domain_force">[("company_id", "in", company_ids)]</field>
+        </record>
+
+        <!-- §31 / R30: a message's WhatsApp data (its text included) is readable
+             like its conversation: by the members, and by managers for all. -->
+        <record id="rule_message_member" model="ir.rule">
+            <field name="name">WhatsApp Message: conversations the user is a member of</field>
+            <field name="model_id" ref="model_whatsapp_connector_message"/>
+            <field name="groups" eval="[Command.link(ref('group_whatsapp_user'))]"/>
+            <field name="domain_force">[("channel_id.channel_member_ids.partner_id", "=", user.partner_id.id)]</field>
+        </record>
+
+        <record id="rule_message_manager" model="ir.rule">
+            <field name="name">WhatsApp Message: managers see the messages of their companies' accounts</field>
+            <field name="model_id" ref="model_whatsapp_connector_message"/>
+            <field name="groups" eval="[Command.link(ref('group_whatsapp_manager'))]"/>
+            <field name="domain_force">[("account_id.company_id", "in", company_ids)]</field>
+        </record>
     </data>
 </odoo>

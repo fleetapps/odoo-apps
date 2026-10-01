@@ -4,7 +4,9 @@ from datetime import datetime, timedelta, timezone
 from markupsafe import Markup
 
 from odoo import Command, api, fields, models
-from odoo.tools import plaintext2html
+from odoo.exceptions import UserError
+from odoo.fields import Domain
+from odoo.tools import html2plaintext, plaintext2html
 
 _logger = logging.getLogger(__name__)
 
@@ -15,6 +17,8 @@ CUSTOMER_SERVICE_WINDOW = timedelta(hours=24)
 NOTIFY_ALL_AFTER = timedelta(days=15)
 
 MEDIA_TYPES = ("image", "video", "audio", "document", "sticker")
+# Meta's limit for a text message body (Cloud API reference, TextMessage.body).
+TEXT_MAX_LENGTH = 4096
 
 
 def is_whatsapp_channel(channel):
@@ -404,3 +408,242 @@ class DiscussChannel(models.Model):
         members.filtered(lambda m: m.mute_until_dt and not m.wa_participant).sudo().write(
             {"mute_until_dt": False},
         )
+
+    # ------------------------------------------------------------------
+    # Messages sent from Discuss (SPEC.md §27, §28, R34, R36)
+    # ------------------------------------------------------------------
+
+    def message_post(self, *, message_type="notification", **kwargs):
+        """A user's message in a WhatsApp conversation is sent to the customer.
+
+        Discuss posts it as a comment (or already as a WhatsApp message); it
+        becomes a WhatsApp message, checked against Meta's rules first so
+        nothing is posted that cannot be sent.
+        """
+        if (
+            len(self) == 1
+            and self.channel_type == "whatsapp"
+            and message_type in ("comment", "whatsapp_message")
+            and not self.env.context.get("wa_skip_send")
+            and not kwargs.get("author_id")
+            and self.env.user._is_internal()
+        ):
+            attachments = self.env["ir.attachment"].browse(kwargs.get("attachment_ids") or [])
+            text = self._wa_plain_text(kwargs.get("body"))
+            self._wa_check_can_send(attachments, text)
+            if self.wa_status == "closed":
+                self._wa_reopen()  # SPEC.md §44
+            message = super().message_post(message_type="whatsapp_message", **kwargs)
+            self._wa_queue_outgoing(message, attachments)
+            return message
+        return super().message_post(message_type=message_type, **kwargs)
+
+    def _wa_check_can_send(self, attachments, text=""):
+        """Refuse what Meta would refuse (R34, R36, R22), before anything is posted."""
+        self.ensure_one()
+        tr = self.env._
+        if not text and not attachments:
+            raise UserError(tr("There is nothing to send."))
+        if len(text) > TEXT_MAX_LENGTH:
+            raise UserError(tr(
+                "WhatsApp messages are limited to %(limit)s characters; this one has %(length)s.",
+                limit=TEXT_MAX_LENGTH, length=len(text),
+            ))
+        if not self._wa_window_open():
+            raise UserError(tr(
+                "More than 24 hours have passed since the customer's last message, so WhatsApp only "
+                "accepts templates. Send a template to restart the conversation.",
+            ))
+        if not self._wa_recipient():
+            raise UserError(tr(
+                "This customer has no phone number, and sending to business-scoped user IDs is not "
+                "enabled on the WhatsApp account.",
+            ))
+        for attachment in attachments:
+            WaMessage = self.env["whatsapp_connector.message"]
+            error = WaMessage._wa_media_problem(attachment)
+            if error:
+                raise UserError(error)
+
+    @api.model
+    def _wa_plain_text(self, body):
+        """WhatsApp text for a Discuss body.
+
+        Discuss turns typed URLs into links whose text is the URL, so links
+        keep their text instead of getting numbered footnotes.
+        """
+        return html2plaintext(body or "", include_references=False).strip()
+
+    def _wa_recipient(self):
+        """Meta addressing (R36): the phone in E.164 with "+", else the BSUID if enabled."""
+        self.ensure_one()
+        if self.wa_customer_phone:
+            return {"to": self.wa_customer_phone}
+        if self.wa_bsuid and self.wa_account_id.bsuid_sending_enabled:
+            return {"recipient": self.wa_bsuid}
+        return {}
+
+    def _wa_queue_outgoing(self, message, attachments):
+        """Create the WhatsApp messages to send for one Discuss message and wake the sender."""
+        self.ensure_one()
+        WaMessage = self.env["whatsapp_connector.message"].sudo()
+        text = self._wa_plain_text(message.body)
+        context_id = False
+        if message.parent_id:
+            context_id = message.parent_id.sudo().wa_message_ids[:1].external_message_id
+        base = {
+            "account_id": self.wa_account_id.id,
+            "channel_id": self.id,
+            "mail_message_id": message.id,
+            "direction": "outbound",
+            "status": "queued",
+            "sender": self.wa_account_id.phone_number or self.wa_account_id.phone_number_id,
+            "recipient": self.wa_customer_phone or self.wa_bsuid,
+            "context_message_id": context_id,
+        }
+        to_send = WaMessage
+        caption_used = False
+        for attachment in attachments:
+            media_type = WaMessage._wa_media_type(attachment)
+            caption = ""
+            if text and not caption_used and media_type in ("image", "video", "document"):
+                caption, caption_used = text, True
+            to_send |= WaMessage.create({
+                **base, "message_type": media_type, "body": caption or False, "attachment_id": attachment.id,
+            })
+        if text and not caption_used:
+            to_send |= WaMessage.create({**base, "message_type": "text", "body": text})
+        self._wa_after_user_message(message.author_id)
+        to_send._wa_trigger_send()
+        return to_send
+
+    def _wa_after_user_message(self, author):
+        """A user replied: they take part, the other listeners are muted for 15 days (R6)."""
+        self.ensure_one()
+        now = fields.Datetime.now()
+        self.sudo().write({"wa_last_user_message_at": now, "wa_last_message_at": now})
+        if self.wa_account_id.routing_mode == "lead":
+            return
+        members = self.sudo().channel_member_ids
+        mine = members.filtered(lambda m: m.partner_id == author)
+        mine.write({"wa_participant": True, "mute_until_dt": False})
+        listeners = members.filtered(lambda m: not m.wa_participant)
+        listeners.write({"mute_until_dt": now + NOTIFY_ALL_AFTER})
+        listeners._notify_mute()
+
+    # ------------------------------------------------------------------
+    # Company-initiated conversations (SPEC.md §8.1, R5)
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _wa_conversation_for_partner(self, account, partner, user):
+        """The conversation to send a template to ``partner`` from, opening one if needed.
+
+        The sender becomes a member (Mode A: the chat window pops up for them
+        when the customer answers).
+        """
+        phone = self.env["res.partner"]._wa_normalize_phone(partner.phone)
+        bsuid = partner.wa_bsuid
+        if not phone and not bsuid:
+            raise UserError(self.env._("%s has no phone number to send WhatsApp messages to.", partner.display_name))
+        wa_id = phone.lstrip("+") if phone else False
+        channel = self._wa_find_conversation(account, bsuid=bsuid, wa_id=wa_id)
+        if not channel:
+            channel = self.sudo().search([
+                ("channel_type", "=", "whatsapp"), ("wa_account_id", "=", account.id),
+                ("wa_partner_id", "=", partner.id), ("wa_status", "=", "open"),
+            ], limit=1)
+        identity = {"bsuid": bsuid, "wa_id": wa_id, "phone": phone}
+        if channel:
+            if channel.wa_status == "closed":
+                channel._wa_reopen()
+            if user.partner_id not in channel.channel_member_ids.partner_id:
+                channel._add_members(partners=user.partner_id, post_joined_message=False)
+            return channel
+        channel = self._wa_create_conversation(account, partner, identity, members=user)
+        channel.channel_member_ids.filtered(
+            lambda m: m.partner_id == user.partner_id,
+        ).sudo().wa_participant = True
+        return channel
+
+    def _wa_assign_sender(self, user, record):
+        """Lead Routing: the sender owns a conversation they start with a template (D2, D6).
+
+        Filled in by the Lead Routing step; nothing to do in No Lead Routing.
+        """
+        return
+
+    # ------------------------------------------------------------------
+    # [D8] Create lead from a conversation
+    # ------------------------------------------------------------------
+
+    def action_wa_create_lead(self):
+        """Link the conversation to the customer's open lead, or create one (SPEC.md §13, D8)."""
+        self.ensure_one()
+        if self.wa_lead_id:
+            return self._wa_lead_action(self.wa_lead_id)
+        lead = self._wa_find_lead()
+        if lead and not lead.has_access("read"):
+            # §13: never a duplicate, and never link a lead this user cannot open
+            raise UserError(self.env._(
+                "This customer already has an open lead, assigned to %s. Ask them or a sales "
+                "manager to link it to this conversation.",
+                lead.sudo().user_id.name or self.env._("nobody"),
+            ))
+        created = not lead
+        if created:
+            lead = self.env["crm.lead"].create(self._wa_lead_values(self.env.user))
+        self.sudo().wa_lead_id = lead
+        link = lead._get_html_link()  # Markup: the translation is escaped around it
+        if created:
+            note = self.env._("Lead %s created from this conversation.", link)
+        else:
+            note = self.env._("This conversation is linked to the lead %s.", link)
+        self.sudo().with_context(wa_skip_send=True).message_post(body=note, message_type="notification")
+        return self._wa_lead_action(lead)
+
+    def _wa_lead_action(self, lead):
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "crm.lead",
+            "res_id": lead.id,
+            "views": [(False, "form")],
+            "target": "current",
+        }
+
+    def _wa_find_lead(self):
+        """An open lead of the same customer: BSUID, phone or contact (§15 step 3, R14, R16).
+
+        Searched among all leads, whoever they belong to, so none is duplicated;
+        returned in the caller's environment.
+        """
+        self.ensure_one()
+        clauses = []
+        if self.wa_bsuid:
+            clauses.append([("wa_bsuid", "=", self.wa_bsuid)])
+        if self.wa_customer_phone:
+            clauses.append([("phone_sanitized", "=", self.wa_customer_phone)])
+        if self.wa_partner_id:
+            clauses.append([("partner_id", "=", self.wa_partner_id.id)])
+        if not clauses:
+            return self.env["crm.lead"]
+        domain = Domain.OR(clauses) & Domain("won_status", "=", "pending") & Domain("active", "=", True)
+        lead = self.env["crm.lead"].sudo().search(domain, order="id desc", limit=1)
+        return lead.with_env(self.env)
+
+    def _wa_lead_values(self, user):
+        self.ensure_one()
+        partner = self.wa_partner_id
+        name = partner.name or self.wa_customer_phone or (f"@{self.wa_username}" if self.wa_username else self.wa_bsuid)
+        return {
+            # no "type": crm's default makes it an opportunity when Leads are disabled
+            "name": f"WhatsApp — {name}",
+            "partner_id": partner.id or False,
+            "contact_name": partner.name or False,
+            "phone": self.wa_customer_phone or partner.phone or False,
+            "email_from": partner.email or False,
+            "source_id": self.env.ref("whatsapp_connector.utm_source_whatsapp").id,
+            "user_id": user.id or False,
+            "wa_bsuid": self.wa_bsuid or False,
+            "wa_username": self.wa_username or False,
+        }

@@ -27,6 +27,15 @@
         <field name="priority">50</field>
         <field name="arch" type="xml">
             <form create="0">
+                <header>
+                    <!-- [D8] creates crm.lead records, so only for salespeople -->
+                    <button name="action_wa_create_lead" type="object" string="Create Lead"
+                            class="btn-primary" invisible="wa_lead_id"
+                            groups="sales_team.group_sale_salesman"/>
+                    <button name="action_wa_create_lead" type="object" string="Open Lead"
+                            invisible="not wa_lead_id"
+                            groups="sales_team.group_sale_salesman"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="name" readonly="1"/></h1>
