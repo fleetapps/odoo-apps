@@ -1,12 +1,17 @@
 import re
 
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import plaintext2html
 
 from odoo.addons.whatsapp_connector.tools.meta_api import MetaApiError
+
+MEDIA_HEADER_ICONS = {
+    "image": "fa-picture-o", "video": "fa-video-camera", "document": "fa-file-text-o",
+    "location": "fa-map-marker",
+}
 
 # Positional placeholders, {{1}}, {{2}}, ... (the only kind this module fills).
 PLACEHOLDER = re.compile(r"\{\{(\d+)\}\}")
@@ -55,6 +60,10 @@ class WhatsappTemplate(models.Model):
         help="The Odoo model this template is sent from; its fields fill the variables.",
     )
     model = fields.Char(related="model_id.model", store=True)
+    preview_html = fields.Html(
+        "Preview", compute="_compute_preview_html", sanitize=True,
+        help="How the message looks in WhatsApp, with the sample values.",
+    )
     phone_field = fields.Char(
         "Phone Field", default="partner_id",
         help="Field of the model that gives the recipient: a phone field, or a contact field "
@@ -80,6 +89,42 @@ class WhatsappTemplate(models.Model):
         "UNIQUE(account_id, template_name, language_code)",
         "A template with this name and language already exists for this account.",
     )
+
+    @api.depends("header_type", "header_text", "body", "footer", "button_ids.text",
+                 "variable_ids.demo_value", "variable_ids.placeholder_index", "variable_ids.line_type")
+    def _compute_preview_html(self):
+        for template in self:
+            values = {"header": {}, "body": {}}
+            for variable in template.variable_ids.filtered(lambda v: v.line_type in values):
+                values[variable.line_type][str(variable.placeholder_index)] = variable.demo_value or ""
+            template.preview_html = template._wa_preview_html(values)
+
+    def _wa_preview_html(self, values):
+        """The message as a WhatsApp bubble: header, body, footer, then its buttons."""
+        self.ensure_one()
+
+        def lines(text):
+            return Markup("<br/>").join(escape(line) for line in (text or "").split("\n"))
+
+        parts = []
+        if self.header_type == "text" and self.header_text:
+            header = self._wa_fill(self.header_text, values.get("header") or {})
+            parts.append(Markup('<div class="mb-1"><strong>%s</strong></div>') % lines(header))
+        elif self.header_type in MEDIA_HEADER_ICONS:
+            label = dict(self._fields["header_type"]._description_selection(self.env))[self.header_type]
+            parts.append(Markup('<div class="text-muted small mb-1"><i class="fa %s"></i> %s</div>') % (
+                MEDIA_HEADER_ICONS[self.header_type], label,
+            ))
+        parts.append(Markup("<div>%s</div>") % lines(self._wa_fill(self.body or "", values.get("body") or {})))
+        if self.footer:
+            parts.append(Markup('<div class="text-muted small mt-1">%s</div>') % lines(self.footer))
+        buttons = Markup("").join(
+            Markup('<div class="o-whatsapp-bubble-button">%s</div>') % button.text
+            for button in self._wa_ordered_buttons()
+        )
+        return Markup('<div class="o-whatsapp-preview"><div class="o-whatsapp-bubble">%s</div>%s</div>') % (
+            Markup("").join(parts), buttons,
+        )
 
     @api.depends("status")
     def _compute_status_label(self):
@@ -109,6 +154,8 @@ class WhatsappTemplate(models.Model):
                     "template_name": name,
                     "language_code": language,
                     "account_id": account.id,
+                    # usable at once from contacts; "Applies to" can be changed after
+                    "model_id": self.env["ir.model"]._get_id("res.partner"),
                 })
             template._wa_update_from_meta(data)
             count += 1
@@ -554,6 +601,7 @@ class WhatsappTemplateVariable(models.Model):
         "Type", required=True, default="field",
     )
     field_name = fields.Char("Field", help="Dotted path from the template's model, e.g. partner_id.name.")
+    model = fields.Char(related="template_id.model", string="Model")  # for the field picker
     demo_value = fields.Char("Sample Value", required=True, default="Sample")
 
     @api.constrains("line_type", "button_id", "placeholder_index")

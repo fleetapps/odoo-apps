@@ -3,6 +3,7 @@ import { registry } from "@web/core/registry";
 registry.category("web_tour.tours").add("whatsapp_connector_discuss_reply", {
     steps: () => [
         { trigger: ".o-whatsapp-DiscussSidebarCategory" },
+        { trigger: ".o-mail-DiscussSidebarChannel:contains('Sheena Nelson') img[src*='/web/image/res.partner/']" },
         { trigger: ".o-whatsapp-headerInfo:contains('+16505551234')" },
         { trigger: ".o-whatsapp-window:contains('window closes in')" },
         { trigger: ".o-mail-Composer-input", run: "edit Hello from Discuss" },
@@ -18,7 +19,7 @@ registry.category("web_tour.tours").add("whatsapp_connector_discuss_locked", {
         { trigger: ".o-whatsapp-ComposerLock button:contains('Send Template')", run: "click" },
         { trigger: ".modal .o_field_widget[name='template_id'] input", run: "edit Reconnect" },
         { trigger: ".o-autocomplete--dropdown-item:contains('Reconnect')", run: "click" },
-        { trigger: ".modal .o_field_widget[name='preview']:contains('Hi Sheena Nelson')" },
+        { trigger: ".modal .o_field_widget[name='preview_html'] .o-whatsapp-bubble:contains('Hi Sheena Nelson')" },
         { trigger: ".modal button[name='action_send']", run: "click" },
         { trigger: "body:not(:has(.modal))" },
     ],
@@ -29,7 +30,7 @@ registry.category("web_tour.tours").add("whatsapp_connector_chatter", {
         { trigger: ".o-whatsapp-ChatterButton", run: "click" },
         { trigger: ".modal .o_field_widget[name='template_id'] input", run: "edit Quote" },
         { trigger: ".o-autocomplete--dropdown-item:contains('Quote follow-up')", run: "click" },
-        { trigger: ".modal .o_field_widget[name='preview']:contains('Hello Sheena Nelson')" },
+        { trigger: ".modal .o_field_widget[name='preview_html'] .o-whatsapp-bubble:contains('Hello Sheena Nelson')" },
         { trigger: ".modal button[name='action_send']", run: "click" },
         { trigger: "body:not(:has(.modal))" },
     ],

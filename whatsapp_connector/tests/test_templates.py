@@ -58,6 +58,12 @@ class TestTemplateSync(OutboundCase):
         self.assertEqual(variables["button", 1].button_id, template.button_ids[1])
         self.assertEqual(variables["button", 1].demo_value, "summer2023")
         self.assertEqual(set(template.variable_ids.mapped("field_type")), {"free_text"})
+        # usable from contacts at once, and previewed with Meta's examples
+        self.assertEqual(template.model, "res.partner")
+        preview = str(template.preview_html)
+        self.assertIn("Our Summer Sale is on!", preview)
+        self.assertIn("Hi Mark! Get our Tuscan Getaway package for as low as 800.", preview)
+        self.assertIn("Shop Now", preview)
 
     def test_resync_keeps_configuration(self):
         template = self._sync(meta_template())
@@ -241,6 +247,7 @@ class TestComposer(OutboundCase):
         with form.free_text_ids.edit(0) as line:
             line.value = "shall we book the delivery?"
         self.assertEqual(form.preview, "Hello Sheena Nelson, shall we book the delivery?")
+        self.assertIn("Hello Sheena Nelson, shall we book the delivery?", str(form.preview_html))
         composer = form.save()
         composer.action_send()
         wa = self.env["whatsapp_connector.message"].search([("template_id", "=", self.lead_template.id)])

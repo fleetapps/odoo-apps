@@ -20,6 +20,12 @@ class TestStoreData(OutboundCase):
         self.assertEqual(data["wa_status"], "open")
         self.assertTrue(data["wa_window_expires_at"])
         self.assertIs(data["wa_lead_id"], False)
+        # the customer's picture (C), and no Discuss "seen" ticks next to WhatsApp's (A)
+        self.assertEqual(data["wa_partner_id"], self.customer.id)
+        result = Store().add(channel.with_user(self.user_a)).get_result()
+        partner = next(p for p in result["res.partner"] if p["id"] == self.customer.id)
+        self.assertIn("avatar_128_access_token", partner)
+        self.assertNotIn("whatsapp", self.env["discuss.channel"]._types_allowing_seen_infos())
         self.assertIs(data["wa_can_create_lead"], True)
         no_sales = new_test_user(
             self.env, login="wa_nosales", groups="base.group_user,whatsapp_connector.group_whatsapp_user",

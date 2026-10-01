@@ -28,7 +28,8 @@ class WhatsappComposer(models.TransientModel):
         "whatsapp_connector.composer.free.text", "composer_id", "Free Text Values",
         compute="_compute_free_text_ids", store=True, readonly=False,
     )
-    preview = fields.Text(compute="_compute_preview")
+    preview = fields.Text("Preview Text", compute="_compute_preview")
+    preview_html = fields.Html("Preview", compute="_compute_preview", sanitize=True)
 
     @api.model
     def default_get(self, fields_list):
@@ -76,13 +77,15 @@ class WhatsappComposer(models.TransientModel):
             template = composer.template_id
             records = composer._records()
             if not template or not records:
-                composer.preview = False
+                composer.preview = composer.preview_html = False
                 continue
+            # the first record's values, as the customer will see them
             values = template._wa_render(records[0], self.env.user, composer._free_values())
             header = template._wa_fill(template.header_text or "", values["header"]) \
                 if template.header_type == "text" else ""
             body = template._wa_fill(template.body or "", values["body"])
             composer.preview = "\n\n".join(filter(None, [header, body, template.footer]))
+            composer.preview_html = template._wa_preview_html(values)
 
     def _ids_list(self):
         try:
@@ -147,7 +150,8 @@ class WhatsappComposerFreeText(models.TransientModel):
 
     @api.depends("variable_id")
     def _compute_placeholder(self):
+        lines = dict(self.env["whatsapp_connector.template.variable"]._fields["line_type"]._description_selection(self.env))
         for line in self:
             variable = line.variable_id
-            where = variable.button_id.text if variable.line_type == "button" else variable.line_type
+            where = variable.button_id.text if variable.line_type == "button" else lines.get(variable.line_type)
             line.placeholder = f"{where} {{{{{variable.placeholder_index}}}}}"

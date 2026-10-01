@@ -91,7 +91,11 @@ class DiscussChannel(models.Model):
         return [
             Store.Attr(name, predicate=is_whatsapp_channel)
             for name in ("wa_customer_phone", "wa_status", "wa_username", "wa_window_expires_at")
-        ] + [Store.Attr("wa_lead_id", lambda c: c.wa_lead_id.id, predicate=is_whatsapp_channel)]
+        ] + [
+            Store.Attr("wa_lead_id", lambda c: c.wa_lead_id.id, predicate=is_whatsapp_channel),
+            # sudo: the customer's contact of a conversation the user can read (its avatar)
+            Store.One("wa_partner_id", ["avatar_128", "name"], predicate=is_whatsapp_channel, sudo=True),
+        ]
 
     def _to_store_defaults(self, target):
         fields = super()._to_store_defaults(target) + self._wa_store_fields()
@@ -106,9 +110,6 @@ class DiscussChannel(models.Model):
         field_names = super()._sync_field_names()
         field_names[None] += self._wa_store_fields()
         return field_names
-
-    def _types_allowing_seen_infos(self):
-        return super()._types_allowing_seen_infos() + ["whatsapp"]
 
     def _types_allowing_unfollow(self):
         return super()._types_allowing_unfollow() + ["whatsapp"]

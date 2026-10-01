@@ -30,7 +30,9 @@
                             invisible="connection_state != 'webhook_error'"
                             groups="whatsapp_connector.group_whatsapp_admin"/>
                     <button name="action_sync_templates" type="object" string="Sync Templates"/>
-                    <field name="connection_state" widget="statusbar"/>
+                    <field name="connection_state" widget="badge" class="ms-auto align-self-center"
+                           decoration-success="connection_state == 'connected'"
+                           decoration-danger="connection_state in ('connection_error', 'webhook_error', 'token_error')"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -46,7 +48,12 @@
                         <label for="name"/>
                         <h1><field name="name" placeholder="e.g. Sales"/></h1>
                     </div>
-                    <div invisible="not connection_message" class="alert alert-info mb-2" role="status">
+                    <div invisible="not connection_message or connection_state != 'connected'"
+                         class="alert alert-success mb-2" role="status">
+                        <field name="connection_message" nolabel="1"/>
+                    </div>
+                    <div invisible="not connection_message or connection_state in ('connected', 'not_tested')"
+                         class="alert alert-danger mb-2" role="alert">
                         <field name="connection_message" nolabel="1"/>
                     </div>
                     <group>

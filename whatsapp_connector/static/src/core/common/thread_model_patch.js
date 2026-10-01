@@ -14,6 +14,8 @@ patch(Thread.prototype, {
         this.wa_customer_phone = fields.Attr(undefined);
         /** @type {number|false|undefined} the linked crm.lead id */
         this.wa_lead_id = fields.Attr(undefined);
+        /** the customer's contact, for its picture */
+        this.wa_partner_id = fields.One("res.partner");
         this.wa_status = fields.Attr(undefined);
         this.wa_username = fields.Attr(undefined);
         this.wa_window_expires_at = fields.Datetime();
@@ -23,6 +25,13 @@ patch(Thread.prototype, {
     get isChatChannel() {
         // one-to-one with the customer: unread counters and chat windows like a chat
         return this.channel_type === "whatsapp" || super.isChatChannel;
+    },
+    get avatarUrl() {
+        // the customer's picture, in the sidebar, the header and chat windows
+        if (this.channel_type === "whatsapp" && this.wa_partner_id) {
+            return this.wa_partner_id.avatarUrl;
+        }
+        return super.avatarUrl;
     },
     get supportsCustomChannelName() {
         return this.channel_type !== "whatsapp" && super.supportsCustomChannelName;

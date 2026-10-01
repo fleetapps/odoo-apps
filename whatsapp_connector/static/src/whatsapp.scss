@@ -12,3 +12,37 @@
 .o-whatsapp-read {
     color: $info;
 }
+
+// A message as WhatsApp shows it (template and Send WhatsApp Message previews)
+.o-whatsapp-preview {
+    max-width: 26rem;
+    padding: .75rem;
+    border-radius: .5rem;
+    background-color: #efeae2;
+}
+
+.o-whatsapp-bubble {
+    padding: .5rem .75rem;
+    border-radius: .5rem;
+    background-color: #d9fdd3;
+    color: #111b21;
+    box-shadow: 0 1px .5px rgba(0, 0, 0, .13);
+    overflow-wrap: anywhere;
+}
+
+.o-whatsapp-bubble-button {
+    margin-top: 2px;
+    padding: .4rem;
+    border-radius: .5rem;
+    background-color: #fff;
+    color: #027eb5;
+    text-align: center;
+}
+
+// Send WhatsApp Message: just the values to fill in, no table chrome
+.o-whatsapp-free-text {
+    thead,
+    tbody tr:not(.o_data_row) {
+        display: none;
+    }
+}

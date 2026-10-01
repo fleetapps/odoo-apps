@@ -17,16 +17,17 @@
                     <field name="template_id" options="{'no_create': True, 'no_open': True}"
                            placeholder="Choose an approved template..."/>
                 </group>
-                <field name="free_text_ids" invisible="not free_text_ids">
+                <separator string="Fill in" invisible="not free_text_ids"/>
+                <field name="free_text_ids" invisible="not free_text_ids" class="o-whatsapp-free-text" nolabel="1">
                     <list editable="bottom" create="0" delete="0">
                         <field name="variable_id" column_invisible="1"/>
-                        <field name="placeholder" string="Placeholder"/>
-                        <field name="value"/>
+                        <field name="placeholder" readonly="1"/>
+                        <field name="value" placeholder="Type the value"/>
                     </list>
                 </field>
-                <group invisible="not preview">
-                    <field name="preview" readonly="1" nolabel="1" colspan="2"/>
-                </group>
+                <field name="preview" invisible="1"/>
+                <separator string="Preview" invisible="not preview_html"/>
+                <field name="preview_html" readonly="1" nolabel="1" invisible="not preview_html"/>
                 <footer>
                     <button name="action_send" type="object" string="Send" class="btn-primary"
                             invisible="not template_id" data-hotkey="q"/>
