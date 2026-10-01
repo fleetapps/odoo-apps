@@ -48,13 +48,51 @@ export function emptyCountLine() {
     return { touched: false, unit_qty: 0, bottle_detail: {}, open_tots: 0 };
 }
 
-/** What a count line says, e.g. "3 btl + 12 tots" or "48". */
+/** "Crate 25" reads as "cr" next to a number; other packs keep their name. */
+export function packShort(pack) {
+    const name = shortUnit(pack);
+    return name.toLowerCase().startsWith("crate") ? "cr" : name;
+}
+
+/** Units in crates, for beer and sodas: "1 cr + 7", "2 cr", "" under one crate. */
+function inPacks(product, qty) {
+    const pack = product.poured ? null : product.packs[0];
+    if (!pack || pack.factor <= 1 || qty < pack.factor) {
+        // Under a crate, or below zero: the plain number says it better.
+        return "";
+    }
+    const full = Math.floor(qty / pack.factor + 1e-9);
+    const rest = Math.round((qty - full * pack.factor) * 100) / 100;
+    return rest ? `${full} ${packShort(pack)} + ${fmt(rest)}` : `${full} ${packShort(pack)}`;
+}
+
+/** The unit stock is ordered and compared to par in: bottles for spirits,
+ * crates for beer and sodas, units for the rest. */
+export function bulkUnit(product) {
+    if (product.poured) {
+        return { name: "btl", factor: product.bottles[0].factor };
+    }
+    if (product.packs.length) {
+        const pack = product.packs[0];
+        return { name: packShort(pack), factor: pack.factor };
+    }
+    return { name: "", factor: 1 };
+}
+
+/** A stock quantity in bulk units, to one decimal: "12 btl", "3.5 cr", "40". */
+export function bulkLabel(product, qty) {
+    const unit = bulkUnit(product);
+    const value = fmt(Math.round((qty / unit.factor) * 10) / 10);
+    return unit.name ? `${value} ${unit.name}` : value;
+}
+
+/** What a count line says, e.g. "3 btl + 12 tots", "48 (1 cr + 23)". */
 export function countLabel(product, line) {
     if (!line?.touched) {
         return "";
     }
     if (!product.poured) {
-        return fmt(line.unit_qty);
+        return stockLabel(product, line.unit_qty || 0);
     }
     const detail = line.bottle_detail || {};
     const parts = [];
@@ -102,18 +140,28 @@ export function countLineFor(product, qty) {
     return line;
 }
 
-/** A quantity in the stock unit as staff read it: "182 tots", "48". */
-export function stockLabel(product, qty) {
+/** A quantity in the stock unit as staff read it: "182 tots", "48 (1 cr + 23)", "6 pcs". */
+export function stockLabel(product, qty, { packs = true } = {}) {
     if (product.uom.name.toLowerCase() === "tot") {
         return `${fmt(qty)} ${Math.abs(qty) === 1 ? "tot" : "tots"}`;
     }
-    return fmt(qty);
+    const crates = packs && inPacks(product, qty);
+    if (crates) {
+        return `${fmt(qty)} (${crates})`;
+    }
+    return `${fmt(qty)} ${unitWord(product)}`;
 }
 
-/** A signed difference: "+3", "−40 tots". */
+/** "pcs" for plain units, the unit's own name otherwise (kg, L). */
+function unitWord(product) {
+    const name = product.uom.name;
+    return /^units?$/i.test(name) ? "pcs" : name;
+}
+
+/** A signed difference: "+3 pcs", "−40 tots". */
 export function diffLabel(product, qty) {
     const sign = qty > 0 ? "+" : qty < 0 ? "−" : "";
-    return `${sign}${stockLabel(product, Math.abs(qty))}`;
+    return `${sign}${stockLabel(product, Math.abs(qty), { packs: false })}`;
 }
 
 /** A count line with one more (or one less) full bottle, or unit. */
@@ -135,6 +183,18 @@ export function normalize(text) {
         .normalize("NFD")
         .replace(/[̀-ͯ]/g, "")
         .toLowerCase();
+}
+
+/** A person as staff read them: an employee named after their login
+ * ("kiharekihare@gmail.com") shows as "kiharekihare". */
+export function displayName(name) {
+    const text = (name || "").trim();
+    return /^\S+@\S+$/.test(text) ? text.split("@")[0] : text;
+}
+
+/** "Mary Wanjiku" → "Mary": the header has room for one name on a phone. */
+export function firstName(name) {
+    return displayName(name).split(/\s+/)[0] || "";
 }
 
 export function initials(name) {

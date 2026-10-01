@@ -6,7 +6,7 @@
             <i class="fa fa-plus me-2"/>Add item
         </button>
         <ProductPicker t-if="state.picking" model="props.model" title="props.pickerTitle" onlyIds="props.onlyIds"
-                       markedIds="markedIds" onPick.bind="pick" onClose="() => this.state.picking = false"/>
+                       markedIds="markedIds" hint="props.pickerHint" onPick.bind="pick" onClose="() => this.state.picking = false"/>
         <Keypad t-if="state.keypad" t-key="state.keypad.product.id" product="state.keypad.product" mode="'qty'"
                 value="state.keypad.value" allowRemove="!!state.keypad.item"
                 onConfirm.bind="confirm" onRemove.bind="removeCurrent" onClose="() => this.state.keypad = null"/>

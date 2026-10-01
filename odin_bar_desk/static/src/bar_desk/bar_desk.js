@@ -12,7 +12,7 @@ import { LevelsScreen } from "./levels_screen";
 import { LockScreen } from "./lock_screen";
 import { MoveScreen } from "./move_screen";
 import { StoreReceiveScreen } from "./store_screens";
-import { initials } from "./utils";
+import { firstName, initials } from "./utils";
 
 /** Back to the PIN screen after this long without a touch, so a shared
  * tablet left open does not keep booking to the last person. */
@@ -20,7 +20,7 @@ const IDLE_LOCK_DELAY = 10 * 60 * 1000;
 const TOAST_DELAY = 3500;
 
 const SCREENS = {
-    home: { component: HomeScreen, title: "Stock control" },
+    home: { component: HomeScreen, title: "Bar Desk" },
     move: { component: MoveScreen, title: "Log a move" },
     count: { component: CountScreen, title: "Count" },
     differences: { component: DifferencesScreen, title: "Differences" },
@@ -43,6 +43,12 @@ export class BarDesk extends Component {
         this.nav = useState({ stack: [{ name: "home", params: {} }] });
         this.toastState = useState({ message: "", type: "success" });
         this.initials = initials;
+        this.firstName = firstName;
+        // Opened from the dashboard on a given trading day.
+        const day = this.props.action?.context?.bar_desk_day;
+        if (day) {
+            this.model.state.day = day;
+        }
         onWillStart(() => this.model.boot());
         onWillUnmount(() => {
             this.model.destroy();
@@ -63,7 +69,7 @@ export class BarDesk extends Component {
     }
 
     get title() {
-        return SCREENS[this.screen.name].title;
+        return this.screen.params?.title || SCREENS[this.screen.name].title;
     }
 
     get subtitle() {

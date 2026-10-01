@@ -1,19 +1,6 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { errorMessage } from "./desk_model";
-import { fmt, normalize, shortUnit } from "./utils";
-
-/** The unit stock is ordered and compared to par in: bottles for spirits,
- * crates for beer and sodas, units for the rest. */
-function bulkUnit(product) {
-    if (product.poured) {
-        return { name: "btl", factor: product.bottles[0].factor };
-    }
-    if (product.packs.length) {
-        const pack = product.packs[0];
-        return { name: shortUnit(pack).toLowerCase().startsWith("crate") ? "cr" : shortUnit(pack), factor: pack.factor };
-    }
-    return { name: "", factor: 1 };
-}
+import { bulkUnit, fmt, normalize } from "./utils";
 
 /**
  * Stock at every location and in total, in bottles and crates, against the
@@ -39,8 +26,10 @@ export class LevelsScreen extends Component {
         }
     }
 
-    bulk(value, unit) {
-        const qty = Math.round((value / unit.factor) * 10) / 10;
+    /** ``whole`` rounds up to full bottles or crates: a par or a reorder is
+     * never "69.6 btl" (pars set in another bottle size land between two). */
+    bulk(value, unit, whole = false) {
+        const qty = whole ? Math.ceil(value / unit.factor - 1e-9) : Math.round((value / unit.factor) * 10) / 10;
         return unit.name ? `${fmt(qty)} ${unit.name}` : fmt(qty);
     }
 
@@ -64,8 +53,8 @@ export class LevelsScreen extends Component {
                 key: row.product_id,
                 name: product.name,
                 total: this.bulk(row.total, unit),
-                par: row.par ? this.bulk(row.par, unit) : "",
-                reorder: below ? this.bulk(row.par - row.total, unit) : "",
+                par: row.par ? this.bulk(row.par, unit, true) : "",
+                reorder: below ? this.bulk(row.par - row.total, unit, true) : "",
                 below,
                 negative: row.total < 0,
                 locations: this.state.data.locations

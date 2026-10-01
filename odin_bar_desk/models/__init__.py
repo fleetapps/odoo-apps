@@ -11,3 +11,4 @@ from . import stock
 from . import odin_bar_desk
 from . import odin_bar_desk_supply
 from . import odin_bar_reports
+from . import odin_bar_dashboard

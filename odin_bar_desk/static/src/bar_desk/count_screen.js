@@ -1,4 +1,4 @@
-import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
 import { errorMessage, feedback, isRetryable } from "./desk_model";
 import { Keypad } from "./keypad";
@@ -44,12 +44,19 @@ export class CountScreen extends Component {
             query: "",
             keypad: null,
             picking: false,
+            menu: false,
+            finding: false,
             save: "saved",
             busy: false,
             error: "",
         });
         this.dirty = false;
         this.saveTimer = null;
+        this.findRef = useRef("find");
+        useEffect(
+            (finding) => finding && this.findRef.el?.focus(),
+            () => [this.state.finding]
+        );
         onWillStart(() => this.start());
         onWillUnmount(() => {
             browser.clearTimeout(this.saveTimer);
@@ -79,7 +86,15 @@ export class CountScreen extends Component {
         }
     }
 
+    toggleFind() {
+        this.state.finding = !this.state.finding;
+        if (!this.state.finding) {
+            this.state.query = "";
+        }
+    }
+
     async startOver() {
+        this.state.menu = false;
         const confirmed = await this.props.app.confirm(
             "Start over?",
             "Everything entered in this count is dropped.",
@@ -128,6 +143,8 @@ export class CountScreen extends Component {
             order: this.sorted(order.filter((id) => this.model.product(id))),
             filter: "all",
             query: "",
+            finding: false,
+            menu: false,
             save: this.dirty ? "pending" : "saved",
         });
         if (this.dirty) {
@@ -169,7 +186,8 @@ export class CountScreen extends Component {
     }
 
     breakdown(product, parts) {
-        if (!parts) {
+        if (!parts || (!parts.moved && !parts.sold)) {
+            // Nothing moved or sold: the expected figure is what it had.
             return "";
         }
         const bits = [`had ${fmt(parts.opening)}`];
@@ -245,6 +263,20 @@ export class CountScreen extends Component {
             offline: "No connection: kept on this device",
             error: "Not saved",
         }[this.state.save];
+    }
+
+    get saveIcon() {
+        return {
+            saved: "fa-check",
+            pending: "fa-circle-o-notch fa-spin",
+            saving: "fa-circle-o-notch fa-spin",
+            offline: "fa-plug",
+            error: "fa-exclamation-triangle",
+        }[this.state.save];
+    }
+
+    get saveShort() {
+        return { saved: "Saved", offline: "Offline", error: "Not saved" }[this.state.save] || "";
     }
 
     tap(line) {

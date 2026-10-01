@@ -7,6 +7,12 @@
         <field name="target">fullscreen</field>
     </record>
 
+    <!-- Managers' dashboard: closing, locations, variance, stock, out of the club. -->
+    <record id="action_bar_dashboard_client" model="ir.actions.client">
+        <field name="name">Dashboard</field>
+        <field name="tag">bar_dashboard</field>
+    </record>
+
     <!-- The same Desk from the backend menu, for managers. -->
     <record id="action_bar_desk_backend" model="ir.actions.client">
         <field name="name">Bar Desk</field>

@@ -1,0 +1,730 @@
+// Bar Control dashboard: one column on a phone, closing and locations full
+// width with variance beside stock on a desktop. Colours carry state, always
+// with an icon or a word next to them: green done, teal ready, amber needs a
+// look, red lost or never closed, grey nothing yet.
+
+.o_bcd {
+    --bcd-radius: 0.75rem;
+    --bcd-done: var(--#{$prefix}success);
+    --bcd-ready: var(--#{$prefix}info-text-emphasis);
+    --bcd-attention: var(--#{$prefix}warning-text-emphasis);
+    --bcd-critical: var(--#{$prefix}danger);
+    --bcd-muted: var(--#{$prefix}secondary-color);
+
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--#{$prefix}body-bg);
+}
+
+// .o_action lays out as flex: without min-width the page grows to the width
+// of the closing grid instead of letting the grid scroll.
+.o_bcd_page {
+    width: 100%;
+    min-width: 0;
+    max-width: 75rem;
+    margin: 0 auto;
+    padding: 0.75rem 1rem 2rem;
+}
+
+.o_bcd .o_done {
+    color: var(--bcd-done);
+}
+
+.o_bcd .o_ready {
+    color: var(--bcd-ready);
+}
+
+.o_bcd .o_attention {
+    color: var(--bcd-attention);
+}
+
+.o_bcd .o_critical,
+.o_bcd .o_critical_text {
+    color: var(--bcd-critical);
+}
+
+.o_bcd .o_muted {
+    color: var(--bcd-muted);
+}
+
+// Top bar -----------------------------------------------------------------
+
+.o_bcd_top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.o_bcd_title {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.o_bcd_controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.o_bcd_chips,
+.o_bcd_segment {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.o_bcd_chip,
+.o_bcd_segment .btn,
+.o_bcd_tabs .btn {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 2rem;
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}body-color);
+    font-weight: 600;
+
+    &.o_active {
+        border-color: var(--#{$prefix}primary);
+        background-color: var(--#{$prefix}primary);
+        color: #fff;
+    }
+}
+
+.o_bcd_segment {
+    gap: 0;
+    padding: 0.15rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 2rem;
+
+    .btn {
+        border-color: transparent;
+    }
+}
+
+.o_bcd_icon_btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.o_bcd_desk_btn {
+    min-height: 2.25rem;
+    border-radius: 2rem;
+}
+
+.o_bcd_filtered {
+    margin-bottom: 0.5rem;
+    color: var(--bcd-muted);
+    font-size: 0.9rem;
+}
+
+// Cards and headings ---------------------------------------------------------
+
+.o_bcd_card {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--bcd-radius);
+    background-color: var(--#{$prefix}tertiary-bg);
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+}
+
+.o_bcd_h {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--bcd-muted);
+
+    small {
+        margin-left: 0.25rem;
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+}
+
+.o_bcd_panel_h {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_big {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_bcd_hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.5rem;
+}
+
+.o_bcd_hero_label {
+    font-weight: 600;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_hero_sub {
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_trend {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.o_bcd_pill {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+
+    &.o_attention {
+        background-color: var(--#{$prefix}warning-bg-subtle);
+    }
+}
+
+// 1. Closing -------------------------------------------------------------------
+
+.o_bcd_focus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.6rem;
+    color: var(--#{$prefix}body-color);
+
+    &.o_attention {
+        background-color: var(--#{$prefix}warning-bg-subtle);
+    }
+
+    &.o_ready,
+    &.o_done {
+        background-color: var(--#{$prefix}success-bg-subtle);
+    }
+
+    .btn {
+        border-radius: 2rem;
+    }
+}
+
+.o_bcd_focus_day {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.o_bcd_focus_items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+
+    .o_bcd_pill {
+        background-color: var(--#{$prefix}body-bg);
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_bcd_missed {
+    margin-bottom: 0.75rem;
+    color: var(--bcd-critical);
+    font-weight: 600;
+
+    .o_bcd_missed_day {
+        color: var(--bcd-critical);
+        font-weight: 600;
+    }
+}
+
+.o_bcd_grid_wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+.o_bcd_grid {
+    border-collapse: separate;
+    border-spacing: 0.2rem;
+    margin: 0 auto 0 0;
+
+    th {
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    thead th {
+        padding-bottom: 0.15rem;
+        line-height: 1.1;
+    }
+
+    .o_bcd_wd {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--bcd-muted);
+    }
+
+    .o_bcd_dn {
+        display: block;
+        font-size: 0.85rem;
+    }
+
+    td {
+        padding: 0;
+    }
+}
+
+// The location column stays put while a 30-day grid scrolls.
+.o_bcd_grid_bar,
+.o_bcd_grid_corner {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    padding-right: 0.4rem;
+    background-color: var(--#{$prefix}tertiary-bg);
+    text-align: left !important;
+
+    .o_bcd_name {
+        display: none;
+        margin-left: 0.35rem;
+        font-weight: 400;
+        color: var(--bcd-muted);
+    }
+}
+
+.o_bcd_grid_day th,
+.o_bcd_grid_day .o_bcd_cell {
+    border-top-width: 2px;
+}
+
+.o_bcd_cell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.3rem;
+    height: 2.3rem;
+    padding: 0;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 0.45rem;
+    background-color: var(--#{$prefix}body-bg);
+    font-size: 0.95rem;
+
+    &.o_done {
+        border-color: var(--#{$prefix}success-border-subtle);
+        background-color: var(--#{$prefix}success-bg-subtle);
+    }
+
+    &.o_ready {
+        border-color: var(--#{$prefix}info-border-subtle);
+        background-color: var(--#{$prefix}info-bg-subtle);
+    }
+
+    &.o_attention {
+        border-color: var(--#{$prefix}warning-border-subtle);
+        background-color: var(--#{$prefix}warning-bg-subtle);
+    }
+
+    &.o_critical {
+        border-color: var(--#{$prefix}danger-border-subtle);
+        background-color: var(--#{$prefix}danger-bg-subtle);
+    }
+
+    &.o_blank {
+        border-style: dashed;
+        opacity: 0.5;
+    }
+}
+
+.o_bcd_grid.o_days_30 .o_bcd_cell {
+    width: 2rem;
+    height: 2rem;
+}
+
+// POS sales missing: a small red tag in the cell's corner.
+.o_bcd_pos {
+    position: absolute;
+    top: -0.35rem;
+    right: -0.35rem;
+    min-width: 1rem;
+    padding: 0 0.2rem;
+    border-radius: 0.5rem;
+    background-color: var(--bcd-critical);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    line-height: 1rem;
+
+    &.o_inline {
+        position: static;
+        display: inline-block;
+    }
+}
+
+.o_bcd_legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.9rem;
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--bcd-muted);
+
+    span {
+        white-space: nowrap;
+    }
+}
+
+// 2. Locations ------------------------------------------------------------------
+
+.o_bcd_locations {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+
+    .o_bcd_card {
+        margin-bottom: 0;
+    }
+}
+
+.o_bcd_loc {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    &.o_selected {
+        border-color: var(--#{$prefix}primary);
+        box-shadow: 0 0 0 1px var(--#{$prefix}primary);
+    }
+}
+
+.o_bcd_loc_head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+
+    .o_bcd_code {
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .o_bcd_name {
+        color: var(--bcd-muted);
+    }
+}
+
+.o_bcd_loc_hero {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.o_bcd_kicker {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_loc_sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.75rem;
+    min-height: 1.2rem;
+    font-size: 0.82rem;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_facts,
+.o_bcd_values {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.15rem 0.75rem;
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+
+    dt {
+        font-weight: 400;
+        color: var(--bcd-muted);
+    }
+
+    dd {
+        margin: 0;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .o_total {
+        padding-top: 0.25rem;
+        border-top: 1px solid var(--#{$prefix}border-color);
+        font-weight: 700;
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_bcd_loc_last {
+    margin-top: auto;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--#{$prefix}border-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+// 3. Variance -------------------------------------------------------------------
+
+.o_bcd_tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.o_bcd_panels {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+// Phone: one panel at a time, picked by the tabs.
+.o_bcd_panel {
+    display: none;
+
+    &.o_active {
+        display: block;
+    }
+
+    .o_bcd_panel_h {
+        display: none;
+    }
+}
+
+.o_bcd_bar {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 9rem) 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0.15rem 0;
+    border: 0;
+    background: transparent;
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+
+    &:hover .o_bcd_bar_label {
+        text-decoration: underline;
+    }
+
+    &.o_flag {
+        .o_bcd_bar_label {
+            color: var(--bcd-critical);
+            font-weight: 700;
+        }
+
+        .o_bcd_bar_fill {
+            background-color: var(--bcd-critical);
+        }
+    }
+}
+
+.o_bcd_bar_label {
+    overflow: hidden;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    .o_bcd_name {
+        color: var(--bcd-muted);
+    }
+}
+
+.o_bcd_bar_track {
+    height: 0.6rem;
+}
+
+.o_bcd_bar_fill {
+    display: block;
+    height: 100%;
+    border-radius: 0 4px 4px 0;
+    background-color: var(--#{$prefix}primary);
+}
+
+.o_bcd_bar_value {
+    min-width: 3.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_bcd_row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.35rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--#{$prefix}border-color);
+    background: transparent;
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+
+    &:hover .o_bcd_row_name {
+        text-decoration: underline;
+    }
+}
+
+.o_bcd_row_name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_bcd_row_meta {
+    flex: 0 0 auto;
+    font-size: 0.85rem;
+    color: var(--bcd-muted);
+    white-space: nowrap;
+}
+
+.o_bcd_row_value {
+    flex: 0 0 auto;
+    min-width: 3.5rem;
+    font-weight: 700;
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+// 5. Out of the club ------------------------------------------------------------
+
+.o_bcd_out {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: 0.5rem;
+}
+
+.o_bcd_out_item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 0.6rem;
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+}
+
+.o_bcd_out_name {
+    font-size: 0.8rem;
+    color: var(--bcd-muted);
+}
+
+.o_bcd_out_count {
+    font-size: 1.3rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.o_bcd_out_value {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+// Wider screens ----------------------------------------------------------------
+
+@media (min-width: 576px) {
+    .o_bcd_locations {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+// Tablet and up: every variance panel at once, no tabs.
+@media (min-width: 768px) {
+    .o_bcd_page {
+        padding: 1.25rem 1.5rem 2rem;
+    }
+
+    .o_bcd_tabs {
+        display: none;
+    }
+
+    .o_bcd_panels {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 0.75rem;
+    }
+
+    .o_bcd_panel,
+    .o_bcd_panel.o_active {
+        display: block;
+
+        .o_bcd_panel_h {
+            display: block;
+        }
+    }
+
+    .o_bcd_panel_wide {
+        grid-column: 1 / -1;
+    }
+
+    .o_bcd_grid_bar .o_bcd_name {
+        display: inline;
+    }
+
+    .o_bcd_aside {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+
+        .o_bcd_card {
+            margin-bottom: 0;
+        }
+    }
+}
+
+// Desktop: locations four across, variance beside stock and out of the club.
+@media (min-width: 992px) {
+    .o_bcd_locations {
+        grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    }
+
+    .o_bcd_lower {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: start;
+
+        > .o_bcd_card {
+            margin-bottom: 0;
+        }
+    }
+
+    .o_bcd_aside {
+        grid-template-columns: 1fr;
+    }
+}

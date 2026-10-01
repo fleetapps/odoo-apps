@@ -25,9 +25,9 @@
                         <i class="fa fa-cloud-upload"/>
                         <span class="o_bar_desk_badge" t-esc="desk.outbox.length"/>
                     </button>
-                    <button class="o_bar_desk_staff" title="Switch staff" t-on-click="switchStaff">
+                    <button class="o_bar_desk_staff" t-att-title="desk.employee.name + ': switch staff'" t-on-click="switchStaff">
                         <span class="o_bar_desk_avatar o_small" t-esc="initials(desk.employee.name)"/>
-                        <span class="o_bar_desk_staff_name" t-esc="desk.employee.name"/>
+                        <span class="o_bar_desk_staff_name" t-esc="firstName(desk.employee.name)"/>
                     </button>
                 </div>
                 <t t-component="screenComponent" app="this" params="screen.params" t-key="screen.name + '-' + nav.stack.length"/>

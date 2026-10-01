@@ -22,6 +22,11 @@
                 <h2 class="o_bar_desk_section">Which supplier?</h2>
                 <input type="search" class="form-control form-control-lg mb-2" placeholder="Search a supplier"
                        t-model="state.query" t-on-input="onQuery" autocomplete="off"/>
+                <div t-if="state.searching" class="text-center text-muted py-4"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+                <div t-elif="!state.suppliers.length" class="text-muted text-center py-4">
+                    <t t-if="state.query">No supplier matches "<t t-esc="state.query"/>".</t>
+                    <t t-else="">No suppliers yet: a manager sets them up in Odoo as vendors.</t>
+                </div>
                 <button t-foreach="state.suppliers" t-as="supplier" t-key="supplier.id" class="o_bar_desk_card"
                         t-on-click="() => this.pickSupplier(supplier)">
                     <div class="fw-bold text-start" t-esc="supplier.name"/>

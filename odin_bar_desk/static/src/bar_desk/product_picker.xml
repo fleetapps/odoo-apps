@@ -30,6 +30,7 @@
                 <button t-foreach="products" t-as="product" t-key="product.id"
                         class="o_bar_desk_pick" t-on-click="() => props.onPick(product)">
                     <span class="flex-grow-1 text-start" t-esc="product.name"/>
+                    <span t-if="props.hint" class="small text-muted text-nowrap" t-esc="props.hint(product)"/>
                     <i t-if="isMarked(product)" class="fa fa-check text-success" aria-label="Already in the list"/>
                 </button>
             </div>

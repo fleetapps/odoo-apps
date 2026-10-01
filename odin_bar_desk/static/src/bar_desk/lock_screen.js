@@ -1,6 +1,6 @@
 import { Component, useExternalListener, useState } from "@odoo/owl";
 import { errorMessage, feedback } from "./desk_model";
-import { initials } from "./utils";
+import { displayName, initials } from "./utils";
 
 const MAX_PIN = 12;
 
@@ -14,11 +14,17 @@ export class LockScreen extends Component {
         this.desk = useState(this.model.state);
         this.state = useState({ employee: null, pin: "", error: "", busy: false });
         this.initials = initials;
+        this.displayName = displayName;
         useExternalListener(window, "keydown", this.onKeydown.bind(this));
     }
 
     get dots() {
         return Array.from({ length: Math.max(4, this.state.pin.length) }, (_, i) => i < this.state.pin.length);
+    }
+
+    /** A manager signed in to Odoo as this employee goes straight in. */
+    get canSkipPin() {
+        return Boolean(this.state.employee?.is_me && this.desk.isManager);
     }
 
     get pinKeys() {
