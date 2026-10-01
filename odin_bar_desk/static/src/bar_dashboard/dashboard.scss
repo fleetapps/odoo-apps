@@ -11,22 +11,33 @@
     --bcd-critical: var(--#{$prefix}danger);
     --bcd-muted: var(--#{$prefix}secondary-color);
 
-    // .o_action is a flex container, and a flex item will not shrink below its
-    // content: without min-height the dashboard grows to the height of
-    // everything inside it, so overflow-y never has anything to scroll and the
-    // page simply runs off the bottom. min-height: 0 lets it be constrained by
-    // the viewport again, which is what makes overflow-y: auto work at all.
-    flex: 1 1 auto;
-    min-height: 0;
-    height: 100%;
-    overflow-y: auto;
+    // This element is also Odoo's own .o_action, and the webclient styles that
+    // as `height: 100%; display: flex; flex-flow: column nowrap; overflow:
+    // hidden` -- then, from the lg breakpoint up, hides its scrollbar outright
+    // (scrollbar-width: none and ::-webkit-scrollbar { display: none } in
+    // web/static/src/webclient/webclient_layout.scss). So the action itself can
+    // never scroll, and asking it to is doubly futile on a desktop: the rule
+    // `.o_action_manager > .o_action` also outranks a bare `.o_bcd`.
+    //
+    // Odoo's own views take the only route left, and so does this one: the
+    // action stays a flex column container and a child does the scrolling.
+    // See .o_bcd_page.
     background-color: var(--#{$prefix}body-bg);
 }
 
-// .o_action lays out as flex: without min-width the page grows to the width
-// of the closing grid instead of letting the grid scroll.
 .o_bcd_page {
+    // The scroller. flex/min-height make it fill the action and, crucially, be
+    // allowed to shrink below its content -- a flex item will not otherwise --
+    // which is what gives overflow-y something to scroll. The scrollbar belongs
+    // to this element rather than to .o_action, so Odoo's desktop rule hiding
+    // the action's scrollbar does not reach it.
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+
     width: 100%;
+    // .o_action lays out as flex: without min-width the page grows to the width
+    // of the closing grid instead of letting the grid scroll.
     min-width: 0;
     max-width: 75rem;
     margin: 0 auto;
