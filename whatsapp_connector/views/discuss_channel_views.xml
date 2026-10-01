@@ -28,6 +28,8 @@
         <field name="arch" type="xml">
             <form create="0">
                 <header>
+                    <button name="%(whatsapp_connector.action_whatsapp_composer)d" type="action"
+                            string="Send Template" context="{'active_model': 'discuss.channel', 'active_id': id}"/>
                     <!-- [D8] creates crm.lead records, so only for salespeople -->
                     <button name="action_wa_create_lead" type="object" string="Create Lead"
                             class="btn-primary" invisible="wa_lead_id"

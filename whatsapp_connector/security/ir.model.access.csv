@@ -13,3 +13,5 @@ access_template_variable_manager,template variable manager,model_whatsapp_connec
 access_message_user,message user,model_whatsapp_connector_message,group_whatsapp_user,1,0,0,0
 access_message_manager,message manager,model_whatsapp_connector_message,group_whatsapp_manager,1,1,0,0
 access_webhook_event_admin,webhook event admin,model_whatsapp_connector_webhook_event,group_whatsapp_admin,1,1,0,1
+access_composer_user,composer user,model_whatsapp_connector_composer,group_whatsapp_user,1,1,1,1
+access_composer_free_text_user,composer free text user,model_whatsapp_connector_composer_free_text,group_whatsapp_user,1,1,1,1

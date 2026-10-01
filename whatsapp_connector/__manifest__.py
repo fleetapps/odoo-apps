@@ -29,6 +29,8 @@ same Discuss channel and message types. See README.md and SPEC.md.
         "data/whatsapp_connector_data.xml",
         "views/whatsapp_account_views.xml",
         "views/whatsapp_template_views.xml",
+        "views/whatsapp_composer_views.xml",
+        "views/ir_actions_server_views.xml",
         "views/whatsapp_message_views.xml",
         "views/whatsapp_webhook_event_views.xml",
         "views/discuss_channel_views.xml",

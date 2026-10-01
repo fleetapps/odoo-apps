@@ -26,6 +26,16 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_submit_template" type="object" string="Submit for Approval"
+                            class="btn-primary" invisible="status not in ('DRAFT', 'REJECTED')"
+                            groups="whatsapp_connector.group_whatsapp_manager"/>
+                    <button name="action_submit_template" type="object" string="Submit Changes"
+                            invisible="status in ('DRAFT', 'REJECTED')"
+                            groups="whatsapp_connector.group_whatsapp_manager"
+                            confirm="Meta reviews the template again; it cannot be sent until approved."/>
+                    <button name="action_sync_template" type="object" string="Sync Template"
+                            invisible="not meta_template_id"
+                            groups="whatsapp_connector.group_whatsapp_manager"/>
                     <field name="status_label" widget="badge"/>
                 </header>
                 <sheet>
@@ -75,7 +85,9 @@
                             <field name="variable_ids">
                                 <list editable="bottom">
                                     <field name="line_type"/>
-                                    <field name="placeholder_index"/>
+                                    <field name="placeholder_index" readonly="line_type == 'button'"/>
+                                    <field name="button_id" invisible="line_type != 'button'"
+                                           required="line_type == 'button'" options="{'no_create': True}"/>
                                     <field name="field_type"/>
                                     <field name="field_name" invisible="field_type != 'field'"/>
                                     <field name="demo_value"/>

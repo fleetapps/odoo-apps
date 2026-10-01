@@ -172,8 +172,17 @@ class WhatsAppApi:
                 return templates
             params = {"limit": limit, "after": after}
 
+    def get_template(self, template_id):
+        """GET /{TEMPLATE_ID}: the same object as one item of :meth:`get_templates`."""
+        return self._request("GET", str(template_id))
+
     def submit_template(self, payload):
+        """POST /{WABA-ID}/message_templates; Meta answers ``{id, status, category}``."""
         return self._request("POST", f"{self.waba_id}/message_templates", json=payload)
+
+    def edit_template(self, template_id, payload):
+        """POST /{TEMPLATE_ID} (Meta's "Edit template")."""
+        return self._request("POST", str(template_id), json=payload)
 
     # ------------------------------------------------------------------
     # account health (R24)

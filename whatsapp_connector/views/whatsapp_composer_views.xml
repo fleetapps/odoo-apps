@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="whatsapp_composer_view_form" model="ir.ui.view">
+        <field name="name">whatsapp_connector.composer.form</field>
+        <field name="model">whatsapp_connector.composer</field>
+        <field name="arch" type="xml">
+            <form string="Send WhatsApp Message">
+                <field name="res_model" invisible="1"/>
+                <field name="res_ids" invisible="1"/>
+                <field name="channel_id" invisible="1"/>
+                <field name="available_template_ids" invisible="1"/>
+                <div class="alert alert-info" role="alert" invisible="record_count &lt; 2">
+                    <field name="record_count" class="oe_inline"/> recipients: each gets this template
+                    in their own conversation; those without a WhatsApp number are skipped.
+                </div>
+                <group>
+                    <field name="template_id" options="{'no_create': True, 'no_open': True}"
+                           placeholder="Choose an approved template..."/>
+                </group>
+                <field name="free_text_ids" invisible="not free_text_ids">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="variable_id" column_invisible="1"/>
+                        <field name="placeholder" string="Placeholder"/>
+                        <field name="value"/>
+                    </list>
+                </field>
+                <group invisible="not preview">
+                    <field name="preview" readonly="1" nolabel="1" colspan="2"/>
+                </group>
+                <footer>
+                    <button name="action_send" type="object" string="Send" class="btn-primary"
+                            invisible="not template_id" data-hotkey="q"/>
+                    <button string="Discard" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_whatsapp_composer" model="ir.actions.act_window">
+        <field name="name">Send WhatsApp Message</field>
+        <field name="res_model">whatsapp_connector.composer</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- R25 "Multi-Template": several contacts or leads at once, from a list -->
+    <record id="action_whatsapp_composer_partner" model="ir.actions.act_window">
+        <field name="name">Send WhatsApp Message</field>
+        <field name="res_model">whatsapp_connector.composer</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="group_ids" eval="[Command.link(ref('whatsapp_connector.group_whatsapp_user'))]"/>
+    </record>
+
+    <record id="action_whatsapp_composer_lead" model="ir.actions.act_window">
+        <field name="name">Send WhatsApp Message</field>
+        <field name="res_model">whatsapp_connector.composer</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="group_ids" eval="[Command.link(ref('whatsapp_connector.group_whatsapp_user'))]"/>
+    </record>
+</odoo>
