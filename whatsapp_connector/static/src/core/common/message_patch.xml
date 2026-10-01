@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.Message" t-inherit-mode="extension">
+        <xpath expr="//small[@t-if='!message.is_transient']" position="after">
+            <small t-if="message.waStatusIcon" class="o-whatsapp-MessageStatus ms-1 o-xsmaller text-nowrap" t-att-title="message.waStatusTitle">
+                <i t-att-class="message.waStatusIcon" role="img" t-att-aria-label="message.waStatusTitle"/>
+                <a t-if="message.waCanRetry" href="#" class="o-whatsapp-retry ms-1 text-danger" t-on-click.prevent="onClickWhatsappRetry">Retry</a>
+            </small>
+        </xpath>
+    </t>
+</templates>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- WhatsApp conversations are Discuss channels; these views are the Inbox,
+         a filtered entry point into them (SPEC.md §19, §38, §45, C5). The chat
+         itself is Discuss ("Open Chat"). -->
+    <record id="discuss_channel_whatsapp_view_list" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.list</field>
+        <field name="model">discuss.channel</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="0" default_order="wa_last_message_at desc">
+                <field name="wa_partner_id" string="Customer"/>
+                <field name="wa_customer_contact"/>
+                <field name="wa_account_id" optional="hide"/>
+                <field name="wa_assigned_user_id" string="Assigned User" widget="many2one_avatar_user" optional="show"/>
+                <field name="wa_lead_id" string="Lead" optional="show"/>
+                <field name="wa_lead_stage_id" optional="show"/>
+                <field name="wa_status" string="Status" widget="badge"
+                       decoration-success="wa_status == 'open'"/>
+                <field name="wa_last_message_preview" string="Last Message" optional="show"/>
+                <field name="wa_last_message_at" string="Last Message Time"/>
+                <field name="wa_unread_count" string="Unread" optional="show"
+                       decoration-bf="wa_unread_count" invisible="not wa_unread_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="discuss_channel_whatsapp_view_kanban" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.kanban</field>
+        <field name="model">discuss.channel</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <kanban create="0" default_order="wa_last_message_at desc">
+                <field name="wa_unread_count"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between">
+                            <field name="wa_partner_id" class="fw-bold"/>
+                            <span t-if="record.wa_unread_count.raw_value" class="badge rounded-pill text-bg-success">
+                                <field name="wa_unread_count"/>
+                            </span>
+                        </div>
+                        <field name="wa_customer_contact" class="text-muted"/>
+                        <field name="wa_last_message_preview" class="text-truncate"/>
+                        <field name="wa_lead_id"/>
+                        <footer class="pt-1">
+                            <field name="wa_last_message_at" widget="remaining_days" class="small"/>
+                            <field name="wa_assigned_user_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="discuss_channel_whatsapp_view_form" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.form</field>
+        <field name="model">discuss.channel</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <field name="wa_routed" invisible="1"/>
+                <field name="wa_user_can_close" invisible="1"/>
+                <header>
+                    <button name="action_wa_open_chat" type="object" string="Open Chat" class="btn-primary"/>
+                    <button name="action_wa_take" type="object" string="Take"
+                            invisible="not wa_routed or wa_assigned_user_id or wa_status != 'open'"
+                            groups="!whatsapp_connector.group_whatsapp_manager"/>
+                    <button name="action_wa_take" type="object" string="Assign to Me"
+                            invisible="not wa_routed or wa_assigned_user_id == uid"
+                            groups="whatsapp_connector.group_whatsapp_manager"/>
+                    <button name="%(whatsapp_connector.action_whatsapp_composer)d" type="action"
+                            string="Send Template" context="{'active_model': 'discuss.channel', 'active_id': id}"/>
+                    <!-- [D8] creates crm.lead records, so only for salespeople -->
+                    <button name="action_wa_create_lead" type="object" string="Create Lead"
+                            invisible="wa_lead_id" groups="sales_team.group_sale_salesman"/>
+                    <button name="action_wa_create_lead" type="object" string="Open Lead"
+                            invisible="not wa_lead_id" groups="sales_team.group_sale_salesman"/>
+                    <button name="action_wa_close" type="object" string="Close"
+                            invisible="not wa_user_can_close or wa_status != 'open'"/>
+                    <button name="action_wa_reopen" type="object" string="Reopen"
+                            invisible="not wa_user_can_close or wa_status != 'closed'"/>
+                    <field name="wa_status" widget="badge" class="ms-auto align-self-center"
+                           decoration-success="wa_status == 'open'"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Customer">
+                            <field name="wa_partner_id" readonly="1"/>
+                            <field name="wa_customer_phone" readonly="1"/>
+                            <field name="wa_username" readonly="1"/>
+                            <field name="wa_bsuid" readonly="1" groups="whatsapp_connector.group_whatsapp_manager"/>
+                        </group>
+                        <group string="Conversation">
+                            <field name="wa_account_id" readonly="1"/>
+                            <!-- §18: managers reassign; everyone else sees the owner -->
+                            <field name="wa_assigned_user_id" widget="many2one_avatar_user"
+                                   readonly="not wa_routed" options="{'no_create': True}"
+                                   groups="whatsapp_connector.group_whatsapp_manager"/>
+                            <field name="wa_assigned_user_id" widget="many2one_avatar_user" readonly="1"
+                                   groups="!whatsapp_connector.group_whatsapp_manager"/>
+                            <field name="wa_lead_id" readonly="1"/>
+                            <field name="wa_lead_stage_id" readonly="1" invisible="not wa_lead_id"/>
+                            <field name="wa_last_message_at" readonly="1"/>
+                            <field name="wa_window_expires_at"/>
+                        </group>
+                    </group>
+                    <field name="channel_member_ids" readonly="1" widget="many2many_tags" invisible="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="discuss_channel_whatsapp_view_search" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.search</field>
+        <field name="model">discuss.channel</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="wa_partner_id" string="Customer"/>
+                <field name="wa_customer_phone" string="Phone"/>
+                <field name="wa_username"/>
+                <field name="wa_lead_id" string="Lead"/>
+                <field name="wa_assigned_user_id" string="Assigned User"/>
+                <filter name="my" string="My Conversations"
+                        domain="['|', ('wa_assigned_user_id', '=', uid), '&amp;', ('wa_routed', '=', False), ('is_member', '=', True)]"/>
+                <filter name="unassigned" string="Unassigned"
+                        domain="[('wa_routed', '=', True), ('wa_assigned_user_id', '=', False)]"/>
+                <filter name="assigned" string="Assigned" domain="[('wa_assigned_user_id', '!=', False)]"/>
+                <separator/>
+                <filter name="open" string="Open" domain="[('wa_status', '=', 'open')]"/>
+                <filter name="closed" string="Closed" domain="[('wa_status', '=', 'closed')]"/>
+                <separator/>
+                <filter name="unread" string="Unread" domain="[('wa_unread_count', '>', 0)]"/>
+                <separator/>
+                <filter name="last_message" string="Last Message" date="wa_last_message_at"/>
+                <group>
+                    <filter name="group_user" string="Assigned User" context="{'group_by': 'wa_assigned_user_id'}"/>
+                    <filter name="group_stage" string="Lead Stage" context="{'group_by': 'wa_lead_stage_id'}"/>
+                    <filter name="group_last_message" string="Last Message" context="{'group_by': 'wa_last_message_at:day'}"/>
+                    <filter name="group_account" string="Account" context="{'group_by': 'wa_account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- §19: WhatsApp > Inbox > My Conversations / Unassigned / All Conversations -->
+    <record id="action_whatsapp_inbox_mine" model="ir.actions.act_window">
+        <field name="name">My Conversations</field>
+        <field name="res_model">discuss.channel</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[("channel_type", "=", "whatsapp")]</field>
+        <field name="context">{"search_default_my": 1, "search_default_open": 1}</field>
+        <field name="search_view_id" ref="discuss_channel_whatsapp_view_search"/>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('discuss_channel_whatsapp_view_list')}),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('discuss_channel_whatsapp_view_kanban')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('discuss_channel_whatsapp_view_form')}),
+        ]"/>
+    </record>
+
+    <record id="action_whatsapp_inbox_unassigned" model="ir.actions.act_window">
+        <field name="name">Unassigned</field>
+        <field name="res_model">discuss.channel</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[("channel_type", "=", "whatsapp")]</field>
+        <field name="context">{"search_default_unassigned": 1, "search_default_open": 1}</field>
+        <field name="search_view_id" ref="discuss_channel_whatsapp_view_search"/>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('discuss_channel_whatsapp_view_list')}),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('discuss_channel_whatsapp_view_kanban')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('discuss_channel_whatsapp_view_form')}),
+        ]"/>
+    </record>
+
+    <record id="action_whatsapp_conversations" model="ir.actions.act_window">
+        <field name="name">All Conversations</field>
+        <field name="res_model">discuss.channel</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[("channel_type", "=", "whatsapp")]</field>
+        <field name="context">{"search_default_open": 1}</field>
+        <field name="search_view_id" ref="discuss_channel_whatsapp_view_search"/>
+        <field name="view_ids" eval="[
+            Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('discuss_channel_whatsapp_view_list')}),
+            Command.create({'view_mode': 'kanban', 'view_id': ref('discuss_channel_whatsapp_view_kanban')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('discuss_channel_whatsapp_view_form')}),
+        ]"/>
+    </record>
+</odoo>

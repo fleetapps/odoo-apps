@@ -6,3 +6,4 @@ Odoo apps and modules for all businesses
 | [`odin_bar_base`](odin_bar_base) | 19.0 | One definition of a bar: location, operation types, analytic account, POS mapping, trading days |
 | [`odin_bar_desk`](odin_bar_desk) | 19.0 | Bar Desk: phone-first stock outs, blind counts with manager approval, delivery checks and store mode |
 | [`gymkhana_pos_import`](gymkhana_pos_import) | 19.0 | Post a day of bar sales from the POS Group Sales Register PDF: sale orders, bar deliveries and one invoice, recorded per bar for the counts |
+| [`whatsapp_connector`](whatsapp_connector) | 19.0 | One company WhatsApp Business number for many Odoo users: Enterprise-style WhatsApp conversations in Discuss, or conversations routed to salespeople as CRM leads. Specification: [SPEC.md](whatsapp_connector/SPEC.md) |

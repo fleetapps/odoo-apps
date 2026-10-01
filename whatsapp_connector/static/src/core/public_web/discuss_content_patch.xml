@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussContent" t-inherit-mode="extension">
+        <xpath expr="//AutoresizeInput[contains(@className, 'o-mail-DiscussContent-threadName')]" position="after">
+            <span t-if="thread.waHeaderText" class="o-whatsapp-headerInfo text-muted small ms-2 text-nowrap" t-esc="thread.waHeaderText"/>
+            <span t-if="thread.waWindowText" class="o-whatsapp-window text-muted small ms-2 text-nowrap"
+                  title="Meta's 24-hour customer service window: free-form messages until then, templates after"
+                  t-esc="thread.waWindowText"/>
+            <span t-if="thread.waOwnerText" class="o-whatsapp-owner badge text-bg-light ms-2 text-nowrap"
+                  t-esc="thread.waOwnerText"/>
+        </xpath>
+        <xpath expr="//Composer" position="replace">
+            <WhatsappComposerLock t-if="thread.waComposerLocked" thread="thread"/>
+            <t t-else="">$0</t>
+        </xpath>
+    </t>
+</templates>
