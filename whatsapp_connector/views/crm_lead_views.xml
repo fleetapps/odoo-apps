@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- SPEC.md §30: conversations are traceable from the lead and the contact -->
+    <record id="crm_lead_view_form" model="ir.ui.view">
+        <field name="name">crm.lead.form.whatsapp_connector</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_wa_open_conversations" type="object" class="oe_stat_button"
+                        icon="fa-whatsapp" invisible="not wa_channel_count"
+                        groups="whatsapp_connector.group_whatsapp_user">
+                    <field name="wa_channel_count" widget="statinfo" string="WhatsApp"/>
+                </button>
+            </div>
+        </field>
+    </record>
+
+    <record id="res_partner_view_form" model="ir.ui.view">
+        <field name="name">res.partner.form.whatsapp_connector</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="action_wa_open_conversations" type="object" class="oe_stat_button"
+                        icon="fa-whatsapp" invisible="not wa_channel_count"
+                        groups="whatsapp_connector.group_whatsapp_user">
+                    <field name="wa_channel_count" widget="statinfo" string="WhatsApp"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

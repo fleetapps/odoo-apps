@@ -99,6 +99,13 @@ class TestInstall(WhatsappCase):
         with self.assertRaises(UserError):
             pre_init_hook(self.env)
 
+    @mute_logger("odoo.modules.module")  # the stand-in module has no manifest
+    def test_enterprise_app_cannot_be_installed_after(self):
+        """R33, the other order: the manifest's "excludes" makes Odoo refuse it."""
+        enterprise = self.env["ir.module.module"].create({"name": "whatsapp", "state": "uninstalled"})
+        with self.assertRaisesRegex(UserError, "incompatible"):
+            enterprise.button_install()
+
 
 @tagged("post_install", "-at_install")
 class TestAccess(WhatsappCase):

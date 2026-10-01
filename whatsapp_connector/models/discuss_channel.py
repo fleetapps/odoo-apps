@@ -307,8 +307,9 @@ class DiscussChannel(models.Model):
         wa_message.mail_message_id = mail_message
         if attachments:
             attachments.sudo().write({"res_model": "discuss.channel", "res_id": self.id})
+        # max(): Meta does not guarantee the order of webhooks (R28)
         self.sudo().write({
-            "wa_last_message_at": timestamp,
+            "wa_last_message_at": max(filter(None, [self.wa_last_message_at, timestamp])),
             "wa_last_customer_message_at": max(
                 filter(None, [self.wa_last_customer_message_at, timestamp]),
             ),
@@ -585,6 +586,13 @@ class DiscussChannel(models.Model):
             lambda m: m.partner_id == user.partner_id,
         ).sudo().wa_participant = True
         return channel
+
+    @api.model
+    def _wa_conversations_action(self, domain):
+        action = self.env["ir.actions.act_window"]._for_xml_id("whatsapp_connector.action_whatsapp_conversations")
+        action["domain"] = [("channel_type", "=", "whatsapp"), *domain]
+        action["context"] = {}  # all of them, open or closed
+        return action
 
     def _wa_assign_sender(self, user, record):
         """Lead Routing: the sender owns a conversation they start with a template (D2, D6).

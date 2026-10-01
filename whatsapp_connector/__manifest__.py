@@ -23,6 +23,9 @@ same Discuss channel and message types. See README.md and SPEC.md.
     # search), utm (lead source) and sales_team (Lead Routing).
     "depends": ["crm"],
     "external_dependencies": {"python": ["phonenumbers"]},
+    # R33: never alongside Odoo Enterprise's WhatsApp app, in either install
+    # order (Odoo refuses to install modules that exclude each other)
+    "excludes": ["whatsapp"],
     "data": [
         "security/whatsapp_connector_security.xml",
         "security/ir.model.access.csv",
@@ -34,6 +37,7 @@ same Discuss channel and message types. See README.md and SPEC.md.
         "views/whatsapp_message_views.xml",
         "views/whatsapp_webhook_event_views.xml",
         "views/discuss_channel_views.xml",
+        "views/crm_lead_views.xml",
         "views/menus.xml",
     ],
     "assets": {

@@ -380,6 +380,13 @@ class TestTemplateSend(OutboundCase):
         self.assertEqual(wa.channel_id, channel)
         self.assertEqual(wa.status, "queued")
 
+    def test_deleted_template_fails_clearly(self):
+        wa = self.template.with_user(self.user_b)._wa_send_to_record(self.lead)
+        self.template.unlink()
+        self._send_queued()
+        self.assertEqual(wa.status, "failed")
+        self.assertIn("template was deleted", wa.error_message)
+
     def test_header_media_uploaded_when_sending(self):
         header = self.env["ir.attachment"].create({"name": "order.png", "raw": PNG, "mimetype": "image/png"})
         self.template.write({"header_type": "image", "header_attachment_id": header.id, "header_text": False})
@@ -425,6 +432,17 @@ class TestCreateLead(OutboundCase):
         channel.with_user(self.user_a).action_wa_create_lead()
         self.assertEqual(self.env["crm.lead"].search_count([("wa_bsuid", "=", BSUID)]), 1)
         self.assertEqual(len(channel.message_ids.filtered(lambda m: m.message_type == "notification")), 1)
+
+    def test_conversations_reachable_from_lead_and_contact(self):
+        """SPEC.md §30: from the lead and the contact, their WhatsApp conversations."""
+        channel = self._open_channel()
+        channel.with_user(self.user_a).action_wa_create_lead()
+        lead = channel.wa_lead_id
+        self.assertEqual(lead.wa_channel_count, 1)
+        self.assertEqual(self.customer.wa_channel_count, 1)
+        for record in (lead, self.customer):
+            action = record.with_user(self.user_a).action_wa_open_conversations()
+            self.assertEqual(self.env["discuss.channel"].with_user(self.user_a).search(action["domain"]), channel)
 
     def test_links_existing_lead(self):
         """§13: no duplicate CRM records: the customer's open lead is linked."""

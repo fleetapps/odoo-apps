@@ -36,7 +36,8 @@ class WhatsappWebhook(http.Controller):
         tokens = request.env["whatsapp_connector.account"].sudo().search([
             ("webhook_verify_token", "!=", False),
         ]).mapped("webhook_verify_token")
-        if not any(hmac.compare_digest(token, known) for known in tokens):
+        # bytes: compare_digest refuses str with non-ASCII characters (TypeError)
+        if not any(hmac.compare_digest(token.encode(), known.encode()) for known in tokens):
             return request.make_response("", status=403)
         return request.make_response(
             params.get("hub.challenge") or "", headers=[("Content-Type", "text/plain")],
@@ -61,8 +62,9 @@ class WhatsappWebhook(http.Controller):
         secrets = set(request.env["whatsapp_connector.account"].sudo().with_context(
             active_test=False,
         ).search([("app_secret", "!=", False)]).mapped("app_secret"))
+        received = received.encode()  # bytes: a forged header may hold non-ASCII text
         for secret in secrets:
-            expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+            expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest().encode()
             if hmac.compare_digest(expected, received):
                 return True
         return False

@@ -17,6 +17,7 @@
                        decoration-danger="status in ('failed', 'dropped')"/>
                 <field name="error_code" string="Failure Type" optional="hide"/>
                 <field name="error_title" string="Failure Reason" optional="hide"/>
+                <field name="error_at" optional="hide"/>
             </list>
         </field>
     </record>
@@ -26,6 +27,12 @@
         <field name="model">whatsapp_connector.message</field>
         <field name="arch" type="xml">
             <form create="0" edit="0">
+                <header>
+                    <!-- SPEC.md §35: Message failed [Retry] -->
+                    <button name="action_retry" type="object" string="Retry" class="btn-primary"
+                            invisible="direction != 'outbound' or status not in ('failed', 'dropped')"/>
+                    <field name="status" widget="statusbar" statusbar_visible="queued,sent,delivered,read"/>
+                </header>
                 <sheet>
                     <group>
                         <group>
@@ -33,7 +40,6 @@
                             <field name="partner_id"/>
                             <field name="direction"/>
                             <field name="message_type"/>
-                            <field name="status"/>
                             <field name="message_status" invisible="not message_status"/>
                         </group>
                         <group>
@@ -47,6 +53,7 @@
                     </group>
                     <field name="body"/>
                     <group string="Error" invisible="not error_code and not error_title">
+                        <field name="error_at"/>
                         <field name="error_code"/>
                         <field name="error_title"/>
                         <field name="error_message"/>

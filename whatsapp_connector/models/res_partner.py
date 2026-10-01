@@ -9,6 +9,17 @@ class ResPartner(models.Model):
     wa_bsuid = fields.Char("WhatsApp BSUID", index="btree_not_null", copy=False)
     wa_username = fields.Char("WhatsApp Username", copy=False)
     wa_channel_ids = fields.One2many("discuss.channel", "wa_partner_id", string="WhatsApp Conversations")
+    wa_channel_count = fields.Integer("WhatsApp", compute="_compute_wa_channel_count")
+
+    @api.depends("wa_channel_ids")
+    def _compute_wa_channel_count(self):
+        for partner in self:
+            partner.wa_channel_count = len(partner.sudo().wa_channel_ids)
+
+    def action_wa_open_conversations(self):
+        """SPEC.md §30: the contact's WhatsApp conversations."""
+        self.ensure_one()
+        return self.env["discuss.channel"]._wa_conversations_action([("wa_partner_id", "=", self.id)])
 
     @api.model
     def _wa_normalize_phone(self, digits_or_number):

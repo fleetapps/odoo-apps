@@ -3,6 +3,7 @@ import logging
 import traceback
 
 from odoo import api, fields, models
+from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 
 _logger = logging.getLogger(__name__)
 
@@ -76,6 +77,10 @@ class WhatsappWebhookEvent(models.Model):
         try:
             with self.env.cr.savepoint():
                 self._handle(json.loads(self.raw_body))
+        except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
+            # e.g. a user wrote in the same conversation meanwhile: not the
+            # event's fault; the cron rolls back and processes it again
+            raise
         except Exception:  # noqa: BLE001 - one bad event must not stop the others
             _logger.exception("WhatsApp webhook event %s failed", self.id)
             self.write({
@@ -119,7 +124,14 @@ class WhatsappWebhookEvent(models.Model):
             self._handle_message(account, message, contact)
         for account, status, contacts in statuses:
             self._handle_status(account, status, contacts)
+        synced = set()
         for account, field, value in others:
+            if field in self.TEMPLATE_FIELDS:
+                if account is not None and account not in synced:
+                    # one sync per account, however many template updates came
+                    synced.add(account)
+                    account._wa_sync_templates()
+                continue
             self._handle_other(account, field, value)
 
     @api.model
@@ -192,7 +204,11 @@ class WhatsappWebhookEvent(models.Model):
         ], limit=1)
         if not message:
             return
-        message._apply_status(status.get("status"), errors=status.get("errors"))
+        message._apply_status(
+            status.get("status"),
+            timestamp=self.env["discuss.channel"]._wa_timestamp(status.get("timestamp")),
+            errors=status.get("errors"),
+        )
         # status webhooks also carry the recipient's BSUID (R16)
         bsuid = status.get("recipient_user_id") or next(
             (c.get("user_id") for c in contacts if c.get("user_id")), False,
@@ -207,11 +223,10 @@ class WhatsappWebhookEvent(models.Model):
     )
 
     def _handle_other(self, account, field, value):
-        if field in self.TEMPLATE_FIELDS and account is not None:
-            # Re-read the account's templates from Meta rather than trusting the
-            # webhook's own fields: the template list is the documented source.
-            account._wa_sync_templates()
-        elif field == "user_id_update" and account is not None:
+        # Template updates (TEMPLATE_FIELDS) re-read the account's templates from
+        # Meta rather than trusting the webhook's own fields: the template list is
+        # the documented source. See _handle.
+        if field == "user_id_update" and account is not None:
             self._handle_user_id_update(account, value)
 
     def _handle_user_id_update(self, account, value):

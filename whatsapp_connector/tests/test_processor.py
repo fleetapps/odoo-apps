@@ -4,6 +4,8 @@ import json
 from datetime import timedelta
 from unittest.mock import patch
 
+from psycopg2.errors import SerializationFailure
+
 from odoo import fields
 from odoo.tests import tagged
 from odoo.tools import mute_logger
@@ -259,3 +261,45 @@ class TestProcessor(WhatsappCase):
             "wamid.2", "Anyone?", timestamp=str(int(fields.Datetime.now().timestamp())),
         )]))
         self.assertFalse(member_b.mute_until_dt)
+
+    def test_concurrency_error_retried_not_failed(self):
+        """A concurrent update is not the event's fault: it stays New for the next run."""
+        event = self.env["whatsapp_connector.webhook.event"].create({
+            "raw_body": json.dumps(payloads.inbound([payloads.text_message("wamid.1", "Hello")])),
+        })
+        Event = type(self.env["whatsapp_connector.webhook.event"])
+        with patch.object(Event, "_handle", side_effect=SerializationFailure("concurrent update")), \
+                self.assertRaises(SerializationFailure):
+            event._process()
+        self.assertEqual(event.state, "new")
+
+    def test_template_updates_sync_once(self):
+        """Several template updates in one POST re-read the templates once (R25)."""
+        value = {"event": "APPROVED", "message_template_id": 1, "message_template_name": "a"}
+        payload = payloads.envelope(value, field="message_template_status_update")
+        payload["entry"][0]["changes"].append(
+            {"field": "message_template_quality_update", "value": dict(value, new_quality_score="GREEN")},
+        )
+        Account = type(self.env["whatsapp_connector.account"])
+        with patch.object(Account, "_wa_sync_templates", return_value=0) as sync:
+            self._process(payload)
+        sync.assert_called_once()
+
+    def test_late_older_message_keeps_last_message_time(self):
+        """R28: an older message processed later does not move the conversation back in time."""
+        self._process(payloads.inbound([payloads.text_message("wamid.new", "Later", timestamp="1749700000")]))
+        self._process(payloads.inbound([payloads.text_message("wamid.old", "Earlier", timestamp="1749600000")]))
+        channel = self._conversations()
+        self.assertEqual(channel.wa_last_message_at, channel._wa_timestamp("1749700000"))
+        self.assertEqual(channel.wa_last_customer_message_at, channel._wa_timestamp("1749700000"))
+
+    def test_failure_time_stored(self):
+        """SPEC.md §35: a failure keeps Meta's error and its time."""
+        channel = self._make_channel(self.user_a.partner_id)
+        wa = self.env["whatsapp_connector.message"].create({
+            "account_id": self.account.id, "channel_id": channel.id, "direction": "outbound",
+            "status": "sent", "external_message_id": "wamid.f",
+        })
+        self._process(payloads.status("wamid.f", "failed", errors=[{"code": 131026, "title": "Message undeliverable"}]))
+        self.assertEqual(wa.status, "failed")
+        self.assertEqual(wa.error_at, channel._wa_timestamp("1750000000"))

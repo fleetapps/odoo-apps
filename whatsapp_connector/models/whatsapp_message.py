@@ -98,6 +98,7 @@ class WhatsappMessage(models.Model):
     error_title = fields.Char()
     error_message = fields.Text()
     error_details = fields.Text()
+    error_at = fields.Datetime("Failure Time", copy=False, help="When Meta reported the failure.")
     wa_timestamp = fields.Datetime("WhatsApp Timestamp")
     sent_at = fields.Datetime("Accepted by Meta")
     payload = fields.Json(help="Values of a template's placeholders, kept so a retry sends the same.")
@@ -124,9 +125,7 @@ class WhatsappMessage(models.Model):
             current = message.status
             if status == "failed":
                 if current in ("queued", "sent"):
-                    vals = {"status": "failed"}
-                    vals.update(message._error_vals(errors))
-                    message.write(vals)
+                    message.write({"status": "failed", **message._error_vals(errors, timestamp)})
                 continue
             if current not in STATUS_RANK or status not in STATUS_RANK:
                 continue
@@ -134,9 +133,11 @@ class WhatsappMessage(models.Model):
                 message.status = status
 
     @api.model
-    def _error_vals(self, errors):
+    def _error_vals(self, errors, at=None):
+        """Meta's error and when it happened (SPEC.md §35: code, title, message, timestamp)."""
         error = (errors or [{}])[0] or {}
         return {
+            "error_at": at or fields.Datetime.now(),
             "error_code": str(error["code"]) if error.get("code") is not None else False,
             "error_title": error.get("title") or False,
             "error_message": error.get("message") or False,
@@ -338,6 +339,8 @@ class WhatsappMessage(models.Model):
     def _wa_content(self, api_client):
         """Meta's message object for this record (without the recipient)."""
         if self.message_type == "template":
+            if not self.template_id:
+                raise MetaApiError(self.env._("The template was deleted before the message was sent."))
             return {"type": "template", "template": self.template_id._wa_payload(self.payload or {}, api_client)}
         if self.attachment_id:
             attachment = self.attachment_id.sudo()
@@ -375,5 +378,6 @@ class WhatsappMessage(models.Model):
             message.sudo().write({
                 "status": "queued", "external_message_id": False, "error_code": False,
                 "error_title": False, "error_message": False, "error_details": False,
+                "error_at": False,
             })
         self._wa_trigger_send()

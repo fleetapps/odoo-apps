@@ -195,8 +195,10 @@ class WhatsAppApi:
 
     def get_subscribed_apps(self):
         result = self._request("GET", f"{self.waba_id}/subscribed_apps")
+        # Meta's reference shows the app nested in whatsapp_business_api_data;
+        # its response schema also allows {id, name} directly: accept both.
         return [
-            (item.get("whatsapp_business_api_data") or {}).get("id")
+            (item.get("whatsapp_business_api_data") or item).get("id")
             for item in (result.get("data") or [])
         ]
 

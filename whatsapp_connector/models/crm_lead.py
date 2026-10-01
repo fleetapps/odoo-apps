@@ -17,3 +17,8 @@ class CrmLead(models.Model):
             lead.wa_channel_count = len(channels)
             dates = [d for d in channels.mapped("wa_last_message_at") if d]
             lead.wa_last_message_at = max(dates) if dates else False
+
+    def action_wa_open_conversations(self):
+        """SPEC.md §30: the lead's WhatsApp conversations."""
+        self.ensure_one()
+        return self.env["discuss.channel"]._wa_conversations_action([("wa_lead_id", "=", self.id)])

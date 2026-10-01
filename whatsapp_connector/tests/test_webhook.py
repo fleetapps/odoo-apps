@@ -62,3 +62,11 @@ class TestWebhookEndpoint(HttpCase, WhatsappCase):
         # a valid signature for a different body
         self.assertEqual(self._post(body + b" ", self._sign(body)).status_code, 403)
         self.assertEqual(Event.search_count([]), count)
+
+    @mute_logger("odoo.addons.whatsapp_connector.controllers.main")
+    def test_non_ascii_token_or_signature_rejected(self):
+        """A forged non-ASCII value is refused (403), not a server error."""
+        response = self.url_open(f"{ROUTE}?hub.mode=subscribe&hub.challenge=1&hub.verify_token=%C3%A9t%C3%A9")
+        self.assertEqual(response.status_code, 403)
+        body = json.dumps(payloads.inbound([payloads.text_message("wamid.C", "Hi")])).encode()
+        self.assertEqual(self._post(body, "sha256=" + "\xe9" * 64).status_code, 403)
