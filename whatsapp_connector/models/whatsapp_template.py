@@ -498,6 +498,7 @@ class WhatsappTemplate(models.Model):
             "payload": values,  # Meta's payload is built when sending (header upload)
         })
         channel._wa_after_user_message(user.partner_id)
+        message._wa_notify_delivery()
         if record._name != "discuss.channel" and hasattr(record, "message_post"):
             record.message_post(
                 body=Markup("%s %s") % (

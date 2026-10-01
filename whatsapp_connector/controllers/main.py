@@ -2,6 +2,8 @@ import hashlib
 import hmac
 import logging
 
+from werkzeug.exceptions import NotFound
+
 from odoo import http
 from odoo.http import request
 
@@ -64,3 +66,22 @@ class WhatsappWebhook(http.Controller):
             if hmac.compare_digest(expected, received):
                 return True
         return False
+
+
+class WhatsappDiscuss(http.Controller):
+    """Discuss actions on WhatsApp messages."""
+
+    @http.route("/whatsapp_connector/message/retry", type="jsonrpc", auth="user", methods=["POST"])
+    def retry(self, message_id):
+        """Send a failed or dropped message again (SPEC.md §35)."""
+        message = request.env["mail.message"].browse(int(message_id)).exists()
+        if not message or message.model != "discuss.channel":
+            raise NotFound()
+        # members of the conversation, and WhatsApp managers
+        request.env["discuss.channel"].browse(message.res_id).check_access("read")
+        # sudo: access to the conversation is checked above
+        to_retry = message.sudo().wa_message_ids.filtered(
+            lambda m: m.direction == "outbound" and m.status in ("failed", "dropped"),
+        )
+        to_retry.action_retry()
+        return True

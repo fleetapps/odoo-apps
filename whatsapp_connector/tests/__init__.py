@@ -4,5 +4,6 @@ from . import (
     test_outbound,
     test_processor,
     test_templates,
+    test_ui,
     test_webhook,
 )

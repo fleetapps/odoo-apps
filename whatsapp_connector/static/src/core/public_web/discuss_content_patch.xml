@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="mail.DiscussContent" t-inherit-mode="extension">
+        <xpath expr="//AutoresizeInput[contains(@className, 'o-mail-DiscussContent-threadName')]" position="after">
+            <span t-if="thread.waHeaderText" class="o-whatsapp-headerInfo text-muted small ms-2 text-nowrap" t-esc="thread.waHeaderText"/>
+        </xpath>
+        <xpath expr="//Composer" position="replace">
+            <WhatsappComposerLock t-if="thread.waComposerLocked" thread="thread"/>
+            <t t-else="">$0</t>
+        </xpath>
+    </t>
+</templates>

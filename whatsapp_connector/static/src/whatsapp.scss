@@ -1,0 +1,14 @@
+// Two stacked checks, like WhatsApp's "delivered" and "read" marks.
+.o-whatsapp-doubleCheck {
+    position: relative;
+
+    &::after {
+        content: "\f00c";
+        position: absolute;
+        left: 0.3em;
+    }
+}
+
+.o-whatsapp-read {
+    color: $info;
+}

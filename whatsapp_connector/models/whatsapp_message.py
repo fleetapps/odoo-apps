@@ -112,6 +112,12 @@ class WhatsappMessage(models.Model):
         "This WhatsApp message is already recorded.",
     )
 
+    def write(self, vals):
+        result = super().write(vals)
+        if "status" in vals and self.mail_message_id:
+            self.mail_message_id._wa_notify_delivery()
+        return result
+
     def _apply_status(self, status, timestamp=None, errors=None):
         """Apply a Meta status without ever moving backwards (R19)."""
         for message in self:

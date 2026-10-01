@@ -8,6 +8,8 @@ from odoo.exceptions import UserError
 from odoo.fields import Domain
 from odoo.tools import html2plaintext, plaintext2html
 
+from odoo.addons.mail.tools.discuss import Store
+
 _logger = logging.getLogger(__name__)
 
 # Meta's customer service window (SPEC.md §28, R34): free-form messages only
@@ -83,6 +85,22 @@ class DiscussChannel(models.Model):
     def _wa_window_open(self):
         self.ensure_one()
         return bool(self.wa_window_expires_at and self.wa_window_expires_at > fields.Datetime.now())
+
+    def _wa_store_fields(self):
+        """What the Discuss UI shows of a WhatsApp conversation (SPEC.md §19, §28)."""
+        return [
+            Store.Attr(name, predicate=is_whatsapp_channel)
+            for name in ("wa_customer_phone", "wa_status", "wa_username", "wa_window_expires_at")
+        ]
+
+    def _to_store_defaults(self, target):
+        return super()._to_store_defaults(target) + self._wa_store_fields()
+
+    def _sync_field_names(self):
+        # pushed to the members whenever they change, e.g. the window reopening
+        field_names = super()._sync_field_names()
+        field_names[None] += self._wa_store_fields()
+        return field_names
 
     def _types_allowing_seen_infos(self):
         return super()._types_allowing_seen_infos() + ["whatsapp"]
@@ -514,6 +532,8 @@ class DiscussChannel(models.Model):
         if text and not caption_used:
             to_send |= WaMessage.create({**base, "message_type": "text", "body": text})
         self._wa_after_user_message(message.author_id)
+        # Discuss announced the message before it was queued: send its status after
+        message._wa_notify_delivery()
         to_send._wa_trigger_send()
         return to_send
 

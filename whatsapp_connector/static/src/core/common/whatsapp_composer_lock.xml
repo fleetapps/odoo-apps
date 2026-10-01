@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="whatsapp_connector.ComposerLock">
+        <div class="o-whatsapp-ComposerLock d-flex align-items-center gap-2 border-top px-3 py-2 small">
+            <i class="fa fa-whatsapp text-success" aria-hidden="true"/>
+            <span class="flex-grow-1 text-muted">More than 24 hours have passed since the customer's last message: WhatsApp only accepts a template now.</span>
+            <button class="btn btn-sm btn-primary text-nowrap" t-on-click="() => props.thread.waOpenTemplateComposer()">Send Template</button>
+        </div>
+    </t>
+
+    <t t-inherit="mail.ChatWindow" t-inherit-mode="extension">
+        <xpath expr="//Composer" position="replace">
+            <WhatsappComposerLock t-if="thread.waComposerLocked" thread="thread"/>
+            <t t-else="">$0</t>
+        </xpath>
+    </t>
+</templates>

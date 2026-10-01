@@ -60,9 +60,10 @@ class OutboundCase(WhatsappCase):
         })
 
     def _post(self, channel, user, body="", **kwargs):
+        """Post as ``user``; the message is returned in the test's environment."""
         return channel.with_user(user).message_post(
             body=body, message_type="comment", subtype_xmlid="mail.mt_comment", **kwargs,
-        )
+        ).with_env(self.env)
 
 
 @tagged("post_install", "-at_install")

@@ -36,6 +36,14 @@ same Discuss channel and message types. See README.md and SPEC.md.
         "views/discuss_channel_views.xml",
         "views/menus.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "whatsapp_connector/static/src/**/*",
+        ],
+        "web.assets_tests": [
+            "whatsapp_connector/static/tests/tours/**/*",
+        ],
+    },
     "pre_init_hook": "pre_init_hook",
     "application": True,
     "installable": True,
