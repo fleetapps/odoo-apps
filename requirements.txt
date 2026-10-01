@@ -1,2 +1,3 @@
 # Python dependencies of the modules in this repository
 pdfplumber==0.11.9  # gymkhana_pos_import; 0.11.10 needs Pillow>=12.2, which conflicts with Odoo 19
+phonenumbers==9.0.40  # crm_3cx, whatsapp_connector
