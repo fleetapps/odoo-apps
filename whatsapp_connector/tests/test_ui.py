@@ -81,6 +81,8 @@ class TestUi(OutboundCase, HttpCase):
 
     def test_retry(self):
         channel = self._open_channel()
+        # right after another reply of the same user: Discuss would squash it
+        self._post(channel, self.user_a, "Arrived fine").wa_message_ids.status = "delivered"
         message = self._post(channel, self.user_a, "Did not arrive")
         message.wa_message_ids.write({"status": "failed", "error_title": "Re-engagement message"})
         self.start_tour(self._discuss(channel), "whatsapp_connector_retry", login="wa_andrew")
