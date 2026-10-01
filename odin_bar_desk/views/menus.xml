@@ -3,7 +3,7 @@
     <menuitem id="menu_bar_dashboard"
               name="Dashboard"
               parent="odin_bar_base.menu_bar_root"
-              action="action_bar_dashboard"
+              action="action_bar_dashboard_client"
               groups="group_bar_desk_manager"
               sequence="5"/>
 

@@ -44,6 +44,11 @@ export class BarDesk extends Component {
         this.toastState = useState({ message: "", type: "success" });
         this.initials = initials;
         this.firstName = firstName;
+        // Opened from the dashboard on a given trading day.
+        const day = this.props.action?.context?.bar_desk_day;
+        if (day) {
+            this.model.state.day = day;
+        }
         onWillStart(() => this.model.boot());
         onWillUnmount(() => {
             this.model.destroy();

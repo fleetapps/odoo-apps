@@ -5,3 +5,4 @@ from . import test_pos_link
 from . import test_desk_tour
 from . import test_supply
 from . import test_controller
+from . import test_dashboard

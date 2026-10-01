@@ -154,9 +154,24 @@ sits, and its par; **Below par** lists what to reorder. This replaces the
 TOTALS and BULK AND REORDER sheets.
 
 **Manager, in Bar Control**
-- **Dashboard**: per location, counts to approve, differences to explain,
-  moves today, last approved close, last POS day, *POS day missing*, 7-day
-  variance.
+- **Bar Desk** opens first: *Bar Control* lands on it.
+- **Dashboard**, for managers, on a phone or a desktop. All locations or one
+  (MS · BE · BB · MB), over the last 3, 7 or 30 trading days; the choice is
+  remembered. Every figure opens the list behind it. Values are at cost.
+  1. **Closing**: a grid of locations by days. ✓ approved, a number to
+     explain, counted, counting, not counted, ✗ never closed (older than the
+     Desk's three days and not approved), **P** POS sales missing. Above it,
+     what is left on the next day to close, with *Open in Bar Desk* on it.
+  2. **Locations**: per location, what was short (and as a share of what it
+     sold), the top reason, sales or deliveries received, moves in and out,
+     stock value and its last count. Tap a card to see only that location.
+  3. **Variance**: short and over on approved days, against the period
+     before; by reason (*Unexplained* in red), by location, top products.
+  4. **Stock**: products below par (the club's total) and what to reorder;
+     stock value per location.
+  5. **Out of the club**: Roma, Event, Unpaid bill, and unpaid bills not
+     billed to the member yet. Moves and sales run to today; closing and
+     variance stop at yesterday, the last day that can be closed.
 - **Count approvals**: one count at a time, with counted, expected,
   difference, value and reason (editable while waiting). **Ask for a
   recount** marks it on the Desk.
