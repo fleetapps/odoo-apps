@@ -270,10 +270,16 @@ class OdinBarDashboard(models.AbstractModel):
         reach = today - timedelta(days=DAYS_BACK)
         counts = self._counts(all_bars, days[0], days[-1])
         activity = self._activity(all_bars, days)
+        # POS sales for the day in progress are not late, so it is not asked
+        # about here -- only the days that have finished.
         pos_missing = {bar.id: self._pos_missing(bar, days) for bar in all_bars}
+        # The day the club is trading right now, shown after the closable ones
+        # so the grid does not simply stop at "yesterday" and read as stuck.
+        # It is never counted, approved, missed or focused: it has not finished.
+        grid_days = list(days) + [today]
         cells = {}
         for bar in all_bars:
-            for day in days:
+            for day in grid_days:
                 count = counts.get((bar.id, day))
                 differences, unresolved = Desk._desk_count_differences(count) if count else (0, 0)
                 cells[(bar.id, day)] = {
@@ -284,7 +290,19 @@ class OdinBarDashboard(models.AbstractModel):
                     "pos_missing": day in pos_missing[bar.id],
                 }
         day_rows = []
-        for day in days:
+        for day in grid_days:
+            if day == today:
+                day_rows.append(
+                    {
+                        "date": fields.Date.to_string(day),
+                        "label": self._day_label(day),
+                        "weekday": day.strftime("%a"),
+                        "day": day.day,
+                        "state": "trading",
+                        "in_reach": False,
+                    }
+                )
+                continue
             # A TRADING DAY is in the grid when anything happened anywhere that
             # day -- POS sales posted, or a transfer carrying it -- or when
             # somebody counted. Scoping per day rather than per location keeps
@@ -314,10 +332,12 @@ class OdinBarDashboard(models.AbstractModel):
         rows = []
         for bar in bars:
             row_cells = []
-            for day, day_row in zip(days, day_rows, strict=True):
+            for day, day_row in zip(grid_days, day_rows, strict=True):
                 cell = dict(cells[(bar.id, day)], date=day_row["date"])
                 if cell["state"] == "none":
-                    if day_row["state"] == "before":
+                    if day_row["state"] == "trading":
+                        cell["state"] = "trading"
+                    elif day_row["state"] == "before":
                         # Nothing happened anywhere that day: outside the grid.
                         cell["state"] = "before"
                     elif day_row["state"] == "missed":
@@ -328,7 +348,7 @@ class OdinBarDashboard(models.AbstractModel):
             rows.append({"bar": self._bar_info(bar), "cells": row_cells})
         # The day that needs the controller: the oldest open day the Desk still reaches.
         focus = False
-        for day, day_row in zip(days, day_rows, strict=True):
+        for day, day_row in zip(grid_days, day_rows, strict=True):
             if day_row["state"] == "open":
                 focus = self._focus(all_bars, day, cells, day_row)
                 break

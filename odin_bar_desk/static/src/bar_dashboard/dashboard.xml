@@ -96,7 +96,11 @@
                                         <td t-foreach="row.cells" t-as="cell" t-key="cell.date">
                                             <t t-set="day" t-value="data.closing.days[cell_index]"/>
                                             <t t-set="meta" t-value="cellMeta(cell)"/>
-                                            <button t-if="cell.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
+                                            <span t-if="cell.state === 'trading'" class="o_bcd_cell o_trading"
+                                                  t-att-title="row.bar.name + ', ' + day.label + ': ' + meta.text">
+                                                <i class="fa fa-circle-o"/>
+                                            </span>
+                                            <button t-elif="cell.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
                                                     t-att-title="cellTitle(row, cell, day)" t-att-aria-label="cellTitle(row, cell, day)"
                                                     t-on-click="() => this.tapCell(cell, day)">
                                                 <b t-if="meta.number" t-esc="meta.number"/>
@@ -107,10 +111,14 @@
                                         </td>
                                     </tr>
                                     <tr t-if="!state.barId" class="o_bcd_grid_day">
-                                        <th scope="row" class="o_bcd_grid_bar"><span class="o_bcd_code">Day</span><span class="o_bcd_name">Whole club</span></th>
+                                        <th scope="row" class="o_bcd_grid_bar" title="The club as a whole. It only turns green once every location's count for that day is approved."><span class="o_bcd_code">Day</span><span class="o_bcd_name">Whole club</span></th>
                                         <td t-foreach="data.closing.days" t-as="day" t-key="day.date">
                                             <t t-set="meta" t-value="dayMeta(day)"/>
-                                            <button t-if="day.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
+                                            <span t-if="day.state === 'trading'" class="o_bcd_cell o_trading"
+                                                   t-att-title="day.label + ': ' + meta.text">
+                                                <i class="fa fa-circle-o"/>
+                                            </span>
+                                            <button t-elif="day.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
                                                     t-att-title="day.label + ': ' + meta.text" t-att-aria-label="day.label + ': ' + meta.text"
                                                     t-on-click="() => this.tapDay(day)">
                                                 <i t-attf-class="fa {{ meta.icon }}"/>
@@ -122,13 +130,14 @@
                             </table>
                         </div>
                         <div class="o_bcd_legend" aria-label="Legend">
-                            <span><i class="fa fa-check o_done"/> approved</span>
-                            <span><i class="fa fa-check-circle-o o_ready"/> counted</span>
-                            <span><b class="o_attention">2</b> to explain</span>
-                            <span><i class="fa fa-adjust o_attention"/> counting</span>
-                            <span><i class="fa fa-minus o_muted"/> not counted</span>
-                            <span><i class="fa fa-times o_critical"/> never closed</span>
-                            <span><span class="o_bcd_pos o_inline">P</span> no POS</span>
+                            <span title="Counted, every difference has a reason, and you signed it off. The day is done."><i class="fa fa-check o_done"/> approved</span>
+                            <span title="Counted and sent in. Waiting for you to check the differences and approve it."><i class="fa fa-check-circle-o o_ready"/> counted</span>
+                            <span title="Differences the count found that still need a reason before the day can be approved."><b class="o_attention">2</b> to explain</span>
+                            <span title="Someone has started the count but has not sent it in yet."><i class="fa fa-adjust o_attention"/> counting</span>
+                            <span title="The day traded but nobody has counted this location yet."><i class="fa fa-minus o_muted"/> not counted</span>
+                            <span title="The day was never counted and is now too old for the Desk to reopen."><i class="fa fa-times o_critical"/> never closed</span>
+                            <span title="Still open. This day closes at 6am tomorrow, and is counted the morning after."><i class="fa fa-circle-o o_muted"/> trading now</span>
+                            <span title="The till sales for that day have not been imported, so expected stock is incomplete until they are."><span class="o_bcd_pos o_inline">P</span> no POS</span>
                         </div>
                     </section>
 
@@ -143,7 +152,7 @@
                                 <span class="o_bcd_name" t-esc="card.bar.name"/>
                             </div>
                             <div class="o_bcd_loc_hero">
-                                <span class="o_bcd_kicker">Short</span>
+                                <span class="o_bcd_kicker" title="Stock the count could not account for, at cost price. Till sales and stock moved between locations are already allowed for, so this is what is missing on top of them.">Short</span>
                                 <span class="o_bcd_big" t-att-class="card.short ? 'o_critical_text' : ''">
                                     <t t-esc="data.currency"/> <t t-esc="money(card.short)"/>
                                 </span>
@@ -175,7 +184,7 @@
                     <div class="o_bcd_lower">
                         <!-- 3. Variance -->
                         <section class="o_bcd_card o_bcd_variance" aria-labelledby="o_bcd_variance_h">
-                            <h2 id="o_bcd_variance_h" class="o_bcd_h">Variance <small>last <t t-esc="data.period"/> days, approved</small></h2>
+                            <h2 id="o_bcd_variance_h" class="o_bcd_h" title="The gap between what the tills say was sold and what the counts say was actually used. Approved days only, so the figures do not move once you have signed a day off.">Variance <small>last <t t-esc="data.period"/> days, approved</small></h2>
                             <t t-set="variance" t-value="data.variance"/>
                             <div class="o_bcd_hero">
                                 <span class="o_bcd_big" t-att-class="variance.short ? 'o_critical_text' : ''">
@@ -275,7 +284,7 @@
 
                             <!-- 5. Out of the club -->
                             <section class="o_bcd_card" aria-labelledby="o_bcd_out_h">
-                                <h2 id="o_bcd_out_h" class="o_bcd_h">Out of the club <small>last <t t-esc="data.period"/> days and today</small></h2>
+                                <h2 id="o_bcd_out_h" class="o_bcd_h" title="Stock that left without being sold, grouped by the reason given at the Desk: Roma, events, unpaid bills, breakages and the rest.">Out of the club <small>last <t t-esc="data.period"/> days and today</small></h2>
                                 <t t-set="out" t-value="data.out"/>
                                 <div t-if="!out.reasons.length" class="text-muted small">Nothing left the club.</div>
                                 <div class="o_bcd_out">
