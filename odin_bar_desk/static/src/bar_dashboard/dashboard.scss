@@ -11,6 +11,13 @@
     --bcd-critical: var(--#{$prefix}danger);
     --bcd-muted: var(--#{$prefix}secondary-color);
 
+    // .o_action is a flex container, and a flex item will not shrink below its
+    // content: without min-height the dashboard grows to the height of
+    // everything inside it, so overflow-y never has anything to scroll and the
+    // page simply runs off the bottom. min-height: 0 lets it be constrained by
+    // the viewport again, which is what makes overflow-y: auto work at all.
+    flex: 1 1 auto;
+    min-height: 0;
     height: 100%;
     overflow-y: auto;
     background-color: var(--#{$prefix}body-bg);
