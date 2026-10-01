@@ -48,6 +48,9 @@ const CELL = {
     none: { icon: "fa-minus", tone: "o_muted", text: "Not counted" },
     missed: { icon: "fa-times", tone: "o_critical", text: "Never closed" },
     before: { icon: "", tone: "o_blank", text: "Before the first count" },
+    // The day the club is trading right now. Not a state anybody has to act
+    // on -- it is shown so the grid does not appear to stop at yesterday.
+    trading: { icon: "fa-circle-o", tone: "o_muted", text: "Trading now, closes tomorrow morning" },
 };
 
 /**
@@ -176,10 +179,14 @@ export class BarDashboard extends Component {
             open: { icon: "fa-adjust", tone: "o_attention", text: "Open" },
             missed: { icon: "fa-times", tone: "o_critical", text: "Never closed" },
             before: { icon: "", tone: "o_blank", text: "" },
+            trading: { icon: "fa-circle-o", tone: "o_muted", text: "Trading now, closes tomorrow morning" },
         }[day.state];
     }
 
     tapCell(cell, day) {
+        if (day.state === "trading") {
+            return;
+        }
         if (day.in_reach && day.state !== "approved") {
             return this.openDesk(day.date);
         }
@@ -190,7 +197,7 @@ export class BarDashboard extends Component {
     }
 
     tapDay(day) {
-        if (day.state === "before") {
+        if (day.state === "before" || day.state === "trading") {
             return;
         }
         if (day.in_reach && day.state !== "approved") {

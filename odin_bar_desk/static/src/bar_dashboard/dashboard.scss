@@ -377,6 +377,14 @@
     }
 }
 
+// The day still being traded: present so the grid does not look stuck at
+// yesterday, but visibly not a day you can act on.
+.o_bcd_cell.o_trading {
+    border-style: dashed;
+    color: var(--bcd-muted);
+    cursor: default;
+}
+
 .o_bcd_grid.o_days_30 .o_bcd_cell {
     width: 2rem;
     height: 2rem;
