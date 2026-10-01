@@ -31,6 +31,30 @@ class TestDashboard(BarDeskCase):
         with freeze_time(MONDAY):
             return self.dashboard.dashboard_data(period, bar and bar.id)
 
+    def test_a_traded_day_with_no_count_is_never_closed(self):
+        """POS sales posted and nobody counted: the day must read as open.
+
+        The grid used to be anchored on the earliest closing count in the
+        database. With no counts at all -- a fresh instance, or one cleared
+        before go-live -- every day fell before that anchor, rendered blank, and
+        the banner announced that every day was closed while posted POS sales
+        sat uncounted.
+        """
+        self.bar_be._mark_pos_posted(DAY1, source="POS 2026-09-27")
+        data = self.data()
+        closing = data["closing"]
+
+        day = next(d for d in closing["days"] if d["date"] == "2026-09-27")
+        self.assertNotEqual(day["state"], "approved", "a day nobody counted is not closed")
+        self.assertNotEqual(day["state"], "before", "a day that traded is inside the grid")
+        self.assertEqual(day["state"], "open")
+
+        row = next(r for r in closing["rows"] if r["bar"]["id"] == self.bar_be.id)
+        cell = next(c for c in row["cells"] if c["date"] == "2026-09-27")
+        self.assertNotEqual(cell["state"], "before", "the location traded that day")
+
+        self.assertTrue(closing["focus"], "the controller is pointed at the open day")
+
     def test_closing_grid_and_what_is_left(self):
         self.bar_be._mark_pos_posted(DAY1, no_sales=True)
         with freeze_time(MONDAY):

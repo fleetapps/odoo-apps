@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
+from odoo.tools import SQL
 
 from .odin_bar_desk import DAYS_BACK
 
@@ -208,6 +209,57 @@ class OdinBarDashboard(models.AbstractModel):
         )
         return {day for day in days if (not start or day >= start) and day not in posted}
 
+    @api.model
+    def _activity(self, all_bars, days):
+        """``(bar_id, day)`` pairs that actually traded.
+
+        The grid used to be anchored on the earliest closing count that had
+        ever been taken: with no counts at all -- a fresh instance, or one whose
+        history was cleared before go-live -- every day read as "before the
+        system started", rendered blank, and the banner concluded that every day
+        was closed while POS sales sat posted and uncounted.
+
+        A day is in the grid because something happened on it, not because
+        somebody already counted it. Two signals say so: POS sales posted for
+        that bar and day, and a transfer carrying that trading day.
+        """
+        if not days:
+            return set()
+        seen = set()
+        PosDay = self.env["odin.bar.pos.day"].sudo()
+        for rec in PosDay.search(
+            [("bar_id", "in", all_bars.ids), ("business_date", "in", list(days))]
+        ):
+            seen.add((rec.bar_id.id, rec.business_date))
+
+        self.env.flush_all()
+        Location = self.env["stock.location"].sudo()
+        for bar in all_bars:
+            if not bar.location_id:
+                continue
+            locations = Location.search([("id", "child_of", bar.location_id.id)]).ids
+            if not locations:
+                continue
+            self.env.cr.execute(
+                SQL(
+                    """
+                    SELECT DISTINCT picking.bar_business_date
+                      FROM stock_move_line ml
+                      JOIN stock_move move ON move.id = ml.move_id
+                      JOIN stock_picking picking ON picking.id = move.picking_id
+                     WHERE move.state = 'done'
+                       AND picking.bar_business_date = ANY(%(days)s)
+                       AND (ml.location_id = ANY(%(locations)s)
+                            OR ml.location_dest_id = ANY(%(locations)s))
+                    """,
+                    days=list(days),
+                    locations=locations,
+                )
+            )
+            for (day,) in self.env.cr.fetchall():
+                seen.add((bar.id, day))
+        return seen
+
     # ------------------------------------------------------------------
     # 1. Closing: locations x days
     # ------------------------------------------------------------------
@@ -217,11 +269,7 @@ class OdinBarDashboard(models.AbstractModel):
         Desk = self.env["odin.bar.desk"]
         reach = today - timedelta(days=DAYS_BACK)
         counts = self._counts(all_bars, days[0], days[-1])
-        first = self.env["odin.bar.count"].sudo().search(
-            [("bar_id", "in", all_bars.ids), ("kind", "=", "closing"), ("state", "!=", "cancel")],
-            order="business_date",
-            limit=1,
-        ).business_date
+        activity = self._activity(all_bars, days)
         pos_missing = {bar.id: self._pos_missing(bar, days) for bar in all_bars}
         cells = {}
         for bar in all_bars:
@@ -237,12 +285,18 @@ class OdinBarDashboard(models.AbstractModel):
                 }
         day_rows = []
         for day in days:
-            states = [cells[(bar.id, day)]["state"] for bar in all_bars]
-            started = bool(first) and day >= first
-            if all(state == "approved" for state in states):
-                state = "approved"
-            elif not started:
+            # A TRADING DAY is in the grid when anything happened anywhere that
+            # day -- POS sales posted, or a transfer carrying it -- or when
+            # somebody counted. Scoping per day rather than per location keeps
+            # it simple: once the club traded, every location is pending a count
+            # and says so, instead of a bar that happened to move no stock
+            # quietly dropping out of the grid.
+            traded = any((bar.id, day) in activity for bar in all_bars)
+            counted = any(cells[(bar.id, day)]["state"] != "none" for bar in all_bars)
+            if not traded and not counted:
                 state = "before"
+            elif all(cells[(bar.id, day)]["state"] == "approved" for bar in all_bars):
+                state = "approved"
             elif day < reach:
                 state = "missed"
             else:
@@ -262,10 +316,14 @@ class OdinBarDashboard(models.AbstractModel):
             row_cells = []
             for day, day_row in zip(days, day_rows, strict=True):
                 cell = dict(cells[(bar.id, day)], date=day_row["date"])
-                if cell["state"] == "none" and day_row["state"] == "missed":
-                    cell["state"] = "missed"
-                elif day_row["state"] == "before" and cell["state"] == "none":
-                    cell["state"] = "before"
+                if cell["state"] == "none":
+                    if day_row["state"] == "before":
+                        # Nothing happened anywhere that day: outside the grid.
+                        cell["state"] = "before"
+                    elif day_row["state"] == "missed":
+                        cell["state"] = "missed"
+                    # Otherwise it stays "none" -- the day traded, this location
+                    # is still pending a count. Never "closed".
                 row_cells.append(cell)
             rows.append({"bar": self._bar_info(bar), "cells": row_cells})
         # The day that needs the controller: the oldest open day the Desk still reaches.
