@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_bar_desk.BarDashboard">
+        <div class="o_action o_bcd">
+            <div class="o_bcd_page">
+                <!-- Top bar: title, location filter, period, refresh, the Desk -->
+                <header class="o_bcd_top">
+                    <h1 class="o_bcd_title">Dashboard</h1>
+                    <div class="o_bcd_controls">
+                        <div t-if="data and !data.empty" class="o_bcd_chips" role="group" aria-label="Location">
+                            <button class="btn o_bcd_chip" t-att-class="!state.barId ? 'o_active' : ''"
+                                    t-on-click="() => this.setBar(false)">All</button>
+                            <button t-foreach="data.bars" t-as="bar" t-key="bar.id" class="btn o_bcd_chip"
+                                    t-att-class="state.barId === bar.id ? 'o_active' : ''" t-att-title="bar.name"
+                                    t-on-click="() => this.setBar(bar.id)" t-esc="bar.code"/>
+                        </div>
+                        <div class="o_bcd_segment" role="group" aria-label="Period">
+                            <button t-foreach="periods" t-as="period" t-key="period" class="btn"
+                                    t-att-class="state.period === period ? 'o_active' : ''"
+                                    t-on-click="() => this.setPeriod(period)"><t t-esc="period"/>d</button>
+                        </div>
+                        <button class="btn o_bcd_icon_btn" aria-label="Refresh" title="Refresh" t-on-click="reload">
+                            <i class="fa fa-refresh" t-att-class="{'fa-spin': state.loading}"/>
+                        </button>
+                        <button t-if="data and !data.empty" class="btn btn-primary o_bcd_desk_btn"
+                                t-on-click="() => this.open('desk', { date_from: false })">
+                            <i class="fa fa-th-list me-1"/>Bar Desk
+                        </button>
+                    </div>
+                </header>
+
+                <div t-if="state.error" class="alert alert-danger" role="alert" t-esc="state.error"/>
+                <div t-if="!data and state.loading" class="text-center text-muted py-5">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <div t-elif="data and data.empty" class="o_bcd_card text-center text-muted py-5">
+                    No locations yet. Add the store and the bars under Configuration.
+                </div>
+                <t t-elif="data">
+                    <div t-if="state.barId" class="o_bcd_filtered">
+                        Showing <b t-esc="barName"/> only.
+                        <button class="btn btn-link p-0 align-baseline" t-on-click="() => this.setBar(false)">Show all</button>
+                    </div>
+
+                    <!-- 1. Closing: is every day closed, and what is left on the next one -->
+                    <section class="o_bcd_card o_bcd_closing" aria-labelledby="o_bcd_closing_h">
+                        <h2 id="o_bcd_closing_h" class="o_bcd_h">Closing</h2>
+                        <t t-set="focus" t-value="data.closing.focus"/>
+                        <div t-if="focus" class="o_bcd_focus" t-att-class="focus.ready ? 'o_ready' : 'o_attention'">
+                            <div class="o_bcd_focus_text">
+                                <div class="o_bcd_focus_day">
+                                    <i t-attf-class="fa {{ focus.ready ? 'fa-check-circle' : 'fa-adjust' }} me-1"/>
+                                    <t t-esc="focus.label"/>
+                                    <span t-if="focus.ready">: ready to approve</span>
+                                </div>
+                                <div t-if="!focus.ready" class="o_bcd_focus_items">
+                                    <span t-foreach="focus.items" t-as="item" t-key="item_index" class="o_bcd_pill o_attention">
+                                        <b t-esc="item.bar"/> <t t-esc="item.text"/>
+                                    </span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" t-on-click="() => this.openDesk(focus.date)">
+                                Open in Bar Desk
+                            </button>
+                        </div>
+                        <div t-elif="!data.closing.missed.length" class="o_bcd_focus o_done">
+                            <div class="o_bcd_focus_day"><i class="fa fa-check-circle me-1"/>Every day is closed.</div>
+                        </div>
+                        <div t-if="data.closing.missed.length" class="o_bcd_missed">
+                            <i class="fa fa-times-circle me-1"/>
+                            Never closed:
+                            <t t-foreach="data.closing.missed" t-as="day" t-key="day.date">
+                                <button class="btn btn-link p-0 align-baseline o_bcd_missed_day"
+                                        t-on-click="() => this.open('count', { date_from: day.date, date_to: day.date, bar_id: false })"
+                                        t-esc="day.label"/><t t-if="!day_last">, </t>
+                            </t>
+                        </div>
+
+                        <div class="o_bcd_grid_wrap" t-ref="grid">
+                            <table class="o_bcd_grid" t-att-class="'o_days_' + data.period">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="o_bcd_grid_corner"><span class="visually-hidden">Location</span></th>
+                                        <th t-foreach="data.closing.days" t-as="day" t-key="day.date" scope="col">
+                                            <span class="o_bcd_wd" t-esc="day.weekday"/>
+                                            <span class="o_bcd_dn" t-esc="day.day"/>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="data.closing.rows" t-as="row" t-key="row.bar.id">
+                                        <th scope="row" class="o_bcd_grid_bar">
+                                            <span class="o_bcd_code" t-esc="row.bar.code"/>
+                                            <span class="o_bcd_name" t-esc="row.bar.name"/>
+                                        </th>
+                                        <td t-foreach="row.cells" t-as="cell" t-key="cell.date">
+                                            <t t-set="day" t-value="data.closing.days[cell_index]"/>
+                                            <t t-set="meta" t-value="cellMeta(cell)"/>
+                                            <button t-if="cell.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
+                                                    t-att-title="cellTitle(row, cell, day)" t-att-aria-label="cellTitle(row, cell, day)"
+                                                    t-on-click="() => this.tapCell(cell, day)">
+                                                <b t-if="meta.number" t-esc="meta.number"/>
+                                                <i t-elif="meta.icon" t-attf-class="fa {{ meta.icon }}"/>
+                                                <span t-if="cell.pos_missing" class="o_bcd_pos">P</span>
+                                            </button>
+                                            <span t-else="" class="o_bcd_cell o_blank" aria-hidden="true"/>
+                                        </td>
+                                    </tr>
+                                    <tr t-if="!state.barId" class="o_bcd_grid_day">
+                                        <th scope="row" class="o_bcd_grid_bar"><span class="o_bcd_code">Day</span><span class="o_bcd_name">Whole club</span></th>
+                                        <td t-foreach="data.closing.days" t-as="day" t-key="day.date">
+                                            <t t-set="meta" t-value="dayMeta(day)"/>
+                                            <button t-if="day.state !== 'before'" class="o_bcd_cell" t-att-class="meta.tone"
+                                                    t-att-title="day.label + ': ' + meta.text" t-att-aria-label="day.label + ': ' + meta.text"
+                                                    t-on-click="() => this.tapDay(day)">
+                                                <i t-attf-class="fa {{ meta.icon }}"/>
+                                            </button>
+                                            <span t-else="" class="o_bcd_cell o_blank" aria-hidden="true"/>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="o_bcd_legend" aria-label="Legend">
+                            <span><i class="fa fa-check o_done"/> approved</span>
+                            <span><i class="fa fa-check-circle-o o_ready"/> counted</span>
+                            <span><b class="o_attention">2</b> to explain</span>
+                            <span><i class="fa fa-adjust o_attention"/> counting</span>
+                            <span><i class="fa fa-minus o_muted"/> not counted</span>
+                            <span><i class="fa fa-times o_critical"/> never closed</span>
+                            <span><span class="o_bcd_pos o_inline">P</span> no POS</span>
+                        </div>
+                    </section>
+
+                    <!-- 2. Locations -->
+                    <section class="o_bcd_locations" aria-label="Locations">
+                        <button t-foreach="data.locations" t-as="card" t-key="card.bar.id" class="o_bcd_card o_bcd_loc"
+                                t-att-class="{'o_selected': state.barId === card.bar.id}"
+                                t-att-title="state.barId ? 'Show all locations' : 'Show only ' + card.bar.name"
+                                t-on-click="() => this.setBar(state.barId === card.bar.id ? false : card.bar.id)">
+                            <div class="o_bcd_loc_head">
+                                <span class="o_bcd_code" t-esc="card.bar.code"/>
+                                <span class="o_bcd_name" t-esc="card.bar.name"/>
+                            </div>
+                            <div class="o_bcd_loc_hero">
+                                <span class="o_bcd_kicker">Short</span>
+                                <span class="o_bcd_big" t-att-class="card.short ? 'o_critical_text' : ''">
+                                    <t t-esc="data.currency"/> <t t-esc="money(card.short)"/>
+                                </span>
+                                <t t-set="trend" t-value="trendOf(card.short, card.short_before)"/>
+                                <i t-if="trend" t-attf-class="fa {{ trend.icon }} {{ trend.tone }}" t-att-title="trend.text"
+                                   t-att-aria-label="trend.text"/>
+                            </div>
+                            <div class="o_bcd_loc_sub">
+                                <span t-if="card.short and card.short_pct !== false"><t t-esc="card.short_pct"/>% of sold</span>
+                                <span t-if="card.over">over <t t-esc="money(card.over)"/></span>
+                                <span t-if="card.top_reason">top: <t t-esc="card.top_reason.name"/></span>
+                            </div>
+                            <dl class="o_bcd_facts">
+                                <t t-if="card.bar.kind === 'store'">
+                                    <dt>Received</dt><dd><t t-esc="moneyShort(card.received)"/></dd>
+                                </t>
+                                <t t-else="">
+                                    <dt>Sold</dt><dd><t t-esc="moneyShort(card.sold)"/></dd>
+                                </t>
+                                <dt>Moves</dt>
+                                <dd>in <t t-esc="card.moves_in"/> · out <t t-esc="card.moves_out"/></dd>
+                                <dt>Stock</dt><dd><t t-esc="moneyShort(card.stock_value)"/></dd>
+                            </dl>
+                            <t t-set="last" t-value="lastCount(card)"/>
+                            <div class="o_bcd_loc_last" t-att-class="last.tone" t-esc="last.text"/>
+                        </button>
+                    </section>
+
+                    <div class="o_bcd_lower">
+                        <!-- 3. Variance -->
+                        <section class="o_bcd_card o_bcd_variance" aria-labelledby="o_bcd_variance_h">
+                            <h2 id="o_bcd_variance_h" class="o_bcd_h">Variance <small>last <t t-esc="data.period"/> days, approved</small></h2>
+                            <t t-set="variance" t-value="data.variance"/>
+                            <div class="o_bcd_hero">
+                                <span class="o_bcd_big" t-att-class="variance.short ? 'o_critical_text' : ''">
+                                    <t t-esc="data.currency"/> <t t-esc="money(variance.short)"/>
+                                </span>
+                                <span class="o_bcd_hero_label">short</span>
+                                <t t-set="trend" t-value="trendOf(variance.short, variance.short_before)"/>
+                                <span t-if="trend" class="o_bcd_trend" t-att-class="trend.tone">
+                                    <i t-attf-class="fa {{ trend.icon }} me-1"/><t t-esc="trend.text"/>
+                                </span>
+                            </div>
+                            <div t-if="variance.over" class="o_bcd_hero_sub">
+                                <t t-esc="data.currency"/> <t t-esc="money(variance.over)"/> over (counted more than expected)
+                            </div>
+                            <div t-if="!variance.short" class="text-muted py-3">No shortages in this period.</div>
+                            <t t-else="">
+                                <div class="o_bcd_tabs" role="tablist">
+                                    <button role="tab" class="btn" t-att-class="state.varianceTab === 'reason' ? 'o_active' : ''"
+                                            t-att-aria-selected="state.varianceTab === 'reason'"
+                                            t-on-click="() => this.state.varianceTab = 'reason'">Reason</button>
+                                    <button t-if="!state.barId" role="tab" class="btn"
+                                            t-att-class="state.varianceTab === 'location' ? 'o_active' : ''"
+                                            t-att-aria-selected="state.varianceTab === 'location'"
+                                            t-on-click="() => this.state.varianceTab = 'location'">Location</button>
+                                    <button role="tab" class="btn" t-att-class="state.varianceTab === 'product' ? 'o_active' : ''"
+                                            t-att-aria-selected="state.varianceTab === 'product'"
+                                            t-on-click="() => this.state.varianceTab = 'product'">Product</button>
+                                </div>
+                                <div class="o_bcd_panels">
+                                    <div class="o_bcd_panel" t-att-class="{'o_active': state.varianceTab === 'reason'}">
+                                        <h3 class="o_bcd_panel_h">By reason</h3>
+                                        <button t-foreach="variance.reasons" t-as="row" t-key="row.id or row_index" class="o_bcd_bar"
+                                                t-att-class="{'o_flag': row.unexplained}"
+                                                t-att-title="row.name + ': ' + data.currency + ' ' + money(row.value)"
+                                                t-on-click="() => this.open('variance', { record_id: row.id })">
+                                            <span class="o_bcd_bar_label">
+                                                <i t-if="row.unexplained" class="fa fa-exclamation-triangle me-1" aria-label="Loss with no explanation"/>
+                                                <t t-esc="row.name"/>
+                                            </span>
+                                            <span class="o_bcd_bar_track"><span class="o_bcd_bar_fill" t-attf-style="width: {{ width(row.value, variance.reasons) }}"/></span>
+                                            <span class="o_bcd_bar_value" t-esc="money(row.value)"/>
+                                        </button>
+                                    </div>
+                                    <div t-if="!state.barId" class="o_bcd_panel" t-att-class="{'o_active': state.varianceTab === 'location'}">
+                                        <h3 class="o_bcd_panel_h">By location</h3>
+                                        <button t-foreach="variance.locations" t-as="row" t-key="row.id" class="o_bcd_bar"
+                                                t-att-title="row.name + ': ' + data.currency + ' ' + money(row.value)"
+                                                t-on-click="() => this.setBar(row.id)">
+                                            <span class="o_bcd_bar_label"><b t-esc="row.code"/> <span class="o_bcd_name" t-esc="row.name"/></span>
+                                            <span class="o_bcd_bar_track"><span class="o_bcd_bar_fill" t-attf-style="width: {{ width(row.value, variance.locations) }}"/></span>
+                                            <span class="o_bcd_bar_value" t-esc="money(row.value)"/>
+                                        </button>
+                                    </div>
+                                    <div class="o_bcd_panel o_bcd_panel_wide" t-att-class="{'o_active': state.varianceTab === 'product'}">
+                                        <h3 class="o_bcd_panel_h">Top products short</h3>
+                                        <button t-foreach="variance.products" t-as="row" t-key="row.id" class="o_bcd_row"
+                                                t-on-click="() => this.open('variance_product', { record_id: row.id })">
+                                            <span class="o_bcd_row_name" t-esc="row.name"/>
+                                            <span class="o_bcd_row_meta" t-esc="row.qty"/>
+                                            <span class="o_bcd_row_value"><t t-esc="money(row.value)"/></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </t>
+                            <button class="btn btn-link px-0 mt-1" t-on-click="() => this.open('variance')">All variance lines ›</button>
+                        </section>
+
+                        <div class="o_bcd_aside">
+                            <!-- 4. Stock -->
+                            <section class="o_bcd_card" aria-labelledby="o_bcd_stock_h">
+                                <h2 id="o_bcd_stock_h" class="o_bcd_h">Stock <small>now</small></h2>
+                                <t t-set="stock" t-value="data.stock"/>
+                                <div class="o_bcd_hero">
+                                    <span class="o_bcd_big" t-att-class="stock.below_count ? 'o_critical_text' : ''" t-esc="stock.below_count"/>
+                                    <span class="o_bcd_hero_label">below par<t t-if="state.barId"> (whole club)</t></span>
+                                </div>
+                                <div t-if="!stock.below_count" class="text-muted small mb-2">Everything at or above par.</div>
+                                <button t-foreach="stock.below" t-as="row" t-key="row.id" class="o_bcd_row"
+                                        t-on-click="() => this.open('stock', { bar_id: false })">
+                                    <span class="o_bcd_row_name" t-esc="row.name"/>
+                                    <span class="o_bcd_row_meta"><t t-esc="row.on_hand"/></span>
+                                    <span class="o_bcd_row_value o_critical_text">+<t t-esc="row.reorder"/></span>
+                                </button>
+                                <h3 class="o_bcd_panel_h mt-3">Value at cost</h3>
+                                <dl class="o_bcd_values">
+                                    <t t-foreach="stock.values" t-as="row" t-key="row.id">
+                                        <dt t-att-title="row.name" t-esc="row.code"/>
+                                        <dd t-esc="moneyShort(row.value)"/>
+                                    </t>
+                                    <t t-if="stock.values.length > 1">
+                                        <dt class="o_total">Total</dt>
+                                        <dd class="o_total"><t t-esc="data.currency"/> <t t-esc="moneyShort(stock.total)"/></dd>
+                                    </t>
+                                </dl>
+                                <button class="btn btn-link px-0" t-on-click="() => this.open('stock')">Stock by location ›</button>
+                            </section>
+
+                            <!-- 5. Out of the club -->
+                            <section class="o_bcd_card" aria-labelledby="o_bcd_out_h">
+                                <h2 id="o_bcd_out_h" class="o_bcd_h">Out of the club <small>last <t t-esc="data.period"/> days and today</small></h2>
+                                <t t-set="out" t-value="data.out"/>
+                                <div t-if="!out.reasons.length" class="text-muted small">Nothing left the club.</div>
+                                <div class="o_bcd_out">
+                                    <button t-foreach="out.reasons" t-as="row" t-key="row.id" class="o_bcd_out_item"
+                                            t-on-click="() => this.open('out', { record_id: row.id, date_to: data.today })">
+                                        <span class="o_bcd_out_name" t-esc="row.name"/>
+                                        <span class="o_bcd_out_count" t-esc="row.count"/>
+                                        <span class="o_bcd_out_value"><t t-esc="moneyShort(row.value)"/></span>
+                                    </button>
+                                </div>
+                                <t t-if="out.chase_count">
+                                    <h3 class="o_bcd_panel_h mt-3">To chase: not billed yet (<t t-esc="out.chase_count"/>)</h3>
+                                    <button t-foreach="out.chase" t-as="row" t-key="row.id" class="o_bcd_row"
+                                            t-on-click="() => this.open('picking', { record_id: row.id })">
+                                        <span class="o_bcd_row_name">
+                                            <b t-esc="row.member"/>
+                                            <span class="d-block small text-muted text-truncate" t-esc="row.summary"/>
+                                        </span>
+                                        <span class="o_bcd_row_meta" t-esc="row.label"/>
+                                    </button>
+                                </t>
+                            </section>
+                        </div>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </t>
+</templates>

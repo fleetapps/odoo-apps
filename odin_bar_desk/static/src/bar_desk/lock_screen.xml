@@ -3,7 +3,7 @@
     <t t-name="odin_bar_desk.LockScreen">
         <div class="o_bar_desk_body o_bar_desk_lock">
             <div class="text-center mb-3">
-                <div class="fs-1 fw-bold lh-sm">Stock control</div>
+                <div class="fs-1 fw-bold lh-sm">Bar Desk</div>
                 <div class="text-muted">Closing <t t-esc="desk.bar.closing_label or desk.bar.day_label"/></div>
             </div>
             <t t-if="!state.employee">
@@ -12,7 +12,7 @@
                     <button t-foreach="desk.employees" t-as="employee" t-key="employee.id"
                             class="o_bar_desk_person" t-on-click="() => this.pick(employee)">
                         <span class="o_bar_desk_avatar" t-esc="initials(employee.name)"/>
-                        <span class="o_bar_desk_person_name" t-esc="employee.name"/>
+                        <span class="o_bar_desk_person_name" t-esc="displayName(employee.name)"/>
                     </button>
                 </div>
                 <div t-if="!desk.employees.length" class="alert alert-warning">
@@ -21,7 +21,7 @@
                 </div>
             </t>
             <div t-else="" class="o_bar_desk_pin">
-                <div class="text-center fs-4 fw-bold" t-esc="state.employee.name"/>
+                <div class="text-center fs-4 fw-bold text-break" t-esc="displayName(state.employee.name)"/>
                 <div class="text-center text-muted mb-2">
                     <t t-if="canSkipPin">Signed in to Odoo as you: no PIN needed</t>
                     <t t-else="">Your PIN</t>

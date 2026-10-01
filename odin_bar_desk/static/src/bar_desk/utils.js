@@ -185,9 +185,16 @@ export function normalize(text) {
         .toLowerCase();
 }
 
+/** A person as staff read them: an employee named after their login
+ * ("kiharekihare@gmail.com") shows as "kiharekihare". */
+export function displayName(name) {
+    const text = (name || "").trim();
+    return /^\S+@\S+$/.test(text) ? text.split("@")[0] : text;
+}
+
 /** "Mary Wanjiku" → "Mary": the header has room for one name on a phone. */
 export function firstName(name) {
-    return (name || "").trim().split(/\s+/)[0] || "";
+    return displayName(name).split(/\s+/)[0] || "";
 }
 
 export function initials(name) {

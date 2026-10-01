@@ -9,7 +9,7 @@ next morning against the stock expected (last count + moves - POS sales),
 give each difference a reason, and approve the day. Supplier deliveries are
 received at the store against the invoice. See README.md.
 """,
-    "version": "19.0.1.4.0",
+    "version": "19.0.1.5.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -34,6 +34,7 @@ received at the store against the invoice. See README.md.
     "assets": {
         "web.assets_backend": [
             "odin_bar_desk/static/src/bar_desk/**/*",
+            "odin_bar_desk/static/src/bar_dashboard/**/*",
         ],
         "web.assets_tests": [
             "odin_bar_desk/static/tests/tours/**/*",
