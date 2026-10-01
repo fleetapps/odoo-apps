@@ -365,7 +365,8 @@
 
 .o_bar_desk_people {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    // Quoted: libsass would read min() as its own function.
+    grid-template-columns: #{"repeat(auto-fill, minmax(min(8.5rem, 100%), 1fr))"};
     gap: 0.75rem;
 }
 
@@ -381,10 +382,16 @@
     color: var(--#{$prefix}body-color);
 }
 
+.o_bar_desk_person {
+    min-width: 0;
+}
+
 .o_bar_desk_person_name {
+    max-width: 100%;
     font-weight: 600;
     text-align: center;
     line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .o_bar_desk_pin {
@@ -522,7 +529,9 @@
 // and buttons do not stretch across the whole monitor. Padding rather than a
 // max-width keeps the scrollbar at the window's edge.
 @media (min-width: 992px) {
-    .o_bar_desk_body,
+    // Not the sign-in screen: it is already a centred 40rem column, and the
+    // padding (computed from the window's width) would squeeze it to nothing.
+    .o_bar_desk_body:not(.o_bar_desk_lock),
     .o_bar_desk_footer {
         // Quoted: libsass would read max() as its own function and fail on mixed units.
         padding-left: #{"max(1.5rem, calc((100% - 46rem) / 2))"};

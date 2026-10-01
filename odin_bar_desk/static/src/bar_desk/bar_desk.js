@@ -20,7 +20,7 @@ const IDLE_LOCK_DELAY = 10 * 60 * 1000;
 const TOAST_DELAY = 3500;
 
 const SCREENS = {
-    home: { component: HomeScreen, title: "Stock control" },
+    home: { component: HomeScreen, title: "Bar Desk" },
     move: { component: MoveScreen, title: "Log a move" },
     count: { component: CountScreen, title: "Count" },
     differences: { component: DifferencesScreen, title: "Differences" },
