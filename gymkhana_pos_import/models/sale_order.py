@@ -29,6 +29,31 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    # The bar and the trading day, copied down onto the line and STORED.
+    #
+    # Both already exist one hop away, on the order, and a plain related field
+    # would read them fine. They are stored because reporting cannot: a pivot
+    # or any read_group call groups on real columns and will not follow a
+    # dotted path, so "sales per bar per day" is not expressible from the line
+    # without these. Odoo computes them for existing lines when the module is
+    # upgraded.
+    #
+    # The day comes from the import's business_date rather than date_order: a
+    # trading day runs 06:00 to 06:00, so a drink sold at 01:00 belongs to the
+    # night before, and only business_date says so without ambiguity.
+    pos_import_bar_id = fields.Many2one(
+        related='order_id.pos_import_bar_id',
+        store=True,
+        index='btree_not_null',
+        string="POS Bar",
+    )
+    pos_business_date = fields.Date(
+        related='order_id.pos_import_id.business_date',
+        store=True,
+        index='btree_not_null',
+        string="Trading day",
+    )
+
     def _prepare_procurement_values(self):
         values = super()._prepare_procurement_values()
         if self.order_id.pos_import_bar_id:
