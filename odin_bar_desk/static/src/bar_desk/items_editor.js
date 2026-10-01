@@ -19,6 +19,7 @@ export class ItemsEditor extends Component {
         defaultUnit: Function,
         pickerTitle: String,
         onlyIds: { type: Object, optional: true },
+        pickerHint: { type: Function, optional: true },
     };
 
     setup() {

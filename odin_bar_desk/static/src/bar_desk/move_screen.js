@@ -1,6 +1,7 @@
 import { Component, useState } from "@odoo/owl";
 import { feedback, newUuid } from "./desk_model";
 import { ItemsEditor } from "./items_editor";
+import { bulkLabel } from "./utils";
 
 /** Spirits move by the bottle, beer and sodas by the crate. */
 export function packUnit(product) {
@@ -13,9 +14,11 @@ export function packUnit(product) {
 /**
  * Log a move from the paper sheet: from, to, the items, Save. Posted at once.
  *
+ * "From" starts on the store, the usual source; Swap turns a move round.
  * "When" places the move: on the day being closed (the default while its
  * counts are open, so they expect it) or on today. Opened from a missed-move
- * suggestion, everything comes filled in.
+ * suggestion, everything comes filled in. The picker shows what the From
+ * location holds.
  */
 export class MoveScreen extends Component {
     static template = "odin_bar_desk.MoveScreen";
@@ -29,8 +32,10 @@ export class MoveScreen extends Component {
         const params = this.props.params || {};
         const home = this.desk.home;
         const sheetOpen = !home.approved && !home.day.is_today;
+        const store = this.locations.find((location) => location.kind === "store");
+        const fromId = params.fromId || (params.toId ? null : store?.id) || null;
         this.state = useState({
-            fromId: params.fromId || null,
+            fromId,
             toId: params.toId || null,
             destinationId: null,
             member: "",
@@ -39,7 +44,38 @@ export class MoveScreen extends Component {
             items: (params.items || []).map((item) => ({ key: newUuid(), ...item })),
             busy: false,
             error: "",
+            stock: null,
         });
+        this.pickerHint = this.pickerHint.bind(this);
+        this.loadStock();
+    }
+
+    /** Stock per location, for the picker. Best effort: offline it just shows nothing. */
+    async loadStock() {
+        try {
+            const data = await this.model.fetch("desk_stock_levels");
+            this.state.stock = Object.fromEntries(data.rows.map((row) => [row.product_id, row.qty]));
+        } catch {
+            this.state.stock = null;
+        }
+    }
+
+    pickerHint(product) {
+        const { stock, fromId } = this.state;
+        if (!stock || !fromId) {
+            return "";
+        }
+        const qty = stock[product.id]?.[fromId] || 0;
+        const code = this.model.location(fromId)?.code || "";
+        return qty ? `${bulkLabel(product, qty)} at ${code}` : `none at ${code}`;
+    }
+
+    swap() {
+        const { fromId, toId } = this.state;
+        if (!toId) {
+            return;
+        }
+        Object.assign(this.state, { fromId: toId, toId: fromId });
     }
 
     get home() {

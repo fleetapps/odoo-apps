@@ -21,6 +21,11 @@ export class LockScreen extends Component {
         return Array.from({ length: Math.max(4, this.state.pin.length) }, (_, i) => i < this.state.pin.length);
     }
 
+    /** A manager signed in to Odoo as this employee goes straight in. */
+    get canSkipPin() {
+        return Boolean(this.state.employee?.is_me && this.desk.isManager);
+    }
+
     get pinKeys() {
         return ["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "ok"];
     }
