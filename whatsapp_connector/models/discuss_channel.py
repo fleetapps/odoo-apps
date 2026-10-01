@@ -91,10 +91,15 @@ class DiscussChannel(models.Model):
         return [
             Store.Attr(name, predicate=is_whatsapp_channel)
             for name in ("wa_customer_phone", "wa_status", "wa_username", "wa_window_expires_at")
-        ]
+        ] + [Store.Attr("wa_lead_id", lambda c: c.wa_lead_id.id, predicate=is_whatsapp_channel)]
 
     def _to_store_defaults(self, target):
-        return super()._to_store_defaults(target) + self._wa_store_fields()
+        fields = super()._to_store_defaults(target) + self._wa_store_fields()
+        if target.is_current_user(self.env):
+            # [D8] Create Lead in Discuss: for salespeople, as on the conversation's form
+            can_create = self.env.user.has_group("sales_team.group_sale_salesman")
+            fields.append(Store.Attr("wa_can_create_lead", can_create, predicate=is_whatsapp_channel))
+        return fields
 
     def _sync_field_names(self):
         # pushed to the members whenever they change, e.g. the window reopening

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from odoo import Command, fields
-from odoo.tests import HttpCase, tagged
+from odoo.tests import HttpCase, new_test_user, tagged
 from odoo.tests.common import JsonRpcException
 from odoo.tools import mute_logger
 
@@ -19,6 +19,14 @@ class TestStoreData(OutboundCase):
         self.assertEqual(data["wa_customer_phone"], PHONE)
         self.assertEqual(data["wa_status"], "open")
         self.assertTrue(data["wa_window_expires_at"])
+        self.assertIs(data["wa_lead_id"], False)
+        self.assertIs(data["wa_can_create_lead"], True)
+        no_sales = new_test_user(
+            self.env, login="wa_nosales", groups="base.group_user,whatsapp_connector.group_whatsapp_user",
+        )
+        channel.channel_member_ids = [Command.create({"partner_id": no_sales.partner_id.id})]
+        no_sales_data = Store().add(channel.with_user(no_sales)).get_result()["discuss.channel"][0]
+        self.assertIs(no_sales_data["wa_can_create_lead"], False)
         group = self.env["discuss.channel"].create({"name": "Team", "channel_type": "group"})
         self.assertNotIn("wa_customer_phone", Store().add(group).get_result()["discuss.channel"][0])
 
@@ -78,6 +86,12 @@ class TestUi(OutboundCase, HttpCase):
         self.start_tour(f"/odoo/crm.lead/{lead.id}", "whatsapp_connector_chatter", login="wa_andrew")
         wa = self.env["whatsapp_connector.message"].search([("template_id.template_name", "=", "quote_followup")])
         self.assertEqual(wa.channel_id.wa_partner_id, self.customer)
+
+    def test_create_lead_from_discuss(self):
+        """[D8] Create Lead is also a Discuss action on the conversation."""
+        channel = self._open_channel()
+        self.start_tour(self._discuss(channel), "whatsapp_connector_create_lead", login="wa_andrew")
+        self.assertEqual(channel.wa_lead_id.name, "WhatsApp — Sheena Nelson")
 
     def test_retry(self):
         channel = self._open_channel()

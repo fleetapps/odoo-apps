@@ -3,6 +3,9 @@
     <t t-inherit="mail.DiscussContent" t-inherit-mode="extension">
         <xpath expr="//AutoresizeInput[contains(@className, 'o-mail-DiscussContent-threadName')]" position="after">
             <span t-if="thread.waHeaderText" class="o-whatsapp-headerInfo text-muted small ms-2 text-nowrap" t-esc="thread.waHeaderText"/>
+            <span t-if="thread.waWindowText" class="o-whatsapp-window text-muted small ms-2 text-nowrap"
+                  title="Meta's 24-hour customer service window: free-form messages until then, templates after"
+                  t-esc="thread.waWindowText"/>
         </xpath>
         <xpath expr="//Composer" position="replace">
             <WhatsappComposerLock t-if="thread.waComposerLocked" thread="thread"/>

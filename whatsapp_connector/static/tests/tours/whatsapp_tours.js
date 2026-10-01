@@ -4,6 +4,7 @@ registry.category("web_tour.tours").add("whatsapp_connector_discuss_reply", {
     steps: () => [
         { trigger: ".o-whatsapp-DiscussSidebarCategory" },
         { trigger: ".o-whatsapp-headerInfo:contains('+16505551234')" },
+        { trigger: ".o-whatsapp-window:contains('window closes in')" },
         { trigger: ".o-mail-Composer-input", run: "edit Hello from Discuss" },
         { trigger: ".o-mail-Composer-input", run: "press Enter" },
         { trigger: ".o-mail-Message:contains('Hello from Discuss') .o-whatsapp-MessageStatus .fa-clock-o" },
@@ -41,5 +42,12 @@ registry.category("web_tour.tours").add("whatsapp_connector_retry", {
         },
         { trigger: ".o-mail-Message:contains('Did not arrive') .o-whatsapp-retry", run: "click" },
         { trigger: ".o-mail-Message:contains('Did not arrive') .o-whatsapp-MessageStatus .fa-clock-o" },
+    ],
+});
+
+registry.category("web_tour.tours").add("whatsapp_connector_create_lead", {
+    steps: () => [
+        { trigger: ".o-mail-DiscussContent-header [name='whatsapp-lead']", run: "click" },
+        { trigger: ".o_last_breadcrumb_item:contains('WhatsApp — Sheena Nelson')" },
     ],
 });

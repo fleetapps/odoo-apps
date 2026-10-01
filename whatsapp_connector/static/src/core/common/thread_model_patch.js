@@ -1,5 +1,6 @@
 import { fields } from "@mail/core/common/record";
 import { Thread } from "@mail/core/common/thread_model";
+import { _t } from "@web/core/l10n/translation";
 import { patch } from "@web/core/utils/patch";
 
 const { DateTime } = luxon;
@@ -8,7 +9,11 @@ const { DateTime } = luxon;
 patch(Thread.prototype, {
     setup() {
         super.setup(...arguments);
+        /** [D8] whether the current user may create leads (salespeople) */
+        this.wa_can_create_lead = fields.Attr(false);
         this.wa_customer_phone = fields.Attr(undefined);
+        /** @type {number|false|undefined} the linked crm.lead id */
+        this.wa_lead_id = fields.Attr(undefined);
         this.wa_status = fields.Attr(undefined);
         this.wa_username = fields.Attr(undefined);
         this.wa_window_expires_at = fields.Datetime();
@@ -39,6 +44,13 @@ patch(Thread.prototype, {
             return "";
         }
         return this.wa_customer_phone || (this.wa_username ? `@${this.wa_username}` : "");
+    },
+    /** How long free-form replies remain possible, shown in the header. */
+    get waWindowText() {
+        if (this.channel_type !== "whatsapp" || !this.waWindowOpen) {
+            return "";
+        }
+        return _t("window closes %(when)s", { when: this.wa_window_expires_at.toRelative() });
     },
     waOpenTemplateComposer() {
         return this.store.env.services.action.doAction(
