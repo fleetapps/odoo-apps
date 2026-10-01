@@ -6,8 +6,14 @@
               web_icon="whatsapp_connector,static/description/icon.png"
               groups="group_whatsapp_user" sequence="45"/>
 
-    <menuitem id="menu_whatsapp_conversations" name="Conversations" parent="menu_whatsapp_root"
-              action="action_whatsapp_conversations" sequence="10"/>
+    <!-- §19: the Inbox; "All Conversations" is for managers -->
+    <menuitem id="menu_whatsapp_inbox" name="Inbox" parent="menu_whatsapp_root" sequence="10"/>
+    <menuitem id="menu_whatsapp_inbox_mine" name="My Conversations" parent="menu_whatsapp_inbox"
+              action="action_whatsapp_inbox_mine" sequence="10"/>
+    <menuitem id="menu_whatsapp_inbox_unassigned" name="Unassigned" parent="menu_whatsapp_inbox"
+              action="action_whatsapp_inbox_unassigned" sequence="20"/>
+    <menuitem id="menu_whatsapp_conversations" name="All Conversations" parent="menu_whatsapp_inbox"
+              action="action_whatsapp_conversations" groups="group_whatsapp_manager" sequence="30"/>
     <menuitem id="menu_whatsapp_templates" name="Templates" parent="menu_whatsapp_root"
               action="action_whatsapp_template" sequence="20"/>
 

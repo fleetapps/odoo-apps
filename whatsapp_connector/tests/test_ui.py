@@ -99,6 +99,16 @@ class TestUi(OutboundCase, HttpCase):
         self.start_tour(self._discuss(channel), "whatsapp_connector_create_lead", login="wa_andrew")
         self.assertEqual(channel.wa_lead_id.name, "WhatsApp — Sheena Nelson")
 
+    def test_routed_conversation(self):
+        """Lead Routing in Discuss: owner shown, no Invite for salespeople, Close (§38, §44, R30)."""
+        self.account.routing_mode = "lead"
+        channel = self._make_channel(
+            self.user_a.partner_id, wa_routed=True, wa_assigned_user_id=self.user_a.id,
+            wa_customer_phone=PHONE, wa_last_customer_message_at=fields.Datetime.now(),
+        )
+        self.start_tour(self._discuss(channel), "whatsapp_connector_routed", login="wa_andrew")
+        self.assertEqual(channel.wa_status, "closed")
+
     def test_retry(self):
         channel = self._open_channel()
         # right after another reply of the same user: Discuss would squash it

@@ -148,20 +148,24 @@ class DiscussChannel(models.Model):
             channel._wa_update_identity(identity)
             if channel.wa_status == "closed":
                 channel._wa_reopen()
+                if channel.wa_routed:
+                    channel._wa_route_reopened()  # SPEC.md §44
             return channel, False
         partner = self.env["res.partner"]._wa_find_or_create(
             bsuid=bsuid, phone=identity.get("phone"), name=identity.get("name"),
             username=identity.get("username"),
         )
+        if account.routing_mode == "lead":
+            return self._wa_route_new(account, partner, identity), True
         channel = self._wa_create_conversation(account, partner, identity)
         return channel, True
 
     @api.model
-    def _wa_create_conversation(self, account, partner, identity, members=None):
+    def _wa_create_conversation(self, account, partner, identity, members=None, routed=False):
         """Create a WhatsApp conversation.
 
         ``members`` defaults to the account's Notify users (Mode A, §9); Lead
-        Routing passes the owner instead (§21).
+        Routing passes the owner instead (§21) and marks it ``routed``.
         """
         if members is None:
             members = self._wa_default_members(account)
@@ -178,6 +182,7 @@ class DiscussChannel(models.Model):
             "wa_username": identity.get("username") or False,
             "wa_partner_id": partner.id,
             "wa_status": "open",
+            "wa_routed": routed,
             "channel_member_ids": [
                 Command.create({"partner_id": p.id}) for p in members.partner_id
             ],
@@ -273,6 +278,8 @@ class DiscussChannel(models.Model):
 
         if message.get("referral") and not self.wa_referral:
             self.sudo().wa_referral = message["referral"]
+            if self.wa_lead_id and not self.wa_lead_id.wa_referral:
+                self.wa_lead_id.sudo().wa_referral = message["referral"]  # R21, for attribution
 
         body, media = self._wa_incoming_body(message)
         parent = self._wa_find_mail_message(account, (message.get("context") or {}).get("id"))
@@ -418,7 +425,7 @@ class DiscussChannel(models.Model):
         expired by then, and Notify users who left the conversation come back.
         """
         self.ensure_one()
-        if self.wa_account_id.routing_mode == "lead":
+        if self.wa_routed:
             return  # routed conversations notify their owner (§46)
         last_reply = self.wa_last_user_message_at
         if last_reply and timestamp - last_reply <= NOTIFY_ALL_AFTER:
@@ -549,7 +556,7 @@ class DiscussChannel(models.Model):
         self.ensure_one()
         now = fields.Datetime.now()
         self.sudo().write({"wa_last_user_message_at": now, "wa_last_message_at": now})
-        if self.wa_account_id.routing_mode == "lead":
+        if self.wa_routed:
             return
         members = self.sudo().channel_member_ids
         mine = members.filtered(lambda m: m.partner_id == author)
@@ -566,8 +573,9 @@ class DiscussChannel(models.Model):
     def _wa_conversation_for_partner(self, account, partner, user):
         """The conversation to send a template to ``partner`` from, opening one if needed.
 
-        The sender becomes a member (Mode A: the chat window pops up for them
-        when the customer answers).
+        Mode A: the sender becomes a member (the chat window pops up for them
+        when the customer answers). Lead Routing: membership follows ownership,
+        which ``_wa_assign_sender`` settles (D2, D6, Q1).
         """
         phone = self.env["res.partner"]._wa_normalize_phone(partner.phone)
         bsuid = partner.wa_bsuid
@@ -584,10 +592,12 @@ class DiscussChannel(models.Model):
         if channel:
             if channel.wa_status == "closed":
                 channel._wa_reopen()
-            if user.partner_id not in channel.channel_member_ids.partner_id:
+            if not channel.wa_routed and user.partner_id not in channel.channel_member_ids.partner_id:
                 channel._add_members(partners=user.partner_id, post_joined_message=False)
             return channel
-        channel = self._wa_create_conversation(account, partner, identity, members=user)
+        channel = self._wa_create_conversation(
+            account, partner, identity, members=user, routed=account.routing_mode == "lead",
+        )
         channel.channel_member_ids.filtered(
             lambda m: m.partner_id == user.partner_id,
         ).sudo().wa_participant = True
@@ -599,13 +609,6 @@ class DiscussChannel(models.Model):
         action["domain"] = [("channel_type", "=", "whatsapp"), *domain]
         action["context"] = {}  # all of them, open or closed
         return action
-
-    def _wa_assign_sender(self, user, record):
-        """Lead Routing: the sender owns a conversation they start with a template (D2, D6).
-
-        Filled in by the Lead Routing step; nothing to do in No Lead Routing.
-        """
-        return
 
     # ------------------------------------------------------------------
     # [D8] Create lead from a conversation

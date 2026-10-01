@@ -2,6 +2,7 @@ from . import (
     crm_lead,
     discuss_channel,
     discuss_channel_member,
+    discuss_channel_routing,
     ir_actions_server,
     mail_message,
     mail_thread,
@@ -9,6 +10,7 @@ from . import (
     whatsapp_account,
     whatsapp_message,
     whatsapp_operator,
+    whatsapp_routing_config,
     whatsapp_template,
     whatsapp_webhook_event,
 )

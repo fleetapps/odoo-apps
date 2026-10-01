@@ -95,6 +95,17 @@ class WhatsappAccount(models.Model):
         "Lead Routing: automatically assign incoming WhatsApp conversations to individual Odoo "
         "users and link them to CRM leads.",
     )
+    routing_config_id = fields.Many2one(
+        "whatsapp_connector.routing.config", "Routing Configuration", readonly=True, copy=False,
+        ondelete="set null",
+    )
+    routing_method = fields.Selection(related="routing_config_id.method", readonly=False)
+    routing_fallback_user_id = fields.Many2one(
+        related="routing_config_id.fallback_user_id", readonly=False, string="Fallback User",
+    )
+    routing_last_assigned_user_id = fields.Many2one(
+        related="routing_config_id.last_assigned_user_id", string="Last Assigned",
+    )
     bsuid_sending_enabled = fields.Boolean(
         "Send to business-scoped user IDs",
         help="Send to a customer's business-scoped user ID when no phone number is known. "
@@ -111,6 +122,27 @@ class WhatsappAccount(models.Model):
         "(phone_number_id) WHERE active IS TRUE",
         "Another active account already uses this Phone Number ID.",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        accounts = super().create(vals_list)
+        accounts._wa_routing_config()
+        return accounts
+
+    def write(self, vals):
+        if {"routing_method", "routing_fallback_user_id"}.intersection(vals):
+            # the routing settings are related fields, written only when the
+            # configuration row exists (accounts created before Lead Routing)
+            self._wa_routing_config()
+        return super().write(vals)
+
+    def _wa_routing_config(self):
+        """The account's routing configuration (§53.1), created when missing."""
+        for account in self.sudo().filtered(lambda a: not a.routing_config_id):
+            account.routing_config_id = self.env["whatsapp_connector.routing.config"].sudo().create({
+                "account_id": account.id,
+            })
+        return self.sudo().routing_config_id
 
     @api.depends_context("uid")
     def _compute_callback_url(self):

@@ -44,6 +44,26 @@
             <field name="perm_unlink" eval="False"/>
         </record>
 
+        <!-- Q3: salespeople in an account's routing see its conversations waiting
+             for a salesperson, so they can take them (read only) -->
+        <record id="rule_discuss_channel_whatsapp_unassigned" model="ir.rule">
+            <field name="name">discuss.channel: unassigned routed WhatsApp conversations, for that account's salespeople</field>
+            <field name="model_id" ref="mail.model_discuss_channel"/>
+            <field name="groups" eval="[Command.link(ref('group_whatsapp_user'))]"/>
+            <field name="domain_force">[
+                ("channel_type", "=", "whatsapp"),
+                ("wa_routed", "=", True),
+                ("wa_status", "=", "open"),
+                ("wa_assigned_user_id", "=", False),
+                ("wa_account_id.operator_ids", "any", [
+                    ("user_id", "=", user.id), ("routing_enabled", "=", True), ("active", "=", True),
+                ]),
+            ]</field>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
         <record id="rule_discuss_channel_member_whatsapp_manager" model="ir.rule">
             <field name="name">discuss.channel.member: WhatsApp managers read the members of every WhatsApp conversation</field>
             <field name="model_id" ref="mail.model_discuss_channel_member"/>

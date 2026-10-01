@@ -521,15 +521,17 @@ class WhatsappTemplate(models.Model):
             if not partner:
                 raise UserError(self.env._("No contact to send the template to on %s.", record.display_name))
             channel = self.env["discuss.channel"].sudo()._wa_conversation_for_partner(account, partner, user)
-        if account.routing_mode == "lead":
-            channel._wa_assign_sender(user, record)  # D2 / D6, Lead Routing
+        if channel.wa_routed:
+            channel._wa_assign_sender(user, record)  # D2 / D6 / Q1, Lead Routing
         values = self._wa_render(record, user, free_values)
         body_text = self._wa_fill(self.body or "", values["body"])
         header = self._wa_fill(self.header_text or "", values["header"]) if self.header_type == "text" else ""
         shown = "\n\n".join(filter(None, [header and f"*{header}*", body_text, self.footer]))
-        message = channel.with_user(user).with_context(wa_skip_send=True).message_post(
+        # posted as the sender, who is not always a member: in Lead Routing the
+        # conversation may belong to another salesperson (Q1)
+        message = channel.sudo().with_context(wa_skip_send=True).message_post(
             body=plaintext2html(shown), message_type="whatsapp_message",
-            subtype_xmlid="mail.mt_comment",
+            subtype_xmlid="mail.mt_comment", author_id=user.partner_id.id,
         )
         wa_message = self.env["whatsapp_connector.message"].sudo().create({
             "account_id": account.id,

@@ -5,6 +5,8 @@ registry.category("web_tour.tours").add("whatsapp_connector_discuss_reply", {
         { trigger: ".o-whatsapp-DiscussSidebarCategory" },
         { trigger: ".o-mail-DiscussSidebarChannel:contains('Sheena Nelson') img[src*='/web/image/res.partner/']" },
         { trigger: ".o-whatsapp-headerInfo:contains('+16505551234')" },
+        // Mode A: anyone may invite (the routed tour checks it is hidden there)
+        { trigger: ".o-mail-DiscussContent-header [name='invite-people']" },
         { trigger: ".o-whatsapp-window:contains('window closes in')" },
         { trigger: ".o-mail-Composer-input", run: "edit Hello from Discuss" },
         { trigger: ".o-mail-Composer-input", run: "press Enter" },
@@ -50,5 +52,15 @@ registry.category("web_tour.tours").add("whatsapp_connector_create_lead", {
     steps: () => [
         { trigger: ".o-mail-DiscussContent-header [name='whatsapp-lead']", run: "click" },
         { trigger: ".o_last_breadcrumb_item:contains('WhatsApp — Sheena Nelson')" },
+    ],
+});
+
+registry.category("web_tour.tours").add("whatsapp_connector_routed", {
+    steps: () => [
+        { trigger: ".o-whatsapp-owner:contains('Assigned to Andrew')" },
+        // R30: a salesperson cannot invite people into a routed conversation
+        { trigger: ".o-mail-DiscussContent-header:not(:has([name='invite-people']))" },
+        { trigger: ".o-mail-DiscussContent-header [name='whatsapp-close']", run: "click" },
+        { trigger: ".o-mail-NotificationMessage:contains('Conversation closed by Andrew')" },
     ],
 });

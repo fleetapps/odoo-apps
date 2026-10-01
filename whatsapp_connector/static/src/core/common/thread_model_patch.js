@@ -16,6 +16,11 @@ patch(Thread.prototype, {
         this.wa_lead_id = fields.Attr(undefined);
         /** the customer's contact, for its picture */
         this.wa_partner_id = fields.One("res.partner");
+        /** Lead Routing (Mode B): the owner, and whether the current user manages routing */
+        this.wa_routed = fields.Attr(false);
+        this.wa_owner_name = fields.Attr(false);
+        this.wa_owner_partner_id = fields.Attr(false);
+        this.wa_can_manage = fields.Attr(false);
         this.wa_status = fields.Attr(undefined);
         this.wa_username = fields.Attr(undefined);
         this.wa_window_expires_at = fields.Datetime();
@@ -53,6 +58,24 @@ patch(Thread.prototype, {
             return "";
         }
         return this.wa_customer_phone || (this.wa_username ? `@${this.wa_username}` : "");
+    },
+    /** Lead Routing: who owns the conversation, shown in the header (§38). */
+    get waOwnerText() {
+        if (this.channel_type !== "whatsapp" || !this.wa_routed) {
+            return "";
+        }
+        return this.wa_owner_name
+            ? _t("Assigned to %(user)s", { user: this.wa_owner_name })
+            : _t("Unassigned");
+    },
+    /** The owner or a WhatsApp manager may close a routed conversation (§44). */
+    get waCanClose() {
+        return (
+            this.channel_type === "whatsapp" &&
+            this.wa_routed &&
+            this.wa_status === "open" &&
+            (this.wa_can_manage || this.wa_owner_partner_id === this.store.self?.id)
+        );
     },
     /** How long free-form replies remain possible, shown in the header. */
     get waWindowText() {

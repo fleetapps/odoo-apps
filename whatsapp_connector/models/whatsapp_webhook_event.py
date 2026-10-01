@@ -3,6 +3,7 @@ import logging
 import traceback
 
 from odoo import api, fields, models
+from odoo.exceptions import LockError
 from odoo.service.model import PG_CONCURRENCY_EXCEPTIONS_TO_RETRY
 
 _logger = logging.getLogger(__name__)
@@ -77,9 +78,10 @@ class WhatsappWebhookEvent(models.Model):
         try:
             with self.env.cr.savepoint():
                 self._handle(json.loads(self.raw_body))
-        except PG_CONCURRENCY_EXCEPTIONS_TO_RETRY:
-            # e.g. a user wrote in the same conversation meanwhile: not the
-            # event's fault; the cron rolls back and processes it again
+        except (*PG_CONCURRENCY_EXCEPTIONS_TO_RETRY, LockError):
+            # e.g. a user wrote in the same conversation meanwhile, or another
+            # transaction holds the round-robin cursor (R29): not the event's
+            # fault; the cron rolls back and processes it again
             raise
         except Exception:  # noqa: BLE001 - one bad event must not stop the others
             _logger.exception("WhatsApp webhook event %s failed", self.id)
