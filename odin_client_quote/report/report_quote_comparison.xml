@@ -9,16 +9,12 @@
     <t t-set="rows" t-value="matrix['rows']"/>
     <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': currency}"/>
 
-    <div class="header oq">
-        <t t-call="odin_client_quote.quote_styles"/>
-        <t t-call="odin_client_quote.quote_letterhead"/>
-    </div>
-
     <div class="article oq"
          t-att-data-oe-model="doc._name"
          t-att-data-oe-id="doc.id"
          t-att-data-oe-lang="doc.env.context.get('lang')">
         <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_letterhead"/>
 
         <table class="oq-hero">
             <tr>

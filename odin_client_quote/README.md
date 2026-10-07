@@ -136,16 +136,22 @@ reports strip the prefix when printing, so old and new agree on paper.
 The code is still on the product, still searchable, still shown in the back
 office product picker.
 
-## The letterhead has a height budget
+## The letterhead is not a running header
 
-The letterhead is a running page header: wkhtmltopdf draws it inside the top
-margin, so if it grows taller than `margin_top` minus `header_spacing` it prints
-*over* the body. That is not a soft failure — it lands on the customer's name.
+It opens the document body instead, and that is deliberate.
 
-Measured at 188mm wide (A4 less the 11mm side margins) the current letterhead is
-**16.4mm** against **25mm** available (`margin_top` 30 − `header_spacing` 5).
-Keep the address to three lines, or raise `margin_top` in
-`report/paperformat.xml` to match.
+wkhtmltopdf positions a running page header relative to `margin_top` and
+`header_spacing`, and getting that arithmetic wrong does not fail softly — the
+letterhead prints straight across the customer's name. It is also hard to
+predict: the first attempt here reserved 30mm for a letterhead measured at
+16.4mm and still overlapped, because the header is placed relative to the
+margin rather than to the top of the page.
+
+Flowing it in the article removes the whole class of bug: the letterhead takes
+the room it needs and the body starts after it, whatever the address grows to.
+The trade is that it prints on the first page only, which is normal for a
+business document. The footer — page numbers, "for and on behalf of" — is still
+a real running footer, because that one does need to repeat.
 
 ## Notes
 

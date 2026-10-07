@@ -13,16 +13,12 @@
     <t t-set="instalments" t-value="doc._client_instalments()"/>
     <t t-set="details" t-value="doc._client_details()"/>
 
-    <div class="header oq">
-        <t t-call="odin_client_quote.quote_styles"/>
-        <t t-call="odin_client_quote.quote_letterhead"/>
-    </div>
-
     <div class="article oq"
          t-att-data-oe-model="doc._name"
          t-att-data-oe-id="doc.id"
          t-att-data-oe-lang="doc.env.context.get('lang')">
         <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_letterhead"/>
 
         <table class="oq-hero">
             <tr>

@@ -21,11 +21,11 @@
         .oq .oq-muted { color: #6b8495; }
 
         /* letterhead */
-        /* The letterhead is a running page header: wkhtmltopdf draws it inside
-           the top margin, so it MUST stay shorter than margin_top minus
-           header_spacing or it prints over the body. Measured at 188mm wide
-           (A4 less the 11mm side margins) this comes to ~18mm against the
-           25mm available. Keep the address to three lines if you edit it. */
+        /* The letterhead opens the document body rather than being a running
+           page header. wkhtmltopdf positions a running header relative to the
+           top margin in a way that is easy to get wrong -- and when it is
+           wrong it prints across the customer's name -- so it simply flows
+           here instead, and grows safely if the address gets longer. */
         .oq-letter { width: 100%; border-bottom: 1.2pt solid <t t-out="brand"/>;
                      padding-bottom: 4pt; }
         .oq-letter td { vertical-align: top; padding-bottom: 3pt; }
@@ -36,7 +36,7 @@
         .oq-company .oq-meta { font-size: 7.2pt; color: #5b7788; line-height: 1.3; }
 
         /* the band that names the customer and the document */
-        .oq-hero { margin: 0 0 13pt 0; }
+        .oq-hero { margin: 11pt 0 13pt 0; }
         .oq-hero td { vertical-align: top; padding: 9pt 11pt; }
         .oq-hero .oq-for { background: #f7fbfd; border: 0.5pt solid #d9e6ee; border-right: 0; }
         .oq-hero .oq-doc { background: <t t-out="brand"/>; border: 0.5pt solid <t t-out="brand"/>;

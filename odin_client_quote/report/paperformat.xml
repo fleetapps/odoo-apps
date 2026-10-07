@@ -7,14 +7,17 @@
         <field name="page_height">0</field>
         <field name="page_width">0</field>
         <field name="orientation">Portrait</field>
-        <!-- margin_top must exceed the letterhead height (~18mm) plus
-             header_spacing, or the running header prints over the body. -->
-        <field name="margin_top">30</field>
+        <!-- The letterhead is part of the document body, not a running page
+             header, so margin_top is just a page margin. wkhtmltopdf places a
+             running header relative to this margin in a way that is easy to
+             get wrong and lands on the customer's name when you do; flowing
+             the letterhead in the article removes that failure mode. -->
+        <field name="margin_top">12</field>
         <field name="margin_bottom">15</field>
         <field name="margin_left">11</field>
         <field name="margin_right">11</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">5</field>
+        <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
 </odoo>

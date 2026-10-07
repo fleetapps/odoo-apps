@@ -301,14 +301,17 @@ class QuoteComparison(models.Model):
     def _whatsapp_number(self):
         """The customer's number in the digits-only form wa.me expects.
 
-        A Kenyan mobile is usually stored as 0715152515; wa.me needs it in
+        A Kenyan number is usually stored as 0715152515; wa.me needs it in
         international form, so a leading zero is swapped for the country's
         dialling code rather than sent as-is, which silently opens a chat with
         nobody.
+
+        Odoo 19 merged `mobile` into `phone` on res.partner -- there is no
+        `mobile` field any more, on any model.
         """
         self.ensure_one()
         partner = self.partner_id
-        raw = partner.mobile or partner.phone or ""
+        raw = partner.phone or ""
         digits = re.sub(r"\D", "", raw)
         if not digits:
             return ""
