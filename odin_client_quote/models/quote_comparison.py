@@ -1,3 +1,7 @@
+import base64
+import re
+from urllib.parse import quote
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -45,6 +49,13 @@ class QuoteComparison(models.Model):
     )
     instalment_plan_ids = fields.Many2many(
         "odin.quote.instalment.plan", string="Instalment options"
+    )
+    template_ids = fields.Many2many(
+        "sale.order.template",
+        string="Plans to compare",
+        help="Pick the plans to put side by side. Creating the comparison "
+        "creates a quotation per plan for this customer, so there is nothing "
+        "to prepare beforehand.",
     )
 
     _name_uniq = models.Constraint(
@@ -182,6 +193,167 @@ class QuoteComparison(models.Model):
 
     # -- actions ----------------------------------------------------------
 
+    def action_build_plans(self):
+        """Create one quotation per selected template and compare them.
+
+        Without this a salesperson has to build every quotation by hand before
+        a comparison has anything to show, which is the wrong way round: the
+        plans are the input, the quotations are a by-product.
+
+        Odoo fills a quotation from a template through an onchange, so creating
+        the order with ``sale_order_template_id`` set would leave it empty. The
+        lines are prepared here with the same ``_prepare_order_line_values``
+        the onchange uses, which also carries the benefit name, key and cover
+        limit across.
+        """
+        self.ensure_one()
+        if not self.partner_id:
+            raise UserError(_("Choose the customer before building the plans."))
+        if not self.template_ids:
+            raise UserError(
+                _("Pick at least one plan to compare under 'Plans to compare'.")
+            )
+
+        existing = self.plan_ids.order_id.sale_order_template_id
+        todo = self.template_ids - existing
+        if not todo:
+            raise UserError(
+                _("Every plan selected already has a quotation on this comparison.")
+            )
+
+        SaleOrder = self.env["sale.order"]
+        Plan = self.env["odin.quote.comparison.plan"]
+        created = Plan.browse()
+        sequence = max(self.plan_ids.mapped("sequence") or [0])
+        for template in todo:
+            localised = template.with_context(lang=self.partner_id.lang)
+            values = [
+                fields.Command.create(line._prepare_order_line_values())
+                for line in localised.sale_order_template_line_ids
+            ]
+            if values:
+                # Odoo's own convention: the first line sits at -99 so that
+                # resequencing the top of the order does not shuffle the rest.
+                values[0][2]["sequence"] = -99
+            order = SaleOrder.create({
+                "partner_id": self.partner_id.id,
+                "company_id": self.company_id.id,
+                "user_id": self.user_id.id,
+                "sale_order_template_id": template.id,
+                "order_line": values,
+            })
+            sequence += 10
+            created |= Plan.create({
+                "comparison_id": self.id,
+                "order_id": order.id,
+                "sequence": sequence,
+            })
+
+        # Seed the strip and the terms from the first plan. Read them off the
+        # records just created rather than self.plan_ids, which may still hold
+        # the pre-create value.
+        first = (self.plan_ids | created).sorted(lambda p: (p.sequence, p.id))[:1]
+        if not self.detail_ids and first:
+            self.detail_ids = [
+                fields.Command.create({"label": d["label"], "value": d["value"]})
+                for d in first.order_id._client_details()
+            ]
+        if not self.note and first:
+            self.note = first.order_id.note
+        return True
+
+    def action_open_plan_orders(self):
+        """Open the quotations behind this comparison, to adjust cover."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Quotations in this comparison"),
+            "res_model": "sale.order",
+            "domain": [("id", "in", self.plan_ids.order_id.ids)],
+            "view_mode": "list,form",
+        }
+
+    # -- getting it to the customer ---------------------------------------
+
+    def action_print(self):
+        """Print the comparison. Available in any state: a broker talks a
+        customer through a draft far more often than they send a final one."""
+        self.ensure_one()
+        return self.env.ref(
+            "odin_client_quote.action_report_quote_comparison"
+        ).report_action(self)
+
+    def _comparison_pdf_attachment(self):
+        """Render the comparison and keep the PDF on the record."""
+        self.ensure_one()
+        pdf, _ext = self.env["ir.actions.report"]._render_qweb_pdf(
+            "odin_client_quote.report_quote_comparison", self.ids
+        )
+        return self.env["ir.attachment"].create({
+            "name": "%s.pdf" % (self.name or "comparison"),
+            "type": "binary",
+            "datas": base64.b64encode(pdf),
+            "res_model": self._name,
+            "res_id": self.id,
+            "mimetype": "application/pdf",
+        })
+
+    def _whatsapp_number(self):
+        """The customer's number in the digits-only form wa.me expects.
+
+        A Kenyan mobile is usually stored as 0715152515; wa.me needs it in
+        international form, so a leading zero is swapped for the country's
+        dialling code rather than sent as-is, which silently opens a chat with
+        nobody.
+        """
+        self.ensure_one()
+        partner = self.partner_id
+        raw = partner.mobile or partner.phone or ""
+        digits = re.sub(r"\D", "", raw)
+        if not digits:
+            return ""
+        code = str(
+            partner.country_id.phone_code
+            or self.company_id.country_id.phone_code
+            or ""
+        )
+        if raw.strip().startswith("+") or (code and digits.startswith(code)):
+            return digits
+        if code:
+            return code + digits.lstrip("0")
+        return digits
+
+    def action_share_whatsapp(self):
+        """Open WhatsApp with the comparison attached as a download link.
+
+        The PDF is stored as an attachment with an access token, which is how
+        Odoo itself shares documents outside the backend: the link needs no
+        login but cannot be guessed. Brokers here share on WhatsApp rather than
+        email, so this is the path that actually gets used.
+        """
+        self.ensure_one()
+        if not self.plan_ids:
+            raise UserError(_("There is nothing to share until the comparison has plans."))
+        attachment = self._comparison_pdf_attachment()
+        token = attachment.generate_access_token()[0]
+        link = "%s/web/content/%s?access_token=%s&download=true" % (
+            self.get_base_url(), attachment.id, token,
+        )
+        message = _(
+            "Hello %(name)s, here is the cover comparison we discussed from "
+            "%(company)s. It sets the plans side by side so you can see what "
+            "each one covers and what it costs.\n\n%(link)s",
+            name=self.partner_id.name or "",
+            company=self.company_id.name,
+            link=link,
+        )
+        self.action_mark_sent()
+        return {
+            "type": "ir.actions.act_url",
+            "url": "https://wa.me/%s?text=%s" % (self._whatsapp_number(), quote(message)),
+            "target": "new",
+        }
+
     def action_mark_sent(self):
         self.filtered(lambda c: c.state == "draft").state = "sent"
 
@@ -237,11 +409,12 @@ class QuoteComparisonPlan(models.Model):
         "the quotation and the comparison follows.",
     )
     name = fields.Char(
-        string="Column heading", compute="_compute_name", store=True, readonly=False,
-        help="Defaults to the quotation template, which is usually the plan name.",
+        string="Column heading", compute="_compute_heading", store=True, readonly=False,
+        help="Defaults to the first half of the quotation template's name.",
     )
     subtitle = fields.Char(
-        string="Second line", help="Printed under the heading, e.g. 'Plan 1'."
+        string="Second line", compute="_compute_heading", store=True, readonly=False,
+        help="Printed under the heading, e.g. 'Plan 1 (KES 200,000)'.",
     )
     highlight = fields.Boolean(
         string="Recommended",
@@ -252,14 +425,35 @@ class QuoteComparisonPlan(models.Model):
         compute="_compute_amounts", currency_field="currency_id", string="Total premium"
     )
 
-    @api.depends("order_id")
-    def _compute_name(self):
+    @api.depends("order_id", "order_id.sale_order_template_id", "sequence")
+    def _compute_heading(self):
+        """Split the template name into a heading and a second line.
+
+        Plan names read "APA Jamii Plus - Family Cover (KES 500,000)": the half
+        before the dash names the product and the half after distinguishes this
+        plan from its siblings, which is exactly the two-line column head the
+        report wants. A quotation with no template falls back to "Option N" --
+        its order reference means nothing to the customer reading the page.
+        """
         for plan in self:
-            plan.name = (
-                plan.order_id.sale_order_template_id.name
-                or plan.order_id.name
-                or ""
-            )
+            template = plan.order_id.sale_order_template_id
+            if template:
+                head, _sep, tail = (template.name or "").partition("\u2013")
+                if not _sep:
+                    head, _sep, tail = (template.name or "").partition(" - ")
+                plan.name = head.strip() or template.name
+                plan.subtitle = tail.strip()
+            else:
+                # Count by sequence rather than by index: during creation the
+                # plan is not yet among its own siblings, which would number
+                # every untemplated column "Option 1".
+                siblings = plan.comparison_id.plan_ids
+                ahead = sum(
+                    1 for other in siblings
+                    if other != plan and other.sequence < plan.sequence
+                )
+                plan.name = _("Option %s", ahead + 1)
+                plan.subtitle = False
 
     @api.depends("order_id.amount_total", "order_id.order_line.price_total")
     def _compute_amounts(self):

@@ -29,7 +29,7 @@ section lines of the quotation, so a section carries two things at once: what
 the plan pays out (``cover_limit``) and what the client pays in (the section
 total). See README.md.
 """,
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.2.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -49,6 +49,6 @@ total). See README.md.
         "views/quote_comparison_views.xml",
         "views/menus.xml",
     ],
-    "application": False,
+    "application": True,
     "installable": True,
 }

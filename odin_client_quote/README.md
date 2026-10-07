@@ -44,6 +44,10 @@ Product codes are stripped from descriptions (`[CODE] Name` → `Name`).
 
 ### Cover comparison (`odin.quote.comparison`)
 
+It is its own app — **Cover Quotes** — so the sales team finds it without
+being told where to look. The same menu is kept under Sales ▸ Orders, because
+that is where salespeople already are.
+
 Several quotations for one customer, side by side: one column per plan, one row
 per benefit. Limits first (what each plan covers you for), then premiums (what
 each plan costs), then taxes, the total, and any monthly options. One column can
@@ -52,8 +56,28 @@ be marked **Recommended**.
 Every figure is read from its quotation at print time. Change a quotation and
 reprint — nothing in the comparison is retyped, so the two can never disagree.
 
-Build one from **Sales ▸ Orders ▸ Cover comparisons**, or select the quotations
-in the Quotations list and use **Actions ▸ Build cover comparison**.
+**You do not prepare the quotations first.** Open a comparison, choose the
+customer, tick the plans under *Plans to compare*, and press **Create
+quotations**: one quotation per plan is created for that customer and compared
+here. Adjust cover — family size, optional benefits — with **Open quotations**,
+then reprint. The plans are the input; the quotations are a by-product.
+
+You can still go the other way, if the quotations already exist: select them in
+the Quotations list and use **Actions ▸ Build cover comparison**.
+
+### Getting it to the customer
+
+**Print** is on the form in any state. A broker talks a customer through a draft
+far more often than they send a final one, so it is not gated on *Sent*.
+
+**Share on WhatsApp** renders the PDF, stores it with an access token, and opens
+WhatsApp with a message and a download link for the customer's number. The link
+needs no login but cannot be guessed — the same mechanism Odoo uses to share
+documents outside the backend. Sharing marks the comparison as *Sent*.
+
+A Kenyan mobile stored as `0715152515` is converted to international form from
+the contact's country dialling code; sending the local form opens a chat with
+nobody.
 
 ## The data it needs
 
@@ -98,6 +122,30 @@ Document Layout**, set at minimum:
 * **Colors** — primary drives headings, table headers and the document panel;
 * **Layout** — any of them; these reports draw their own frame, but the rest of
   Odoo's PDFs use it.
+
+## Product codes
+
+Odoo builds a line description from the product's display name, which carries
+`[BZ70-IP-P1-M+1]`. That is right in a warehouse and wrong on a quotation a
+customer reads — and it reaches them through the portal too, where no report
+formatting can strip it. `sale.order.line` therefore composes its description
+with `display_default_code=False`, the framework's own switch, so the code is
+never written in. Lines created before this keep their old description; both
+reports strip the prefix when printing, so old and new agree on paper.
+
+The code is still on the product, still searchable, still shown in the back
+office product picker.
+
+## The letterhead has a height budget
+
+The letterhead is a running page header: wkhtmltopdf draws it inside the top
+margin, so if it grows taller than `margin_top` minus `header_spacing` it prints
+*over* the body. That is not a soft failure — it lands on the customer's name.
+
+Measured at 188mm wide (A4 less the 11mm side margins) the current letterhead is
+**16.4mm** against **25mm** available (`margin_top` 30 − `header_spacing` 5).
+Keep the address to three lines, or raise `margin_top` in
+`report/paperformat.xml` to match.
 
 ## Notes
 

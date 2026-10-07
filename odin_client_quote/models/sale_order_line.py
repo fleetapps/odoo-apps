@@ -39,6 +39,23 @@ class SaleOrderLine(models.Model):
         for line in self:
             line.client_name = CODE_PREFIX.sub("", line.name or "").strip()
 
+    def _get_sale_order_line_multiline_description_sale(self):
+        """Describe the line without the internal product code.
+
+        Odoo builds a line description from the product's display name, which
+        carries the ``[BZ70-IP-P1-M+1]`` reference. That is the right thing in a
+        warehouse and the wrong thing on a quotation a customer reads, and it
+        also reaches them through the portal, where no report formatting can
+        strip it. ``display_default_code`` is the framework's own switch for
+        this, so the code is simply never written into the description.
+
+        Existing lines keep whatever description they were created with; both
+        client reports strip the prefix when printing, so old and new agree.
+        """
+        return super(
+            SaleOrderLine, self.with_context(display_default_code=False)
+        )._get_sale_order_line_multiline_description_sale()
+
     def _client_benefit_key(self):
         """Key this section is matched on across the plans of a comparison."""
         self.ensure_one()

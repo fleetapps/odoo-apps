@@ -65,10 +65,13 @@
         </div>
 
         <div class="oq-h">Cover and premium comparison</div>
+        <!-- The benefit column takes whatever the plan columns do not need, so
+             two plans do not end up with half a page each. -->
+        <t t-set="benefit_width" t-value="max(26, 100 - 18 * len(plans))"/>
         <table class="oq-grid">
             <thead>
                 <tr>
-                    <th class="oq-first" style="width: 34%;">Benefit</th>
+                    <th class="oq-first" t-attf-style="width: #{benefit_width}%;">Benefit</th>
                     <th t-foreach="plans" t-as="plan"
                         t-att-class="'oq-pick' if plan.highlight else None">
                         <span t-if="plan.highlight" class="oq-pick-flag">Recommended</span>

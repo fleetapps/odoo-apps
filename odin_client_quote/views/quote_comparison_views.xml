@@ -24,8 +24,19 @@
         <field name="arch" type="xml">
             <form string="Cover comparison">
                 <header>
+                    <button name="action_build_plans" type="object"
+                            string="Create quotations" class="btn-primary"
+                            invisible="not template_ids"
+                            help="Creates one quotation per selected plan for this customer."/>
+                    <button name="action_share_whatsapp" type="object"
+                            string="Share on WhatsApp" class="btn-primary"
+                            invisible="not plan_ids"/>
+                    <button name="action_print" type="object" string="Print"
+                            invisible="not plan_ids"/>
+                    <button name="action_open_plan_orders" type="object"
+                            string="Open quotations" invisible="not plan_ids"/>
                     <button name="action_mark_sent" type="object" string="Mark as sent"
-                            class="btn-primary" invisible="state != 'draft'"/>
+                            invisible="state != 'draft' or not plan_ids"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,sent"/>
                 </header>
                 <sheet>
@@ -48,6 +59,17 @@
                     </group>
                     <notebook>
                         <page string="Plans" name="plans">
+                            <group>
+                                <field name="template_ids" widget="many2many_tags"
+                                       options="{'no_create': True}"
+                                       placeholder="e.g. Birdview Plan 1, Plan 2, Plan 3, Plan 4"/>
+                            </group>
+                            <div class="alert alert-info" role="status"
+                                 invisible="plan_ids">
+                                Pick the plans above and press <b>Create quotations</b>.
+                                One quotation is created per plan for this customer and
+                                compared here &#8212; you do not need to prepare them first.
+                            </div>
                             <field name="plan_ids"
                                    context="{'default_comparison_id': id}">
                                 <list editable="bottom">
@@ -63,9 +85,10 @@
                                 </list>
                             </field>
                             <div class="text-muted mt-2">
-                                Every figure in the comparison is read from these
-                                quotations. Edit a quotation and reprint — nothing
-                                here needs retyping.
+                                Every figure is read from these quotations. Use
+                                <b>Open quotations</b> to adjust the cover &#8212; family
+                                size, optional benefits &#8212; then reprint. Nothing here
+                                needs retyping.
                             </div>
                         </page>
                         <page string="Details strip" name="details">

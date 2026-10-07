@@ -1,14 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!--
+        A top-level app, so the sales team finds this without being told where
+        to look. No groups= on the root: a menu gated on a group the signed-in
+        user happens not to hold is how an app silently vanishes. Access is
+        enforced by ir.model.access instead.
+    -->
+    <menuitem id="menu_quote_root"
+              name="Cover Quotes"
+              sequence="48"
+              web_icon="odin_client_quote,static/description/icon.png"/>
+
+    <menuitem id="menu_quote_comparison_app"
+              name="Comparisons"
+              parent="menu_quote_root"
+              action="action_quote_comparison"
+              sequence="10"/>
+
+    <menuitem id="menu_quote_quotations_app"
+              name="Quotations"
+              parent="menu_quote_root"
+              action="sale.action_quotations_with_onboarding"
+              sequence="20"/>
+
+    <menuitem id="menu_quote_configuration"
+              name="Configuration"
+              parent="menu_quote_root"
+              sequence="90"/>
+
+    <menuitem id="menu_quote_instalment_app"
+              name="Instalment plans"
+              parent="menu_quote_configuration"
+              action="action_quote_instalment_plan"
+              sequence="10"/>
+
+    <menuitem id="menu_quote_templates_app"
+              name="Quotation templates"
+              parent="menu_quote_configuration"
+              action="sale_management.sale_order_template_action"
+              sequence="20"/>
+
+    <!-- Kept alongside the app: salespeople already live in Sales. -->
     <menuitem id="menu_quote_comparison"
               name="Cover comparisons"
               parent="sale.sale_order_menu"
               action="action_quote_comparison"
               sequence="15"/>
-
-    <menuitem id="menu_quote_instalment_plan"
-              name="Instalment plans"
-              parent="sale.menu_sale_config"
-              action="action_quote_instalment_plan"
-              sequence="25"/>
 </odoo>
