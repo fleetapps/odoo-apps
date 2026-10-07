@@ -75,7 +75,7 @@ class DiscussChannel(models.Model):
                 "request for.",
             ))
         values = {
-            "name": channel._wa_ticket_subject(),
+            "name": channel._wa_chat_subject(),
             "description": channel._wa_ticket_description(),
             "partner_id": partner.id,
             "user_id": self.env.user.id,
@@ -111,12 +111,13 @@ class DiscussChannel(models.Model):
             "context": {},
         }
 
-    def _wa_ticket_subject(self):
+    def _wa_chat_subject(self):
         """What the client last asked, in their own words.
 
-        The subject is required, and their sentence is a better handle on the
-        request than anything generic. Falls back to the latest message of
-        either side, then to the contact's name.
+        Used as a ticket's subject and as a call's summary: both are required to
+        say something, and the client's own sentence is a better handle on it
+        than anything generic. Falls back to the latest message of either side,
+        then to the contact's name.
         """
         self.ensure_one()
         messages = self.message_ids.filtered(
@@ -142,6 +143,52 @@ class DiscussChannel(models.Model):
             phone=self.wa_customer_phone
             or (f"@{self.wa_username}" if self.wa_username else self.env._("no number")),
         )
+
+    # ------------------------------------------------------------------
+    # Schedule Call
+    # ------------------------------------------------------------------
+
+    def action_wa_schedule_call(self):
+        """Put a follow-up on the client's contact instead of opening a request.
+
+        Half of what arrives on WhatsApp is "ring me tomorrow", which needs a
+        person and a date and nothing else. A ticket for that would sit in New
+        on the claims board saying nothing. This opens Odoo's own activity
+        dialog, so the reminder lands in the assignee's Activities, carries the
+        overdue colouring every other activity has, and shows on the contact's
+        timeline where the rest of the firm looks -- none of which a ticket
+        stage would give it.
+        """
+        self.ensure_one()
+        if self.channel_type != "whatsapp":
+            raise UserError(self.env._("Only WhatsApp conversations have a client to call."))
+        channel = self.sudo()
+        partner = channel.wa_partner_id
+        if not partner:
+            raise UserError(self.env._(
+                "This conversation has no contact yet, so there is nobody to call. "
+                "Link it to a client first.",
+            ))
+        # the Call type carries a two-day delay, which the form's own onchange
+        # turns into the due date; it has no summary, so ours survives
+        call = self.env.ref("mail.mail_activity_data_call", raise_if_not_found=False)
+        popup = self.env.ref("mail.mail_activity_view_form_popup")
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Schedule Call"),
+            "res_model": "mail.activity",
+            "views": [[popup.id, "form"]],
+            "target": "new",
+            "context": {
+                "default_res_model": "res.partner",
+                "default_res_id": partner.id,
+                "default_activity_type_id": call.id if call else False,
+                "default_summary": channel._wa_chat_subject(),
+                "default_user_id": self.env.user.id,
+                # mail.activity.create reads this to note the follow-up back here
+                "wa_note_channel_id": self.id,
+            },
+        }
 
     # ------------------------------------------------------------------
     # Link to Client

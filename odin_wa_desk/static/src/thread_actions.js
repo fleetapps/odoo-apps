@@ -21,6 +21,27 @@ registerThreadAction("whatsapp-link-client", {
     sequenceGroup: 20,
 });
 
+/**
+ * "Ring me tomorrow" is most of what arrives, and it needs a person and a date,
+ * not a ticket with stages. Sits after the two actions that create a record, so
+ * the group reads: fix who -> sell -> track a request -> remind me -> done.
+ */
+registerThreadAction("whatsapp-call", {
+    condition: ({ thread }) => thread?.channel_type === "whatsapp",
+    icon: "fa fa-fw fa-phone",
+    name: _t("Schedule Call"),
+    async open({ store, thread }) {
+        const action = await store.env.services.orm.call(
+            "discuss.channel",
+            "action_wa_schedule_call",
+            [[thread.id]]
+        );
+        await store.env.services.action.doAction(action);
+    },
+    sequence: 5.75,
+    sequenceGroup: 20,
+});
+
 /** Directly below Create Lead: the sort is a numeric subtraction, so 5.5 lands there. */
 registerThreadAction("whatsapp-ticket", {
     condition: ({ thread }) =>
