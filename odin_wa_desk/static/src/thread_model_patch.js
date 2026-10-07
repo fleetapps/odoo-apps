@@ -8,4 +8,13 @@ patch(Thread.prototype, {
         /** Whether the current user has the service desk, sent by _to_store_defaults. */
         this.wa_can_create_ticket = fields.Attr(false);
     },
+    /** Routed, open, and not already mine: wa_owner_partner_id is false when nobody owns it. */
+    get waCanTake() {
+        return (
+            this.channel_type === "whatsapp" &&
+            this.wa_routed &&
+            this.wa_status === "open" &&
+            this.wa_owner_partner_id !== this.store.self?.id
+        );
+    },
 });

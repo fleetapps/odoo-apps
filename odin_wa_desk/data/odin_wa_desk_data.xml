@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Lost, not deleted: how much junk a number attracts is worth reporting on,
+             and a lost lead can be reopened when the mark was wrong. -->
+        <record id="lost_reason_wa_junk" model="crm.lost.reason">
+            <field name="name">Unqualified or spam (WhatsApp)</field>
+        </record>
+    </data>
+
+    <!-- Hourly, because the thing being watched is a 24-hour deadline: a daily run
+         could miss a whole window. -->
+    <record id="ir_cron_wa_unanswered" model="ir.cron">
+        <field name="name">WhatsApp: alarm on conversations nobody has answered</field>
+        <field name="model_id" ref="mail.model_discuss_channel"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_wa_unanswered()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+    </record>
+</odoo>

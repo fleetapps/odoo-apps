@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- CRM already filters activities Late / Today / Future. What it cannot show
+         is a lead with no activity at all, which appears in none of them and is
+         the one nobody has committed to act on. Added to both search views,
+         because people look in Leads and in the pipeline. -->
+    <record id="crm_lead_view_search_leads_desk" model="ir.ui.view">
+        <field name="name">crm.lead.search.leads.wa</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_leads_filter"/>
+        <field name="arch" type="xml">
+            <filter name="unassigned_leads" position="after">
+                <separator/>
+                <filter name="odin_no_activity" string="No Activity Planned"
+                        domain="[('activity_ids', '=', False)]"/>
+                <filter name="odin_from_whatsapp" string="From WhatsApp"
+                        domain="[('wa_channel_ids', '!=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="crm_lead_view_search_opportunities_desk" model="ir.ui.view">
+        <field name="name">crm.lead.search.opportunities.wa</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <filter name="unassigned" position="after">
+                <separator/>
+                <filter name="odin_no_activity" string="No Activity Planned"
+                        domain="[('activity_ids', '=', False)]"/>
+                <filter name="odin_from_whatsapp" string="From WhatsApp"
+                        domain="[('wa_channel_ids', '!=', False)]"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- Undo, so a junk mark is never a dead end. -->
+    <record id="crm_lead_view_form_desk" model="ir.ui.view">
+        <field name="name">crm.lead.form.wa</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <field name="odin_wa_junk" invisible="1"/>
+                <button name="action_odin_wa_unjunk" type="object" string="Not Junk"
+                        invisible="not odin_wa_junk"/>
+            </header>
+        </field>
+    </record>
+</odoo>

@@ -24,6 +24,11 @@
                         groups="helpdesk_mgmt.group_helpdesk_user_own"/>
                 <button name="action_wa_schedule_call" type="object" string="Schedule Call"/>
             </xpath>
+            <xpath expr="(//button[@name='action_wa_close'])[1]" position="before">
+                <button name="action_wa_assign_user" type="object" string="Assign"
+                        invisible="not wa_routed"/>
+                <button name="action_wa_mark_junk" type="object" string="Mark as Junk"/>
+            </xpath>
             <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
                 <div class="oe_button_box" name="wa_desk_buttons">
                     <button name="action_wa_open_tickets" type="object"
@@ -34,6 +39,26 @@
                     </button>
                 </div>
             </xpath>
+        </field>
+    </record>
+
+    <!-- The Unassigned filter could never match anything: it required wa_routed,
+         and with Lead Routing off nothing is routed, so the one screen built to
+         catch a dropped conversation was structurally empty. A conversation with
+         no members is just as unattended as one with no owner. -->
+    <record id="discuss_channel_whatsapp_view_search" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.search.desk</field>
+        <field name="model">discuss.channel</field>
+        <field name="inherit_id" ref="whatsapp_connector.discuss_channel_whatsapp_view_search"/>
+        <field name="arch" type="xml">
+            <filter name="unassigned" position="attributes">
+                <attribute name="domain">['|', '&amp;', ('wa_routed', '=', True), ('wa_assigned_user_id', '=', False), '&amp;', ('wa_routed', '=', False), ('channel_member_ids', '=', False)]</attribute>
+            </filter>
+            <filter name="unread" position="after">
+                <separator/>
+                <filter name="odin_unanswered" string="Waiting on Us"
+                        domain="[('wa_status', '=', 'open'), ('odin_wa_unanswered', '=', True)]"/>
+            </filter>
         </field>
     </record>
 </odoo>

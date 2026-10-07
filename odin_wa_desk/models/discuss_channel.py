@@ -1,8 +1,10 @@
+from datetime import timedelta
+
 from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
-from odoo.tools import html2plaintext
+from odoo.tools import format_datetime, html2plaintext
 
 from odoo.addons.mail.tools.discuss import Store
 from odoo.addons.whatsapp_connector.models.discuss_channel import is_whatsapp_channel
@@ -15,6 +17,10 @@ SUBJECT_LENGTH = 70
 DEFAULT_TEAM = "Client Service"
 #: the helpdesk channel that records how the request arrived
 ARRIVED_BY = "WhatsApp"
+#: hours after the client wrote before the window alarm fires; Meta closes
+#: free-form replies at 24, so the default leaves four hours to act
+UNANSWERED_HOURS = 20
+MANAGER_GROUP = "whatsapp_connector.group_whatsapp_manager"
 
 
 class DiscussChannel(models.Model):
@@ -24,6 +30,27 @@ class DiscussChannel(models.Model):
         "helpdesk.ticket", "wa_channel_id", string="Service Requests",
     )
     wa_ticket_count = fields.Integer("Requests", compute="_compute_wa_ticket_count")
+    odin_wa_alarm_at = fields.Datetime(
+        "Unanswered Alarm Raised", readonly=True, copy=False,
+        help="When the free-reply window alarm was last raised for this conversation.",
+    )
+    odin_wa_unanswered = fields.Boolean(
+        "Unanswered", compute="_compute_odin_wa_unanswered", store=True,
+        help="The client has written since anyone here last replied.",
+    )
+
+    @api.depends("wa_last_customer_message_at", "wa_last_user_message_at")
+    def _compute_odin_wa_unanswered(self):
+        """Stored, because a domain cannot compare two columns.
+
+        Both timestamps are written through the ORM by the connector, so this
+        recomputes with them -- which is what lets the Inbox filter on it and the
+        alarm select on it rather than reading every open conversation.
+        """
+        for channel in self:
+            said = channel.wa_last_customer_message_at
+            replied = channel.wa_last_user_message_at
+            channel.odin_wa_unanswered = bool(said) and (not replied or replied < said)
 
     @api.depends("wa_ticket_ids")
     def _compute_wa_ticket_count(self):
@@ -189,6 +216,184 @@ class DiscussChannel(models.Model):
                 "wa_note_channel_id": self.id,
             },
         }
+
+    # ------------------------------------------------------------------
+    # Who the conversation belongs to
+    # ------------------------------------------------------------------
+
+    def action_wa_assign_user(self):
+        """Hand the conversation to a colleague.
+
+        The connector reserves reassignment for managers and offers it only as a
+        field on the Inbox form; this is open to anyone and sits in the chat,
+        because the person who reads a conversation is the one who knows who
+        should answer it.
+
+        Only users in the account's rota are offered: ``_wa_route_reopened``
+        takes a conversation off anyone who is not, so assigning outside it
+        would be undone by the client's next message.
+        """
+        self.ensure_one()
+        if not self.wa_routed:
+            raise UserError(self.env._(
+                "This conversation has no owner to change. Lead Routing is off for "
+                "its WhatsApp number.",
+            ))
+        account = self.sudo().wa_account_id
+        if not account._wa_routing_config()._wa_eligible_users():
+            raise UserError(self.env._(
+                "Nobody is set up to take conversations on this number yet. Add them "
+                "under WhatsApp > Configuration > WhatsApp Business Accounts, as Notify "
+                "users with routing enabled.",
+            ))
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Assign Conversation"),
+            "res_model": "odin.wa.assign",
+            "views": [(False, "form")],
+            "target": "new",
+            "context": {"default_channel_id": self.id},
+        }
+
+    # ------------------------------------------------------------------
+    # Keeping the pipeline clean
+    # ------------------------------------------------------------------
+
+    def _wa_link_lead(self, lead, owner):
+        """Do not open a lead for someone who is not a prospect.
+
+        An existing client asking for a certificate is a service request, and a
+        number already marked junk is junk again next time. Either would
+        otherwise add a lead on every first message, and a pipeline full of
+        those stops being read -- which is how a real enquiry gets missed.
+        """
+        if not lead:
+            partner = self.sudo().wa_partner_id
+            if partner.odin_wa_junk or partner.customer_rank > 0:
+                return self.env["crm.lead"]
+        return super()._wa_link_lead(lead, owner)
+
+    def action_wa_mark_junk(self):
+        """Spam, a wrong number, or somebody who was never a prospect.
+
+        Loses the lead with a reason rather than deleting it -- how much junk
+        arrives is worth knowing -- flags the contact so none is opened for it
+        again, archives the contact when WhatsApp is the only thing that ever
+        created it, and closes the conversation. Every step is reversible.
+        """
+        self.ensure_one()
+        if self.channel_type != "whatsapp":
+            raise UserError(self.env._("Only WhatsApp conversations can be marked as junk."))
+        channel = self.sudo()
+        partner = channel.wa_partner_id
+        done = []
+
+        lead = channel.wa_lead_id
+        if lead and lead.active and lead.won_status == "pending":
+            reason = self.env.ref("odin_wa_desk.lost_reason_wa_junk", raise_if_not_found=False)
+            lead.action_set_lost(**({"lost_reason_id": reason.id} if reason else {}))
+            done.append(self.env._("the lead was marked lost"))
+
+        if partner:
+            partner.odin_wa_junk = True
+            done.append(self.env._("the contact will not open another lead"))
+            # archive only a contact WhatsApp itself created and nothing has used:
+            # customer_rank and supplier_rank are what rise on a real transaction
+            has_requests = self.env["helpdesk.ticket"].sudo().search_count(
+                [("partner_id", "=", partner.id)], limit=1)
+            if (
+                partner.wa_bsuid
+                and not has_requests
+                and not partner.customer_rank
+                and not partner.supplier_rank
+                and not partner.user_ids
+                and not partner.child_ids
+                and not partner.parent_id
+            ):
+                partner.active = False
+                done.append(self.env._("the contact was archived"))
+
+        if channel.wa_status == "open":
+            channel.wa_status = "closed"
+            done.append(self.env._("the conversation was closed"))
+
+        channel.with_context(wa_skip_send=True).message_post(
+            body=self.env._("Marked as junk by %(who)s: %(what)s.",
+                            who=self.env.user.name,
+                            what=", ".join(done) or self.env._("nothing left to change")),
+            message_type="notification",
+        )
+        return True
+
+    # ------------------------------------------------------------------
+    # Nothing waits past the free-reply window
+    # ------------------------------------------------------------------
+
+    @api.model
+    def _cron_wa_unanswered(self):
+        """Raise an alarm before Meta's free-reply window closes.
+
+        Inside 24 hours of the client writing, an answer is free and immediate;
+        after it only an approved template reaches them, which costs money and
+        goodwill. So the deadline worth alarming on is Meta's, not an invented
+        SLA -- and it is the deadline a dropped enquiry actually breaks.
+        """
+        hours = int(self.env["ir.config_parameter"].sudo().get_param(
+            "odin_wa_desk.unanswered_hours", UNANSWERED_HOURS))
+        cutoff = fields.Datetime.now() - timedelta(hours=hours)
+        channels = self.sudo().search([
+            ("channel_type", "=", "whatsapp"),
+            ("wa_status", "=", "open"),
+            ("odin_wa_unanswered", "=", True),
+            ("wa_last_customer_message_at", "<=", cutoff),
+        ])
+        todo = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+        partner_model_id = self.env["ir.model"]._get_id("res.partner")
+        raised = 0
+        for channel in channels:
+            said = channel.wa_last_customer_message_at
+            if channel.odin_wa_alarm_at and channel.odin_wa_alarm_at >= said:
+                continue  # already raised for this message
+            partner = channel.wa_partner_id
+            owner = channel.wa_assigned_user_id or channel._odin_wa_alarm_user()
+            if not partner or not owner:
+                continue
+            self.env["mail.activity"].sudo().create({
+                "res_model_id": partner_model_id,
+                "res_id": partner.id,
+                "activity_type_id": todo.id if todo else False,
+                "user_id": owner.id,
+                "date_deadline": fields.Date.context_today(channel.with_user(owner)),
+                "summary": self.env._("Unanswered on WhatsApp: %s", channel._wa_chat_subject()),
+                "note": Markup("<p>%s</p>") % self.env._(
+                    "%(who)s wrote at %(when)s and has had no reply. A free answer is "
+                    "only possible until %(until)s; after that it needs an approved "
+                    "template.",
+                    who=partner.display_name,
+                    when=format_datetime(self.env, said),
+                    until=format_datetime(self.env, channel.wa_window_expires_at)
+                    if channel.wa_window_expires_at else self.env._("the window closes"),
+                ),
+            })
+            channel.odin_wa_alarm_at = fields.Datetime.now()
+            channel.with_context(wa_skip_send=True).message_post(
+                body=self.env._("No reply since %(when)s: a reminder was set for %(who)s.",
+                                when=format_datetime(self.env, said), who=owner.name),
+                message_type="notification",
+            )
+            raised += 1
+        return raised
+
+    def _odin_wa_alarm_user(self):
+        """Who hears about an unanswered conversation that has no owner."""
+        self.ensure_one()
+        config = self.sudo().wa_account_id._wa_routing_config()
+        if config.fallback_user_id:
+            return config.fallback_user_id
+        managers = self.env.ref(MANAGER_GROUP).sudo().all_user_ids.filtered(
+            lambda u: u.active and not u.share,
+        )
+        return managers[:1]
 
     # ------------------------------------------------------------------
     # Link to Client
