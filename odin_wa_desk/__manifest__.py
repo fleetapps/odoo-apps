@@ -16,7 +16,7 @@ conversation as an internal note -- never as a message to the customer.
     "category": "Services/Helpdesk",
     "author": "Odin",
     "website": "https://github.com/fleetapps/odoo-apps",
-    "license": "GPL-3",
+    "license": "AGPL-3",
     "depends": ["whatsapp_connector", "helpdesk_mgmt"],
     "data": [
         "views/discuss_channel_views.xml",
