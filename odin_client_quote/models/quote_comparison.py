@@ -385,6 +385,15 @@ class QuoteComparison(models.Model):
                 "view_mode": "form",
             }
 
+        number = self._whatsapp_number()
+        if not number:
+            raise UserError(_(
+                "%(name)s has no phone number, so there is no one to send this "
+                "to. Add a number on the contact, or use Print and attach the "
+                "PDF yourself.",
+                name=self.partner_id.name or _("This customer"),
+            ))
+
         token = attachment.generate_access_token()[0]
         link = "%s/web/content/%s?access_token=%s&download=true" % (
             self.get_base_url(), attachment.id, token,
@@ -400,7 +409,7 @@ class QuoteComparison(models.Model):
         self.action_mark_sent()
         return {
             "type": "ir.actions.act_url",
-            "url": "https://wa.me/%s?text=%s" % (self._whatsapp_number(), quote(message)),
+            "url": "https://wa.me/%s?text=%s" % (number, quote(message)),
             "target": "new",
         }
 

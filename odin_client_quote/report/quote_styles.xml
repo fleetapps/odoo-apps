@@ -29,7 +29,9 @@
         /* Odoo's report stylesheet puts borders on bare tables; the letterhead
            is a layout table, not a grid, so they are cleared explicitly and
            only the brand rule under it is kept. */
-        .oq-letter, .oq-letter tr, .oq-letter td { border: 0 none; }
+        .oq-letter, .oq-letter tr, .oq-letter td,
+        .oq-letter::before, .oq-letter::after { border: 0 none !important;
+                                                content: none !important; }
         .oq-letter { width: 100%; padding-bottom: 4pt;
                      border-bottom: 1.2pt solid <t t-out="brand"/>; }
         .oq-letter td { vertical-align: top; padding-bottom: 3pt; }
@@ -72,9 +74,9 @@
                       border: 0.5pt solid <t t-out="brand"/>;
                       word-wrap: break-word; }
         .oq-grid th.oq-first { text-align: left; }
-        .oq-grid th .oq-sub { display: block; font-size: 6pt; font-weight: normal;
-                              letter-spacing: 0; text-transform: none; opacity: 0.9;
-                              padding-top: 1pt; }
+        .oq-grid th .oq-sub { display: block; font-size: 6.8pt; font-weight: normal;
+                              letter-spacing: 0; text-transform: none;
+                              color: #dbe7f4; padding-top: 1.5pt; }
         .oq-grid td { padding: 5pt 7pt; text-align: right; font-size: 7.5pt;
                       border: 0.5pt solid #d9e6ee; }
         .oq-grid td.oq-first { text-align: left; }
@@ -134,7 +136,7 @@
 
 <!-- letterhead, shared by both reports -->
 <template id="quote_letterhead">
-    <table class="oq-letter">
+    <table class="oq-letter o_ignore_layout_styling">
         <tr>
             <td style="width: 45%;">
                 <img t-if="company.logo" class="oq-logo"

@@ -16,7 +16,7 @@
         <t t-call="odin_client_quote.quote_styles"/>
         <t t-call="odin_client_quote.quote_letterhead"/>
 
-        <table class="oq-hero">
+        <table class="oq-hero o_ignore_layout_styling">
             <tr>
                 <td class="oq-for">
                     <div class="oq-label">Prepared for</div>
@@ -48,7 +48,7 @@
         <div t-if="detail_rows" class="oq-block">
             <div class="oq-h">Who and what is covered</div>
             <div class="oq-bar">People and cover included in this quotation</div>
-            <table class="oq-facts">
+            <table class="oq-facts o_ignore_layout_styling">
                 <tr t-foreach="detail_rows" t-as="detail_row">
                     <td t-foreach="detail_row" t-as="detail" style="width: 25%;">
                         <t t-if="detail">
@@ -64,7 +64,7 @@
         <!-- The benefit column takes whatever the plan columns do not need, so
              two plans do not end up with half a page each. -->
         <t t-set="benefit_width" t-value="max(26, 100 - 18 * len(plans))"/>
-        <table class="oq-grid">
+        <table class="oq-grid o_ignore_layout_styling">
             <thead>
                 <tr>
                     <th class="oq-first" t-attf-style="width: #{benefit_width}%;">Benefit</th>

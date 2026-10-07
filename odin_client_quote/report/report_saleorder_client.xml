@@ -20,7 +20,7 @@
         <t t-call="odin_client_quote.quote_styles"/>
         <t t-call="odin_client_quote.quote_letterhead"/>
 
-        <table class="oq-hero">
+        <table class="oq-hero o_ignore_layout_styling">
             <tr>
                 <td class="oq-for">
                     <div class="oq-label">Prepared for</div>
@@ -56,7 +56,7 @@
         <div t-if="details" class="oq-block">
             <div class="oq-h">Who and what is covered</div>
             <div class="oq-bar">People and cover included in this quotation</div>
-            <table class="oq-facts">
+            <table class="oq-facts o_ignore_layout_styling">
                 <tr>
                     <td t-foreach="details" t-as="detail"
                         t-attf-style="width: #{100 // len(details)}%;">
@@ -68,7 +68,7 @@
         </div>
 
         <div class="oq-h">Your cover</div>
-        <table class="oq-grid">
+        <table class="oq-grid o_ignore_layout_styling">
             <thead>
                 <tr>
                     <th class="oq-first">Benefit</th>
@@ -105,7 +105,7 @@
 
         <div t-if="instalments" class="oq-block">
             <div class="oq-h">Or pay monthly</div>
-            <table class="oq-grid">
+            <table class="oq-grid o_ignore_layout_styling">
                 <thead>
                     <tr>
                         <th class="oq-first">Instalment option</th>
@@ -133,7 +133,7 @@
         <div t-if="optional" class="oq-block">
             <div class="oq-h">Optional cover you can add</div>
             <div class="oq-bar">Not included in the premium above — tell us which you want</div>
-            <table class="oq-opt">
+            <table class="oq-opt o_ignore_layout_styling">
                 <t t-foreach="optional" t-as="section">
                     <tr class="oq-sub-head">
                         <td t-out="section['label']">Dental</td>
