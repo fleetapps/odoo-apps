@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_client_quote" model="ir.ui.view">
+        <field name="name">sale.order.form.client.quote</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!--
+                Set on the section line: the short name the client sees, the key
+                that lines this benefit up against the same benefit on another
+                plan, and what the benefit pays out.
+            -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='name']" position="after">
+                <field name="benefit_label" optional="hide"/>
+                <field name="benefit_key" optional="hide"/>
+                <field name="cover_limit" optional="hide"/>
+            </xpath>
+            <xpath expr="//page[@name='other_information']//group[@name='sales_person']" position="inside">
+                <field name="odin_instalment_plan_ids" widget="many2many_tags"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

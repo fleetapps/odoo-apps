@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<template id="report_saleorder_client_document">
+    <t t-set="doc" t-value="doc.with_context(lang=doc.partner_id.lang)"/>
+    <t t-set="company" t-value="doc.company_id"/>
+    <t t-set="prepared_by" t-value="doc.user_id"/>
+    <t t-set="currency" t-value="doc.currency_id"/>
+    <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': currency}"/>
+    <t t-set="sections" t-value="doc._client_sections()"/>
+    <t t-set="quoted" t-value="[s for s in sections if s['included']]"/>
+    <t t-set="optional" t-value="[s for s in sections if any('line' in e for e in s['optional'])]"/>
+    <t t-set="amounts" t-value="doc._client_amounts()"/>
+    <t t-set="instalments" t-value="doc._client_instalments()"/>
+    <t t-set="details" t-value="doc._client_details()"/>
+
+    <div class="header oq">
+        <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_letterhead"/>
+    </div>
+
+    <div class="article oq"
+         t-att-data-oe-model="doc._name"
+         t-att-data-oe-id="doc.id"
+         t-att-data-oe-lang="doc.env.context.get('lang')">
+        <t t-call="odin_client_quote.quote_styles"/>
+
+        <table class="oq-hero">
+            <tr>
+                <td class="oq-for">
+                    <div class="oq-label">Prepared for</div>
+                    <div class="oq-party" t-out="doc.partner_id.name">Customer</div>
+                    <div class="oq-muted" t-if="doc.partner_id.phone">
+                        Phone: <span t-out="doc.partner_id.phone"/>
+                    </div>
+                    <div class="oq-muted" t-if="doc.partner_id.email" t-out="doc.partner_id.email"/>
+                    <div class="oq-intro">
+                        Below is the cover being quoted, what it pays out, and what it costs.
+                    </div>
+                </td>
+                <td class="oq-doc">
+                    <div class="oq-label">
+                        <t t-if="doc.state in ['draft', 'sent']">Quotation</t>
+                        <t t-else="">Order</t>
+                    </div>
+                    <div class="oq-ref" t-out="doc.name">S00001</div>
+                    <div style="margin-top: 5pt;">
+                        <span class="oq-label">Date</span>
+                        <span t-out="doc.date_order" t-options="{'widget': 'date'}">01/01/2026</span>
+                    </div>
+                    <div t-if="doc.validity_date and doc.state in ['draft', 'sent']">
+                        <span class="oq-label">Valid until</span>
+                        <span t-out="doc.validity_date" t-options="{'widget': 'date'}">01/02/2026</span>
+                    </div>
+                    <div t-if="doc.sale_order_template_id" style="margin-top: 5pt; font-weight: bold;"
+                         t-out="doc.sale_order_template_id.name">Plan</div>
+                </td>
+            </tr>
+        </table>
+
+        <div t-if="details" class="oq-block">
+            <div class="oq-h">Who and what is covered</div>
+            <div class="oq-bar">People and cover included in this quotation</div>
+            <table class="oq-facts">
+                <tr>
+                    <td t-foreach="details" t-as="detail"
+                        t-attf-style="width: #{100 // len(details)}%;">
+                        <span class="oq-k" t-out="detail['label']">Principal</span>
+                        <span class="oq-v" t-out="detail['value']">—</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="oq-h">Your cover</div>
+        <table class="oq-grid">
+            <thead>
+                <tr>
+                    <th class="oq-first">Benefit</th>
+                    <th style="width: 22%;">Cover limit</th>
+                    <th style="width: 22%;">Premium</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="quoted" t-as="section"
+                    t-attf-class="#{'oq-alt' if section_index % 2 else ''}">
+                    <td class="oq-first">
+                        <t t-out="section['label']">Inpatient</t>
+                        <t t-if="len(section['included']) &gt; 1 or section['included'][0]['name'] != section['label']">
+                            <div class="oq-muted" t-foreach="section['included']" t-as="entry"
+                                 t-out="entry['name']">Cover line</div>
+                        </t>
+                    </td>
+                    <td t-if="section['limit']" t-out="section['limit']" t-options="money">0.00</td>
+                    <td t-else="" class="oq-muted">—</td>
+                    <td t-out="section['amount']" t-options="money">0.00</td>
+                </tr>
+                <tr t-if="amounts['tax']" t-attf-class="#{'oq-alt' if len(quoted) % 2 else ''}">
+                    <td class="oq-first">Taxes and levies</td>
+                    <td class="oq-muted">—</td>
+                    <td t-out="amounts['tax']" t-options="money">0.00</td>
+                </tr>
+                <tr class="oq-total">
+                    <td class="oq-first">Total premium</td>
+                    <td/>
+                    <td t-out="amounts['total']" t-options="money">0.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div t-if="instalments" class="oq-block">
+            <div class="oq-h">Or pay monthly</div>
+            <table class="oq-grid">
+                <thead>
+                    <tr>
+                        <th class="oq-first">Instalment option</th>
+                        <th style="width: 22%;">Deposit</th>
+                        <th style="width: 22%;">Per month</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="instalments" t-as="schedule"
+                        t-attf-class="oq-instalment #{'oq-alt' if schedule_index % 2 else ''}">
+                        <td class="oq-first" t-out="schedule['plan'].display_name">4 monthly instalments</td>
+                        <td t-if="schedule['deposit']" t-out="schedule['deposit']" t-options="money">0.00</td>
+                        <td t-else="" class="oq-muted">None</td>
+                        <td t-out="schedule['instalment']" t-options="money">0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="oq-muted" style="margin-top: 4pt;">
+                Monthly figures include the cost of paying by instalment. Paying the
+                annual premium in full costs
+                <span t-out="amounts['total']" t-options="money">0.00</span>.
+            </div>
+        </div>
+
+        <div t-if="optional" class="oq-block">
+            <div class="oq-h">Optional cover you can add</div>
+            <div class="oq-bar">Not included in the premium above — tell us which you want</div>
+            <table class="oq-opt">
+                <t t-foreach="optional" t-as="section">
+                    <tr class="oq-sub-head">
+                        <td t-out="section['label']">Dental</td>
+                        <td class="oq-num">Premium</td>
+                    </tr>
+                    <t t-foreach="section['optional']" t-as="entry">
+                        <tr t-if="entry.get('subsection')">
+                            <td colspan="2" style="font-weight: bold; padding-top: 6pt;"
+                                t-out="entry['subsection']">Rider</td>
+                        </tr>
+                        <tr t-else="">
+                            <td t-out="entry['name']">Cover</td>
+                            <td class="oq-num" t-out="entry['line'].price_unit" t-options="money">0.00</td>
+                        </tr>
+                    </t>
+                </t>
+            </table>
+        </div>
+
+        <t t-set="with_notes" t-value="[s for s in sections if s['notes']]"/>
+        <div t-if="with_notes" class="oq-block">
+            <div class="oq-h">What each benefit covers</div>
+            <t t-foreach="with_notes" t-as="section">
+                <t t-foreach="section['notes']" t-as="note">
+                    <t t-set="bullets" t-value="doc._client_note_lines(note)"/>
+                    <t t-if="len(bullets) &gt; 1">
+                        <div class="oq-benefits-head" t-out="bullets[0]">Inpatient benefits</div>
+                        <ul class="oq-benefits">
+                            <li t-foreach="bullets[1:]" t-as="bullet" t-out="bullet">A benefit</li>
+                        </ul>
+                    </t>
+                    <p t-elif="bullets" class="oq-note" t-out="bullets[0]">A note that runs as prose.</p>
+                </t>
+            </t>
+        </div>
+
+
+        <div t-if="company.report_footer" class="oq-callout oq-block">
+            <div t-field="company.report_footer"/>
+        </div>
+
+        <div t-if="doc.note" class="oq-terms">
+            <div class="oq-h">Terms</div>
+            <div t-field="doc.note"/>
+        </div>
+    </div>
+
+    <div class="footer oq">
+        <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_footer"/>
+    </div>
+</template>
+
+<template id="report_saleorder_client">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-call="odin_client_quote.report_saleorder_client_document"
+               t-lang="doc.partner_id.lang"/>
+        </t>
+    </t>
+</template>
+</odoo>

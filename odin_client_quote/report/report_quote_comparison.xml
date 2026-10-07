@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<template id="report_quote_comparison_document">
+    <t t-set="company" t-value="doc.company_id"/>
+    <t t-set="prepared_by" t-value="doc.user_id"/>
+    <t t-set="currency" t-value="doc.currency_id"/>
+    <t t-set="matrix" t-value="doc._matrix()"/>
+    <t t-set="plans" t-value="matrix['plans']"/>
+    <t t-set="rows" t-value="matrix['rows']"/>
+    <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': currency}"/>
+
+    <div class="header oq">
+        <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_letterhead"/>
+    </div>
+
+    <div class="article oq"
+         t-att-data-oe-model="doc._name"
+         t-att-data-oe-id="doc.id"
+         t-att-data-oe-lang="doc.env.context.get('lang')">
+        <t t-call="odin_client_quote.quote_styles"/>
+
+        <table class="oq-hero">
+            <tr>
+                <td class="oq-for">
+                    <div class="oq-label">Prepared for</div>
+                    <div class="oq-party" t-out="doc.partner_id.name">Customer</div>
+                    <div class="oq-muted" t-if="doc.partner_id.phone">
+                        Phone: <span t-out="doc.partner_id.phone"/>
+                    </div>
+                    <div class="oq-muted" t-if="doc.partner_id.email" t-out="doc.partner_id.email"/>
+                    <div class="oq-intro" t-if="doc.intro" t-out="doc.intro"/>
+                </td>
+                <td class="oq-doc">
+                    <div class="oq-label">Quotation</div>
+                    <div class="oq-ref" t-out="doc.name">QC00001</div>
+                    <div style="margin-top: 5pt;">
+                        <span class="oq-label">Quote date</span>
+                        <span t-out="doc.date" t-options="{'widget': 'date'}">01/01/2026</span>
+                    </div>
+                    <div t-if="doc.validity_date">
+                        <span class="oq-label">Valid until</span>
+                        <span t-out="doc.validity_date" t-options="{'widget': 'date'}">01/02/2026</span>
+                    </div>
+                    <div t-if="doc.title" style="margin-top: 5pt; font-weight: bold;"
+                         t-out="doc.title">Medical Insurance</div>
+                </td>
+            </tr>
+        </table>
+
+        <t t-set="detail_rows" t-value="doc._detail_rows()"/>
+        <div t-if="detail_rows" class="oq-block">
+            <div class="oq-h">Who and what is covered</div>
+            <div class="oq-bar">People and cover included in this quotation</div>
+            <table class="oq-facts">
+                <tr t-foreach="detail_rows" t-as="detail_row">
+                    <td t-foreach="detail_row" t-as="detail" style="width: 25%;">
+                        <t t-if="detail">
+                            <span class="oq-k" t-out="detail.label">Principal</span>
+                            <span class="oq-v" t-out="detail.value">—</span>
+                        </t>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="oq-h">Cover and premium comparison</div>
+        <table class="oq-grid">
+            <thead>
+                <tr>
+                    <th class="oq-first" style="width: 34%;">Benefit</th>
+                    <th t-foreach="plans" t-as="plan"
+                        t-att-class="'oq-pick' if plan.highlight else None">
+                        <span t-if="plan.highlight" class="oq-pick-flag">Recommended</span>
+                        <t t-out="plan.name">Plan</t>
+                        <span t-if="plan.subtitle" class="oq-sub" t-out="plan.subtitle">Plan 1</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="rows" t-as="row">
+                    <tr t-if="row['kind'] == 'group'" class="oq-group">
+                        <td t-att-colspan="len(plans) + 1" t-out="row['label']">Section</td>
+                    </tr>
+                    <tr t-else=""
+                        t-attf-class="oq-#{row['kind']} #{'oq-alt' if row.get('alt') else ''}">
+                        <td class="oq-first" t-out="row['label']">Benefit</td>
+                        <td t-foreach="row['cells']" t-as="cell"
+                            t-att-class="'oq-pick' if plans[cell_index].highlight else None"
+                            t-out="cell" t-options="money">0.00</td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+        <div class="oq-muted" style="margin-top: 5pt;">
+            Premiums are shown in <span t-out="currency.name">KES</span>, per year, and include
+            taxes and levies. Cover starts once the premium has been received.
+        </div>
+
+
+        <div t-if="company.report_footer" class="oq-callout oq-block">
+            <div t-field="company.report_footer"/>
+        </div>
+
+        <div t-if="doc.note" class="oq-terms">
+            <div class="oq-h">Terms</div>
+            <div t-field="doc.note"/>
+        </div>
+    </div>
+
+    <div class="footer oq">
+        <t t-call="odin_client_quote.quote_styles"/>
+        <t t-call="odin_client_quote.quote_footer"/>
+    </div>
+</template>
+
+<template id="report_quote_comparison">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-call="odin_client_quote.report_quote_comparison_document"
+               t-lang="doc.partner_id.lang"/>
+        </t>
+    </t>
+</template>
+</odoo>

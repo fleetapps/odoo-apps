@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Client quotation preview</title>
+<style>
+body { background:#eceff1; margin:0; padding:24px; }
+.sheet { width:210mm; min-height:297mm; margin:0 auto 20px; background:#fff;
+         padding:11mm 11mm 15mm; box-shadow:0 2px 14px rgba(0,0,0,.18); box-sizing:border-box; }
+
+        
+        .oq { font-family: 'DejaVu Sans Condensed', 'Lato', 'Helvetica Neue', Arial, sans-serif;
+              color: #15384d; font-size: 7.5pt; line-height: 1.35; }
+        .oq table { border-collapse: collapse; width: 100%; }
+        .oq .oq-block { page-break-inside: avoid; }
+        .oq .oq-num { text-align: right; white-space: nowrap; }
+        .oq .oq-muted { color: #6b8495; }
+
+        /* letterhead */
+        .oq-letter { width: 100%; border-bottom: 1.2pt solid #003478;
+                     padding-bottom: 5pt; }
+        .oq-letter td { vertical-align: top; padding-bottom: 5pt; }
+        .oq-logo { max-height: 46pt; max-width: 190pt; }
+        .oq-company { text-align: right; }
+        .oq-company .oq-name { font-size: 13pt; font-weight: bold; color: #003478; }
+        .oq-company .oq-meta { font-size: 8pt; color: #5b7788; }
+
+        /* the band that names the customer and the document */
+        .oq-hero { margin: 0 0 13pt 0; }
+        .oq-hero td { vertical-align: top; padding: 9pt 11pt; }
+        .oq-hero .oq-for { background: #f7fbfd; border: 0.5pt solid #d9e6ee; border-right: 0; }
+        .oq-hero .oq-doc { background: #003478; border: 0.5pt solid #003478;
+                           color: #ffffff; width: 36%; }
+        .oq-hero .oq-doc .oq-label { color: #ffffff; opacity: 0.8; }
+        .oq-party { font-size: 11pt; font-weight: bold; color: #15384d; }
+        .oq-ref { font-size: 15pt; font-weight: bold; color: #ffffff; }
+        .oq-intro { margin-top: 5pt; font-size: 7.5pt; color: #4a6b7d; }
+        .oq-label { font-size: 6.6pt; letter-spacing: 0.07em; text-transform: uppercase; color: #6b8495; }
+
+        /* section headings and caption bars */
+        .oq-h { font-size: 9.5pt; font-weight: bold; color: #003478;
+                border-left: 3pt solid #003478; padding-left: 6pt;
+                margin: 15pt 0 6pt 0; }
+        .oq-bar { background: #003478; color: #ffffff; font-size: 6.6pt;
+                  letter-spacing: 0.08em; text-transform: uppercase; padding: 4.5pt 8pt; }
+
+        /* the details strip */
+        .oq-facts td { background: #f8fbfc; border: 0.5pt solid #d9e6ee; padding: 5pt 8pt; }
+        .oq-facts .oq-k { display: block; font-size: 6.6pt; text-transform: uppercase;
+                          letter-spacing: 0.05em; color: #6b8495; }
+        .oq-facts .oq-v { font-size: 8pt; font-weight: bold; }
+
+        /* the comparison grid, and the cover table of a single quotation */
+        .oq-grid th { background: #003478; color: #ffffff; font-weight: bold;
+                      font-size: 6.6pt; letter-spacing: 0.05em; text-transform: uppercase;
+                      padding: 6pt 7pt; text-align: right; vertical-align: bottom;
+                      border: 0.5pt solid #003478; }
+        .oq-grid th.oq-first { text-align: left; }
+        .oq-grid th .oq-sub { display: block; font-size: 5.8pt; font-weight: normal;
+                              letter-spacing: 0.04em; opacity: 0.85; }
+        .oq-grid td { padding: 5pt 7pt; text-align: right; font-size: 7.5pt;
+                      border: 0.5pt solid #d9e6ee; }
+        .oq-grid td.oq-first { text-align: left; }
+        .oq-grid tr.oq-alt td { background: #f8fbfc; }
+        .oq-grid tr.oq-group td { background: #eef5f9; color: #003478;
+                                  font-size: 6.4pt; letter-spacing: 0.08em;
+                                  text-transform: uppercase; padding: 3.5pt 7pt;
+                                  border-color: #d9e6ee; text-align: left; }
+        .oq-grid tr.oq-total td { background: #003478; color: #ffffff;
+                                  font-weight: bold; font-size: 8.5pt;
+                                  border-color: #003478; }
+        .oq-grid tr.oq-limit td.oq-first,
+        .oq-grid tr.oq-premium td.oq-first,
+        .oq-grid tr.oq-total td.oq-first { font-weight: bold; }
+        .oq-grid tr.oq-instalment td { color: #3d5f73; }
+        .oq-grid .oq-pick { border-left: 1.5pt solid #003478;
+                            border-right: 1.5pt solid #003478; }
+        .oq-pick-flag { display: block; font-size: 5.6pt; letter-spacing: 0.08em;
+                        text-transform: uppercase; color: #ffffff; opacity: 0.95; }
+
+        /* optional cover, priced but not charged */
+        .oq-opt td { border-bottom: 0.5pt solid #e8f0f4; padding: 3.5pt 7pt; font-size: 7.5pt; }
+        .oq-opt tr.oq-sub-head td { background: #f8fbfc; font-weight: bold;
+                                    color: #15384d; border-bottom: 0.5pt solid #d9e6ee; }
+
+        /* benefits, set as a list rather than a paragraph in a price cell */
+        .oq-benefits { margin: 4pt 0 0 0; padding: 0; list-style: none; }
+        .oq-benefits li { padding: 1.6pt 0 1.6pt 10pt; }
+        .oq-benefits li:before { content: "\002022"; color: #003478;
+                                 display: inline-block; width: 10pt; margin-left: -10pt; }
+        .oq-benefits-head { font-weight: bold; color: #15384d; margin-top: 6pt; }
+
+        /* a block set apart from the flow, e.g. how to pay */
+        .oq-callout { background: #f7fbfd; border: 0.5pt solid #d9e6ee;
+                      border-left: 3pt solid #003478;
+                      padding: 8pt 11pt; margin: 12pt 0 0 0; font-size: 7.8pt; }
+        .oq-callout p { margin: 0 0 3pt 0; }
+        .oq-callout strong, .oq-callout b { color: #15384d; }
+
+        /* terms */
+        .oq-terms { font-size: 7.8pt; }
+        .oq-terms h4, .oq-terms h3, .oq-terms h2 { font-size: 8.2pt; font-weight: bold;
+                                                   color: #003478; margin: 9pt 0 3pt 0; }
+        .oq-terms p { margin: 0 0 4pt 0; }
+        .oq-terms ol, .oq-terms ul { margin: 0 0 6pt 13pt; padding: 0; }
+        .oq-terms li { margin: 0 0 1.5pt 0; }
+
+        /* footer */
+        .oq-foot { border-top: 0.75pt solid #d9e6ee; padding-top: 4pt;
+                   font-size: 6.6pt; color: #6b8495; }
+        .oq-foot td { vertical-align: top; font-size: 6.6pt; color: #6b8495; }
+    </style></head><body>
+<div class="sheet oq">
+  <table class="oq-letter"><tr>
+    <td style="width:45%"><div style="font-size:13pt;font-weight:bold;color:#003478">BIZSURE</div></td>
+    <td class="oq-company">
+      <div class="oq-name">Bizsure Insurance Brokers Ltd</div>
+      <div class="oq-meta"><div>Ciata Mall, Ridgeways, Kiambu Road</div>
+      <div>P.O. Box 2248 &ndash; 00100 Nairobi</div><div>Tel: 0770 890 000</div>
+      <div>info@bizsure.co.ke</div></div>
+    </td></tr>
+  </table>
+
+  <table class="oq-hero"><tr>
+    <td class="oq-for">
+      <div class="oq-label">Prepared for</div>
+      <div class="oq-party">Brian Otieno</div>
+      <div class="oq-muted">Phone: 0722 000 114</div>
+      <div class="oq-intro">Below is the cover being quoted, what it pays out, and what it costs.</div>
+    </td>
+    <td class="oq-doc">
+      <div class="oq-label">Quotation</div>
+      <div class="oq-ref">S00068</div>
+      <div style="margin-top:5pt"><span class="oq-label">Date</span> 02/10/2026</div>
+      <div><span class="oq-label">Valid until</span> 01/11/2026</div>
+      <div style="margin-top:5pt;font-weight:bold">Birdview Bizsure Afya &ndash; Plan 1 (KES 200,000)</div>
+    </td></tr>
+  </table>
+
+  <div class="oq-h">Who and what is covered</div>
+  <div class="oq-bar">People and cover included in this quotation</div>
+  <table class="oq-facts"><tr><td style="width:25%"><span class="oq-k">Principal age</span><span class="oq-v">34</span></td><td style="width:25%"><span class="oq-k">Spouse age</span><span class="oq-v">32</span></td><td style="width:25%"><span class="oq-k">Children</span><span class="oq-v">3</span></td><td style="width:25%"><span class="oq-k">Outpatient</span><span class="oq-v">Include &ndash; at the plan limit</span></td></tr></table>
+
+  <div class="oq-h">Your cover</div>
+  <table class="oq-grid">
+    <thead><tr><th class="oq-first">Benefit</th><th style="width:22%">Cover limit</th>
+    <th style="width:22%">Premium</th></tr></thead>
+    <tbody><tr class=""><td class="oq-first">Inpatient<div class="oq-muted">Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 4 – Below 70</div></td><td>200,000.00</td><td>15,822.00</td></tr><tr class="oq-alt"><td class="oq-first">Outpatient<div class="oq-muted">Bizsure Afya Outpatient – KES 50,000 per Family – Member + 4 – Below 70</div></td><td>50,000.00</td><td>22,130.00</td></tr><tr class=""><td class="oq-first">Statutory charges<div class="oq-muted">Stamp Duty</div></td><td><span class="oq-muted">&mdash;</span></td><td>40.00</td></tr><tr class="oq-alt"><td class="oq-first">Taxes and levies</td><td class="oq-muted">&mdash;</td><td>170.78</td></tr><tr class="oq-total"><td class="oq-first">Total premium</td><td></td><td>38,162.78</td></tr></tbody>
+  </table>
+
+  <div class="oq-h">Or pay monthly</div>
+  <table class="oq-grid">
+    <thead><tr><th class="oq-first">Instalment option</th><th style="width:22%">Deposit</th>
+    <th style="width:22%">Per month</th></tr></thead>
+    <tbody><tr class="oq-instalment "><td class="oq-first">4 monthly instalments</td><td class="oq-muted">None</td><td>10,540.69</td></tr><tr class="oq-instalment oq-alt"><td class="oq-first">10 monthly instalments</td><td class="oq-muted">None</td><td>4,816.28</td></tr></tbody>
+  </table>
+  <div class="oq-muted" style="margin-top:4pt">Monthly figures include the cost of paying by
+  instalment. Paying the annual premium in full costs 38,162.78.</div>
+
+  <div class="oq-h">Optional cover you can add</div>
+  <div class="oq-bar">Not included in the premium above &mdash; tell us which you want</div>
+  <table class="oq-opt"><tr class="oq-sub-head"><td>Outpatient</td><td class="oq-num">Premium</td></tr><tr><td>Member Only</td><td class="oq-num">12,085.00</td></tr><tr><td>Member + 1</td><td class="oq-num">20,121.00</td></tr><tr><td>Member + 2</td><td class="oq-num">20,121.00</td></tr><tr><td>Member + 3</td><td class="oq-num">22,130.00</td></tr><tr><td>Member + 5</td><td class="oq-num">22,130.00</td></tr><tr class="oq-sub-head"><td>Dental (per person)</td><td class="oq-num">Premium</td></tr><tr><td>KES 5,000 per person</td><td class="oq-num">1,210.00</td></tr><tr><td>KES 7,500 per person</td><td class="oq-num">1,803.00</td></tr><tr><td>KES 10,000 per person</td><td class="oq-num">2,408.00</td></tr><tr class="oq-sub-head"><td>Optical (per person)</td><td class="oq-num">Premium</td></tr><tr><td>KES 5,000 per person</td><td class="oq-num">1,210.00</td></tr><tr><td>KES 7,500 per person</td><td class="oq-num">1,803.00</td></tr><tr><td>KES 10,000 per person</td><td class="oq-num">2,408.00</td></tr></table>
+
+  <div class="oq-h">What each benefit covers</div>
+  <div class="oq-benefits-head">Inpatient benefits</div><ul class="oq-benefits"><li>Overall limit: KES 200,000 per family per year, within East Africa</li><li>Hospital accommodation: general ward, up to KES 5,000</li><li>Pre-existing, chronic, congenital and HIV/AIDS-related conditions, whether or not diagnosed at joining: covered in full</li><li>Maternity, including normal delivery, all caesarean sections and complications: KES 40,000</li><li>Post-hospitalisation treatment: KES 10,000</li><li>Non-accidental inpatient dental treatment: KES 30,000; accident-related: covered in full</li><li>Last expense: KES 30,000 per person</li></ul><div class="oq-benefits-head">Outpatient benefits</div><ul class="oq-benefits"><li>Overall limit: KES 50,000 per family per year, no co-payment</li><li>Pre-existing and chronic conditions, ARV drugs and Covid-19: covered</li><li>Prenatal and postnatal outpatient care: covered</li><li>General medical check-up: KES 5,000</li><li>KEPI and baby-friendly immunisations: KES 5,000</li></ul>
+
+    <div class="oq-callout">
+    <p><strong>Payment options</strong></p>
+    <p>A/C NAME: BIZSURE INSURANCE BROKERS LIMITED &middot; A/C NO: 4351890038</p>
+    <p>BANK: NCBA BANK KENYA PLC &middot; BRANCH: CIATA MALL &middot; SWIFT: CBAFKENX</p>
+    <p>M-Pesa Paybill 808289 &middot; Account Number: your name</p>
+  </div>
+  <div class="oq-foot" style="margin-top:14pt"><table><tr>
+    <td>Prepared by Caroline Chege &mdash; 0721766749<div>For and on behalf of Bizsure Insurance Brokers Ltd</div></td>
+    <td class="oq-num">Page 1 of 1</td></tr></table>
+  </div>
+</div>
+</body></html>

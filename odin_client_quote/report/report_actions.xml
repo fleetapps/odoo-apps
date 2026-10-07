@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_saleorder_client" model="ir.actions.report">
+        <field name="name">Client quotation</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_client_quote.report_saleorder_client</field>
+        <field name="report_file">odin_client_quote.report_saleorder_client</field>
+        <field name="print_report_name">'Quotation - %s' % object.name</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="odin_client_quote.paperformat_client_quote"/>
+    </record>
+
+    <record id="action_report_quote_comparison" model="ir.actions.report">
+        <field name="name">Cover comparison</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_client_quote.report_quote_comparison</field>
+        <field name="report_file">odin_client_quote.report_quote_comparison</field>
+        <field name="print_report_name">'Cover comparison - %s' % object.name</field>
+        <field name="binding_model_id" ref="odin_client_quote.model_odin_quote_comparison"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="odin_client_quote.paperformat_client_quote"/>
+    </record>
+</odoo>

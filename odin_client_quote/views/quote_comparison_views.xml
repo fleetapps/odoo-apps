@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_comparison_list" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.list</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="arch" type="xml">
+            <list string="Cover comparisons">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="title" optional="show"/>
+                <field name="date"/>
+                <field name="validity_date" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_form" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.form</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="arch" type="xml">
+            <form string="Cover comparison">
+                <header>
+                    <button name="action_mark_sent" type="object" string="Mark as sent"
+                            class="btn-primary" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,sent"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="title" placeholder="e.g. Medical Insurance"/>
+                            <field name="intro"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="validity_date"/>
+                            <field name="user_id" widget="many2one_avatar_user"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Plans" name="plans">
+                            <field name="plan_ids"
+                                   context="{'default_comparison_id': id}">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="order_id"
+                                           domain="[('partner_id', '=', parent.partner_id)]"
+                                           options="{'no_create': True}"/>
+                                    <field name="name"/>
+                                    <field name="subtitle" placeholder="e.g. Plan 1"/>
+                                    <field name="highlight" widget="boolean_toggle"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <field name="amount_total"/>
+                                </list>
+                            </field>
+                            <div class="text-muted mt-2">
+                                Every figure in the comparison is read from these
+                                quotations. Edit a quotation and reprint — nothing
+                                here needs retyping.
+                            </div>
+                        </page>
+                        <page string="Details strip" name="details">
+                            <field name="detail_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="label"/>
+                                    <field name="value"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Payment &amp; terms" name="terms">
+                            <group>
+                                <field name="instalment_plan_ids" widget="many2many_tags"/>
+                            </group>
+                            <field name="note" placeholder="Terms printed under the comparison."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_search" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.search</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="arch" type="xml">
+            <search string="Cover comparisons">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="user_id"/>
+                <filter name="filter_draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="filter_sent" string="Sent" domain="[('state', '=', 'sent')]"/>
+                <separator/>
+                <filter name="filter_mine" string="My comparisons"
+                        domain="[('user_id', '=', uid)]"/>
+                <group name="group_by">
+                    <filter name="group_partner" string="Customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_user" string="Prepared by"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter name="group_date" string="Date"
+                            context="{'group_by': 'date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quote_comparison" model="ir.actions.act_window">
+        <field name="name">Cover comparisons</field>
+        <field name="res_model">odin.quote.comparison</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_quote_comparison_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Compare plans on one page</p>
+            <p>
+                Pick the quotations you have prepared for one customer and print
+                them side by side — one column per plan, one row per benefit — so
+                the customer can see what changes between plans without opening
+                four PDFs.
+            </p>
+            <p>
+                You can also select the quotations in the Quotations list and use
+                <b>Build cover comparison</b> from the Actions menu.
+            </p>
+        </field>
+    </record>
+</odoo>
