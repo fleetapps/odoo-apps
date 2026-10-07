@@ -2,6 +2,8 @@ import base64
 import re
 from urllib.parse import quote
 
+from markupsafe import Markup
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -326,18 +328,63 @@ class QuoteComparison(models.Model):
             return code + digits.lstrip("0")
         return digits
 
-    def action_share_whatsapp(self):
-        """Open WhatsApp with the comparison attached as a download link.
+    def _wa_conversation(self):
+        """The customer's WhatsApp conversation, if whatsapp_connector is here.
 
-        The PDF is stored as an attachment with an access token, which is how
-        Odoo itself shares documents outside the backend: the link needs no
-        login but cannot be guessed. Brokers here share on WhatsApp rather than
-        email, so this is the path that actually gets used.
+        A soft dependency on purpose: this module is useful without the
+        connector, so it is not in `depends`. When the connector is installed
+        its conversation is the right place for the PDF to go -- it sends from
+        the company's own number and the thread stays in Odoo.
+        """
+        Channel = self.env["discuss.channel"]
+        if "wa_partner_id" not in Channel._fields:
+            return Channel.browse()
+        return Channel.search(
+            [("channel_type", "=", "whatsapp"),
+             ("wa_partner_id", "=", self.partner_id.id)],
+            order="wa_status asc, write_date desc", limit=1,
+        )
+
+    def action_share_whatsapp(self):
+        """Send the comparison to the customer on WhatsApp.
+
+        With whatsapp_connector installed the PDF is posted into the customer's
+        conversation, which sends it from the company's number and keeps the
+        thread in Odoo. The connector checks Meta's rules first and refuses
+        clearly when the 24-hour window has closed -- outside it WhatsApp only
+        accepts approved templates, and that is its message to give, not ours.
+
+        Without the connector it falls back to opening wa.me with a download
+        link, which needs nothing installed.
         """
         self.ensure_one()
         if not self.plan_ids:
             raise UserError(_("There is nothing to share until the comparison has plans."))
+
         attachment = self._comparison_pdf_attachment()
+        channel = self._wa_conversation()
+        if channel:
+            channel.message_post(
+                # message_post escapes a plain str, which would send the
+                # customer literal <p> tags.
+                body=Markup("<p>%s</p>") % _(
+                    "Here is the cover comparison from %(company)s. It sets the "
+                    "plans side by side so you can see what each one covers and "
+                    "what it costs.",
+                    company=self.company_id.name,
+                ),
+                message_type="comment",
+                attachment_ids=attachment.ids,
+            )
+            self.action_mark_sent()
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("WhatsApp"),
+                "res_model": "discuss.channel",
+                "res_id": channel.id,
+                "view_mode": "form",
+            }
+
         token = attachment.generate_access_token()[0]
         link = "%s/web/content/%s?access_token=%s&download=true" % (
             self.get_base_url(), attachment.id, token,

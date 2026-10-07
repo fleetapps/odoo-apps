@@ -26,8 +26,12 @@
            top margin in a way that is easy to get wrong -- and when it is
            wrong it prints across the customer's name -- so it simply flows
            here instead, and grows safely if the address gets longer. */
-        .oq-letter { width: 100%; border-bottom: 1.2pt solid <t t-out="brand"/>;
-                     padding-bottom: 4pt; }
+        /* Odoo's report stylesheet puts borders on bare tables; the letterhead
+           is a layout table, not a grid, so they are cleared explicitly and
+           only the brand rule under it is kept. */
+        .oq-letter, .oq-letter tr, .oq-letter td { border: 0 none; }
+        .oq-letter { width: 100%; padding-bottom: 4pt;
+                     border-bottom: 1.2pt solid <t t-out="brand"/>; }
         .oq-letter td { vertical-align: top; padding-bottom: 3pt; }
         .oq-logo { max-height: 30pt; max-width: 165pt; }
         .oq-company { text-align: right; }
