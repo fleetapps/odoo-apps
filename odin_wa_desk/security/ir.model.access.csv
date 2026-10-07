@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_wa_link_client,wa link client wizard,model_odin_wa_link_client,whatsapp_connector.group_whatsapp_user,1,1,1,1

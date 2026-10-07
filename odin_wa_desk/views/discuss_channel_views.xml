@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- "Log as Request" sits next to Create Lead: a conversation becomes
-         either a sales lead or a service request, and the person reading it
-         decides which. Gated on helpdesk access so nobody is shown a button
-         that would only refuse them.
-
-         The Requests counter is not decoration: it is what stops the same
-         conversation being logged twice by two people. -->
+    <!-- The same two actions as in the conversation header, for the Inbox form a
+         manager triages from. Link to Client comes first: both record-creating
+         buttons write to whatever contact the conversation carries. -->
     <record id="discuss_channel_whatsapp_view_form" model="ir.ui.view">
         <field name="name">discuss.channel.whatsapp.form.desk</field>
         <field name="model">discuss.channel</field>
         <field name="inherit_id" ref="whatsapp_connector.discuss_channel_whatsapp_view_form"/>
         <field name="arch" type="xml">
-            <button name="action_wa_create_lead" position="before">
-                <button name="action_wa_create_ticket" type="object"
-                        string="Log as Request"
+            <!-- two buttons carry the name action_wa_create_lead ("Create Lead"
+                 and "Open Lead"); [1] says which one rather than relying on a
+                 bare locator matching the first silently -->
+            <xpath expr="(//button[@name='action_wa_create_lead'])[1]" position="before">
+                <button name="action_wa_link_client" type="object" string="Link to Client"/>
+                <button name="action_wa_create_ticket" type="object" string="Create Ticket"
                         groups="helpdesk_mgmt.group_helpdesk_user_own"/>
-            </button>
+            </xpath>
             <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
                 <div class="oe_button_box" name="wa_desk_buttons">
                     <button name="action_wa_open_tickets" type="object"

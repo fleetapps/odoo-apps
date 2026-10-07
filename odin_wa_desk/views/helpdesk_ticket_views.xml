@@ -9,8 +9,13 @@
                 <button name="action_wa_open_chat" type="object"
                         string="Open WhatsApp Chat" invisible="not wa_channel_id"/>
             </header>
+            <!-- The conversation is reached by the header button, which adds
+                 whoever works the ticket as a member first: only members may
+                 read a WhatsApp conversation, so a plain link would be a dead
+                 end. The field is carried only so the button can hide itself. -->
             <field name="partner_id" position="after">
-                <field name="wa_channel_id" invisible="not wa_channel_id"/>
+                <field name="wa_phone" invisible="not wa_phone"/>
+                <field name="wa_channel_id" invisible="1"/>
             </field>
         </field>
     </record>

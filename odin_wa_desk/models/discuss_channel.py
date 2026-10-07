@@ -1,15 +1,17 @@
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tools import html2plaintext
-from odoo.tools.misc import format_datetime
 
-#: how many of the conversation's most recent messages go into the description
-TRANSCRIPT_LENGTH = 15
-#: the ticket subject is the client's own words, cut to something readable
-SUMMARY_LENGTH = 70
-#: the team a WhatsApp request goes to unless the user moves it
+from odoo.addons.mail.tools.discuss import Store
+from odoo.addons.whatsapp_connector.models.discuss_channel import is_whatsapp_channel
+
+#: the lowest helpdesk tier that carries the create permission on a ticket
+DESK_GROUP = "helpdesk_mgmt.group_helpdesk_user_own"
+#: the subject is the client's own sentence, cut to what a list can show
+SUBJECT_LENGTH = 70
+#: where a WhatsApp request lands unless whoever logs it moves it
 DEFAULT_TEAM = "Client Service"
 #: the helpdesk channel that records how the request arrived
 ARRIVED_BY = "WhatsApp"
@@ -25,53 +27,74 @@ class DiscussChannel(models.Model):
 
     @api.depends("wa_ticket_ids")
     def _compute_wa_ticket_count(self):
+        # sudo: the count belongs to whoever may read the conversation; the
+        # tickets themselves are still opened with the user's own rights
         for channel in self:
             channel.wa_ticket_count = len(channel.sudo().wa_ticket_ids)
 
     # ------------------------------------------------------------------
-    # Log a conversation as a service request
+    # Discuss UI
+    # ------------------------------------------------------------------
+
+    def _to_store_defaults(self, target):
+        fields_ = super()._to_store_defaults(target)
+        if target.is_current_user(self.env):
+            # the header action is hidden rather than left to fail for someone
+            # without the service desk
+            can_create = self.env.user.has_group(DESK_GROUP)
+            fields_.append(Store.Attr(
+                "wa_can_create_ticket", can_create, predicate=is_whatsapp_channel,
+            ))
+        return fields_
+
+    # ------------------------------------------------------------------
+    # Create Ticket
     # ------------------------------------------------------------------
 
     def action_wa_create_ticket(self):
-        """Open a helpdesk ticket from this conversation.
+        """Open a service request from this conversation.
 
-        Logging a WhatsApp request has to cost one click or it does not get
-        logged at all, so the client's own words are carried over rather than
-        retyped, and the ticket opens straight away for the team and category
-        to be set while the conversation is still in front of the user.
+        The ticket records the commitment -- who asked, for what, who owns it --
+        and links back here. The conversation stays the single copy of what was
+        said: a transcript in the ticket would be one message out of date as
+        soon as the client writes again, and two versions of a client's words
+        is worse than one.
         """
         self.ensure_one()
         if self.channel_type != "whatsapp":
             raise UserError(self.env._(
                 "Only WhatsApp conversations can be logged as a service request.",
             ))
+        if not self.env.user.has_group(DESK_GROUP):
+            raise AccessError(self.env._("You do not have access to the service desk."))
         channel = self.sudo()
         partner = channel.wa_partner_id
         if not partner:
             raise UserError(self.env._(
-                "This conversation has no contact yet, so there is nobody to open the "
+                "This conversation has no contact yet, so there is nobody to open a "
                 "request for.",
             ))
         values = {
-            "name": self._wa_ticket_summary(),
-            "description": self._wa_ticket_description(),
+            "name": channel._wa_ticket_subject(),
+            "description": channel._wa_ticket_description(),
             "partner_id": partner.id,
             "user_id": self.env.user.id,
             "wa_channel_id": self.id,
+            "wa_phone": channel.wa_customer_phone
+            or (f"@{channel.wa_username}" if channel.wa_username else ""),
         }
-        team = self._wa_ticket_team()
+        team = self.env["helpdesk.ticket.team"].search([("name", "=", DEFAULT_TEAM)], limit=1) \
+            or self.env["helpdesk.ticket.team"].search([], order="sequence, id", limit=1)
         if team:
             values["team_id"] = team.id
-        arrived_by = self.env["helpdesk.ticket.channel"].search(
-            [("name", "=", ARRIVED_BY)], limit=1,
-        )
-        if arrived_by:
-            values["channel_id"] = arrived_by.id
+        arrived = self.env["helpdesk.ticket.channel"].search([("name", "=", ARRIVED_BY)], limit=1)
+        if arrived:
+            values["channel_id"] = arrived.id
         ticket = self.env["helpdesk.ticket"].create(values)
-        # Markup: the translation is escaped around the link
-        link = ticket._get_html_link()
         channel.with_context(wa_skip_send=True).message_post(
-            body=self.env._("Service request %s opened from this conversation.", link),
+            # Markup: the translation is escaped around the link
+            body=self.env._("Service request %s opened from this conversation.",
+                            ticket._get_html_link()),
             message_type="notification",
         )
         return ticket._wa_ticket_action()
@@ -85,73 +108,62 @@ class DiscussChannel(models.Model):
             "res_model": "helpdesk.ticket",
             "domain": [("wa_channel_id", "=", self.id)],
             "views": [(False, "list"), (False, "form")],
-            "context": {"default_wa_channel_id": self.id,
-                        "default_partner_id": self.sudo().wa_partner_id.id},
+            "context": {},
         }
 
-    # ------------------------------------------------------------------
-    # What the ticket says
-    # ------------------------------------------------------------------
+    def _wa_ticket_subject(self):
+        """What the client last asked, in their own words.
 
-    def _wa_ticket_messages(self):
-        """The conversation's real messages, oldest first: no audit notes."""
-        self.ensure_one()
-        messages = self.sudo().message_ids.filtered(
-            lambda m: m.message_type in ("whatsapp_message", "comment") and m.body,
-        ).sorted("id")
-        return messages[-TRANSCRIPT_LENGTH:]
-
-    def _wa_ticket_summary(self):
-        """The subject: what the client last asked, in their words.
-
-        Falls back to the latest message of either side, then to the contact's
-        name, because the subject is required and an empty one is worse than an
-        approximate one.
+        The subject is required, and their sentence is a better handle on the
+        request than anything generic. Falls back to the latest message of
+        either side, then to the contact's name.
         """
         self.ensure_one()
-        channel = self.sudo()
-        messages = self._wa_ticket_messages()
-        from_client = messages.filtered(lambda m: m.author_id == channel.wa_partner_id)
+        messages = self.message_ids.filtered(
+            lambda m: m.message_type in ("whatsapp_message", "comment") and m.body,
+        ).sorted("id")
+        from_client = messages.filtered(lambda m: m.author_id == self.wa_partner_id)
         latest = (from_client or messages)[-1:]
         text = " ".join(html2plaintext(latest.body or "").split()) if latest else ""
         if not text:
-            return self.env._("WhatsApp request from %s", channel.wa_partner_id.display_name)
-        return text[:SUMMARY_LENGTH - 1] + "…" if len(text) > SUMMARY_LENGTH else text
+            return self.env._("WhatsApp request from %s", self.wa_partner_id.display_name)
+        return text[:SUBJECT_LENGTH - 1] + "…" if len(text) > SUBJECT_LENGTH else text
 
     def _wa_ticket_description(self):
-        """The recent conversation, as plain text turned into safe HTML.
+        """Where the request came from, and nothing else.
 
-        Message bodies are rendered by WhatsApp and by Odoo users, so they are
-        flattened to text and re-escaped rather than pasted into the ticket.
+        ``description`` is required on a ticket; this fills it with provenance
+        rather than with a copy of the conversation.
         """
         self.ensure_one()
-        channel = self.sudo()
-        customer = channel.wa_partner_id
-        rows = []
-        for message in self._wa_ticket_messages():
-            text = " ".join(html2plaintext(message.body or "").split())
-            if not text:
-                continue
-            who = customer.display_name if message.author_id == customer else (
-                message.author_id.display_name or self.env._("Us")
-            )
-            when = format_datetime(self.env, message.date, dt_format="short")
-            rows.append("<li><b>%s</b> <span class='text-muted'>%s</span><br/>%s</li>" % (
-                escape(who), escape(when), escape(text),
-            ))
-        heading = self.env._("From the WhatsApp conversation with %s",
-                            customer.display_name or channel.wa_customer_contact or "")
-        if not rows:
-            return Markup("<p>%s</p>") % heading
-        return Markup("<p><b>%s</b></p><ul>%s</ul>") % (heading, Markup("".join(rows)))
-
-    def _wa_ticket_team(self):
-        """Where a WhatsApp request lands by default.
-
-        Client Service if it exists, otherwise the first team, otherwise none:
-        a missing team must not stop the request being logged.
-        """
-        Team = self.env["helpdesk.ticket.team"]
-        return Team.search([("name", "=", DEFAULT_TEAM)], limit=1) or Team.search(
-            [], order="sequence, id", limit=1,
+        return Markup("<p>%s</p>") % self.env._(
+            "Logged from the WhatsApp conversation with %(name)s (%(phone)s).",
+            name=self.wa_partner_id.display_name or "",
+            phone=self.wa_customer_phone
+            or (f"@{self.wa_username}" if self.wa_username else self.env._("no number")),
         )
+
+    # ------------------------------------------------------------------
+    # Link to Client
+    # ------------------------------------------------------------------
+
+    def action_wa_link_client(self):
+        """Point this conversation at the client's real contact.
+
+        A number WhatsApp has not seen before gets a brand new contact, which is
+        a duplicate whenever the client is already on file under another number
+        or spelling. Create Lead and Create Ticket both write to whatever
+        contact the conversation carries, so this is the action that has to come
+        before either of them.
+        """
+        self.ensure_one()
+        if self.channel_type != "whatsapp":
+            raise UserError(self.env._("Only WhatsApp conversations have a client to link."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Link to Client"),
+            "res_model": "odin.wa.link.client",
+            "views": [(False, "form")],
+            "target": "new",
+            "context": {"default_channel_id": self.id},
+        }
