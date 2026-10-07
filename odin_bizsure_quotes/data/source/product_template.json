@@ -1,0 +1,6632 @@
+[
+ {
+  "id": 37,
+  "default_code": "DOM",
+  "name": "Domestic Package (Home)",
+  "list_price": 18000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 38,
+  "default_code": "FIR",
+  "name": "Fire & Industrial All Risks",
+  "list_price": 420000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 36,
+  "default_code": "GMD",
+  "name": "Medical – Group (Corporate)",
+  "list_price": 1800000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 40,
+  "default_code": "MAR",
+  "name": "Marine Cargo",
+  "list_price": 55000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 34,
+  "default_code": "MCM",
+  "name": "Motor Commercial",
+  "list_price": 145000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 35,
+  "default_code": "MED",
+  "name": "Medical – Individual & Family",
+  "list_price": 85000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 33,
+  "default_code": "MPC",
+  "name": "Motor Private – Comprehensive",
+  "list_price": 65000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 42,
+  "default_code": "PIN",
+  "name": "Professional Indemnity",
+  "list_price": 180000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 41,
+  "default_code": "TRV",
+  "name": "Travel Insurance",
+  "list_price": 7500,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 39,
+  "default_code": "WIB",
+  "name": "WIBA (Work Injury Benefits)",
+  "list_price": 120000,
+  "categ_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 100,
+  "default_code": "FEE-STAMP",
+  "name": "Stamp Duty",
+  "list_price": 40,
+  "categ_id": [
+   12,
+   "Insurance Premiums / Fees & Instalment Charges"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Statutory stamp duty, charged once per policy.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 103,
+  "default_code": "IPF-10M",
+  "name": "Instalment Plan Interest – 10 Months (22.5% of Total Payable)",
+  "list_price": 0,
+  "categ_id": [
+   12,
+   "Insurance Premiums / Fees & Instalment Charges"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": false,
+  "purchase_ok": false,
+  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 10 monthly instalments, interest 3% per month on the financed balance.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 101,
+  "default_code": "IPF-3M",
+  "name": "Instalment Plan Interest – 3 Months (6.75% of Total Payable)",
+  "list_price": 0,
+  "categ_id": [
+   12,
+   "Insurance Premiums / Fees & Instalment Charges"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": false,
+  "purchase_ok": false,
+  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 3 monthly instalments, interest 3% per month on the financed balance.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 102,
+  "default_code": "IPF-6M",
+  "name": "Instalment Plan Interest – 6 Months (13.5% of Total Payable)",
+  "list_price": 0,
+  "categ_id": [
+   12,
+   "Insurance Premiums / Fees & Instalment Charges"
+  ],
+  "type": "service",
+  "taxes_id": [],
+  "sale_ok": false,
+  "purchase_ok": false,
+  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 6 monthly instalments, interest 3% per month on the financed balance.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 178,
+  "default_code": "JP-IP10M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Child (Day 1 to 20 Years)",
+  "list_price": 32340,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 104,
+  "default_code": "JP-IP10M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Principal (21–40 Years)",
+  "list_price": 57261,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 111,
+  "default_code": "JP-IP10M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Principal (41–54 Years)",
+  "list_price": 75430,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 118,
+  "default_code": "JP-IP10M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Principal (55–65 Years)",
+  "list_price": 105976,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 125,
+  "default_code": "JP-IP10M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Principal (66–70 Years)",
+  "list_price": 152739,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 141,
+  "default_code": "JP-IP10M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Spouse (21–40 Years)",
+  "list_price": 46069,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 148,
+  "default_code": "JP-IP10M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Spouse (41–54 Years)",
+  "list_price": 60604,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 155,
+  "default_code": "JP-IP10M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Spouse (55–65 Years)",
+  "list_price": 87204,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 162,
+  "default_code": "JP-IP10M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 10,000,000 – Spouse (66–70 Years)",
+  "list_price": 130023,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 183,
+  "default_code": "JP-IP1M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Child (Day 1 to 20 Years)",
+  "list_price": 12646,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 109,
+  "default_code": "JP-IP1M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (21–40 Years)",
+  "list_price": 29281,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 116,
+  "default_code": "JP-IP1M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (41–54 Years)",
+  "list_price": 38366,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 123,
+  "default_code": "JP-IP1M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (55–65 Years)",
+  "list_price": 53588,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 130,
+  "default_code": "JP-IP1M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (66–70 Years)",
+  "list_price": 68311,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 135,
+  "default_code": "JP-IP1M-P71",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (71–75 Years)",
+  "list_price": 75012,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 139,
+  "default_code": "JP-IP1M-P76",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Principal (76–80 Years)",
+  "list_price": 89754,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 146,
+  "default_code": "JP-IP1M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (21–40 Years)",
+  "list_price": 23685,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 153,
+  "default_code": "JP-IP1M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (41–54 Years)",
+  "list_price": 30953,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 160,
+  "default_code": "JP-IP1M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (55–65 Years)",
+  "list_price": 45746,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 167,
+  "default_code": "JP-IP1M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (66–70 Years)",
+  "list_price": 58259,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 172,
+  "default_code": "JP-IP1M-S71",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (71–75 Years)",
+  "list_price": 63956,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 176,
+  "default_code": "JP-IP1M-S76",
+  "name": "Jamii Plus Inpatient (Family) – KES 1,000,000 – Spouse (76–80 Years)",
+  "list_price": 76486,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 182,
+  "default_code": "JP-IP2M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Child (Day 1 to 20 Years)",
+  "list_price": 14904,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 108,
+  "default_code": "JP-IP2M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (21–40 Years)",
+  "list_price": 34278,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 115,
+  "default_code": "JP-IP2M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (41–54 Years)",
+  "list_price": 44984,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 122,
+  "default_code": "JP-IP2M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (55–65 Years)",
+  "list_price": 62925,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 129,
+  "default_code": "JP-IP2M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (66–70 Years)",
+  "list_price": 80277,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 134,
+  "default_code": "JP-IP2M-P71",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (71–75 Years)",
+  "list_price": 89115,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 138,
+  "default_code": "JP-IP2M-P76",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Principal (76–80 Years)",
+  "list_price": 127789,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 145,
+  "default_code": "JP-IP2M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (21–40 Years)",
+  "list_price": 27682,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 152,
+  "default_code": "JP-IP2M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (41–54 Years)",
+  "list_price": 36248,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 159,
+  "default_code": "JP-IP2M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (55–65 Years)",
+  "list_price": 53682,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 166,
+  "default_code": "JP-IP2M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (66–70 Years)",
+  "list_price": 68430,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 171,
+  "default_code": "JP-IP2M-S71",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (71–75 Years)",
+  "list_price": 75942,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 175,
+  "default_code": "JP-IP2M-S76",
+  "name": "Jamii Plus Inpatient (Family) – KES 2,000,000 – Spouse (76–80 Years)",
+  "list_price": 109142,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 181,
+  "default_code": "JP-IP3M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Child (Day 1 to 20 Years)",
+  "list_price": 16345,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 107,
+  "default_code": "JP-IP3M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (21–40 Years)",
+  "list_price": 37465,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 114,
+  "default_code": "JP-IP3M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (41–54 Years)",
+  "list_price": 49207,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 121,
+  "default_code": "JP-IP3M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (55–65 Years)",
+  "list_price": 72970,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 128,
+  "default_code": "JP-IP3M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (66–70 Years)",
+  "list_price": 104446,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 133,
+  "default_code": "JP-IP3M-P71",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (71–75 Years)",
+  "list_price": 120476,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 137,
+  "default_code": "JP-IP3M-P76",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Principal (76–80 Years)",
+  "list_price": 152820,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 144,
+  "default_code": "JP-IP3M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (21–40 Years)",
+  "list_price": 30233,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 151,
+  "default_code": "JP-IP3M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (41–54 Years)",
+  "list_price": 39534,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 158,
+  "default_code": "JP-IP3M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (55–65 Years)",
+  "list_price": 57740,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 165,
+  "default_code": "JP-IP3M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (66–70 Years)",
+  "list_price": 88973,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 170,
+  "default_code": "JP-IP3M-S71",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (71–75 Years)",
+  "list_price": 102600,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 174,
+  "default_code": "JP-IP3M-S76",
+  "name": "Jamii Plus Inpatient (Family) – KES 3,000,000 – Spouse (76–80 Years)",
+  "list_price": 134348,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 184,
+  "default_code": "JP-IP500K-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Child (Day 1 to 20 Years)",
+  "list_price": 9033,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 110,
+  "default_code": "JP-IP500K-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (21–40 Years)",
+  "list_price": 21286,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 117,
+  "default_code": "JP-IP500K-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (41–54 Years)",
+  "list_price": 27775,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 124,
+  "default_code": "JP-IP500K-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (55–65 Years)",
+  "list_price": 38649,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 131,
+  "default_code": "JP-IP500K-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (66–70 Years)",
+  "list_price": 49164,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 136,
+  "default_code": "JP-IP500K-P71",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (71–75 Years)",
+  "list_price": 53951,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 140,
+  "default_code": "JP-IP500K-P76",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Principal (76–80 Years)",
+  "list_price": 77116,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 147,
+  "default_code": "JP-IP500K-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (21–40 Years)",
+  "list_price": 17289,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 154,
+  "default_code": "JP-IP500K-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (41–54 Years)",
+  "list_price": 22480,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 161,
+  "default_code": "JP-IP500K-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (55–65 Years)",
+  "list_price": 33047,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 168,
+  "default_code": "JP-IP500K-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (66–70 Years)",
+  "list_price": 41985,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 173,
+  "default_code": "JP-IP500K-S71",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (71–75 Years)",
+  "list_price": 46053,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 177,
+  "default_code": "JP-IP500K-S76",
+  "name": "Jamii Plus Inpatient (Family) – KES 500,000 – Spouse (76–80 Years)",
+  "list_price": 65745,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 180,
+  "default_code": "JP-IP5M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Child (Day 1 to 20 Years)",
+  "list_price": 18065,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 106,
+  "default_code": "JP-IP5M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Principal (21–40 Years)",
+  "list_price": 41272,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 113,
+  "default_code": "JP-IP5M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Principal (41–54 Years)",
+  "list_price": 54250,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 120,
+  "default_code": "JP-IP5M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Principal (55–65 Years)",
+  "list_price": 80514,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 127,
+  "default_code": "JP-IP5M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Principal (66–70 Years)",
+  "list_price": 120731,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 132,
+  "default_code": "JP-IP5M-P71",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Principal (71–75 Years)",
+  "list_price": 139294,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 143,
+  "default_code": "JP-IP5M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Spouse (21–40 Years)",
+  "list_price": 33277,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 150,
+  "default_code": "JP-IP5M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Spouse (41–54 Years)",
+  "list_price": 43660,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 157,
+  "default_code": "JP-IP5M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Spouse (55–65 Years)",
+  "list_price": 63681,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 164,
+  "default_code": "JP-IP5M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Spouse (66–70 Years)",
+  "list_price": 102816,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 169,
+  "default_code": "JP-IP5M-S71",
+  "name": "Jamii Plus Inpatient (Family) – KES 5,000,000 – Spouse (71–75 Years)",
+  "list_price": 118594,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 179,
+  "default_code": "JP-IP7.5M-C",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Child (Day 1 to 20 Years)",
+  "list_price": 26865,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 105,
+  "default_code": "JP-IP7.5M-P21",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Principal (21–40 Years)",
+  "list_price": 49325,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 112,
+  "default_code": "JP-IP7.5M-P41",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Principal (41–54 Years)",
+  "list_price": 64917,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 119,
+  "default_code": "JP-IP7.5M-P55",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Principal (55–65 Years)",
+  "list_price": 95144,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 126,
+  "default_code": "JP-IP7.5M-P66",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Principal (66–70 Years)",
+  "list_price": 143357,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 142,
+  "default_code": "JP-IP7.5M-S21",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Spouse (21–40 Years)",
+  "list_price": 39720,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 149,
+  "default_code": "JP-IP7.5M-S41",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Spouse (41–54 Years)",
+  "list_price": 52194,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 156,
+  "default_code": "JP-IP7.5M-S55",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Spouse (55–65 Years)",
+  "list_price": 76974,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 163,
+  "default_code": "JP-IP7.5M-S66",
+  "name": "Jamii Plus Inpatient (Family) – KES 7,500,000 – Spouse (66–70 Years)",
+  "list_price": 122048,
+  "categ_id": [
+   14,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 185,
+  "default_code": "JP-IPCO10M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 10,000,000",
+  "list_price": 48744,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 190,
+  "default_code": "JP-IPCO1M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 1,000,000",
+  "list_price": 21281,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 189,
+  "default_code": "JP-IPCO2M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 2,000,000",
+  "list_price": 26046,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 188,
+  "default_code": "JP-IPCO3M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 3,000,000",
+  "list_price": 28762,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 191,
+  "default_code": "JP-IPCO500K",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 500,000",
+  "list_price": 15786,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 187,
+  "default_code": "JP-IPCO5M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 5,000,000",
+  "list_price": 31571,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 186,
+  "default_code": "JP-IPCO7.5M",
+  "name": "Jamii Plus Inpatient (Child Only) – KES 7,500,000",
+  "list_price": 38669,
+  "categ_id": [
+   15,
+   "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 194,
+  "default_code": "JP-OP100K-00",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (Day 1 to 20 Years)",
+  "list_price": 28398,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 199,
+  "default_code": "JP-OP100K-21",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (21–40 Years)",
+  "list_price": 34079,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 204,
+  "default_code": "JP-OP100K-41",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (41–54 Years)",
+  "list_price": 40894,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 209,
+  "default_code": "JP-OP100K-55",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (55–65 Years)",
+  "list_price": 47028,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 214,
+  "default_code": "JP-OP100K-66",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (66–70 Years)",
+  "list_price": 53980,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 219,
+  "default_code": "JP-OP100K-71",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (71–75 Years)",
+  "list_price": 55028,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 224,
+  "default_code": "JP-OP100K-76",
+  "name": "Jamii Plus Outpatient – KES 100,000 per Person (76–80 Years)",
+  "list_price": 69610,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 193,
+  "default_code": "JP-OP150K-00",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)",
+  "list_price": 36918,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 198,
+  "default_code": "JP-OP150K-21",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)",
+  "list_price": 44301,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 203,
+  "default_code": "JP-OP150K-41",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (41–54 Years)",
+  "list_price": 53161,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 208,
+  "default_code": "JP-OP150K-55",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (55–65 Years)",
+  "list_price": 61137,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 213,
+  "default_code": "JP-OP150K-66",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (66–70 Years)",
+  "list_price": 70174,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 218,
+  "default_code": "JP-OP150K-71",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (71–75 Years)",
+  "list_price": 71537,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 223,
+  "default_code": "JP-OP150K-76",
+  "name": "Jamii Plus Outpatient – KES 150,000 per Person (76–80 Years)",
+  "list_price": 82266,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 192,
+  "default_code": "JP-OP200K-00",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)",
+  "list_price": 41778,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 197,
+  "default_code": "JP-OP200K-21",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)",
+  "list_price": 50070,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 202,
+  "default_code": "JP-OP200K-41",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (41–54 Years)",
+  "list_price": 59334,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 207,
+  "default_code": "JP-OP200K-55",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (55–65 Years)",
+  "list_price": 64505,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 212,
+  "default_code": "JP-OP200K-66",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (66–70 Years)",
+  "list_price": 76045,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 217,
+  "default_code": "JP-OP200K-71",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (71–75 Years)",
+  "list_price": 77522,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 222,
+  "default_code": "JP-OP200K-76",
+  "name": "Jamii Plus Outpatient – KES 200,000 per Person (76–80 Years)",
+  "list_price": 89150,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 196,
+  "default_code": "JP-OP50K-00",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)",
+  "list_price": 20040,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 201,
+  "default_code": "JP-OP50K-21",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)",
+  "list_price": 23947,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 206,
+  "default_code": "JP-OP50K-41",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (41–54 Years)",
+  "list_price": 28981,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 211,
+  "default_code": "JP-OP50K-55",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (55–65 Years)",
+  "list_price": 33858,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 216,
+  "default_code": "JP-OP50K-66",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (66–70 Years)",
+  "list_price": 38255,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 221,
+  "default_code": "JP-OP50K-71",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (71–75 Years)",
+  "list_price": 40855,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 226,
+  "default_code": "JP-OP50K-76",
+  "name": "Jamii Plus Outpatient – KES 50,000 per Person (76–80 Years)",
+  "list_price": 48394,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 195,
+  "default_code": "JP-OP75K-00",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)",
+  "list_price": 23532,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 200,
+  "default_code": "JP-OP75K-21",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)",
+  "list_price": 28238,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 205,
+  "default_code": "JP-OP75K-41",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (41–54 Years)",
+  "list_price": 33886,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 210,
+  "default_code": "JP-OP75K-55",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (55–65 Years)",
+  "list_price": 38970,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 215,
+  "default_code": "JP-OP75K-66",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (66–70 Years)",
+  "list_price": 44731,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 220,
+  "default_code": "JP-OP75K-71",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (71–75 Years)",
+  "list_price": 45599,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 225,
+  "default_code": "JP-OP75K-76",
+  "name": "Jamii Plus Outpatient – KES 75,000 per Person (76–80 Years)",
+  "list_price": 57683,
+  "categ_id": [
+   16,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 229,
+  "default_code": "JP-OPCO100K",
+  "name": "Jamii Plus Outpatient (Child Only) – KES 100,000",
+  "list_price": 32154,
+  "categ_id": [
+   17,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 228,
+  "default_code": "JP-OPCO150K",
+  "name": "Jamii Plus Outpatient (Child Only) – KES 150,000",
+  "list_price": 41142,
+  "categ_id": [
+   17,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 227,
+  "default_code": "JP-OPCO200K",
+  "name": "Jamii Plus Outpatient (Child Only) – KES 200,000",
+  "list_price": 49408,
+  "categ_id": [
+   17,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 231,
+  "default_code": "JP-OPCO50K",
+  "name": "Jamii Plus Outpatient (Child Only) – KES 50,000",
+  "list_price": 22926,
+  "categ_id": [
+   17,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 230,
+  "default_code": "JP-OPCO75K",
+  "name": "Jamii Plus Outpatient (Child Only) – KES 75,000",
+  "list_price": 26726,
+  "categ_id": [
+   17,
+   "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 235,
+  "default_code": "JP-MAT100K",
+  "name": "Jamii Plus Maternity – KES 100,000 per Family",
+  "list_price": 23320,
+  "categ_id": [
+   18,
+   "Insurance Premiums / APA Jamii Plus / Maternity"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "For the female principal or spouse. Consultations before delivery, normal delivery and elective C-section covered after 10 months of cover. IVF and related treatment at an APA pre-authorised provider up to KES 50,000 after 10 months.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 234,
+  "default_code": "JP-MAT150K",
+  "name": "Jamii Plus Maternity – KES 150,000 per Family",
+  "list_price": 34980,
+  "categ_id": [
+   18,
+   "Insurance Premiums / APA Jamii Plus / Maternity"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "For the female principal or spouse. Consultations before delivery, normal delivery and elective C-section covered after 10 months of cover. IVF and related treatment at an APA pre-authorised provider up to KES 75,000 after 10 months.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 233,
+  "default_code": "JP-MAT200K",
+  "name": "Jamii Plus Maternity – KES 200,000 per Family",
+  "list_price": 46025,
+  "categ_id": [
+   18,
+   "Insurance Premiums / APA Jamii Plus / Maternity"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "For the female principal or spouse. Consultations before delivery, normal delivery and elective C-section covered after 10 months of cover. IVF and related treatment at an APA pre-authorised provider up to KES 100,000 after 10 months.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 232,
+  "default_code": "JP-MAT250K",
+  "name": "Jamii Plus Maternity – KES 250,000 per Family",
+  "list_price": 60925,
+  "categ_id": [
+   18,
+   "Insurance Premiums / APA Jamii Plus / Maternity"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "For the female principal or spouse. Consultations before delivery, normal delivery and elective C-section covered after 10 months of cover. IVF and related treatment at an APA pre-authorised provider up to KES 100,000 after 10 months.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 236,
+  "default_code": "JP-MAT50K",
+  "name": "Jamii Plus Maternity – KES 50,000 per Family",
+  "list_price": 11660,
+  "categ_id": [
+   18,
+   "Insurance Premiums / APA Jamii Plus / Maternity"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "For the female principal or spouse. Consultations before delivery, normal delivery and elective C-section covered after 10 months of cover. IVF and related treatment at an APA pre-authorised provider up to KES 50,000 after 10 months.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 244,
+  "default_code": "JP-DEN10K",
+  "name": "Jamii Plus Dental – KES 10,000 per Person",
+  "list_price": 4000,
+  "categ_id": [
+   19,
+   "Insurance Premiums / APA Jamii Plus / Dental"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Consultations, extractions and fillings, root canal treatment and anaesthetic fees, dental X-rays and prescriptions, and braces for dependants under 18. Excludes crowns, caps, bridges, orthodontics, dentures, plates and self-prescribed scaling. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 243,
+  "default_code": "JP-DEN20K",
+  "name": "Jamii Plus Dental – KES 20,000 per Person",
+  "list_price": 6950,
+  "categ_id": [
+   19,
+   "Insurance Premiums / APA Jamii Plus / Dental"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Consultations, extractions and fillings, root canal treatment and anaesthetic fees, dental X-rays and prescriptions, and braces for dependants under 18. Excludes crowns, caps, bridges, orthodontics, dentures, plates and self-prescribed scaling. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 242,
+  "default_code": "JP-DEN30K",
+  "name": "Jamii Plus Dental – KES 30,000 per Person",
+  "list_price": 10050,
+  "categ_id": [
+   19,
+   "Insurance Premiums / APA Jamii Plus / Dental"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Consultations, extractions and fillings, root canal treatment and anaesthetic fees, dental X-rays and prescriptions, and braces for dependants under 18. Excludes crowns, caps, bridges, orthodontics, dentures, plates and self-prescribed scaling. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 241,
+  "default_code": "JP-DEN40K",
+  "name": "Jamii Plus Dental – KES 40,000 per Person",
+  "list_price": 15560,
+  "categ_id": [
+   19,
+   "Insurance Premiums / APA Jamii Plus / Dental"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Consultations, extractions and fillings, root canal treatment and anaesthetic fees, dental X-rays and prescriptions, and braces for dependants under 18. Excludes crowns, caps, bridges, orthodontics, dentures, plates and self-prescribed scaling. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 240,
+  "default_code": "JP-OPT10K",
+  "name": "Jamii Plus Optical – KES 10,000 per Person",
+  "list_price": 4000,
+  "categ_id": [
+   20,
+   "Insurance Premiums / APA Jamii Plus / Optical"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Frames up to KES 5,000, one eye check-up per year, prescription lenses and frames, and blue-block, anti-glare or photochromic lenses where an ophthalmologist confirms significant refractive error. Frames replaceable after 2 years. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 239,
+  "default_code": "JP-OPT20K",
+  "name": "Jamii Plus Optical – KES 20,000 per Person",
+  "list_price": 6950,
+  "categ_id": [
+   20,
+   "Insurance Premiums / APA Jamii Plus / Optical"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Frames up to KES 10,000, one eye check-up per year, prescription lenses and frames, and blue-block, anti-glare or photochromic lenses where an ophthalmologist confirms significant refractive error. Frames replaceable after 2 years. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 238,
+  "default_code": "JP-OPT30K",
+  "name": "Jamii Plus Optical – KES 30,000 per Person",
+  "list_price": 10050,
+  "categ_id": [
+   20,
+   "Insurance Premiums / APA Jamii Plus / Optical"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Frames up to KES 12,500, one eye check-up per year, prescription lenses and frames, and blue-block, anti-glare or photochromic lenses where an ophthalmologist confirms significant refractive error. Frames replaceable after 2 years. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 237,
+  "default_code": "JP-OPT40K",
+  "name": "Jamii Plus Optical – KES 40,000 per Person",
+  "list_price": 15560,
+  "categ_id": [
+   20,
+   "Insurance Premiums / APA Jamii Plus / Optical"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Frames up to KES 15,000, one eye check-up per year, prescription lenses and frames, and blue-block, anti-glare or photochromic lenses where an ophthalmologist confirms significant refractive error. Frames replaceable after 2 years. Available only with outpatient cover.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 246,
+  "default_code": "JP-FEM-GOLD",
+  "name": "Femina Plus Rider – Gold",
+  "list_price": 12000,
+  "categ_id": [
+   21,
+   "Insurance Premiums / APA Jamii Plus / Rider – Femina Plus"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Annual premium (or KES 1,000 per month). Cash benefit on diagnosis of breast, cervical or ovarian cancer: Stage I KES 450,000, Stage II KES 1,500,000, Stage III KES 1,875,000, Stage IV KES 900,000. Includes HPV vaccination, screening and health advice; their cost is deducted from the benefit limit. Requires a negative breast and cervical cancer screening result.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 247,
+  "default_code": "JP-FEM-PLAT",
+  "name": "Femina Plus Rider – Platinum",
+  "list_price": 15000,
+  "categ_id": [
+   21,
+   "Insurance Premiums / APA Jamii Plus / Rider – Femina Plus"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Annual premium (or KES 1,250 per month). Cash benefit on diagnosis of breast, cervical or ovarian cancer: Stage I KES 600,000, Stage II KES 2,000,000, Stage III KES 2,500,000, Stage IV KES 1,200,000. Includes HPV vaccination, screening and health advice; their cost is deducted from the benefit limit. Requires a negative breast and cervical cancer screening result.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 245,
+  "default_code": "JP-FEM-SILVER",
+  "name": "Femina Plus Rider – Silver",
+  "list_price": 6000,
+  "categ_id": [
+   21,
+   "Insurance Premiums / APA Jamii Plus / Rider – Femina Plus"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Annual premium (or KES 500 per month). Cash benefit on diagnosis of breast, cervical or ovarian cancer: Stage I KES 300,000, Stage II KES 1,000,000, Stage III KES 1,250,000, Stage IV KES 600,000. Includes HPV vaccination, screening and health advice; their cost is deducted from the benefit limit. No screening required.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 249,
+  "default_code": "JP-HOSI1-D",
+  "name": "Hosi Cash Rider – Option 1 (KES 30,000) – Each Dependant",
+  "list_price": 300,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 500 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 30,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 248,
+  "default_code": "JP-HOSI1-M",
+  "name": "Hosi Cash Rider – Option 1 (KES 30,000) – Main Member",
+  "list_price": 600,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 500 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 30,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 251,
+  "default_code": "JP-HOSI2-D",
+  "name": "Hosi Cash Rider – Option 2 (KES 50,000) – Each Dependant",
+  "list_price": 500,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 1,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 50,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 250,
+  "default_code": "JP-HOSI2-M",
+  "name": "Hosi Cash Rider – Option 2 (KES 50,000) – Main Member",
+  "list_price": 1000,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 1,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 50,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 253,
+  "default_code": "JP-HOSI3-D",
+  "name": "Hosi Cash Rider – Option 3 (KES 100,000) – Each Dependant",
+  "list_price": 750,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 2,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 100,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 252,
+  "default_code": "JP-HOSI3-M",
+  "name": "Hosi Cash Rider – Option 3 (KES 100,000) – Main Member",
+  "list_price": 2000,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 2,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 100,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 255,
+  "default_code": "JP-HOSI4-D",
+  "name": "Hosi Cash Rider – Option 4 (KES 150,000) – Each Dependant",
+  "list_price": 1050,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 3,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 150,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 254,
+  "default_code": "JP-HOSI4-M",
+  "name": "Hosi Cash Rider – Option 4 (KES 150,000) – Main Member",
+  "list_price": 3000,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 3,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 150,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 257,
+  "default_code": "JP-HOSI5-D",
+  "name": "Hosi Cash Rider – Option 5 (KES 250,000) – Each Dependant",
+  "list_price": 1500,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 5,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 250,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 256,
+  "default_code": "JP-HOSI5-M",
+  "name": "Hosi Cash Rider – Option 5 (KES 250,000) – Main Member",
+  "list_price": 5000,
+  "categ_id": [
+   22,
+   "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Daily cash benefit of KES 5,000 from the 3rd night of continuous hospitalisation, up to 20 days per admission and KES 250,000 per year.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 261,
+  "default_code": "JP-CI1M",
+  "name": "Critical Illness Rider – KES 1,000,000",
+  "list_price": 5000,
+  "categ_id": [
+   23,
+   "Insurance Premiums / APA Jamii Plus / Rider – Critical Illness"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "One-time lump sum on first diagnosis of heart attack, cancer, stroke, kidney failure, coronary artery bypass surgery, major organ transplant, blindness or paraplegia. Cover ends at age 65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 258,
+  "default_code": "JP-CI250K",
+  "name": "Critical Illness Rider – KES 250,000",
+  "list_price": 1250,
+  "categ_id": [
+   23,
+   "Insurance Premiums / APA Jamii Plus / Rider – Critical Illness"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "One-time lump sum on first diagnosis of heart attack, cancer, stroke, kidney failure, coronary artery bypass surgery, major organ transplant, blindness or paraplegia. Cover ends at age 65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 259,
+  "default_code": "JP-CI500K",
+  "name": "Critical Illness Rider – KES 500,000",
+  "list_price": 2500,
+  "categ_id": [
+   23,
+   "Insurance Premiums / APA Jamii Plus / Rider – Critical Illness"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "One-time lump sum on first diagnosis of heart attack, cancer, stroke, kidney failure, coronary artery bypass surgery, major organ transplant, blindness or paraplegia. Cover ends at age 65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 260,
+  "default_code": "JP-CI750K",
+  "name": "Critical Illness Rider – KES 750,000",
+  "list_price": 3750,
+  "categ_id": [
+   23,
+   "Insurance Premiums / APA Jamii Plus / Rider – Critical Illness"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "One-time lump sum on first diagnosis of heart attack, cancer, stroke, kidney failure, coronary artery bypass surgery, major organ transplant, blindness or paraplegia. Cover ends at age 65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 262,
+  "default_code": "JP-PA-A-C1",
+  "name": "Flex Pac Personal Accident Rider – Option A (KES 250,000) – Class (i) Clerical / Administrative",
+  "list_price": 1242,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 250,000; rehabilitation KES 50,000; temporary total disablement KES 1,250 per week (up to 104 weeks); medical expenses KES 25,000; artificial limbs KES 10,000; funeral expenses KES 5,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 263,
+  "default_code": "JP-PA-A-C2",
+  "name": "Flex Pac Personal Accident Rider – Option A (KES 250,000) – Class (ii) Manual",
+  "list_price": 1543,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 250,000; rehabilitation KES 50,000; temporary total disablement KES 1,250 per week (up to 104 weeks); medical expenses KES 25,000; artificial limbs KES 10,000; funeral expenses KES 5,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 264,
+  "default_code": "JP-PA-B-C1",
+  "name": "Flex Pac Personal Accident Rider – Option B (KES 500,000) – Class (i) Clerical / Administrative",
+  "list_price": 2144,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 500,000; rehabilitation KES 100,000; temporary total disablement KES 2,000 per week (up to 104 weeks); medical expenses KES 50,000; artificial limbs KES 20,000; funeral expenses KES 10,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 265,
+  "default_code": "JP-PA-B-C2",
+  "name": "Flex Pac Personal Accident Rider – Option B (KES 500,000) – Class (ii) Manual",
+  "list_price": 2745,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 500,000; rehabilitation KES 100,000; temporary total disablement KES 2,000 per week (up to 104 weeks); medical expenses KES 50,000; artificial limbs KES 20,000; funeral expenses KES 10,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 266,
+  "default_code": "JP-PA-C-C1",
+  "name": "Flex Pac Personal Accident Rider – Option C (KES 1,000,000) – Class (i) Clerical / Administrative",
+  "list_price": 3948,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 1,000,000; rehabilitation KES 200,000; temporary total disablement KES 5,000 per week (up to 104 weeks); medical expenses KES 100,000; artificial limbs KES 30,000; funeral expenses KES 20,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 267,
+  "default_code": "JP-PA-C-C2",
+  "name": "Flex Pac Personal Accident Rider – Option C (KES 1,000,000) – Class (ii) Manual",
+  "list_price": 4549,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 1,000,000; rehabilitation KES 200,000; temporary total disablement KES 5,000 per week (up to 104 weeks); medical expenses KES 100,000; artificial limbs KES 30,000; funeral expenses KES 20,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 268,
+  "default_code": "JP-PA-D-C1",
+  "name": "Flex Pac Personal Accident Rider – Option D (KES 2,000,000) – Class (i) Clerical / Administrative",
+  "list_price": 6854,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 2,000,000; rehabilitation KES 350,000; temporary total disablement KES 10,000 per week (up to 104 weeks); medical expenses KES 200,000; artificial limbs KES 40,000; funeral expenses KES 25,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 269,
+  "default_code": "JP-PA-D-C2",
+  "name": "Flex Pac Personal Accident Rider – Option D (KES 2,000,000) – Class (ii) Manual",
+  "list_price": 8557,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 2,000,000; rehabilitation KES 350,000; temporary total disablement KES 10,000 per week (up to 104 weeks); medical expenses KES 200,000; artificial limbs KES 40,000; funeral expenses KES 25,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 270,
+  "default_code": "JP-PA-E-C1",
+  "name": "Flex Pac Personal Accident Rider – Option E (KES 2,500,000) – Class (i) Clerical / Administrative",
+  "list_price": 8357,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 2,500,000; rehabilitation KES 400,000; temporary total disablement KES 15,000 per week (up to 104 weeks); medical expenses KES 25,000; artificial limbs KES 50,000; funeral expenses KES 30,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 271,
+  "default_code": "JP-PA-E-C2",
+  "name": "Flex Pac Personal Accident Rider – Option E (KES 2,500,000) – Class (ii) Manual",
+  "list_price": 10962,
+  "categ_id": [
+   24,
+   "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Permanent total disablement KES 2,500,000; rehabilitation KES 400,000; temporary total disablement KES 15,000 per week (up to 104 weeks); medical expenses KES 25,000; artificial limbs KES 50,000; funeral expenses KES 30,000. Ages 15–65.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 272,
+  "default_code": "BZ-IP-P1-M",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member Only – Below 70",
+  "list_price": 7783,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 273,
+  "default_code": "BZ-IP-P1-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 1 – Below 70",
+  "list_price": 10654,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 274,
+  "default_code": "BZ-IP-P1-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 2 – Below 70",
+  "list_price": 12376,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 275,
+  "default_code": "BZ-IP-P1-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 3 – Below 70",
+  "list_price": 14099,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 276,
+  "default_code": "BZ-IP-P1-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 4 – Below 70",
+  "list_price": 15822,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 277,
+  "default_code": "BZ-IP-P1-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 5 – Below 70",
+  "list_price": 17544,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 278,
+  "default_code": "BZ-IP-P2-M",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member Only – Below 70",
+  "list_price": 10654,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 279,
+  "default_code": "BZ-IP-P2-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 1 – Below 70",
+  "list_price": 14961,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 280,
+  "default_code": "BZ-IP-P2-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 2 – Below 70",
+  "list_price": 17544,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 281,
+  "default_code": "BZ-IP-P2-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 3 – Below 70",
+  "list_price": 20129,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 282,
+  "default_code": "BZ-IP-P2-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 4 – Below 70",
+  "list_price": 22713,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 283,
+  "default_code": "BZ-IP-P2-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 5 – Below 70",
+  "list_price": 25297,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 284,
+  "default_code": "BZ-IP-P3-M",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member Only – Below 70",
+  "list_price": 13090,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 285,
+  "default_code": "BZ-IP-P3-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 1 – Below 70",
+  "list_price": 18614,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 286,
+  "default_code": "BZ-IP-P3-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 2 – Below 70",
+  "list_price": 21929,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 287,
+  "default_code": "BZ-IP-P3-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 3 – Below 70",
+  "list_price": 25244,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 288,
+  "default_code": "BZ-IP-P3-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 4 – Below 70",
+  "list_price": 28559,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 289,
+  "default_code": "BZ-IP-P3-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 5 – Below 70",
+  "list_price": 31874,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 290,
+  "default_code": "BZ-IP-P4-M",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member Only – Below 70",
+  "list_price": 17610,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 291,
+  "default_code": "BZ-IP-P4-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 1 – Below 70",
+  "list_price": 25395,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 292,
+  "default_code": "BZ-IP-P4-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 2 – Below 70",
+  "list_price": 28509,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 293,
+  "default_code": "BZ-IP-P4-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 3 – Below 70",
+  "list_price": 31623,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 294,
+  "default_code": "BZ-IP-P4-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 4 – Below 70",
+  "list_price": 34736,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 295,
+  "default_code": "BZ-IP-P4-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 5 – Below 70",
+  "list_price": 37850,
+  "categ_id": [
+   26,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 296,
+  "default_code": "BZ-OP-P1-M",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member Only – Below 70",
+  "list_price": 12085,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 297,
+  "default_code": "BZ-OP-P1-M+1",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 1 – Below 70",
+  "list_price": 20121,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 298,
+  "default_code": "BZ-OP-P1-M+2",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 2 – Below 70",
+  "list_price": 20121,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 299,
+  "default_code": "BZ-OP-P1-M+3",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 3 – Below 70",
+  "list_price": 22130,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 300,
+  "default_code": "BZ-OP-P1-M+4",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 4 – Below 70",
+  "list_price": 22130,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 301,
+  "default_code": "BZ-OP-P1-M+5",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 5 – Below 70",
+  "list_price": 22130,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 302,
+  "default_code": "BZ-OP-P2-M",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member Only – Below 70",
+  "list_price": 16920,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 303,
+  "default_code": "BZ-OP-P2-M+1",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 1 – Below 70",
+  "list_price": 26148,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 304,
+  "default_code": "BZ-OP-P2-M+2",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 2 – Below 70",
+  "list_price": 26148,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 305,
+  "default_code": "BZ-OP-P2-M+3",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 3 – Below 70",
+  "list_price": 28823,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 306,
+  "default_code": "BZ-OP-P2-M+4",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 4 – Below 70",
+  "list_price": 28823,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 307,
+  "default_code": "BZ-OP-P2-M+5",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 5 – Below 70",
+  "list_price": 28823,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 308,
+  "default_code": "BZ-OP-P3-M",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member Only – Below 70",
+  "list_price": 21879,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 309,
+  "default_code": "BZ-OP-P3-M+1",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 1 – Below 70",
+  "list_price": 28785,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 310,
+  "default_code": "BZ-OP-P3-M+2",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 2 – Below 70",
+  "list_price": 28785,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 311,
+  "default_code": "BZ-OP-P3-M+3",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 3 – Below 70",
+  "list_price": 31798,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 312,
+  "default_code": "BZ-OP-P3-M+4",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 4 – Below 70",
+  "list_price": 31798,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 313,
+  "default_code": "BZ-OP-P3-M+5",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 5 – Below 70",
+  "list_price": 31798,
+  "categ_id": [
+   27,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 316,
+  "default_code": "BZ-DEN10K",
+  "name": "Bizsure Afya Dental – KES 10,000 per Person – Below 70",
+  "list_price": 2408,
+  "categ_id": [
+   28,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 314,
+  "default_code": "BZ-DEN5K",
+  "name": "Bizsure Afya Dental – KES 5,000 per Person – Below 70",
+  "list_price": 1210,
+  "categ_id": [
+   28,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 315,
+  "default_code": "BZ-DEN7.5K",
+  "name": "Bizsure Afya Dental – KES 7,500 per Person – Below 70",
+  "list_price": 1803,
+  "categ_id": [
+   28,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 319,
+  "default_code": "BZ-OPT10K",
+  "name": "Bizsure Afya Optical – KES 10,000 per Person – Below 70",
+  "list_price": 2408,
+  "categ_id": [
+   29,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 317,
+  "default_code": "BZ-OPT5K",
+  "name": "Bizsure Afya Optical – KES 5,000 per Person – Below 70",
+  "list_price": 1210,
+  "categ_id": [
+   29,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 318,
+  "default_code": "BZ-OPT7.5K",
+  "name": "Bizsure Afya Optical – KES 7,500 per Person – Below 70",
+  "list_price": 1803,
+  "categ_id": [
+   29,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Below 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 320,
+  "default_code": "BZ70-IP-P1-M",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member Only – Above 70",
+  "list_price": 9793,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 321,
+  "default_code": "BZ70-IP-P1-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 1 – Above 70",
+  "list_price": 13668,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 322,
+  "default_code": "BZ70-IP-P1-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 2 – Above 70",
+  "list_price": 15219,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 323,
+  "default_code": "BZ70-IP-P1-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 3 – Above 70",
+  "list_price": 16769,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 324,
+  "default_code": "BZ70-IP-P1-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 4 – Above 70",
+  "list_price": 18320,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 325,
+  "default_code": "BZ70-IP-P1-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 1 (KES 200,000) – Member + 5 – Above 70",
+  "list_price": 19870,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 40,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 326,
+  "default_code": "BZ70-IP-P2-M",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member Only – Above 70",
+  "list_price": 13668,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 327,
+  "default_code": "BZ70-IP-P2-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 1 – Above 70",
+  "list_price": 19482,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 328,
+  "default_code": "BZ70-IP-P2-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 2 – Above 70",
+  "list_price": 21809,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 329,
+  "default_code": "BZ70-IP-P2-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 3 – Above 70",
+  "list_price": 24134,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 330,
+  "default_code": "BZ70-IP-P2-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 4 – Above 70",
+  "list_price": 26459,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 331,
+  "default_code": "BZ70-IP-P2-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 2 (KES 300,000) – Member + 5 – Above 70",
+  "list_price": 28785,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 60,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 332,
+  "default_code": "BZ70-IP-P3-M",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member Only – Above 70",
+  "list_price": 16957,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 333,
+  "default_code": "BZ70-IP-P3-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 1 – Above 70",
+  "list_price": 24415,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 334,
+  "default_code": "BZ70-IP-P3-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 2 – Above 70",
+  "list_price": 27399,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 335,
+  "default_code": "BZ70-IP-P3-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 3 – Above 70",
+  "list_price": 30382,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 336,
+  "default_code": "BZ70-IP-P3-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 4 – Above 70",
+  "list_price": 33365,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 337,
+  "default_code": "BZ70-IP-P3-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 3 (KES 500,000) – Member + 5 – Above 70",
+  "list_price": 36349,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 338,
+  "default_code": "BZ70-IP-P4-M",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member Only – Above 70",
+  "list_price": 24641,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 339,
+  "default_code": "BZ70-IP-P4-M+1",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 1 – Above 70",
+  "list_price": 35942,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 340,
+  "default_code": "BZ70-IP-P4-M+2",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 2 – Above 70",
+  "list_price": 40462,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 341,
+  "default_code": "BZ70-IP-P4-M+3",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 3 – Above 70",
+  "list_price": 44982,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 342,
+  "default_code": "BZ70-IP-P4-M+4",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 4 – Above 70",
+  "list_price": 49503,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 343,
+  "default_code": "BZ70-IP-P4-M+5",
+  "name": "Bizsure Afya Inpatient – Plan 4 (KES 750,000) – Member + 5 – Above 70",
+  "list_price": 54023,
+  "categ_id": [
+   30,
+   "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": "Includes maternity cover of KES 75,000.",
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 344,
+  "default_code": "BZ70-OP-P1-M",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member Only – Above 70",
+  "list_price": 15601,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 345,
+  "default_code": "BZ70-OP-P1-M+1",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 1 – Above 70",
+  "list_price": 26449,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 346,
+  "default_code": "BZ70-OP-P1-M+2",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 2 – Above 70",
+  "list_price": 26449,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 347,
+  "default_code": "BZ70-OP-P1-M+3",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 3 – Above 70",
+  "list_price": 29162,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 348,
+  "default_code": "BZ70-OP-P1-M+4",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 4 – Above 70",
+  "list_price": 29162,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 349,
+  "default_code": "BZ70-OP-P1-M+5",
+  "name": "Bizsure Afya Outpatient – KES 50,000 per Family – Member + 5 – Above 70",
+  "list_price": 29162,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 350,
+  "default_code": "BZ70-OP-P2-M",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member Only – Above 70",
+  "list_price": 22127,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 351,
+  "default_code": "BZ70-OP-P2-M+1",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 1 – Above 70",
+  "list_price": 34586,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 352,
+  "default_code": "BZ70-OP-P2-M+2",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 2 – Above 70",
+  "list_price": 34586,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 353,
+  "default_code": "BZ70-OP-P2-M+3",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 3 – Above 70",
+  "list_price": 38196,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 354,
+  "default_code": "BZ70-OP-P2-M+4",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 4 – Above 70",
+  "list_price": 38196,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 355,
+  "default_code": "BZ70-OP-P2-M+5",
+  "name": "Bizsure Afya Outpatient – KES 75,000 per Family – Member + 5 – Above 70",
+  "list_price": 38196,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 356,
+  "default_code": "BZ70-OP-P3-M",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member Only – Above 70",
+  "list_price": 28823,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 357,
+  "default_code": "BZ70-OP-P3-M+1",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 1 – Above 70",
+  "list_price": 38146,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 358,
+  "default_code": "BZ70-OP-P3-M+2",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 2 – Above 70",
+  "list_price": 38146,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 359,
+  "default_code": "BZ70-OP-P3-M+3",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 3 – Above 70",
+  "list_price": 42214,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 360,
+  "default_code": "BZ70-OP-P3-M+4",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 4 – Above 70",
+  "list_price": 42214,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 361,
+  "default_code": "BZ70-OP-P3-M+5",
+  "name": "Bizsure Afya Outpatient – KES 100,000 per Family – Member + 5 – Above 70",
+  "list_price": 42214,
+  "categ_id": [
+   31,
+   "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 364,
+  "default_code": "BZ70-DEN10K",
+  "name": "Bizsure Afya Dental – KES 10,000 per Person – Above 70",
+  "list_price": 2890,
+  "categ_id": [
+   32,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 362,
+  "default_code": "BZ70-DEN5K",
+  "name": "Bizsure Afya Dental – KES 5,000 per Person – Above 70",
+  "list_price": 1452,
+  "categ_id": [
+   32,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 363,
+  "default_code": "BZ70-DEN7.5K",
+  "name": "Bizsure Afya Dental – KES 7,500 per Person – Above 70",
+  "list_price": 2164,
+  "categ_id": [
+   32,
+   "Insurance Premiums / Birdview Bizsure Afya / Dental – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 367,
+  "default_code": "BZ70-OPT10K",
+  "name": "Bizsure Afya Optical – KES 10,000 per Person – Above 70",
+  "list_price": 2890,
+  "categ_id": [
+   33,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 365,
+  "default_code": "BZ70-OPT5K",
+  "name": "Bizsure Afya Optical – KES 5,000 per Person – Above 70",
+  "list_price": 1452,
+  "categ_id": [
+   33,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ },
+ {
+  "id": 366,
+  "default_code": "BZ70-OPT7.5K",
+  "name": "Bizsure Afya Optical – KES 7,500 per Person – Above 70",
+  "list_price": 2164,
+  "categ_id": [
+   33,
+   "Insurance Premiums / Birdview Bizsure Afya / Optical – Above 70"
+  ],
+  "type": "service",
+  "taxes_id": [
+   30,
+   31
+  ],
+  "sale_ok": true,
+  "purchase_ok": false,
+  "description_sale": false,
+  "uom_id": [
+   1,
+   "Units"
+  ],
+  "invoice_policy": "order",
+  "company_id": false
+ }
+]

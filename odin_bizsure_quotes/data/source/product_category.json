@@ -1,0 +1,206 @@
+[
+ {
+  "id": 8,
+  "name": "Insurance Premiums",
+  "parent_id": false,
+  "complete_name": "Insurance Premiums"
+ },
+ {
+  "id": 12,
+  "name": "Fees & Instalment Charges",
+  "parent_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "complete_name": "Insurance Premiums / Fees & Instalment Charges"
+ },
+ {
+  "id": 13,
+  "name": "APA Jamii Plus",
+  "parent_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus"
+ },
+ {
+  "id": 14,
+  "name": "Inpatient – Family",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Inpatient – Family"
+ },
+ {
+  "id": 15,
+  "name": "Inpatient – Child Only",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Inpatient – Child Only"
+ },
+ {
+  "id": 16,
+  "name": "Outpatient – Per Person",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Outpatient – Per Person"
+ },
+ {
+  "id": 17,
+  "name": "Outpatient – Child Only",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Outpatient – Child Only"
+ },
+ {
+  "id": 18,
+  "name": "Maternity",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Maternity"
+ },
+ {
+  "id": 19,
+  "name": "Dental",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Dental"
+ },
+ {
+  "id": 20,
+  "name": "Optical",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Optical"
+ },
+ {
+  "id": 21,
+  "name": "Rider – Femina Plus",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Rider – Femina Plus"
+ },
+ {
+  "id": 22,
+  "name": "Rider – Hosi Cash",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Rider – Hosi Cash"
+ },
+ {
+  "id": 23,
+  "name": "Rider – Critical Illness",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Rider – Critical Illness"
+ },
+ {
+  "id": 24,
+  "name": "Rider – Flex Pac Personal Accident",
+  "parent_id": [
+   13,
+   "APA Jamii Plus"
+  ],
+  "complete_name": "Insurance Premiums / APA Jamii Plus / Rider – Flex Pac Personal Accident"
+ },
+ {
+  "id": 25,
+  "name": "Birdview Bizsure Afya",
+  "parent_id": [
+   8,
+   "Insurance Premiums"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya"
+ },
+ {
+  "id": 26,
+  "name": "Inpatient – Below 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Below 70"
+ },
+ {
+  "id": 27,
+  "name": "Outpatient – Below 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Below 70"
+ },
+ {
+  "id": 28,
+  "name": "Dental – Below 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Dental – Below 70"
+ },
+ {
+  "id": 29,
+  "name": "Optical – Below 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Optical – Below 70"
+ },
+ {
+  "id": 30,
+  "name": "Inpatient – Above 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Inpatient – Above 70"
+ },
+ {
+  "id": 31,
+  "name": "Outpatient – Above 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Outpatient – Above 70"
+ },
+ {
+  "id": 32,
+  "name": "Dental – Above 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Dental – Above 70"
+ },
+ {
+  "id": 33,
+  "name": "Optical – Above 70",
+  "parent_id": [
+   25,
+   "Birdview Bizsure Afya"
+  ],
+  "complete_name": "Insurance Premiums / Birdview Bizsure Afya / Optical – Above 70"
+ }
+]
