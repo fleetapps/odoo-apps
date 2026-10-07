@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="whatsapp_account_view_form_desk" model="ir.ui.view">
+        <field name="name">whatsapp.account.form.desk</field>
+        <field name="model">whatsapp_connector.account</field>
+        <field name="inherit_id" ref="whatsapp_connector.whatsapp_account_view_form"/>
+        <field name="arch" type="xml">
+            <!-- "Fallback User" says nothing to anyone who did not write it. The
+                 label now states the condition and the consequence, and the
+                 tooltip says the part a manager cares about: this is who finds
+                 out when an enquiry is going quiet. -->
+            <field name="routing_fallback_user_id" position="attributes">
+                <attribute name="string">If nobody is available, assign to</attribute>
+                <attribute name="help">Each new conversation goes to the next person in the list below. This is who gets it when that cannot happen — nobody ticked for routing, or everyone inactive — rather than the conversation waiting with no owner at all. It is also who is reminded when a conversation has gone unanswered and nobody owns it. Choose someone who will notice: this is the last step before an enquiry goes quiet.</attribute>
+            </field>
+            <field name="routing_last_assigned_user_id" position="attributes">
+                <attribute name="string">Last in the rotation</attribute>
+                <attribute name="help">Who the previous conversation went to. The next one goes to the person after them.</attribute>
+            </field>
+
+            <!-- Per number, not per company: a service number would send its
+                 requests to Claims while this one goes to Client Service. -->
+            <group name="routing" position="after">
+                <group string="Service Desk" name="odin_desk">
+                    <field name="odin_desk_team_id" options="{'no_create': True}"/>
+                    <field name="odin_desk_channel_id" options="{'no_create': True}"/>
+                    <label for="odin_desk_unanswered_hours"/>
+                    <div class="o_row">
+                        <field name="odin_desk_unanswered_hours" class="oe_inline"/>
+                        <span>hours after the client writes (0 turns it off)</span>
+                    </div>
+                </group>
+            </group>
+        </field>
+    </record>
+</odoo>

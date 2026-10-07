@@ -15,7 +15,7 @@ next to Create Lead:
   links back to the conversation. The conversation stays the only copy of what
   was said; nothing is transcribed into the ticket.
 """,
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.2.0",
     "category": "Services/Helpdesk",
     "author": "Odin",
     "website": "https://github.com/fleetapps/odoo-apps",
@@ -27,6 +27,7 @@ next to Create Lead:
         "data/odin_wa_desk_data.xml",
         "wizard/wa_link_client_views.xml",
         "wizard/wa_assign_views.xml",
+        "views/whatsapp_account_views.xml",
         "views/discuss_channel_views.xml",
         "views/helpdesk_ticket_views.xml",
         "views/crm_lead_views.xml",
@@ -36,6 +37,7 @@ next to Create Lead:
             "odin_wa_desk/static/src/**/*",
         ],
     },
+    "post_init_hook": "post_init_hook",
     "application": False,
     "installable": True,
 }

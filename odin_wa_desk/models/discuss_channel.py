@@ -13,13 +13,6 @@ from odoo.addons.whatsapp_connector.models.discuss_channel import is_whatsapp_ch
 DESK_GROUP = "helpdesk_mgmt.group_helpdesk_user_own"
 #: the subject is the client's own sentence, cut to what a list can show
 SUBJECT_LENGTH = 70
-#: where a WhatsApp request lands unless whoever logs it moves it
-DEFAULT_TEAM = "Client Service"
-#: the helpdesk channel that records how the request arrived
-ARRIVED_BY = "WhatsApp"
-#: hours after the client wrote before the window alarm fires; Meta closes
-#: free-form replies at 24, so the default leaves four hours to act
-UNANSWERED_HOURS = 20
 MANAGER_GROUP = "whatsapp_connector.group_whatsapp_manager"
 
 
@@ -110,13 +103,13 @@ class DiscussChannel(models.Model):
             "wa_phone": channel.wa_customer_phone
             or (f"@{channel.wa_username}" if channel.wa_username else ""),
         }
-        team = self.env["helpdesk.ticket.team"].search([("name", "=", DEFAULT_TEAM)], limit=1) \
-            or self.env["helpdesk.ticket.team"].search([], order="sequence, id", limit=1)
-        if team:
-            values["team_id"] = team.id
-        arrived = self.env["helpdesk.ticket.channel"].search([("name", "=", ARRIVED_BY)], limit=1)
-        if arrived:
-            values["channel_id"] = arrived.id
+        # configured per number on the account, so renaming a team or a channel
+        # cannot quietly stop either from being set
+        account = channel.wa_account_id
+        if account.odin_desk_team_id:
+            values["team_id"] = account.odin_desk_team_id.id
+        if account.odin_desk_channel_id:
+            values["channel_id"] = account.odin_desk_channel_id.id
         ticket = self.env["helpdesk.ticket"].create(values)
         channel.with_context(wa_skip_send=True).message_post(
             # Markup: the translation is escaped around the link
@@ -337,52 +330,62 @@ class DiscussChannel(models.Model):
         after it only an approved template reaches them, which costs money and
         goodwill. So the deadline worth alarming on is Meta's, not an invented
         SLA -- and it is the deadline a dropped enquiry actually breaks.
+
+        One pass per number, because the threshold is set per number. Archived
+        accounts are left alone.
         """
-        hours = int(self.env["ir.config_parameter"].sudo().get_param(
-            "odin_wa_desk.unanswered_hours", UNANSWERED_HOURS))
-        cutoff = fields.Datetime.now() - timedelta(hours=hours)
-        channels = self.sudo().search([
-            ("channel_type", "=", "whatsapp"),
-            ("wa_status", "=", "open"),
-            ("odin_wa_unanswered", "=", True),
-            ("wa_last_customer_message_at", "<=", cutoff),
-        ])
-        todo = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
-        partner_model_id = self.env["ir.model"]._get_id("res.partner")
         raised = 0
-        for channel in channels:
-            said = channel.wa_last_customer_message_at
-            if channel.odin_wa_alarm_at and channel.odin_wa_alarm_at >= said:
-                continue  # already raised for this message
-            partner = channel.wa_partner_id
-            owner = channel.wa_assigned_user_id or channel._odin_wa_alarm_user()
-            if not partner or not owner:
-                continue
-            self.env["mail.activity"].sudo().create({
-                "res_model_id": partner_model_id,
-                "res_id": partner.id,
-                "activity_type_id": todo.id if todo else False,
-                "user_id": owner.id,
-                "date_deadline": fields.Date.context_today(channel.with_user(owner)),
-                "summary": self.env._("Unanswered on WhatsApp: %s", channel._wa_chat_subject()),
-                "note": Markup("<p>%s</p>") % self.env._(
-                    "%(who)s wrote at %(when)s and has had no reply. A free answer is "
-                    "only possible until %(until)s; after that it needs an approved "
-                    "template.",
-                    who=partner.display_name,
-                    when=format_datetime(self.env, said),
-                    until=format_datetime(self.env, channel.wa_window_expires_at)
-                    if channel.wa_window_expires_at else self.env._("the window closes"),
-                ),
-            })
-            channel.odin_wa_alarm_at = fields.Datetime.now()
-            channel.with_context(wa_skip_send=True).message_post(
-                body=self.env._("No reply since %(when)s: a reminder was set for %(who)s.",
-                                when=format_datetime(self.env, said), who=owner.name),
-                message_type="notification",
-            )
-            raised += 1
+        for account in self.env["whatsapp_connector.account"].sudo().search([]):
+            hours = account.odin_desk_unanswered_hours
+            if hours <= 0:
+                continue  # the reminder is turned off for this number
+            cutoff = fields.Datetime.now() - timedelta(hours=hours)
+            channels = self.sudo().search([
+                ("channel_type", "=", "whatsapp"),
+                ("wa_account_id", "=", account.id),
+                ("wa_status", "=", "open"),
+                ("odin_wa_unanswered", "=", True),
+                ("wa_last_customer_message_at", "<=", cutoff),
+            ])
+            for channel in channels:
+                raised += 1 if channel._odin_wa_raise_alarm() else 0
         return raised
+
+    def _odin_wa_raise_alarm(self):
+        """Remind whoever owns this conversation, once per unanswered message."""
+        self.ensure_one()
+        channel = self.sudo()
+        said = channel.wa_last_customer_message_at
+        if channel.odin_wa_alarm_at and channel.odin_wa_alarm_at >= said:
+            return False  # already raised for this message
+        partner = channel.wa_partner_id
+        owner = channel.wa_assigned_user_id or channel._odin_wa_alarm_user()
+        if not partner or not owner:
+            return False
+        todo = self.env.ref("mail.mail_activity_data_todo", raise_if_not_found=False)
+        self.env["mail.activity"].sudo().create({
+            "res_model_id": self.env["ir.model"]._get_id("res.partner"),
+            "res_id": partner.id,
+            "activity_type_id": todo.id if todo else False,
+            "user_id": owner.id,
+            "date_deadline": fields.Date.context_today(channel.with_user(owner)),
+            "summary": self.env._("Unanswered on WhatsApp: %s", channel._wa_chat_subject()),
+            "note": Markup("<p>%s</p>") % self.env._(
+                "%(who)s wrote at %(when)s and has had no reply. A free answer is only "
+                "possible until %(until)s; after that it needs an approved template.",
+                who=partner.display_name,
+                when=format_datetime(self.env, said),
+                until=format_datetime(self.env, channel.wa_window_expires_at)
+                if channel.wa_window_expires_at else self.env._("the window closes"),
+            ),
+        })
+        channel.odin_wa_alarm_at = fields.Datetime.now()
+        channel.with_context(wa_skip_send=True).message_post(
+            body=self.env._("No reply since %(when)s: a reminder was set for %(who)s.",
+                            when=format_datetime(self.env, said), who=owner.name),
+            message_type="notification",
+        )
+        return True
 
     def _odin_wa_alarm_user(self):
         """Who hears about an unanswered conversation that has no owner."""
