@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_pnl.PnlFilterBar">
+        <div class="o_odin_pnl_filters">
+            <div class="o_odin_pnl_chips">
+                <!-- Period, with Enterprise's arrows to step back and forth. -->
+                <div class="btn-group o_odin_pnl_period">
+                    <button class="btn btn-secondary" data-tooltip="Previous period" aria-label="Previous period"
+                            t-on-click="() => this.step(-1)"><i class="fa fa-caret-left"/></button>
+                    <Dropdown menuClass="'o_odin_pnl_menu p-2'">
+                        <button class="btn btn-secondary o_odin_pnl_chip">
+                            <i class="fa fa-calendar me-1"/><t t-esc="periodLabel"/>
+                        </button>
+                        <t t-set-slot="content">
+                            <DropdownItem t-foreach="presets" t-as="preset" t-key="preset[0]"
+                                          class="{ 'selected': options.date.filter === preset[0] }"
+                                          onSelected="() => this.setPreset(preset[0])">
+                                <t t-esc="preset[1]"/>
+                            </DropdownItem>
+                            <div class="dropdown-divider"/>
+                            <div class="px-3 py-1">
+                                <div class="text-muted small mb-1">From – to</div>
+                                <div class="d-flex gap-1 align-items-center">
+                                    <DateTimeInput type="'date'" value="dateFrom"
+                                                   onChange="(value) => this.setCustomDate('date_from', value)"/>
+                                    <span>–</span>
+                                    <DateTimeInput type="'date'" value="dateTo"
+                                                   onChange="(value) => this.setCustomDate('date_to', value)"/>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"/>
+                            <div class="px-3 py-1">
+                                <div class="text-muted small mb-1">Divide into</div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn" t-att-class="options.divide === 'none' ? 'btn-primary' : 'btn-outline-secondary'"
+                                            t-on-click="() => this.setDivide('none')">None</button>
+                                    <button class="btn" t-att-class="options.divide === 'month' ? 'btn-primary' : 'btn-outline-secondary'"
+                                            t-on-click="() => this.setDivide('month')">Months</button>
+                                    <button class="btn" t-att-class="options.divide === 'quarter' ? 'btn-primary' : 'btn-outline-secondary'"
+                                            t-on-click="() => this.setDivide('quarter')">Quarters</button>
+                                </div>
+                            </div>
+                        </t>
+                    </Dropdown>
+                    <button class="btn btn-secondary" data-tooltip="Next period" aria-label="Next period"
+                            t-on-click="() => this.step(1)"><i class="fa fa-caret-right"/></button>
+                </div>
+
+                <Dropdown menuClass="'o_odin_pnl_menu p-2'">
+                    <button class="btn btn-secondary o_odin_pnl_chip"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.comparison.mode !== 'none' }">
+                        <i class="fa fa-percent me-1"/><t t-esc="comparisonLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem class="{ 'selected': options.comparison.mode === 'none' }"
+                                      onSelected="() => this.setComparison('none')">No Comparison</DropdownItem>
+                        <DropdownItem class="{ 'selected': options.comparison.mode === 'previous_period' }"
+                                      onSelected="() => this.setComparison('previous_period')">Previous Period</DropdownItem>
+                        <DropdownItem class="{ 'selected': options.comparison.mode === 'previous_year' }"
+                                      onSelected="() => this.setComparison('previous_year')">Same Period Last Year</DropdownItem>
+                        <DropdownItem class="{ 'selected': options.comparison.mode === 'custom' }" closingMode="'none'"
+                                      onSelected="() => this.setComparison('custom')">Custom</DropdownItem>
+                        <div class="px-3 py-1" t-if="options.comparison.mode === 'previous_period' or options.comparison.mode === 'previous_year'">
+                            <label class="text-muted small me-2">Number of periods</label>
+                            <input type="number" min="1" max="12" class="form-control form-control-sm d-inline-block w-auto"
+                                   t-att-value="options.comparison.periods" t-on-change="setComparisonCount"/>
+                        </div>
+                        <div class="px-3 py-1 d-flex gap-1 align-items-center" t-if="options.comparison.mode === 'custom'">
+                            <DateTimeInput type="'date'" value="comparisonFrom"
+                                           onChange="(value) => this.setComparisonDate('date_from', value)"/>
+                            <span>–</span>
+                            <DateTimeInput type="'date'" value="comparisonTo"
+                                           onChange="(value) => this.setComparisonDate('date_to', value)"/>
+                        </div>
+                    </t>
+                </Dropdown>
+
+                <Dropdown menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.journal_ids.length }">
+                        <i class="fa fa-book me-1"/><t t-esc="journalLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem class="{ 'selected': !options.journal_ids.length }"
+                                      onSelected="() => this.props.onChange({ journal_ids: [] })">All Journals</DropdownItem>
+                        <div class="dropdown-divider"/>
+                        <CheckboxItem t-foreach="props.journals" t-as="journal" t-key="journal.id"
+                                      checked="options.journal_ids.includes(journal.id)" closingMode="'none'"
+                                      onSelected="() => this.toggleJournal(journal.id)">
+                            <t t-esc="journal.name"/> <span class="text-muted small" t-esc="journal.code"/>
+                        </CheckboxItem>
+                    </t>
+                </Dropdown>
+
+                <button class="btn btn-secondary o_odin_pnl_chip"
+                        t-att-class="{ 'o_odin_pnl_chip_active': options.analytic_account_ids.length, 'active': state.drawer === 'analytic' }"
+                        t-on-click="() => this.toggleDrawer('analytic')">
+                    <i class="fa fa-cubes me-1"/>Analytic
+                    <span t-if="options.analytic_account_ids.length" class="badge text-bg-primary ms-1"
+                          t-esc="options.analytic_account_ids.length"/>
+                </button>
+
+                <button class="btn btn-secondary o_odin_pnl_chip"
+                        t-att-class="{ 'o_odin_pnl_chip_active': options.partner_ids.length, 'active': state.drawer === 'partners' }"
+                        t-on-click="() => this.toggleDrawer('partners')">
+                    <i class="fa fa-users me-1"/>Partners
+                    <span t-if="options.partner_ids.length" class="badge text-bg-primary ms-1"
+                          t-esc="options.partner_ids.length"/>
+                </button>
+
+                <Dropdown menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip">
+                        <i class="fa fa-sliders me-1"/><t t-esc="entriesLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem class="{ 'selected': !options.include_draft }" closingMode="'none'"
+                                      onSelected="() => this.props.onChange({ include_draft: false })">Posted Entries Only</DropdownItem>
+                        <DropdownItem class="{ 'selected': options.include_draft }" closingMode="'none'"
+                                      onSelected="() => this.props.onChange({ include_draft: true })">Include Draft Entries</DropdownItem>
+                        <div class="dropdown-divider"/>
+                        <CheckboxItem checked="options.hide_zero" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('hide_zero')">Hide lines at 0</CheckboxItem>
+                        <CheckboxItem checked="options.show_codes" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('show_codes')">Account codes</CheckboxItem>
+                        <CheckboxItem checked="options.account_groups" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('account_groups')">Account groups</CheckboxItem>
+                        <CheckboxItem checked="options.percent_of_base" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('percent_of_base')">% of revenue</CheckboxItem>
+                        <CheckboxItem checked="options.trend" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('trend')">12-month trend</CheckboxItem>
+                        <CheckboxItem checked="options.negative_parentheses" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('negative_parentheses')">Negatives in (brackets)</CheckboxItem>
+                        <div class="dropdown-divider"/>
+                        <CheckboxItem checked="options.unfold_all" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('unfold_all')">Unfold all</CheckboxItem>
+                    </t>
+                </Dropdown>
+
+                <Dropdown menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.budget_id }">
+                        <i class="fa fa-bullseye me-1"/><t t-esc="budgetLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem class="{ 'selected': !options.budget_id }"
+                                      onSelected="() => this.setBudget(false)">No budget</DropdownItem>
+                        <DropdownItem t-foreach="props.data.budgets" t-as="budget" t-key="budget.id"
+                                      class="{ 'selected': options.budget_id === budget.id }"
+                                      onSelected="() => this.setBudget(budget.id)">
+                            <t t-esc="budget.name"/>
+                        </DropdownItem>
+                        <t t-if="props.data.can_edit_budget">
+                            <div class="dropdown-divider"/>
+                            <div class="px-3 py-1 d-flex gap-1">
+                                <input class="form-control form-control-sm" placeholder="New budget name"
+                                       t-model="state.newBudget" t-on-keydown="onBudgetKey"/>
+                                <button class="btn btn-sm btn-primary" t-on-click="createBudget">Add</button>
+                            </div>
+                        </t>
+                    </t>
+                </Dropdown>
+
+                <Dropdown t-if="props.data.layouts.length > 1" menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip">
+                        <i class="fa fa-file-text-o me-1"/>Report: <t t-esc="layoutLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="props.data.layouts" t-as="layout" t-key="layout.id"
+                                      class="{ 'selected': options.layout_id === layout.id }"
+                                      onSelected="() => this.setLayout(layout.id)">
+                            <t t-esc="layout.name"/>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
+
+                <Dropdown menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip"><t t-esc="scaleLabel"/></button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="scales" t-as="item" t-key="item_index"
+                                      class="{ 'selected': isScale(item) }"
+                                      onSelected="() => this.setScale(item)">
+                            <t t-esc="item.label(props.data.currency.symbol)"/>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
+
+                <div class="o_odin_pnl_search ms-auto">
+                    <i class="fa fa-search"/>
+                    <input type="search" class="form-control form-control-sm" placeholder="Find an account"
+                           t-att-value="props.search" t-on-input="(ev) => props.onSearch(ev.target.value)"/>
+                </div>
+            </div>
+
+            <div t-if="state.drawer === 'analytic'" class="o_odin_pnl_drawer">
+                <span class="text-muted">Only the share of journal items going to</span>
+                <div class="flex-grow-1">
+                    <MultiRecordSelector resModel="'account.analytic.account'" resIds="options.analytic_account_ids"
+                                         update.bind="setAnalytic" placeholder="'Any analytic account'"/>
+                </div>
+                <button class="btn btn-link" t-on-click="() => this.toggleDrawer('analytic')">Done</button>
+            </div>
+            <div t-if="state.drawer === 'partners'" class="o_odin_pnl_drawer">
+                <span class="text-muted">Only journal items of</span>
+                <div class="flex-grow-1">
+                    <MultiRecordSelector resModel="'res.partner'" resIds="options.partner_ids"
+                                         update.bind="setPartners" placeholder="'Any partner'"/>
+                </div>
+                <button class="btn btn-link" t-on-click="() => this.toggleDrawer('partners')">Done</button>
+            </div>
+        </div>
+    </t>
+
+</templates>

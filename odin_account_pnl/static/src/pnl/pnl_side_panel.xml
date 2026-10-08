@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_pnl.PnlSidePanel">
+        <aside class="o_odin_pnl_panel" aria-label="Details">
+            <header class="o_odin_pnl_panel_head">
+                <ul class="nav nav-tabs flex-grow-1">
+                    <li class="nav-item" t-foreach="tabs" t-as="tab" t-key="tab.key">
+                        <button class="nav-link" t-att-class="{ active: current and tab.key === current.key }"
+                                t-on-click="() => props.select(tab.key)">
+                            <i t-attf-class="fa {{tab.icon}} me-1"/><t t-esc="tab.title"/>
+                        </button>
+                    </li>
+                </ul>
+                <button class="btn btn-link text-muted" aria-label="Close" data-tooltip="Close (Esc)"
+                        t-on-click="props.close"><i class="fa fa-times"/></button>
+            </header>
+            <div class="o_odin_pnl_panel_body">
+                <t t-if="current" t-component="current.Component"
+                   row="props.panel.row" report="props.report" close="props.close"/>
+            </div>
+        </aside>
+    </t>
+
+    <t t-name="odin_account_pnl.EntryPeek">
+        <div class="o_odin_pnl_peek">
+            <div t-if="state.error" class="alert alert-warning" t-esc="state.error"/>
+            <t t-elif="state.data">
+                <t t-set="d" t-value="state.data"/>
+                <div class="d-flex align-items-start gap-2 mb-2">
+                    <div class="flex-grow-1">
+                        <div class="text-muted small" t-esc="d.type"/>
+                        <h4 class="mb-0" t-esc="d.name"/>
+                        <div t-esc="d.partner"/>
+                    </div>
+                    <span class="badge" t-att-class="d.state === 'posted' ? 'text-bg-success' : 'text-bg-warning'"
+                          t-esc="d.state_label"/>
+                    <span t-if="d.payment_state_label" class="badge text-bg-info" t-esc="d.payment_state_label"/>
+                </div>
+                <dl class="o_odin_pnl_peek_facts">
+                    <dt>Accounting date</dt><dd t-esc="d.date"/>
+                    <t t-if="d.invoice_date"><dt>Document date</dt><dd t-esc="d.invoice_date"/></t>
+                    <t t-if="d.due_date"><dt>Due</dt><dd t-esc="d.due_date"/></t>
+                    <t t-if="d.ref"><dt>Reference</dt><dd t-esc="d.ref"/></t>
+                    <dt>Journal</dt><dd t-esc="d.journal"/>
+                    <t t-if="d.amount_total !== false"><dt>Total</dt><dd><t t-esc="fmt(d.amount_total)"/> <t t-esc="d.currency"/></dd></t>
+                </dl>
+                <table class="table table-sm o_odin_pnl_peek_lines">
+                    <thead><tr><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th></tr></thead>
+                    <tbody>
+                        <tr t-foreach="d.lines" t-as="line" t-key="line.id" t-att-class="{ 'o_odin_pnl_current': line.current }">
+                            <td>
+                                <div t-esc="line.account"/>
+                                <div class="text-muted small" t-esc="line.label"/>
+                                <div t-if="line.analytic.length" class="d-flex flex-wrap gap-1 mt-1">
+                                    <span t-foreach="line.analytic" t-as="split" t-key="split_index" class="badge text-bg-light">
+                                        <t t-esc="split.name"/> <t t-esc="split.percent"/>%
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="text-end o_odin_pnl_num"><t t-if="line.debit" t-esc="fmt(line.debit)"/></td>
+                            <td class="text-end o_odin_pnl_num"><t t-if="line.credit" t-esc="fmt(line.credit)"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div t-if="d.attachments.length" class="mb-2">
+                    <div class="d-flex flex-wrap gap-1 mb-1">
+                        <button t-foreach="d.attachments" t-as="att" t-key="att.id" class="btn btn-sm"
+                                t-att-class="state.attachment and state.attachment.id === att.id ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.state.attachment = att">
+                            <i class="fa fa-paperclip me-1"/><t t-esc="att.name"/>
+                        </button>
+                    </div>
+                    <t t-if="state.attachment">
+                        <img t-if="state.attachment.mimetype.startsWith('image/')" class="o_odin_pnl_preview img-fluid"
+                             t-attf-src="/web/image/{{state.attachment.id}}" t-att-alt="state.attachment.name"/>
+                        <iframe t-elif="state.attachment.mimetype === 'application/pdf'" class="o_odin_pnl_preview"
+                                t-attf-src="/web/content/{{state.attachment.id}}" t-att-title="state.attachment.name"/>
+                        <a t-else="" t-attf-href="/web/content/{{state.attachment.id}}?download=true">Download</a>
+                    </t>
+                </div>
+                <div t-if="d.messages.length" class="o_odin_pnl_peek_messages">
+                    <div t-foreach="d.messages" t-as="message" t-key="message_index" class="mb-2">
+                        <div class="small text-muted"><t t-esc="message.author"/> · <t t-esc="message.date"/></div>
+                        <div class="small" t-esc="message.body"/>
+                    </div>
+                </div>
+            </t>
+            <div t-else="" class="text-muted p-3"><i class="fa fa-circle-o-notch fa-spin me-1"/>Loading…</div>
+            <footer class="o_odin_pnl_peek_foot">
+                <div class="btn-group">
+                    <button class="btn btn-secondary" t-att-disabled="position &lt;= 0"
+                            data-tooltip="Previous item (K)" aria-label="Previous item"
+                            t-on-click="() => this.move(-1)"><i class="fa fa-chevron-up"/></button>
+                    <button class="btn btn-secondary" t-att-disabled="position &lt; 0 or position >= siblings.length - 1"
+                            data-tooltip="Next item (J)" aria-label="Next item"
+                            t-on-click="() => this.move(1)"><i class="fa fa-chevron-down"/></button>
+                </div>
+                <span class="text-muted small" t-if="siblings.length"><t t-esc="position + 1"/> / <t t-esc="siblings.length"/></span>
+                <div class="ms-auto d-flex gap-1">
+                    <button class="btn btn-secondary" t-on-click="openNewTab" t-att-disabled="!state.data">New tab</button>
+                    <button class="btn btn-primary" t-on-click="openMove" t-att-disabled="!state.data">Open</button>
+                </div>
+            </footer>
+        </div>
+    </t>
+
+    <t t-name="odin_account_pnl.AnnotationsPanel">
+        <div class="o_odin_pnl_notes">
+            <h5 class="mb-3"><t t-esc="props.row.name"/></h5>
+            <div t-if="!state.notes.length" class="text-muted mb-3">No notes yet.</div>
+            <div t-foreach="state.notes" t-as="note" t-key="note.id" class="o_odin_pnl_note">
+                <div class="small text-muted">
+                    <t t-esc="note.author"/><t t-if="note.date"> · for <t t-esc="note.date"/></t>
+                    <button t-if="note.can_edit" class="btn btn-link btn-sm p-0 ms-2" t-on-click="() => this.remove(note)">Delete</button>
+                </div>
+                <div class="o_odin_pnl_note_text" t-esc="note.note"/>
+            </div>
+            <t t-if="canWrite">
+                <textarea class="form-control mt-3" rows="3" placeholder="Explain this figure for the reader"
+                          t-model="state.text"/>
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" id="odin_pnl_note_dated" t-model="state.dated"/>
+                    <label class="form-check-label small" for="odin_pnl_note_dated">Only for this period</label>
+                </div>
+                <div t-if="state.error" class="text-danger small" t-esc="state.error"/>
+                <button class="btn btn-primary mt-2" t-on-click="add" t-att-disabled="!state.text.trim()">Add note</button>
+            </t>
+        </div>
+    </t>
+
+</templates>

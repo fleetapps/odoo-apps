@@ -41,7 +41,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.fields import Domain
-from odoo.tools import SQL, date_utils, format_date
+from odoo.tools import SQL, date_utils, format_date, html2plaintext
 
 from . import odin_pnl_formula, odin_pnl_periods as periods
 from .odin_pnl_layout import PL_ACCOUNT_TYPES
@@ -175,9 +175,204 @@ class OdinPnlReport(models.AbstractModel):
             "target": "current",
         }
 
+    @api.model
+    def get_entry_peek(self, move_line_id):
+        """The source document of a journal item, for the side panel: what
+        an accountant checks without leaving the report."""
+        self._check_access()
+        line = self.env["account.move.line"].browse(int(move_line_id)).exists()
+        if not line:
+            raise UserError(_("This journal item no longer exists."))
+        line.check_access("read")
+        move = line.move_id
+        selection = dict(move._fields["move_type"]._description_selection(self.env))
+        states = dict(move._fields["state"]._description_selection(self.env))
+        payment_states = dict(move._fields["payment_state"]._description_selection(self.env))
+        attachments = self.env["ir.attachment"].search([
+            ("res_model", "=", "account.move"), ("res_id", "=", move.id),
+        ], order="id desc", limit=10)
+        main = move.message_main_attachment_id if "message_main_attachment_id" in move._fields else False
+        if main and main not in attachments:
+            attachments = main | attachments
+        messages = move.message_ids.filtered(
+            lambda message: message.message_type in ("comment", "email") and message.body)[:3]
+        analytic = self.env["account.analytic.account"]
+        lines = []
+        for item in move.line_ids.filtered(lambda item: item.display_type not in ("line_section", "line_subsection", "line_note")):
+            distribution = item.analytic_distribution or {}
+            ids = {int(i) for key in distribution for i in key.split(",")}
+            names = {acc.id: acc.display_name for acc in analytic.browse(list(ids)).exists()}
+            lines.append({
+                "id": item.id,
+                "account": item.account_id.display_name,
+                "label": item.name or "",
+                "partner": item.partner_id.display_name or "",
+                "debit": item.debit,
+                "credit": item.credit,
+                "analytic": [
+                    {"name": " / ".join(names.get(int(i), "?") for i in key.split(",")), "percent": pct}
+                    for key, pct in distribution.items()
+                ],
+                "current": item == line,
+            })
+        return {
+            "move_id": move.id,
+            "name": move.name or _("Draft"),
+            "type": selection.get(move.move_type, ""),
+            "state": move.state,
+            "state_label": states.get(move.state, ""),
+            "payment_state": move.payment_state if move.is_invoice(include_receipts=True) else False,
+            "payment_state_label": payment_states.get(move.payment_state, "")
+            if move.is_invoice(include_receipts=True) else "",
+            "date": fields.Date.to_string(move.date),
+            "invoice_date": fields.Date.to_string(move.invoice_date) if move.invoice_date else False,
+            "due_date": fields.Date.to_string(move.invoice_date_due) if move.invoice_date_due else False,
+            "partner": move.partner_id.display_name or "",
+            "ref": move.ref or "",
+            "journal": move.journal_id.display_name,
+            "amount_total": move.amount_total if move.is_invoice(include_receipts=True) else False,
+            "currency": move.currency_id.symbol or move.currency_id.name,
+            "lines": lines,
+            "attachments": [
+                {"id": attachment.id, "name": attachment.name, "mimetype": attachment.mimetype or ""}
+                for attachment in attachments
+            ],
+            "messages": [
+                {
+                    "author": message.author_id.display_name or "",
+                    "date": fields.Datetime.to_string(message.date),
+                    "body": html2plaintext(message.body or "")[:500],
+                }
+                for message in messages
+            ],
+        }
+
+    # ------------------------------------------------------------------
+    # Annotations and budgets, edited from the page
+    # ------------------------------------------------------------------
+
+    @api.model
+    def get_annotations(self, options, row_key):
+        self._check_access()
+        ctx = self._context(options)
+        code, account_id = self._annotation_target(row_key)
+        notes = self.env["odin.pnl.annotation"].search([
+            ("company_id", "in", ctx.companies.ids),
+            ("layout_id", "in", [False, ctx.layout.id]),
+            ("line_code", "=", code),
+            ("account_id", "=", account_id),
+        ])
+        return [
+            {
+                "id": note.id,
+                "note": note.note,
+                "date": fields.Date.to_string(note.date) if note.date else False,
+                "author": note.author_id.display_name,
+                "can_edit": note.author_id == self.env.user
+                or self.env.user.has_group("account.group_account_manager"),
+            }
+            for note in notes
+        ]
+
+    @api.model
+    def add_annotation(self, options, row_key, note, dated=True):
+        self._check_access()
+        self._check_accountant()
+        ctx = self._context(options)
+        code, account_id = self._annotation_target(row_key)
+        if not (note or "").strip():
+            raise UserError(_("Write something first."))
+        self.env["odin.pnl.annotation"].create({
+            "company_id": self.env.company.id,
+            "layout_id": ctx.layout.id,
+            "line_code": code,
+            "account_id": account_id,
+            "date": ctx.balance_columns[0]["date_to"] if dated else False,
+            "note": note.strip(),
+        })
+        return self.get_annotations(options, row_key)
+
+    @api.model
+    def delete_annotation(self, annotation_id):
+        self._check_access()
+        self._check_accountant()
+        self.env["odin.pnl.annotation"].browse(int(annotation_id)).exists().unlink()
+        return True
+
+    def _annotation_target(self, row_key):
+        segments = self._parse_key(row_key)
+        if not segments or segments[0][0] != "L":
+            raise UserError(_("Notes go on a line or an account."))
+        if len(segments) == 1:
+            return segments[0][1], False
+        if segments[-1][0] == "A" and len(segments) <= 3:
+            return segments[0][1], _int(segments[-1][1]) or False
+        raise UserError(_("Notes go on a line or an account."))
+
+    @api.model
+    def create_budget(self, options, name):
+        """A new budget covering the fiscal year of the period on screen."""
+        self._check_access()
+        self._check_accountant()
+        ctx = self._context(options)
+        if not (name or "").strip():
+            raise UserError(_("Give the budget a name."))
+        year = ctx.fiscal(ctx.balance_columns[0]["date_from"])
+        budget = self.env["odin.pnl.budget"].create({
+            "name": name.strip(),
+            "company_id": self.env.company.id,
+            "date_from": year[0],
+            "date_to": year[1],
+        })
+        return budget.id
+
+    @api.model
+    def set_budget_amount(self, options, row_key, column_key, amount):
+        """Type a budget in an account's cell. ``amount`` is as displayed
+        (income positive); a column of several months is spread evenly,
+        the rounding difference on the last month."""
+        self._check_access()
+        self._check_accountant()
+        ctx = self._context(options)
+        if not ctx.budget:
+            raise UserError(_("Pick a budget first."))
+        segments = self._parse_key(row_key)
+        if segments[-1][0] != "A":
+            raise UserError(_("Budgets are typed on an account."))
+        account_id = _int(segments[-1][1])
+        if account_id not in self._path_filter(ctx, segments)["account_ids"]:
+            raise UserError(_("This account is not on the report."))
+        column = ctx.column(column_key)
+        if column not in ctx.budget_columns:
+            raise UserError(_("Budgets are typed in the columns of the period on screen."))
+        balance = float(amount or 0.0) * (-1 if ctx.sign_for_key(row_key) == "credit" else 1)
+        months = []
+        cursor = column["date_from"].replace(day=1)
+        while cursor <= column["date_to"]:
+            months.append(cursor)
+            cursor += relativedelta(months=1)
+        rounding = ctx.currency.rounding
+        share = ctx.currency.round(balance / len(months))
+        Line = self.env["odin.pnl.budget.line"]
+        for index, month in enumerate(months):
+            value = share if index < len(months) - 1 else ctx.currency.round(balance - share * (len(months) - 1))
+            existing = Line.search([
+                ("budget_id", "=", ctx.budget.id), ("account_id", "=", account_id), ("date", "=", month)])
+            if existing:
+                existing.balance = value
+            elif abs(value) >= rounding:
+                Line.create({
+                    "budget_id": ctx.budget.id, "account_id": account_id, "date": month, "balance": value})
+        return True
+
     # ------------------------------------------------------------------
     # Access
     # ------------------------------------------------------------------
+
+    @api.model
+    def _check_accountant(self):
+        if not self.env.user.has_group("account.group_account_user"):
+            raise AccessError(_("Only accountants can change budgets and notes."))
 
     @api.model
     def _check_access(self):
@@ -296,6 +491,7 @@ class OdinPnlReport(models.AbstractModel):
             "unfold_all": bool(options.get("unfold_all")),
             "budget_id": budget.id or False,
             "scale": scale,
+            "decimals": options.get("decimals", True) is not False,
             "negative_parentheses": bool(options.get("negative_parentheses")),
             "unfolded": unfolded,
             "modes": modes,
@@ -395,8 +591,13 @@ class OdinPnlReport(models.AbstractModel):
                 planned = budget.get(column["key"])
                 row["budget"][column["key"]] = planned
                 actual = values.get(column["key"])
+                # A percentage only reads when both figures point the same
+                # way: a profit line budgeted for its costs alone (budget
+                # negative, actual positive) gives nothing meaningful.
                 row["budget_pct"][column["key"]] = (
-                    actual / planned * 100 if planned and actual is not None else None)
+                    actual / planned * 100
+                    if planned and actual is not None and actual * planned >= 0
+                    else None)
         if ctx.growth_pair:
             current, previous = (values.get(key) for key in ctx.growth_pair)
             if current is not None and previous:
