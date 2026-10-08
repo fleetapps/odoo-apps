@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No groups of its own: the P&L follows Accounting's groups
+     (addons/account/security/account_security.xml in Odoo 19). Readonly
+     accountants read it, accountants keep budgets and notes, administrators
+     edit layouts. Record rules keep each company to its own data.
+     https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html -->
+<odoo>
+    <record id="odin_pnl_layout_rule_company" model="ir.rule">
+        <field name="name">P&amp;L layout: multi-company</field>
+        <field name="model_id" ref="model_odin_pnl_layout"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_pnl_budget_rule_company" model="ir.rule">
+        <field name="name">P&amp;L budget: multi-company</field>
+        <field name="model_id" ref="model_odin_pnl_budget"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_pnl_budget_line_rule_company" model="ir.rule">
+        <field name="name">P&amp;L budget amount: multi-company</field>
+        <field name="model_id" ref="model_odin_pnl_budget_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <record id="odin_pnl_annotation_rule_company" model="ir.rule">
+        <field name="name">P&amp;L annotation: multi-company</field>
+        <field name="model_id" ref="model_odin_pnl_annotation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- Accountants change their own notes; administrators any. -->
+    <record id="odin_pnl_annotation_rule_own" model="ir.rule">
+        <field name="name">P&amp;L annotation: authors edit their own</field>
+        <field name="model_id" ref="model_odin_pnl_annotation"/>
+        <field name="groups" eval="[(4, ref('account.group_account_user'))]"/>
+        <field name="domain_force">[('author_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_create" eval="False"/>
+    </record>
+
+    <record id="odin_pnl_annotation_rule_manager" model="ir.rule">
+        <field name="name">P&amp;L annotation: administrators edit all</field>
+        <field name="model_id" ref="model_odin_pnl_annotation"/>
+        <field name="groups" eval="[(4, ref('account.group_account_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_create" eval="False"/>
+    </record>
+</odoo>

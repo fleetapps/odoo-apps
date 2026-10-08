@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The default Profit & Loss. Enterprise's layout is not public, so this is
+     our own, built only on the Odoo 19 account types
+     (addons/account/models/account_account.py, account_type): every P&L type
+     is in exactly one line, so Net Profit always equals income minus expenses.
+     noupdate: a layout an administrator has edited is never overwritten. -->
+<odoo noupdate="1">
+    <record id="layout_default" model="odin.pnl.layout">
+        <field name="name">Profit &amp; Loss</field>
+        <field name="sequence">1</field>
+        <field name="is_default" eval="True"/>
+    </record>
+
+    <record id="layout_default_rev" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">10</field>
+        <field name="code">REV</field>
+        <field name="name">Revenue</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "income")]</field>
+        <field name="sign">credit</field>
+        <field name="is_base" eval="True"/>
+    </record>
+    <record id="layout_default_cos" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">20</field>
+        <field name="code">COS</field>
+        <field name="name">Cost of Revenue</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "expense_direct_cost")]</field>
+        <field name="sign">debit</field>
+        <field name="green_on_positive" eval="False"/>
+    </record>
+    <record id="layout_default_gp" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">30</field>
+        <field name="code">GP</field>
+        <field name="name">Gross Profit</field>
+        <field name="kind">formula</field>
+        <field name="formula">REV - COS</field>
+        <field name="bold" eval="True"/>
+    </record>
+    <record id="layout_default_opex" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">40</field>
+        <field name="code">OPEX</field>
+        <field name="name">Operating Expenses</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "expense")]</field>
+        <field name="sign">debit</field>
+        <field name="green_on_positive" eval="False"/>
+    </record>
+    <record id="layout_default_dep" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">50</field>
+        <field name="code">DEP</field>
+        <field name="name">Depreciation</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "expense_depreciation")]</field>
+        <field name="sign">debit</field>
+        <field name="green_on_positive" eval="False"/>
+    </record>
+    <record id="layout_default_op" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">60</field>
+        <field name="code">OP</field>
+        <field name="name">Operating Profit</field>
+        <field name="kind">formula</field>
+        <field name="formula">GP - OPEX - DEP</field>
+        <field name="bold" eval="True"/>
+    </record>
+    <record id="layout_default_oin" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">70</field>
+        <field name="code">OIN</field>
+        <field name="name">Other Income</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "income_other")]</field>
+        <field name="sign">credit</field>
+    </record>
+    <record id="layout_default_oex" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">80</field>
+        <field name="code">OEX</field>
+        <field name="name">Other Expenses</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "expense_other")]</field>
+        <field name="sign">debit</field>
+        <field name="green_on_positive" eval="False"/>
+    </record>
+    <record id="layout_default_net" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">90</field>
+        <field name="code">NET</field>
+        <field name="name">Net Profit</field>
+        <field name="kind">formula</field>
+        <field name="formula">OP + OIN - OEX</field>
+        <field name="bold" eval="True"/>
+        <field name="is_result" eval="True"/>
+    </record>
+</odoo>
