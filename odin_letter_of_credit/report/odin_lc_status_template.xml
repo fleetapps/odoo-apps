@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<template id="report_odin_lc_status_document">
+    <t t-call="web.external_layout">
+        <t t-set="address">
+            <div t-field="o.partner_id"
+                 t-options='{"widget": "contact", "fields": ["address", "name", "vat"], "no_marker": True}'/>
+        </t>
+        <div class="page">
+            <h2 class="mt-0">Letter of Credit</h2>
+            <h4 class="text-muted">
+                <span t-field="o.lc_reference"/>
+                <span class="small"> (<span t-field="o.name"/>)</span>
+            </h4>
+
+            <div class="row mt-4">
+                <div class="col-6">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr><td>Type</td><td class="text-end"><span t-field="o.lc_type"/></td></tr>
+                            <tr><td>Our role</td><td class="text-end"><span t-field="o.direction"/></td></tr>
+                            <tr><td>Counterparty</td><td class="text-end"><span t-field="o.partner_id.name"/></td></tr>
+                            <tr t-if="o.issuing_bank_id"><td>Issuing bank</td><td class="text-end"><span t-field="o.issuing_bank_id.name"/></td></tr>
+                            <tr t-if="o.advising_bank_id"><td>Advising bank</td><td class="text-end"><span t-field="o.advising_bank_id.name"/></td></tr>
+                            <tr t-if="o.confirming_bank_id"><td>Confirming bank</td><td class="text-end"><span t-field="o.confirming_bank_id.name"/></td></tr>
+                            <tr t-if="o.project_id"><td>Project</td><td class="text-end"><span t-field="o.project_id.name"/></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-6">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr><td>Issued</td><td class="text-end"><span t-field="o.date_issue"/></td></tr>
+                            <tr><td>Expires</td><td class="text-end"><span t-field="o.date_expiry"/></td></tr>
+                            <tr t-if="o.date_latest_shipment"><td>Latest shipment</td><td class="text-end"><span t-field="o.date_latest_shipment"/></td></tr>
+                            <tr><td>Presentation period</td><td class="text-end"><span t-field="o.presentation_days"/> days</td></tr>
+                            <tr t-if="o.place_of_expiry"><td>Place of expiry</td><td class="text-end"><span t-field="o.place_of_expiry"/></td></tr>
+                            <tr t-if="o.incoterm_id"><td>Incoterm</td><td class="text-end"><span t-field="o.incoterm_id.code"/></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <h5>Availability</h5>
+            <table class="table table-sm">
+                <tbody>
+                    <tr>
+                        <td>Credit amount</td>
+                        <td class="text-end"><span t-field="o.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                    </tr>
+                    <tr t-if="o.tolerance_percent">
+                        <td>Tolerance</td>
+                        <td class="text-end">+<span t-field="o.tolerance_percent"/>%</td>
+                    </tr>
+                    <tr>
+                        <td>Maximum drawable</td>
+                        <td class="text-end"><span t-field="o.amount_max" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                    </tr>
+                    <tr>
+                        <td>Drawn to date</td>
+                        <td class="text-end"><span t-field="o.amount_utilised" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                    </tr>
+                    <tr class="fw-bold border-top">
+                        <td>Available</td>
+                        <td class="text-end"><span t-field="o.amount_available" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h5>Document Checklist</h5>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Document</th>
+                        <th class="text-center">Required</th>
+                        <th class="text-center">Copies</th>
+                        <th class="text-center">Received</th>
+                        <th>Reference</th>
+                        <th class="text-end">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="o.document_ids" t-as="doc">
+                        <td><span t-field="doc.document_type_id.name"/></td>
+                        <td class="text-center"><span t-if="doc.is_required">Yes</span><span t-else="">No</span></td>
+                        <td class="text-center"><span t-field="doc.copies_required"/></td>
+                        <td class="text-center">
+                            <span t-if="doc.is_received">&#10003;</span>
+                            <span t-else="" class="text-danger">Outstanding</span>
+                        </td>
+                        <td><span t-field="doc.reference"/></td>
+                        <td class="text-end"><span t-field="doc.date_received"/></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p t-if="not o.documents_complete" class="text-danger">
+                <strong>The document set is incomplete.</strong>
+                Payment against this credit is held until every required document is received.
+            </p>
+
+            <t t-if="o.utilisation_ids">
+                <h5>Utilisations</h5>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Reference</th><th>Presented</th><th>Maturity</th>
+                            <th class="text-end">Amount</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="o.utilisation_ids" t-as="util">
+                            <td><span t-field="util.name"/></td>
+                            <td><span t-field="util.date_presentation"/></td>
+                            <td><span t-field="util.date_maturity"/></td>
+                            <td class="text-end"><span t-field="util.amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                            <td><span t-field="util.state"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+
+            <t t-if="o.amendment_ids.filtered(lambda a: a.state == 'accepted')">
+                <h5>Accepted Amendments</h5>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr t-foreach="o.amendment_ids.filtered(lambda a: a.state == 'accepted')" t-as="am">
+                            <td><span t-field="am.date"/></td>
+                            <td><span t-field="am.bank_reference"/></td>
+                            <td><span t-field="am.amendment_type"/></td>
+                            <td><span t-field="am.description"/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+
+            <div t-if="o.goods_description" class="mt-3">
+                <h5>Description of Goods</h5>
+                <p t-field="o.goods_description"/>
+            </div>
+        </div>
+    </t>
+</template>
+
+<template id="report_odin_lc_status">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="odin_letter_of_credit.report_odin_lc_status_document"/>
+        </t>
+    </t>
+</template>
+
+</odoo>

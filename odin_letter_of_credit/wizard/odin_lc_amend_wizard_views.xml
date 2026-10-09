@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_lc_amend_wizard_view_form" model="ir.ui.view">
+        <field name="name">odin.lc.amend.wizard.form</field>
+        <field name="model">odin.lc.amend.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Amend Credit">
+                <group>
+                    <group>
+                        <field name="lc_id" readonly="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="amendment_type"/>
+                        <field name="bank_reference"/>
+                    </group>
+                    <group>
+                        <field name="amount_current" invisible="amendment_type != 'amount'"/>
+                        <field name="amount_new" invisible="amendment_type != 'amount'"
+                               required="amendment_type == 'amount'"/>
+                        <field name="date_current" invisible="amendment_type not in ('expiry', 'shipment')"/>
+                        <field name="date_new" invisible="amendment_type not in ('expiry', 'shipment')"
+                               required="amendment_type in ('expiry', 'shipment')"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="description" nolabel="1"
+                           placeholder="What the amendment changes, in the bank's own wording where you have it."/>
+                </group>
+                <div class="alert alert-info" role="alert">
+                    The amendment is created as Requested. It only changes the credit
+                    once it is accepted, so the credit always shows the terms in force.
+                </div>
+                <footer>
+                    <button name="action_create_amendment" type="object" string="Request Amendment"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

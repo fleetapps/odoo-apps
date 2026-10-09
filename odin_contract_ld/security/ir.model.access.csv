@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_ld_agreement_user,odin.ld.agreement user,model_odin_ld_agreement,group_odin_ld_user,1,1,1,0
+access_odin_ld_agreement_manager,odin.ld.agreement manager,model_odin_ld_agreement,group_odin_ld_manager,1,1,1,1
+access_odin_ld_eot_user,odin.ld.eot user,model_odin_ld_eot,group_odin_ld_user,1,1,1,0
+access_odin_ld_eot_manager,odin.ld.eot manager,model_odin_ld_eot,group_odin_ld_manager,1,1,1,1
+access_odin_ld_charge_user,odin.ld.charge user,model_odin_ld_charge,group_odin_ld_user,1,1,1,0
+access_odin_ld_charge_manager,odin.ld.charge manager,model_odin_ld_charge,group_odin_ld_manager,1,1,1,1
+access_odin_ld_apply_wizard,odin.ld.apply.wizard,model_odin_ld_apply_wizard,group_odin_ld_user,1,1,1,1
+access_odin_ld_agreement_account,odin.ld.agreement accountant read,model_odin_ld_agreement,account.group_account_invoice,1,0,0,0
+access_odin_ld_charge_account,odin.ld.charge accountant read,model_odin_ld_charge,account.group_account_invoice,1,0,0,0

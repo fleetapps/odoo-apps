@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_lc_amendment_view_form" model="ir.ui.view">
+        <field name="name">odin.lc.amendment.form</field>
+        <field name="model">odin.lc.amendment</field>
+        <field name="arch" type="xml">
+            <form string="Amendment">
+                <header>
+                    <button name="action_request" type="object" string="Request" class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_accept" type="object" string="Accept" class="btn-primary"
+                            invisible="state != 'requested'"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"
+                            confirm="Accepting writes the amended term through to the credit. Continue?"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state != 'requested'"
+                            groups="odin_letter_of_credit.group_odin_lc_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,requested,accepted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lc_id" options="{'no_create': True}"/>
+                            <field name="date"/>
+                            <field name="bank_reference"/>
+                            <field name="amendment_type"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_old" invisible="amendment_type != 'amount'"/>
+                            <field name="amount_new" invisible="amendment_type != 'amount'"
+                                   required="amendment_type == 'amount'"/>
+                            <field name="date_old" invisible="amendment_type not in ('expiry', 'shipment')"/>
+                            <field name="date_new" invisible="amendment_type not in ('expiry', 'shipment')"
+                                   required="amendment_type in ('expiry', 'shipment')"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_lc_amendment_view_list" model="ir.ui.view">
+        <field name="name">odin.lc.amendment.list</field>
+        <field name="model">odin.lc.amendment</field>
+        <field name="arch" type="xml">
+            <list string="Amendments" decoration-success="state == 'accepted'"
+                  decoration-muted="state == 'rejected'">
+                <field name="name"/>
+                <field name="lc_id"/>
+                <field name="date"/>
+                <field name="bank_reference" optional="show"/>
+                <field name="amendment_type"/>
+                <field name="description"/>
+                <field name="state" widget="badge" decoration-success="state == 'accepted'"/>
+            </list>
+        </field>
+    </record>
+</odoo>

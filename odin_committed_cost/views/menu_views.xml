@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="odin_cost_budget_action" model="ir.actions.act_window">
+        <field name="name">Cost Budgets</field>
+        <field name="res_model">odin.cost.budget</field>
+        <field name="view_mode">list,form,graph</field>
+        <field name="search_view_id" ref="odin_cost_budget_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Budget a project by workstream</p>
+            <p>
+                Budget against committed and actual, not just actual. A project on
+                budget with half a million of open purchase orders is not on budget.
+            </p>
+        </field>
+    </record>
+
+    <record id="odin_commitment_action" model="ir.actions.act_window">
+        <field name="name">Commitments</field>
+        <field name="res_model">odin.commitment</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="search_view_id" ref="odin_commitment_view_search"/>
+        <field name="context">{'search_default_filter_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No commitments yet</p>
+            <p>Confirming a purchase order creates them automatically, one per analytic account on each line.</p>
+        </field>
+    </record>
+
+    <record id="odin_cost_control_report_action" model="ir.actions.act_window">
+        <field name="name">Cost Control Analysis</field>
+        <field name="res_model">odin.cost.control.report</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="search_view_id" ref="odin_cost_control_report_view_search"/>
+    </record>
+
+    <menuitem id="menu_odin_cost_root" name="Cost Control"
+              parent="account.menu_finance" sequence="94"
+              groups="odin_committed_cost.group_odin_cost_user"/>
+
+    <menuitem id="menu_odin_cost_budget" name="Budgets"
+              parent="menu_odin_cost_root" action="odin_cost_budget_action" sequence="10"/>
+    <menuitem id="menu_odin_commitment" name="Commitments"
+              parent="menu_odin_cost_root" action="odin_commitment_action" sequence="20"/>
+    <menuitem id="menu_odin_cost_control_report" name="Cost Control Analysis"
+              parent="menu_odin_cost_root" action="odin_cost_control_report_action" sequence="30"/>
+
+</odoo>

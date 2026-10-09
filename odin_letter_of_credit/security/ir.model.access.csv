@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_lc_type_user,odin.lc.document.type user,model_odin_lc_document_type,group_odin_lc_user,1,0,0,0
+access_odin_lc_type_manager,odin.lc.document.type manager,model_odin_lc_document_type,group_odin_lc_manager,1,1,1,1
+access_odin_lc_user,odin.letter.of.credit user,model_odin_letter_of_credit,group_odin_lc_user,1,1,1,0
+access_odin_lc_manager,odin.letter.of.credit manager,model_odin_letter_of_credit,group_odin_lc_manager,1,1,1,1
+access_odin_lc_document_user,odin.lc.document user,model_odin_lc_document,group_odin_lc_user,1,1,1,1
+access_odin_lc_amendment_user,odin.lc.amendment user,model_odin_lc_amendment,group_odin_lc_user,1,1,1,0
+access_odin_lc_amendment_manager,odin.lc.amendment manager,model_odin_lc_amendment,group_odin_lc_manager,1,1,1,1
+access_odin_lc_utilisation_user,odin.lc.utilisation user,model_odin_lc_utilisation,group_odin_lc_user,1,1,1,0
+access_odin_lc_utilisation_manager,odin.lc.utilisation manager,model_odin_lc_utilisation,group_odin_lc_manager,1,1,1,1
+access_odin_lc_charge_user,odin.lc.charge user,model_odin_lc_charge,group_odin_lc_user,1,1,1,1
+access_odin_lc_amend_wizard,odin.lc.amend.wizard,model_odin_lc_amend_wizard,group_odin_lc_user,1,1,1,1
+access_odin_lc_account_read,odin.letter.of.credit accountant read,model_odin_letter_of_credit,account.group_account_invoice,1,0,0,0
+access_odin_lc_document_account_read,odin.lc.document accountant read,model_odin_lc_document,account.group_account_invoice,1,0,0,0
+access_odin_lc_type_all,odin.lc.document.type read all,model_odin_lc_document_type,base.group_user,1,0,0,0

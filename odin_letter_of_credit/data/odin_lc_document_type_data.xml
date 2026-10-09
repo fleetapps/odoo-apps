@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            The usual UCP 600 document set. Editable, because every trade lane
+            adds its own: a pre-shipment inspection here, a phytosanitary
+            certificate there.
+        -->
+        <record id="lc_doc_commercial_invoice" model="odin.lc.document.type">
+            <field name="name">Commercial Invoice</field>
+            <field name="code">INV</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="lc_doc_bill_of_lading" model="odin.lc.document.type">
+            <field name="name">Bill of Lading</field>
+            <field name="code">BL</field>
+            <field name="sequence">20</field>
+            <field name="is_transport_document" eval="True"/>
+        </record>
+        <record id="lc_doc_air_waybill" model="odin.lc.document.type">
+            <field name="name">Air Waybill</field>
+            <field name="code">AWB</field>
+            <field name="sequence">25</field>
+            <field name="is_transport_document" eval="True"/>
+        </record>
+        <record id="lc_doc_packing_list" model="odin.lc.document.type">
+            <field name="name">Packing List</field>
+            <field name="code">PL</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="lc_doc_certificate_origin" model="odin.lc.document.type">
+            <field name="name">Certificate of Origin</field>
+            <field name="code">COO</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="lc_doc_insurance" model="odin.lc.document.type">
+            <field name="name">Insurance Certificate</field>
+            <field name="code">INS</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="lc_doc_inspection" model="odin.lc.document.type">
+            <field name="name">Pre-shipment Inspection Certificate</field>
+            <field name="code">PSI</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="lc_doc_beneficiary_cert" model="odin.lc.document.type">
+            <field name="name">Beneficiary's Certificate</field>
+            <field name="code">BEN</field>
+            <field name="sequence">70</field>
+        </record>
+        <record id="lc_doc_draft" model="odin.lc.document.type">
+            <field name="name">Bill of Exchange / Draft</field>
+            <field name="code">BOE</field>
+            <field name="sequence">80</field>
+        </record>
+        <record id="lc_doc_weight_list" model="odin.lc.document.type">
+            <field name="name">Weight List</field>
+            <field name="code">WL</field>
+            <field name="sequence">90</field>
+        </record>
+        <record id="lc_doc_test_certificate" model="odin.lc.document.type">
+            <field name="name">Mill / Test Certificate</field>
+            <field name="code">TC</field>
+            <field name="sequence">100</field>
+        </record>
+        <record id="lc_doc_warranty" model="odin.lc.document.type">
+            <field name="name">Warranty Certificate</field>
+            <field name="code">WAR</field>
+            <field name="sequence">110</field>
+        </record>
+    </data>
+</odoo>

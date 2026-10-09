@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+<template id="report_odin_cost_control_document">
+    <t t-call="web.external_layout">
+        <div class="page">
+            <h2 class="mt-0">Cost Control Report</h2>
+            <h4 class="text-muted"><span t-field="o.name"/></h4>
+
+            <div class="row mt-4 mb-3">
+                <div class="col-6">
+                    <strong>Project</strong>: <span t-field="o.project_id.name"/><br/>
+                    <strong>Period</strong>: <span t-field="o.date_from"/> to <span t-field="o.date_to"/>
+                </div>
+                <div class="col-6 text-end">
+                    <strong>Status</strong>: <span t-field="o.state"/><br/>
+                    <t t-if="o.revision_number">
+                        <strong>Revision</strong>: <span t-field="o.revision_number"/>
+                    </t>
+                </div>
+            </div>
+
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Workstream</th>
+                        <th>Analytic Account</th>
+                        <th class="text-end">Budget</th>
+                        <th class="text-end">Committed</th>
+                        <th class="text-end">Actual</th>
+                        <th class="text-end">Remaining</th>
+                        <th class="text-end">Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="o.line_ids" t-as="line">
+                        <td><span t-field="line.name"/></td>
+                        <td><span t-field="line.analytic_account_id.name"/></td>
+                        <td class="text-end"><span t-field="line.amount_budget" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="line.amount_committed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="line.amount_actual" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end">
+                            <span t-att-class="'text-danger' if line.is_overrun else ''"
+                                  t-field="line.amount_remaining"
+                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                        </td>
+                        <td class="text-end"><span t-field="line.percent_consumed"/>%</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold border-top">
+                        <td colspan="2">Total</td>
+                        <td class="text-end"><span t-field="o.amount_budget" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="o.amount_committed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="o.amount_actual" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="o.amount_remaining" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                        <td class="text-end"><span t-field="o.percent_consumed"/>%</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div t-if="o.is_overrun" class="alert alert-danger mt-3" role="alert">
+                <strong>Overspent.</strong> Budget is exceeded once open commitments are
+                counted. Committed cost is money already promised on confirmed purchase
+                orders that has not yet been billed.
+            </div>
+
+            <p class="text-muted small mt-4">
+                Committed is the unbilled balance of confirmed purchase orders.
+                Actual is posted analytic cost, excluding sale documents.
+                Remaining is budget less committed less actual, so the same money is
+                never counted twice as it moves from one to the other.
+            </p>
+        </div>
+    </t>
+</template>
+
+<template id="report_odin_cost_control">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="odin_committed_cost.report_odin_cost_control_document"/>
+        </t>
+    </t>
+</template>
+
+</odoo>
