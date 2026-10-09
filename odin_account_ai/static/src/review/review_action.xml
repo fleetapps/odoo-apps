@@ -7,7 +7,7 @@
                 <t t-set-slot="layout-buttons">
                     <div t-if="state.data" class="d-flex gap-1 align-items-center">
                         <button t-if="!state.generating" class="btn btn-primary" t-on-click="generate"
-                                t-att-disabled="!state.data.can_apply or state.data.ai or !state.data.pending"
+                                t-att-disabled="!state.data.can_apply or !state.data.pending"
                                 t-att-data-tooltip="state.data.ai or ''">
                             <i class="fa fa-magic me-1"/>Find suggestions
                             <span t-if="state.data.pending" class="badge text-bg-light ms-1" t-esc="state.data.pending"/>
@@ -40,7 +40,7 @@
                         <p t-if="state.data.pending" class="text-muted">
                             <t t-esc="state.data.pending"/> transaction(s) wait for a suggestion.
                             <button class="btn btn-link p-0" t-on-click="generate"
-                                    t-att-disabled="!state.data.can_apply or state.data.ai"
+                                    t-att-disabled="!state.data.can_apply"
                                     t-att-data-tooltip="state.data.ai or ''">Find suggestions</button>
                         </p>
                         <p t-else="" class="text-muted">No bank line on suspense and no draft bill line on a default account.</p>
