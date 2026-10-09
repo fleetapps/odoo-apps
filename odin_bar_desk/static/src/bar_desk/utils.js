@@ -88,7 +88,7 @@ export function bulkLabel(product, qty) {
 
 /** What a count line says, e.g. "3 btl + 12 tots", "48 (1 cr + 23)". */
 export function countLabel(product, line) {
-    if (!line?.touched) {
+    if (!line?.touched || !product) {
         return "";
     }
     if (!product.poured) {
@@ -142,7 +142,17 @@ export function countLineFor(product, qty) {
 
 /** A quantity in the stock unit as staff read it: "182 tots", "48 (1 cr + 23)", "6 pcs". */
 export function stockLabel(product, qty, { packs = true } = {}) {
-    if (product.uom.name.toLowerCase() === "tot") {
+    // The catalogue holds the products on the Desk, and a line can name one it
+    // does not: a product added since the Desk loaded, or counted and then
+    // taken off "Show in Bar Desk". That is a configuration gap, not a reason
+    // to lose the screen -- and losing it is what happened, because one such
+    // line took the whole Explain list down with a TypeError. Show the bare
+    // quantity instead; the row still names the product and still works.
+    const unit = product?.uom?.name;
+    if (!unit) {
+        return fmt(qty);
+    }
+    if (unit.toLowerCase() === "tot") {
         return `${fmt(qty)} ${Math.abs(qty) === 1 ? "tot" : "tots"}`;
     }
     const crates = packs && inPacks(product, qty);
