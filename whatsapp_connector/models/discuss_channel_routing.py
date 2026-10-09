@@ -295,6 +295,37 @@ class DiscussChannel(models.Model):
     def _wa_is_manager(self):
         return self.env.su or self.env.user.has_group(MANAGER_GROUP)
 
+    def _find_or_create_member_for_self(self):
+        """Discuss makes whoever types in a channel, mutes it or changes its
+        notifications a member of it, with that user's own rights.
+
+        mail's rules only let a user add themselves to an ordinary channel, so on
+        a WhatsApp conversation this failed with an AccessError for every
+        WhatsApp manager who was not already a member -- everyone but a system
+        administrator, whom ``ir_rule_discuss_channel_member_group_system`` lets
+        through. Managers may read every conversation, so they may join the ones
+        without an owner.
+
+        Under Lead Routing membership is who may write (R30): a manager typing in
+        someone else's conversation is not made a member behind the owner's back.
+        Nothing is created, and sending still says who owns it.
+        """
+        self.ensure_one()
+        if self.channel_type != "whatsapp" or self.env.su or not self._wa_is_manager():
+            return super()._find_or_create_member_for_self()
+        member = self.env["discuss.channel.member"].search(
+            [("channel_id", "=", self.id), ("is_self", "=", True)],
+        )
+        if member:
+            return member
+        if self.wa_routed:
+            return member
+        # sudo: a WhatsApp manager, checked above; post_joined_message=False as
+        # everywhere else in this module, a join is not news to the customer
+        return self.sudo()._add_members(
+            users=self.env.user, post_joined_message=False,
+        ).sudo(False)
+
     def add_members(self, *args, **kwargs):
         if not any(is_routed(channel) for channel in self):
             return super().add_members(*args, **kwargs)

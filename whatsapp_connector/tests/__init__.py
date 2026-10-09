@@ -1,5 +1,6 @@
 from . import (
     test_install,
+    test_membership,
     test_meta_api,
     test_outbound,
     test_processor,
