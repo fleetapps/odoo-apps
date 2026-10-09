@@ -39,6 +39,7 @@ class TestEngine(PnlCase):
         self.assertEqual(result["options"]["date"]["date_from"], "2026-09-01")
         self.assertEqual(result["options"]["date"]["date_to"], "2026-09-30")
         self.assertAlmostEqual(self.value(result, "L:NET"), 420.0)
+        self.assertFalse(result["options"]["trend"], "the 12-month sparkline is off unless asked")
 
     def test_the_arrows_step_to_the_previous_month(self):
         result = self.run_report(date={"filter": "custom", "date_from": "2026-09-01", "date_to": "2026-09-30", "step": -1})

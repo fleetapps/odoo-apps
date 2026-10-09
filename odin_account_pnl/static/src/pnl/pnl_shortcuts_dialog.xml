@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_pnl.PnlShortcutsDialog">
+        <Dialog title.translate="Keyboard shortcuts" size="'md'" contentClass="'o_odin_pnl_shortcuts'">
+            <p class="text-muted small mb-2">They work while the report has the focus: click anywhere on it first.</p>
+            <table class="table table-sm align-middle mb-3">
+                <tbody>
+                    <tr t-foreach="shortcuts" t-as="shortcut" t-key="shortcut_index">
+                        <td class="text-nowrap">
+                            <t t-foreach="shortcut.keys" t-as="key" t-key="key_index">
+                                <kbd t-esc="key"/><t t-if="!key_last"> </t>
+                            </t>
+                        </td>
+                        <td t-esc="shortcut.label"/>
+                    </tr>
+                </tbody>
+            </table>
+            <h6 class="text-muted">With the mouse</h6>
+            <ul class="mb-0">
+                <li>Click a figure: the journal items behind it, largest first.</li>
+                <li><strong>By ▾</strong> on a line: split it by partner, product, month, journal or analytic account, or show its ledger.</li>
+                <li><strong>⋯</strong> on a line: its journal items, notes and other actions.</li>
+            </ul>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="props.close">Got it</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

@@ -22,6 +22,10 @@
                             </Dropdown>
                         </div>
                         <PnlViewsMenu report="this"/>
+                        <button class="btn btn-secondary" t-on-click="openShortcuts"
+                                aria-label="Keyboard shortcuts" data-tooltip="Keyboard shortcuts (?)">
+                            <i class="fa fa-keyboard-o"/>
+                        </button>
                     </div>
                 </t>
                 <div t-if="state.loading" class="o_odin_pnl_loading text-muted">
@@ -32,7 +36,7 @@
                                   onChange.bind="changeOptions" onCreateBudget.bind="createBudget"
                                   search="state.search" onSearch.bind="onSearch"/>
                     <div t-if="state.error" class="alert alert-danger m-3" role="alert" t-esc="state.error"/>
-                    <div t-if="state.data" class="o_odin_pnl_body">
+                    <div t-if="state.data" class="o_odin_pnl_body" t-att-class="{ o_odin_pnl_with_panel: state.panel }">
                         <div class="o_odin_pnl_main" t-ref="scroller" t-att-class="{ o_odin_pnl_busy: state.busy }">
                             <div t-if="state.data.warnings.length" class="o_odin_pnl_warnings">
                                 <div t-foreach="state.data.warnings" t-as="warning" t-key="warning_index"
@@ -43,6 +47,15 @@
                                     <button t-if="state.data.can_configure" class="btn btn-link btn-sm p-0 ms-2"
                                             t-on-click="editLayout">Edit the layout</button>
                                 </div>
+                            </div>
+                            <div t-if="!state.tipDismissed" class="o_odin_pnl_tip" role="note">
+                                <i class="fa fa-lightbulb-o" aria-hidden="true"/>
+                                <span>
+                                    Click a line to open it, a figure to list its journal items, <strong>By</strong> to
+                                    split a number. Press <kbd>?</kbd> for the keyboard shortcuts.
+                                </span>
+                                <button class="btn btn-link btn-sm ms-auto" aria-label="Dismiss the tip"
+                                        t-on-click="dismissTip"><i class="fa fa-times"/></button>
                             </div>
                             <t t-call="odin_account_pnl.PnlTable"/>
                         </div>
@@ -57,6 +70,7 @@
 
     <t t-name="odin_account_pnl.PnlTable">
         <t t-set="options" t-value="state.options"/>
+        <t t-set="balanceColumn" t-value="showRunning"/>
         <table class="o_odin_pnl_table">
             <thead>
                 <tr>
@@ -76,6 +90,8 @@
                             <th class="o_odin_pnl_num o_odin_pnl_budget_col" data-tooltip="Actual as a % of budget">%</th>
                         </t>
                     </t>
+                    <th t-if="balanceColumn" class="o_odin_pnl_num o_odin_pnl_running_col"
+                        data-tooltip="Running balance of the ledger, oldest first">Balance</th>
                     <th t-if="hasGrowth" class="o_odin_pnl_num" data-tooltip="Change against the first comparison">%</th>
                 </tr>
             </thead>
@@ -97,8 +113,8 @@
                             <t t-call="odin_account_pnl.PnlNameCell"/>
                         </td>
                         <td t-if="options.trend" class="o_odin_pnl_trend">
-                            <svg t-if="row.trend and row.trend.length" width="64" height="18" viewBox="0 0 64 18" aria-hidden="true">
-                                <polyline t-att-points="sparkPoints(row.trend)" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                            <svg t-if="row.trend and row.trend.length" width="48" height="14" viewBox="0 0 48 14" aria-hidden="true">
+                                <polyline t-att-points="sparkPoints(row.trend, 48, 14)" fill="none" stroke="currentColor" stroke-width="1.25"/>
                             </svg>
                         </td>
                         <t t-foreach="columns" t-as="column" t-key="column.key">
@@ -126,6 +142,9 @@
                                 </td>
                             </t>
                         </t>
+                        <td t-if="balanceColumn" class="o_odin_pnl_num o_odin_pnl_running_col">
+                            <t t-if="row.running !== null and row.running !== undefined" t-esc="fmt(row.running)"/>
+                        </td>
                         <td t-if="hasGrowth" class="o_odin_pnl_num" t-att-class="growthClass(row)"
                             t-esc="formatGrowth(row.growth)"/>
                     </tr>
@@ -151,8 +170,6 @@
                 <span class="o_odin_pnl_entry_partner" t-esc="row.partner"/>
                 <span class="o_odin_pnl_entry_label text-muted" t-esc="row.label"/>
                 <span class="badge text-bg-light" t-esc="row.journal"/>
-                <span t-if="row.running !== null and row.running !== undefined" class="o_odin_pnl_running text-muted"
-                      data-tooltip="Running balance">= <t t-esc="fmt(row.running)"/></span>
             </t>
             <t t-elif="row.type === 'others'">
                 <span class="o_odin_pnl_label"><t t-esc="row.name"/></span>
@@ -187,7 +204,10 @@
     </t>
 
     <t t-name="odin_account_pnl.PnlRowMenu">
-        <div t-if="state.menu and menuRow" class="o_odin_pnl_rowmenu dropdown-menu show"
+        <!-- The menu is driven by OWL, not by Bootstrap: Bootstrap's keyboard
+             handler skips menus carrying the class of Odoo's own dropdown menus
+             (Odoo's patch in web/static/lib/bootstrap/js/dist/dropdown.js). -->
+        <div t-if="state.menu and menuRow" class="o_odin_pnl_rowmenu o-dropdown--menu dropdown-menu show"
              t-attf-style="top: {{state.menu.top}}px; left: {{state.menu.left}}px;">
             <t t-if="state.menu.kind === 'by'">
                 <h6 class="dropdown-header">Show by</h6>

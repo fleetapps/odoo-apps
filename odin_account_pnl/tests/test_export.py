@@ -27,6 +27,22 @@ class TestExport(PnlCase):
         account = next(key for key in values if key and self.revenue.name in key)
         self.assertEqual(values[account][0], 1000.0, "unfolded accounts are exported")
 
+    def test_a_ledger_exports_its_running_balance(self):
+        self.post("2026-09-20", [(self.revenue, -250.0)])
+        account_key = f"L:REV/A:{self.revenue.id}"
+        options = self.options(unfolded=["L:REV", account_key], modes={account_key: "ledger"})
+        payload = self.env["odin.pnl.export"]._payload(options)
+        labels = [column["label"] for column in payload["columns"]]
+        self.assertIn("Balance", labels)
+        position = labels.index("Balance")
+        entries = [row for row in payload["rows"] if row["type"] == "entry"]
+        self.assertEqual([row["cells"][position]["value"] for row in entries], [1000.0, 1250.0])
+        account = next(row for row in payload["rows"] if row["key"] == account_key)
+        self.assertIsNone(account["cells"][position]["value"], "only the ledger's items carry a balance")
+        # No ledger on the page, no Balance column.
+        plain = self.env["odin.pnl.export"]._payload(self.options(unfolded=["L:REV", account_key]))
+        self.assertNotIn("Balance", [column["label"] for column in plain["columns"]])
+
     def test_the_payload_marks_notes_as_footnotes(self):
         self.report.add_annotation(self.options(), "L:REV", "One client")
         payload = self.env["odin.pnl.export"]._payload(self.options())

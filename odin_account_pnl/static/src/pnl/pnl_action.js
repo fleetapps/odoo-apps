@@ -7,6 +7,7 @@ import { Layout } from "@web/search/layout";
 import { useSetupAction } from "@web/search/action_hook";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { PnlFilterBar } from "./pnl_filters";
+import { PnlShortcutsDialog } from "./pnl_shortcuts_dialog";
 import { PnlSidePanel } from "./pnl_side_panel";
 import { PnlViewsMenu } from "./pnl_views_menu";
 import { download } from "@web/core/network/download";
@@ -15,17 +16,29 @@ import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { formatAmount, formatGrowth, formatPercent, sparkPoints } from "./pnl_format";
 import { lineActionRegistry, sidePanelRegistry } from "./pnl_registries";
 
-const PREFS_KEY = "odin_account_pnl.display";
 // Display choices remembered per browser. The period and filters are not:
-// the report opens on last month, as Enterprise's does.
+// the report opens on last month, as Enterprise's does. ".v2": the first key
+// stored the 12-month trend's old default (on) for everyone, which cannot be
+// told apart from a choice; the trend is now off unless turned on.
+const PREFS_KEY = "odin_account_pnl.display.v2";
 const REMEMBERED = ["layout_id", "scale", "decimals", "show_codes", "trend", "percent_of_base",
     "hide_zero", "account_groups", "negative_parentheses"];
+// The one-time tip about clicks and shortcuts, once dismissed in this browser.
+const TIP_KEY = "odin_account_pnl.tip_dismissed";
 
 function readPrefs() {
     try {
         return JSON.parse(browser.localStorage.getItem(PREFS_KEY)) || {};
     } catch {
         return {};
+    }
+}
+
+function readTipDismissed() {
+    try {
+        return browser.localStorage.getItem(TIP_KEY) === "1";
+    } catch {
+        return false;
     }
 }
 
@@ -74,6 +87,7 @@ export class PnlAction extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.dialog = useService("dialog");
         this.notification = useService("notification");
         this.formatGrowth = formatGrowth;
         this.formatPercent = formatPercent;
@@ -95,6 +109,7 @@ export class PnlAction extends Component {
             editing: null,
             viewId: restored?.viewId || false,
             exporting: false,
+            tipDismissed: readTipDismissed(),
         });
         this.journals = [];
         this.rootRef = useRef("root");
@@ -143,6 +158,16 @@ export class PnlAction extends Component {
                 }
             },
             () => [this.state.editing]
+        );
+        // A menu opened from the keyboard (B) takes the focus, so its items
+        // are reached with the arrows and chosen with Enter.
+        useEffect(
+            (menu) => {
+                if (menu?.fromKeyboard) {
+                    this.rootRef.el?.querySelector(".o_odin_pnl_rowmenu .dropdown-item")?.focus();
+                }
+            },
+            () => [this.state.menu]
         );
     }
 
@@ -218,6 +243,11 @@ export class PnlAction extends Component {
         return this.columns.some((column) => column.group === "comparison");
     }
 
+    /** A Balance column while an account shows its ledger (running balance). */
+    get showRunning() {
+        return this.state.rows.some((row) => row.type === "entry" && row.running !== null && row.running !== undefined);
+    }
+
     get currencyDecimals() {
         return this.state.data?.currency.decimals ?? 2;
     }
@@ -284,7 +314,7 @@ export class PnlAction extends Component {
     }
 
     async setMode(row, mode) {
-        this.state.menu = null;
+        this.closeMenu();
         await this.unfold(row, mode);
     }
 
@@ -415,6 +445,9 @@ export class PnlAction extends Component {
             o_odin_pnl_focus: row.key === this.state.focusKey,
             o_odin_pnl_peeked: this.state.panel?.row?.key === row.key,
             o_odin_pnl_draft: row.draft,
+            // Split by something else than its accounts or items: the "By"
+            // chip stays visible, so the split reads without hovering.
+            o_odin_pnl_split: Boolean(row.unfolded && row.mode && !["accounts", "entries"].includes(row.mode)),
         };
     }
 
@@ -471,7 +504,12 @@ export class PnlAction extends Component {
 
     openMenu(ev, row, kind) {
         ev.stopPropagation();
-        const rect = ev.currentTarget.getBoundingClientRect();
+        this.openMenuAt(ev.currentTarget, row, kind);
+    }
+
+    /** The shared row menu, placed under ``anchor`` (a row's button). */
+    openMenuAt(anchor, row, kind, fromKeyboard = false) {
+        const rect = anchor.getBoundingClientRect();
         const rootRect = this.rootRef.el.getBoundingClientRect();
         this.state.focusKey = row.key;
         this.state.menu = {
@@ -479,7 +517,13 @@ export class PnlAction extends Component {
             key: row.key,
             top: rect.bottom - rootRect.top + 2,
             left: Math.min(rect.left - rootRect.left, rootRect.width - 260),
+            fromKeyboard,
         };
+    }
+
+    closeMenu() {
+        this.state.menu = null;
+        this.rootRef.el?.focus();
     }
 
     onWindowClick(ev) {
@@ -522,7 +566,7 @@ export class PnlAction extends Component {
     }
 
     runMenuAction(item) {
-        this.state.menu = null;
+        this.closeMenu();
         item.run();
     }
 
@@ -642,6 +686,18 @@ export class PnlAction extends Component {
         if (["INPUT", "TEXTAREA", "SELECT"].includes(ev.target.tagName)) {
             return;
         }
+        // Ctrl/Cmd/Alt combinations belong to the browser and to Odoo (Ctrl+K
+        // opens the command palette); Shift is allowed for "?".
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) {
+            return;
+        }
+        // Keys inside the row menu, and the arrows while it is open, even
+        // when it was opened with the mouse, belong to the menu.
+        if (ev.target.closest(".o_odin_pnl_rowmenu") ||
+            (this.state.menu && (ev.key === "ArrowDown" || ev.key === "ArrowUp"))) {
+            this.onMenuKeydown(ev);
+            return;
+        }
         const rows = this.visibleRows.filter((row) => row.type !== "heading");
         const index = rows.findIndex((row) => row.key === this.state.focusKey);
         const row = rows[index];
@@ -683,9 +739,25 @@ export class PnlAction extends Component {
                 ev.preventDefault();
                 this.rootRef.el.querySelector(".o_odin_pnl_search input")?.focus();
                 break;
+            case "b": {
+                const button = row && this.scrollerRef.el?.querySelector(
+                    `tr[data-key="${CSS.escape(row.key)}"] .o_odin_pnl_by`);
+                if (!button) {
+                    return;
+                }
+                this.openMenuAt(button, row, "by", true);
+                break;
+            }
+            case "?":
+                this.openShortcuts();
+                break;
             case "Escape":
-                this.state.menu = null;
-                this.state.panel = null;
+                // One thing at a time: the menu first, then the side panel.
+                if (this.state.menu) {
+                    this.state.menu = null;
+                } else {
+                    this.state.panel = null;
+                }
                 break;
             default: {
                 const shortcut = lineActionRegistry
@@ -699,6 +771,53 @@ export class PnlAction extends Component {
             }
         }
         ev.preventDefault();
+    }
+
+    /** Keys inside the row menu: arrows move between its items, Escape closes
+     * it; Enter and Space are left to the focused button. */
+    onMenuKeydown(ev) {
+        if (ev.key === "Escape") {
+            ev.preventDefault();
+            this.closeMenu();
+            return;
+        }
+        if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") {
+            return;
+        }
+        ev.preventDefault();
+        const items = [...this.rootRef.el.querySelectorAll(".o_odin_pnl_rowmenu .dropdown-item")];
+        const step = ev.key === "ArrowDown" ? 1 : -1;
+        const index = items.indexOf(document.activeElement);
+        // Not in the menu yet: down enters at the top, up at the bottom.
+        const next = index === -1
+            ? items.at(step === 1 ? 0 : -1)
+            : items[(index + step + items.length) % items.length];
+        next?.focus();
+    }
+
+    /** Line actions that declare a key (the AI module's Explain, for one). */
+    get lineActionShortcuts() {
+        return lineActionRegistry
+            .getEntries()
+            .filter(([, item]) => item.hotkey)
+            .map(([, item]) => ({ key: item.hotkey, label: item.label }));
+    }
+
+    openShortcuts() {
+        this.dialog.add(
+            PnlShortcutsDialog,
+            { lineActions: this.lineActionShortcuts },
+            { onClose: () => this.rootRef.el?.focus() }
+        );
+    }
+
+    dismissTip() {
+        this.state.tipDismissed = true;
+        try {
+            browser.localStorage.setItem(TIP_KEY, "1");
+        } catch {
+            // Storage blocked: the tip shows again next time.
+        }
     }
 
     onSearch(value) {

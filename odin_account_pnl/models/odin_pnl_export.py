@@ -61,7 +61,9 @@ class OdinPnlExport(models.AbstractModel):
                 for note in Report.get_annotations(options, row["key"]):
                     notes.append({"number": len(notes) + 1, "line": row["name"], "text": note["note"]})
                     row["note_refs"].append(len(notes))
-        columns = self._columns(report)
+        # The ledger's running balance gets its own column, as on screen.
+        running = any(row["type"] == "entry" and row.get("running") is not None for row in rows)
+        columns = self._columns(report, running=running)
         currency = self.env.company.currency_id
         for row in rows:
             row["cells"] = [self._cell(row, column, options, currency) for column in columns]
@@ -86,7 +88,7 @@ class OdinPnlExport(models.AbstractModel):
             "warnings": [warning["message"] for warning in report["warnings"]],
         }
 
-    def _columns(self, report):
+    def _columns(self, report, running=False):
         options = report["options"]
         columns = []
         for column in report["columns"]:
@@ -96,6 +98,8 @@ class OdinPnlExport(models.AbstractModel):
             if column["budget"]:
                 columns.append({"key": column["key"], "kind": "budget", "label": _("Budget")})
                 columns.append({"key": column["key"], "kind": "budget_pct", "label": _("% of budget")})
+        if running:
+            columns.append({"key": "running", "kind": "running", "label": _("Balance")})
         if any(column["group"] == "comparison" for column in report["columns"]):
             columns.append({"key": "growth", "kind": "growth", "label": "%"})
         return columns
@@ -110,6 +114,8 @@ class OdinPnlExport(models.AbstractModel):
             value = row.get("budget", {}).get(column["key"])
         elif kind == "budget_pct":
             value = row.get("budget_pct", {}).get(column["key"])
+        elif kind == "running":
+            value = row.get("running")
         else:
             value = row.get("growth")
         return {"value": value, "kind": kind, "text": self._format(value, kind, options, currency)}

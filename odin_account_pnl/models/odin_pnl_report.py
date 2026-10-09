@@ -570,7 +570,9 @@ class OdinPnlReport(models.AbstractModel):
             "show_codes": options.get("show_codes", True) is not False,
             "account_groups": bool(options.get("account_groups")),
             "percent_of_base": bool(options.get("percent_of_base")),
-            "trend": options.get("trend", True) is not False,
+            # Off unless asked: with little history the sparkline says little,
+            # and it costs a 12-month query on every load.
+            "trend": bool(options.get("trend")),
             "unfold_all": bool(options.get("unfold_all")),
             "budget_id": budget.id or False,
             "scale": scale,

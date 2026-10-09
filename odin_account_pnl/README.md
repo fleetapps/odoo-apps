@@ -18,7 +18,7 @@ The top bar follows Enterprise's order:
 | 📅 Period | Last month by default, as Enterprise. This/last month, quarter, fiscal year (the company's fiscal year end), fiscal year to date or any dates. ◀ ▶ step to the previous or next period. *Divide into* months or quarters shows one column per period plus a total. |
 | % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). |
 | Journals, Analytic, Partners | Narrow the journal items. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
-| Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, unfold all. |
+| Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, unfold all, and a 12-month trend sparkline (off by default). |
 | Budget | Adds Budget and % achieved columns; amounts are typed into the report. |
 | Scale | Units, thousands or millions. |
 
@@ -31,8 +31,9 @@ product, product category, month, journal or analytic account (one plan at a
 time). The ten largest contributors show with their share, the rest under
 *Others*. With a comparison, the split shows who moved the number.
 
-**Ledger.** An account can show its journal items oldest first with a running
-balance, as the General Ledger does.
+**Ledger.** An account can show its journal items oldest first, as the General
+Ledger does, with their running balance in a *Balance* column (in the exports
+too).
 
 **Audit a cell.** Clicking a figure lists the journal items behind exactly that
 figure (that row, that column), largest first.
@@ -42,6 +43,27 @@ its document, lines with their analytic split, the attached PDF or image,
 the last notes, and ◀ ▶ (or J/K) to step through the other items behind
 the same figure. *Open* goes to the full form; the breadcrumb comes back to
 the report exactly as it was (options, unfolded rows, panel, scroll).
+
+**Finding your way.** A line's *By ▾* and *⋯* buttons show on the hovered or
+focused line (always on touch screens), and a line that is split keeps its
+*By* chip in view, named after the split (Partner, Ledger…). With the side
+panel open the sparkline steps aside and the columns narrow, so the figures
+and the growth stay on screen. A one-time tip explains the clicks, and the
+keyboard button (or `?`) lists the shortcuts:
+
+| Key | |
+|---|---|
+| ↑ ↓ | Move between lines |
+| → ← | Unfold; fold, or go to the line it belongs to |
+| Enter | Open the line, or show the journal item beside the report |
+| J K | Next / previous journal item in the side panel |
+| B | Split the line by partner, product, month… (↑ ↓ and Enter choose in the menu) |
+| / | Find an account |
+| Esc | Close the menu, then the side panel |
+| ? | The shortcuts |
+
+Shortcuts work while the report has the focus; Ctrl, Cmd and Alt combinations
+are left to the browser and to Odoo (Ctrl+K stays the command palette).
 
 **Notes.** *⋯ → Annotate* on a line or account. Notes show as a flag on the
 row and as numbered footnotes in the PDF.
