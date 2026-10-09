@@ -62,6 +62,7 @@ export class AskAction extends Component {
             thread: null,
             input: "",
             sending: false,
+            stopping: false,
             history: restored?.history ?? !this.env.isSmall,
             openSteps: {},
         });
@@ -194,11 +195,41 @@ export class AskAction extends Component {
             }
         } finally {
             this.looping = false;
+            this.state.stopping = false;
             const recent = this.state.boot.recent.find((item) => item.id === this.state.thread?.id);
             if (recent) {
                 recent.state = this.state.thread.state;
             }
             this.inputRef.el?.focus();
+        }
+    }
+
+    /** Stop the question being worked on.
+     *
+     * The call can wait as long as the step's own API call, so the button says
+     * "Stopping…" rather than appearing to do nothing. The polling loop ends on
+     * its own once the state is no longer "running".
+     */
+    async stop() {
+        if (!this.running || this.state.stopping) {
+            return;
+        }
+        this.state.stopping = true;
+        try {
+            this.state.thread = await this.orm.call("odin.ai.conversation", "ask_stop", [
+                [this.state.thread.id],
+            ]);
+        } catch (error) {
+            this.state.stopping = false;
+            this.notify(error);
+            return;
+        }
+        // A step already in flight still reports "running" when it lands, and
+        // run() writes that over the stopped thread. Stay in the stopping state
+        // until the loop actually ends, or the button flickers back to "Stop"
+        // and reads as though nothing happened.
+        if (!this.looping) {
+            this.state.stopping = false;
         }
     }
 
@@ -230,6 +261,7 @@ export class AskAction extends Component {
     newConversation() {
         this.state.thread = null;
         this.state.input = "";
+        this.state.stopping = false;
         this.inputRef.el?.focus();
     }
 

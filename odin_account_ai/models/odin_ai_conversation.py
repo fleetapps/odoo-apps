@@ -38,8 +38,14 @@ class OdinAiConversation(models.Model):
                               ondelete="cascade")
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
     feature = fields.Selection([("ask", "Ask"), ("explain", "Explain")], required=True, default="ask")
-    state = fields.Selection([("running", "Thinking"), ("done", "Answered"), ("error", "Failed")],
-                             default="running", required=True)
+    state = fields.Selection(
+        [("running", "Thinking"), ("done", "Answered"), ("stopped", "Stopped"),
+         ("error", "Failed")], default="running", required=True)
+    stop_requested = fields.Boolean(
+        readonly=True, copy=False,
+        help="Set by Stop. A step holds the row while it waits on the API, so the "
+             "state cannot simply be written from outside: the next step reads this "
+             "and ends the turn.")
     step_no = fields.Integer(default=0, help="Calls made in the whole conversation.")
     turn_steps = fields.Integer(default=0, help="Calls made for the current question.")
     system_snapshot = fields.Text(readonly=True)
@@ -104,6 +110,7 @@ class OdinAiConversation(models.Model):
             "state": "running",
             "turn_steps": 0,
             "error": False,
+            "stop_requested": False,
         })
         return self._thread()
 
@@ -113,12 +120,34 @@ class OdinAiConversation(models.Model):
         self.ensure_one()
         self._check_owner()
         messages = json.loads(self.messages)
-        if self.state != "error" or not messages or messages[-1]["role"] != "user":
+        if self.state not in ("error", "stopped") or not messages or messages[-1]["role"] != "user":
             raise UserError(_("This question cannot be retried: ask it again in a new conversation."))
         blocker = self.env["odin.ai.llm"].readiness()
         if blocker:
             raise UserError(blocker)
-        self.write({"state": "running", "turn_steps": 0, "error": False})
+        self.write({"state": "running", "turn_steps": 0, "error": False,
+                    "stop_requested": False})
+        return self._thread()
+
+    def ask_stop(self):
+        """Give up on the question being worked on.
+
+        A step can hold the row for as long as one API call takes, so writing
+        the state from here would be overwritten the moment that step commits.
+        Instead: if the row can be locked, nothing is in flight and the turn
+        ends immediately; if it cannot, a step is mid-call, so the flag is set
+        and the next step reads it. Should that step answer the question first,
+        the flag is moot and the next turn clears it.
+        """
+        self.ensure_one()
+        self._check_owner()
+        if self.state != "running":
+            return self._thread()
+        if self.try_lock_for_update():
+            self.write({"state": "stopped", "stop_requested": False,
+                        "error": _("Stopped before an answer was ready.")})
+        else:
+            self.write({"stop_requested": True})
         return self._thread()
 
     def ask_step(self):
@@ -133,6 +162,10 @@ class OdinAiConversation(models.Model):
             # A step for this conversation is already running (double click,
             # or Odoo retrying a request): let the page poll again.
             return dict(self._thread(), busy=True)
+        if self.stop_requested:
+            self.write({"state": "stopped", "stop_requested": False,
+                        "error": _("Stopped before an answer was ready.")})
+            return self._thread()
         if self.turn_steps >= MAX_STEPS:
             self.write({"state": "error", "error": _(
                 "This question needed too many steps. Try asking something narrower.")})

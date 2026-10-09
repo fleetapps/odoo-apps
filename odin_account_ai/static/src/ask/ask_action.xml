@@ -141,7 +141,12 @@
                                                 </button>
                                             </div>
                                         </t>
-                                        <div t-if="isLast and state.thread.state === 'error'" class="alert alert-warning mb-0">
+                                        <div t-if="isLast and state.thread.state === 'stopped'"
+                                             class="o_odin_ai_stopped text-muted small">
+                                            <i class="fa fa-stop-circle-o me-1"/><t t-esc="state.thread.error"/>
+                                            <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                        </div>
+                                        <div t-elif="isLast and state.thread.state === 'error'" class="alert alert-warning mb-0">
                                             <t t-esc="state.thread.error"/>
                                             <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
                                         </div>
@@ -154,9 +159,16 @@
                                       t-on-keydown="onKeydown" t-att-disabled="state.boot.ready"
                                       t-att-placeholder="state.thread and state.thread.state === 'done' ? 'Ask a follow-up…' : 'Ask about revenue, costs, customers, suppliers…'"
                                       aria-label="Your question"/>
-                            <button class="btn btn-primary" t-on-click="() => this.ask(state.input)" t-att-disabled="!canAsk"
-                                    aria-label="Send">
-                                <i t-if="state.sending or running" class="fa fa-circle-o-notch fa-spin"/>
+                            <button t-if="running" class="btn btn-secondary" t-on-click="stop"
+                                    t-att-disabled="state.stopping"
+                                    t-att-aria-label="state.stopping ? 'Stopping' : 'Stop'"
+                                    t-att-data-tooltip="state.stopping ? 'Stopping…' : 'Stop this question'">
+                                <i t-if="state.stopping" class="fa fa-circle-o-notch fa-spin"/>
+                                <i t-else="" class="fa fa-stop"/>
+                            </button>
+                            <button t-else="" class="btn btn-primary" t-on-click="() => this.ask(state.input)"
+                                    t-att-disabled="!canAsk" aria-label="Send">
+                                <i t-if="state.sending" class="fa fa-circle-o-notch fa-spin"/>
                                 <i t-else="" class="fa fa-arrow-up"/>
                             </button>
                         </div>
