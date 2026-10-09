@@ -14,7 +14,7 @@ Connects a WhatsApp Business Platform (Cloud API) number to Odoo.
 Do not install together with Odoo Enterprise's WhatsApp app: both use the
 same Discuss channel and message types. See README.md and SPEC.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Productivity/Discuss",
     "author": "Odin",
     "website": "https://github.com/fleetapps/odoo-apps",
