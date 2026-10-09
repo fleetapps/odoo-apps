@@ -1,0 +1,25 @@
+// Styles shared by more than one AI screen. The citation chip lives here
+// because Ask and Explain both render it: it was defined in Explain's
+// stylesheet and worked only because the backend bundle is one global sheet,
+// so renaming or dropping that file would have silently unstyled Ask's
+// citations.
+
+.o_odin_ai_chip {
+    display: inline-block;
+    margin: 0 0.15rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--#{$prefix}primary-border-subtle);
+    border-radius: 1rem;
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}primary-text-emphasis);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.4;
+    vertical-align: 0.1em;
+
+    &:hover, &:focus-visible {
+        background-color: var(--#{$prefix}primary);
+        border-color: var(--#{$prefix}primary);
+        color: var(--#{$prefix}white);
+    }
+}

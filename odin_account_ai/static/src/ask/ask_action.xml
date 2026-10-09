@@ -29,7 +29,7 @@
                         </button>
                     </aside>
                     <main class="o_odin_ai_main">
-                        <div class="o_odin_ai_thread" t-ref="thread">
+                        <div class="o_odin_ai_thread" t-ref="thread" t-on-scroll="onThreadScroll">
                             <div t-if="state.boot.ready" class="alert alert-warning m-3" role="alert">
                                 <i class="fa fa-plug me-1"/><t t-esc="state.boot.ready"/>
                             </div>
@@ -65,7 +65,7 @@
                                                     <i class="fa fa-check text-success me-2"/><t t-esc="step"/>
                                                 </li>
                                                 <li t-if="working" class="text-muted">
-                                                    <i class="fa fa-circle-o-notch fa-spin me-2"/>Thinking…
+                                                    <i class="fa fa-circle-o-notch fa-spin me-2"/><t t-esc="progressLabel"/>
                                                 </li>
                                             </ul>
                                         </div>
@@ -80,7 +80,9 @@
                                                         </t>
                                                         <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
                                                             <button class="o_odin_ai_chip" t-att-data-tooltip="label(ref)"
-                                                                    t-on-click="() => this.openEvidence(ref)" t-esc="ref"/>
+                                                                    t-att-aria-label="label(ref)"
+                                                                    t-on-click="() => this.openEvidence(ref)"
+                                                                    t-esc="refNumber(ref)"/>
                                                         </t>
                                                     </div>
                                                 </div>
@@ -166,7 +168,8 @@
 
     <t t-name="odin_account_ai.AskPart">
         <button t-if="part.ref" class="o_odin_ai_chip" t-att-data-tooltip="label(part.ref)"
-                t-on-click="() => this.openEvidence(part.ref)" t-esc="part.ref"/>
+                t-att-aria-label="label(part.ref)"
+                t-on-click="() => this.openEvidence(part.ref)" t-esc="refNumber(part.ref)"/>
         <strong t-elif="part.bold" t-esc="part.text"/>
         <t t-else="" t-esc="part.text"/>
     </t>

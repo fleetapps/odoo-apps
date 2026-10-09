@@ -103,26 +103,6 @@
     color: var(--#{$prefix}secondary-color);
 }
 
-.o_odin_ai_chip {
-    display: inline-block;
-    margin: 0 0.15rem;
-    padding: 0 0.35rem;
-    border: 1px solid var(--#{$prefix}primary-border-subtle);
-    border-radius: 1rem;
-    background-color: var(--#{$prefix}body-bg);
-    color: var(--#{$prefix}primary-text-emphasis);
-    font-size: 0.7rem;
-    font-weight: 600;
-    line-height: 1.4;
-    vertical-align: 0.1em;
-
-    &:hover, &:focus-visible {
-        background-color: var(--#{$prefix}primary);
-        border-color: var(--#{$prefix}primary);
-        color: var(--#{$prefix}white);
-    }
-}
-
 // Placeholder lines while the AI writes.
 .o_odin_ai_shimmer {
     > span {

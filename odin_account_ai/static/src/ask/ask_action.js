@@ -66,6 +66,11 @@ export class AskAction extends Component {
             openSteps: {},
         });
         this.alive = true;
+        // Follow the newest answer only while the reader is already at the
+        // bottom. A long answer arrives over several progress ticks, and each
+        // one re-runs the scroll effect: without this, scrolling up to re-read
+        // something snaps straight back down.
+        this.stickToBottom = true;
         useSetupAction({
             getLocalState: () => ({
                 odinAsk: { conversationId: this.state.thread?.id || false, history: this.state.history },
@@ -91,12 +96,18 @@ export class AskAction extends Component {
         useEffect(
             () => {
                 const el = this.threadRef.el;
-                if (el) {
+                if (el && this.stickToBottom) {
                     el.scrollTop = el.scrollHeight;
                 }
             },
             () => [this.state.thread?.turns?.length, this.lastTurn?.progress?.length, this.state.thread?.state]
         );
+    }
+
+    /** Within a screen's worth of the end counts as "at the bottom". */
+    onThreadScroll(ev) {
+        const el = ev.target;
+        this.stickToBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     }
 
     get lastTurn() {
@@ -105,6 +116,24 @@ export class AskAction extends Component {
 
     get running() {
         return this.state.thread?.state === "running";
+    }
+
+    /** The server caps a question at max_steps and says where it has got to;
+     * "Thinking…" alone leaves the reader unable to tell progress from a hang. */
+    get progressLabel() {
+        const thread = this.state.thread;
+        if (!thread?.step || !thread?.max_steps) {
+            return _t("Thinking…");
+        }
+        return _t("Thinking… step %(step)s of %(max)s", {
+            step: thread.step,
+            max: thread.max_steps,
+        });
+    }
+
+    /** "E3" is a handle, not something to read mid-sentence: show the number. */
+    refNumber(ref) {
+        return String(ref || "").replace(/^E/, "");
     }
 
     get canAsk() {
