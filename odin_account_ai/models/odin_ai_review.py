@@ -396,7 +396,16 @@ class OdinAiSuggestion(models.Model):
             liquidity, suspense, other = st_line._seek_for_lines()
             if len(liquidity) != 1 or len(suspense) != 1 or other:
                 continue
-            if "reconcile_data" in st_line._fields and st_line.reconcile_data:
+            # account_reconcile_oca writes reconcile_data on every line as it
+            # is created (its create() calls _auto_reconcile), so the field
+            # being set says nothing about whether anyone has worked on it --
+            # and skipping on that alone hid every bank line there will ever be
+            # on a database carrying that module. What means hands off is a
+            # counterpart having been proposed, which is the same "other" that
+            # _seek_for_lines reports; liquidity and suspense are the line's
+            # own two rows.
+            proposal = (st_line.reconcile_data or {}).get("data") or []
+            if any(row.get("kind") == "other" for row in proposal):
                 continue
             items.append({
                 "source": "bank", "record": st_line, "date": st_line.date, "label": st_line.payment_ref or "",
