@@ -38,8 +38,12 @@ class TestExport(PnlCase):
         if self.env["ir.actions.report"].get_wkhtmltopdf_state() != "ok":
             self.skipTest("wkhtmltopdf is not installed")
         # Tests render reports as HTML unless asked otherwise (ir_actions_report.py).
+        # wkhtmltopdf fetches the report's styles from this test server, which
+        # holds the registry lock while tests run: allow_pdf_render (odoo.tests)
+        # lets those requests through instead of deadlocking.
         export = self.env["odin.pnl.export"].with_context(force_report_rendering=True)
-        content, filename, mimetype = export.render(self.options(), "pdf")
+        with self.allow_pdf_render():
+            content, filename, mimetype = export.render(self.options(), "pdf")
         self.assertEqual(mimetype, "application/pdf")
         self.assertTrue(content.startswith(b"%PDF"))
         html = self.env["ir.actions.report"]._render_qweb_html(
