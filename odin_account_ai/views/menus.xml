@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Invoicing/Accounting > AI, after core's "Review" (sequence 7). -->
+<odoo>
+    <menuitem id="menu_odin_ai_root" name="AI" parent="account.menu_finance" sequence="8"
+              groups="odin_account_ai.group_ai_user">
+        <menuitem id="menu_odin_ai_ask" name="Ask" action="odin_ai_ask_action" sequence="1"
+                  groups="account.group_account_readonly"/>
+        <menuitem id="menu_odin_ai_review" name="Transaction Review" action="odin_ai_review_action" sequence="2"
+                  groups="account.group_account_readonly"/>
+        <menuitem id="menu_odin_ai_anomalies" name="Anomalies" action="odin_ai_finding_action" sequence="3"
+                  groups="account.group_account_readonly"/>
+        <menuitem id="menu_odin_ai_draft" name="Draft Entry" action="odin_ai_draft_action_new" sequence="4"
+                  groups="account.group_account_user"/>
+        <menuitem id="menu_odin_ai_drafts" name="Drafts" action="odin_ai_draft_action" sequence="5"
+                  groups="account.group_account_user"/>
+        <menuitem id="menu_odin_ai_rules" name="Categorisation Rules" action="odin_ai_rule_action" sequence="10"
+                  groups="account.group_account_user"/>
+        <menuitem id="menu_odin_ai_checks" name="Anomaly Checks" action="odin_ai_detector_action" sequence="11"
+                  groups="odin_account_ai.group_ai_manager"/>
+        <menuitem id="menu_odin_ai_activity" name="Activity Log" action="odin_ai_run_action" sequence="20"
+                  groups="odin_account_ai.group_ai_manager"/>
+        <menuitem id="menu_odin_ai_settings" name="Settings" action="account.action_account_config" sequence="30"
+                  groups="base.group_system"/>
+    </menuitem>
+</odoo>

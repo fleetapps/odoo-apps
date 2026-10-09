@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Odoo 19 groups hang off a privilege (res.groups.privilege), which carries
+     the category. AI User implies no accounting right: what a user may read or
+     change in the books still comes from Accounting's own groups, and every
+     method checks them. Accountants get AI User; administrators AI Manager.
+     https://www.odoo.com/documentation/19.0/developer/reference/backend/security.html -->
+<odoo>
+    <record id="res_groups_privilege_accounting_ai" model="res.groups.privilege">
+        <field name="name">Accounting AI</field>
+        <field name="category_id" ref="base.module_category_accounting"/>
+        <field name="sequence">60</field>
+    </record>
+
+    <record id="group_ai_user" model="res.groups">
+        <field name="name">User</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_accounting_ai"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Uses Ask, Explain, Transaction Review, Anomalies and Draft Entry, within their own accounting rights.</field>
+    </record>
+
+    <record id="group_ai_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_accounting_ai"/>
+        <field name="implied_ids" eval="[(4, ref('group_ai_user'))]"/>
+        <field name="comment">Also configures the AI (key, consent, budget, checks) and sees every run.</field>
+    </record>
+
+    <!-- Accountants get the AI; administrators can switch it off per user. -->
+    <record id="account.group_account_user" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_ai_user'))]"/>
+    </record>
+    <record id="base.group_system" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_ai_manager'))]"/>
+    </record>
+
+    <record id="odin_ai_run_rule_company" model="ir.rule">
+        <field name="name">AI run: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_run"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_run_rule_own" model="ir.rule">
+        <field name="name">AI run: users see their own</field>
+        <field name="model_id" ref="model_odin_ai_run"/>
+        <field name="groups" eval="[(4, ref('group_ai_user'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+    <record id="odin_ai_run_rule_manager" model="ir.rule">
+        <field name="name">AI run: managers see all</field>
+        <field name="model_id" ref="model_odin_ai_run"/>
+        <field name="groups" eval="[(4, ref('group_ai_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <record id="odin_ai_conversation_rule_company" model="ir.rule">
+        <field name="name">AI conversation: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_conversation"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_conversation_rule_own" model="ir.rule">
+        <field name="name">AI conversation: one's own</field>
+        <field name="model_id" ref="model_odin_ai_conversation"/>
+        <field name="groups" eval="[(4, ref('group_ai_user'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+    </record>
+
+    <record id="odin_ai_suggestion_rule_company" model="ir.rule">
+        <field name="name">AI suggestion: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_suggestion"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_rule_rule_company" model="ir.rule">
+        <field name="name">AI categorisation rule: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_rule"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_finding_rule_company" model="ir.rule">
+        <field name="name">AI finding: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_finding"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_draft_rule_company" model="ir.rule">
+        <field name="name">AI draft entry: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_draft"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_ai_draft_line_rule_company" model="ir.rule">
+        <field name="name">AI draft entry line: multi-company</field>
+        <field name="model_id" ref="model_odin_ai_draft_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

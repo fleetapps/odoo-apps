@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Draft Entry: describe the entry, let the AI propose the lines, fix them
+     in place; the banner says what blocks the entry before any button does. -->
+<odoo>
+    <record id="odin_ai_draft_view_form" model="ir.ui.view">
+        <field name="name">odin.ai.draft.form</field>
+        <field name="model">odin.ai.draft</field>
+        <field name="arch" type="xml">
+            <form string="Draft entry" class="o_odin_ai_draft">
+                <header>
+                    <button name="action_generate" type="object" string="Draft with AI" class="btn-primary"
+                            icon="fa-magic" invisible="state != 'draft' or line_ids"/>
+                    <button name="action_generate" type="object" string="Redraft with AI" icon="fa-magic"
+                            invisible="state != 'draft' or not line_ids"
+                            confirm="The lines will be replaced by a new draft. Continue?"/>
+                    <button name="action_create_entry" type="object" string="Create draft entry"
+                            class="btn-primary" invisible="state != 'draft' or not line_ids or issues"/>
+                    <button name="action_post" type="object" string="Post" invisible="state == 'posted' or not line_ids or issues or reversal_date"
+                            confirm="Post this entry now?"/>
+                    <button name="action_post" type="object" string="Post and schedule reversal"
+                            invisible="state == 'posted' or not line_ids or issues or not reversal_date"
+                            confirm="Post this entry now and create its reversal, to be posted on the reversal date?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_move" type="object" class="oe_stat_button" icon="fa-book"
+                                invisible="not move_id">
+                            <div class="o_stat_info"><span class="o_stat_text">Journal entry</span></div>
+                        </button>
+                    </div>
+                    <div class="alert alert-warning mb-3" role="alert" invisible="not ai_ready or state != 'draft'">
+                        <field name="ai_ready" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name" string="Reference"/>
+                        <h1><field name="name" placeholder="e.g. Accrual: audit fees September 2026"
+                                   readonly="state != 'draft'"/></h1>
+                    </div>
+                    <field name="prompt" nolabel="1" readonly="state != 'draft'" class="o_odin_ai_draft_prompt"
+                           placeholder="Describe the entry in a sentence. For example: Accrue 120,000 audit fees for September, to reverse on 1 October. Or: Reclassify 45,000 from Office Supplies to IT Equipment for the laptops bought in August."/>
+                    <group>
+                        <group>
+                            <field name="journal_id" readonly="state != 'draft'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="reversal_date" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            <field name="move_id" invisible="not move_id"/>
+                            <field name="reversal_move_id" invisible="not reversal_move_id"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-danger mb-2" role="alert" invisible="not issues or state != 'draft'">
+                        <div class="fw-bold">Fix before creating the entry</div>
+                        <field name="issues" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-warning mb-2" role="status" invisible="not warnings or state != 'draft'">
+                        <div class="fw-bold">Check</div>
+                        <field name="warnings" nolabel="1" readonly="1"/>
+                    </div>
+                    <div class="alert alert-info mb-2" role="status" invisible="not notes or state != 'draft'">
+                        <div class="fw-bold"><i class="fa fa-magic me-1"/>The AI assumed</div>
+                        <field name="notes" nolabel="1"/>
+                    </div>
+                    <field name="line_ids" readonly="state != 'draft'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="company_id" column_invisible="True"/>
+                            <field name="currency_id" column_invisible="True"/>
+                            <field name="account_id" required="1"/>
+                            <field name="name"/>
+                            <field name="partner_id" optional="show"/>
+                            <field name="partner_name" optional="hide"/>
+                            <field name="analytic_distribution" widget="analytic_distribution" optional="show"
+                                   groups="analytic.group_analytic_accounting"
+                                   options="{'account_field': 'account_id', 'business_domain': 'general'}"/>
+                            <field name="analytic_precision" column_invisible="True"/>
+                            <field name="debit" sum="Debit"/>
+                            <field name="credit" sum="Credit"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_ai_draft_view_list" model="ir.ui.view">
+        <field name="name">odin.ai.draft.list</field>
+        <field name="model">odin.ai.draft</field>
+        <field name="arch" type="xml">
+            <list string="Draft entries">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="journal_id"/>
+                <field name="total_debit" string="Amount"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="move_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="state" widget="badge" decoration-success="state == 'posted'" decoration-info="state == 'created'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_ai_draft_action" model="ir.actions.act_window">
+        <field name="name">Draft Entry</field>
+        <field name="res_model">odin.ai.draft</field>
+        <field name="view_mode">list,form</field>
+        <field name="path">ai-draft</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Describe a journal entry in a sentence</p>
+            <p>"Accrue 120,000 audit fees for September, reverse on 1 October." The AI proposes the lines from your chart of accounts; you check and edit them, then create or post the entry. Nothing is booked without you.</p>
+        </field>
+    </record>
+
+    <!-- The menu opens a new draft straight away. -->
+    <record id="odin_ai_draft_action_new" model="ir.actions.act_window">
+        <field name="name">Draft Entry</field>
+        <field name="res_model">odin.ai.draft</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+</odoo>

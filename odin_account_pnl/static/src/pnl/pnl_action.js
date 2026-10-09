@@ -87,7 +87,8 @@ export class PnlAction extends Component {
             rows: [],
             options: restored?.options || { ...readPrefs(), ...(this.props.action.params?.options || {}) },
             panel: restored?.panel || null,
-            focusKey: restored?.focusKey || null,
+            // params.focus: a row to show, e.g. from an evidence link of the AI module.
+            focusKey: restored?.focusKey || this.props.action.params?.focus || null,
             menu: null,
             search: "",
             sort: restored?.sort || null,
@@ -129,6 +130,8 @@ export class PnlAction extends Component {
         onMounted(() => {
             if (this.scrollerRef.el && this.restoredScroll) {
                 this.scrollerRef.el.scrollTop = this.restoredScroll;
+            } else if (!restored && this.state.focusKey) {
+                this.scrollIntoView(this.state.focusKey, "center");
             }
         });
         useEffect(
@@ -581,9 +584,9 @@ export class PnlAction extends Component {
         }
     }
 
-    scrollIntoView(key) {
+    scrollIntoView(key, block = "nearest") {
         const el = this.scrollerRef.el?.querySelector(`[data-key="${CSS.escape(key)}"]`);
-        el?.scrollIntoView({ block: "nearest" });
+        el?.scrollIntoView({ block });
     }
 
     // ------------------------------------------------------------------

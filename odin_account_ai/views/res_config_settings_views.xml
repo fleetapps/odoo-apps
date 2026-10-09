@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accounting > Configuration > Settings: an "Accounting AI" block after
+     Analytics. Administrators only: it holds the API key. -->
+<odoo>
+    <record id="res_config_settings_view_form_odin_ai" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.odin_account_ai</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='analytic']" position="after">
+                <block title="Accounting AI" id="odin_ai_settings" groups="base.group_system">
+                    <setting id="odin_ai_consent" company_dependent="1"
+                             help="Questions, figures and the journal items the AI reads are sent to Anthropic's API. Nothing is sent until this is ticked.">
+                        <field name="odin_ai_consent"/>
+                    </setting>
+                    <setting id="odin_ai_key" string="Anthropic API key"
+                             help="From console.anthropic.com. The server variable ANTHROPIC_API_KEY takes precedence when set.">
+                        <field name="odin_ai_api_key" password="True" placeholder="sk-ant-..."/>
+                        <div class="mt-2">
+                            <button name="action_odin_ai_test_connection" type="object" string="Test connection"
+                                    icon="oi-arrow-right" class="btn-link"/>
+                        </div>
+                    </setting>
+                    <setting id="odin_ai_models" string="Models"
+                             help="Claude model IDs. The default is the most capable model.">
+                        <div class="row mt-2">
+                            <label for="odin_ai_model" string="Ask, Explain, Anomalies, Draft" class="col-lg-5 o_light_label"/>
+                            <field name="odin_ai_model"/>
+                        </div>
+                        <div class="row">
+                            <label for="odin_ai_bulk_model" string="Transaction Review" class="col-lg-5 o_light_label"/>
+                            <field name="odin_ai_bulk_model"/>
+                        </div>
+                    </setting>
+                    <setting id="odin_ai_budget" company_dependent="1" string="Monthly budget"
+                             help="Input and output tokens per calendar month for this company. 0: no limit.">
+                        <field name="odin_ai_monthly_tokens"/>
+                        <div class="mt-2">
+                            <button name="%(odin_account_ai.odin_ai_run_action)d" type="action" string="Activity log"
+                                    icon="oi-arrow-right" class="btn-link"/>
+                        </div>
+                    </setting>
+                    <setting id="odin_ai_retention" string="Keep responses"
+                             help="Days a response is kept in the activity log before it is erased (the log line stays).">
+                        <field name="odin_ai_retention_days" class="o_light_label" style="width: 6rem"/> days
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
