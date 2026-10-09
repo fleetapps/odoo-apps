@@ -36,7 +36,7 @@
                     </DropdownItem>
                     <div class="dropdown-divider"/>
                 </t>
-                <DropdownItem t-if="current and current.mine" onSelected="update">
+                <DropdownItem t-if="current and current.mine" onSelected="() => this.update()">
                     <i class="fa fa-floppy-o me-1"/>Update “<t t-esc="current.name"/>”
                 </DropdownItem>
                 <div class="px-3 py-2">
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <div class="dropdown-divider"/>
-                <DropdownItem onSelected="manage">
+                <DropdownItem onSelected="() => this.manage()">
                     <i class="fa fa-envelope-o me-1"/>Schedule &amp; manage…
                 </DropdownItem>
             </t>
