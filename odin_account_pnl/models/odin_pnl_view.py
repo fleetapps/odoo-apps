@@ -53,7 +53,11 @@ class OdinPnlView(models.Model):
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
     shared = fields.Boolean(help="Everyone who can see the P&L finds this view in their list.")
     is_default = fields.Boolean(string="My default", help="Opened when the owner opens the P&L.")
-    options = fields.Json(required=True, default=dict)
+    # lambda, not `dict`: Odoo calls a callable default as field.default(self),
+    # so `default=dict` evaluates dict(recordset) -- a recordset iterates as
+    # records, and dict() wants pairs, so opening the form raised "dictionary
+    # update sequence element #0 has length 1; 2 is required".
+    options = fields.Json(required=True, default=lambda self: {})
     period_rule = fields.Char(compute="_compute_period_rule")
 
     schedule = fields.Selection(SCHEDULES, required=True, default="none")
