@@ -39,12 +39,15 @@
                         <h3>All caught up</h3>
                         <p t-if="state.data.pending" class="text-muted">
                             <t t-esc="state.data.pending"/> transaction(s) wait for a suggestion.
-                            <button class="btn btn-link p-0" t-on-click="generate" t-att-disabled="!state.data.can_apply">Find suggestions</button>
+                            <button class="btn btn-link p-0" t-on-click="generate"
+                                    t-att-disabled="!state.data.can_apply or state.data.ai"
+                                    t-att-data-tooltip="state.data.ai or ''">Find suggestions</button>
                         </p>
                         <p t-else="" class="text-muted">No bank line on suspense and no draft bill line on a default account.</p>
                     </div>
                     <div t-else="" class="o_odin_ai_review_split">
-                        <div class="o_odin_ai_queue" t-ref="list" role="listbox" aria-label="Transactions">
+                        <div class="o_odin_ai_queue" t-ref="list" role="listbox" aria-label="Transactions"
+                             t-att-aria-activedescendant="state.selectedId ? optionId(state.selectedId) : false">
                             <section t-foreach="groups" t-as="group" t-key="group.key">
                                 <header class="o_odin_ai_queue_head" t-att-data-group="group.key">
                                     <span t-esc="group.title"/>
@@ -52,6 +55,7 @@
                                     <span class="small text-muted ms-2 d-none d-xl-inline" t-esc="group.help"/>
                                 </header>
                                 <div t-foreach="group.items" t-as="item" t-key="item.id" t-att-data-id="item.id"
+                                     t-att-id="optionId(item.id)"
                                      class="o_odin_ai_queue_item" role="option"
                                      t-att-aria-selected="item.id === state.selectedId ? 'true' : 'false'"
                                      t-att-class="{ active: item.id === state.selectedId }" t-on-click="() => this.select(item)">

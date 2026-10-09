@@ -94,8 +94,17 @@ export class ReviewAction extends Component {
         return this.items.find((item) => item.id === this.state.selectedId) || null;
     }
 
+    /** Only what is both ready and on screen.
+     *
+     * The queue is filtered by Bank/Bills and this was not, so narrowing to
+     * Bills and pressing "Accept all ready" counted bank lines in the total and
+     * booked them as well -- entries the accountant had no reason to think they
+     * were touching.
+     */
     get highReady() {
-        return this.items.filter((item) => item.state === "proposed" && item.band === "high" && item.account);
+        return this.ordered.filter(
+            (item) => item.state === "proposed" && item.band === "high" && item.account
+        );
     }
 
     select(item) {
@@ -296,6 +305,11 @@ export class ReviewAction extends Component {
 
     fmt(value) {
         return formatAmount(value, { currencyDecimals: 2 });
+    }
+
+    /** The id the listbox points at, so a screen reader follows J/K. */
+    optionId(id) {
+        return `odin_ai_review_item_${id}`;
     }
 
     originLabel(item) {
