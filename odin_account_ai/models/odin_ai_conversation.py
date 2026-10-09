@@ -24,6 +24,7 @@ from .odin_ai_tools import dumps, tool_definitions
 
 MAX_STEPS = 8
 MAX_TOOLS_PER_STEP = 5
+MAX_TURNS = 10
 MAX_ACCOUNTS_IN_PROMPT = 400
 
 
@@ -39,12 +40,12 @@ class OdinAiConversation(models.Model):
     feature = fields.Selection([("ask", "Ask"), ("explain", "Explain")], required=True, default="ask")
     state = fields.Selection([("running", "Thinking"), ("done", "Answered"), ("error", "Failed")],
                              default="running", required=True)
-    step_no = fields.Integer(default=0)
+    step_no = fields.Integer(default=0, help="Calls made in the whole conversation.")
+    turn_steps = fields.Integer(default=0, help="Calls made for the current question.")
     system_snapshot = fields.Text(readonly=True)
     messages = fields.Text(default="[]", help="The exchange as sent to the API, append-only.")
     evidence = fields.Text(default="{}", help="Handle -> what it stands for.")
-    progress = fields.Text(default="[]")
-    answer = fields.Text(help="The final structured answer.")
+    turns = fields.Text(default="[]", help="Each question with its progress and structured answer.")
     error = fields.Text()
     feedback = fields.Selection([("up", "Helpful"), ("down", "Not helpful")])
 
@@ -73,16 +74,58 @@ class OdinAiConversation(models.Model):
             "name": question[:120],
             "system_snapshot": self._system_prompt(),
             "messages": json.dumps([{"role": "user", "content": "\n".join(lines)}]),
+            "turns": json.dumps([{"question": question[:2000], "progress": [], "answer": None}]),
         })
         return conversation.id
+
+    def ask_followup(self, question):
+        """A further question in the same conversation: the model keeps what
+        it already read (and its reasoning), so "and the month before?"
+        works."""
+        self.ensure_one()
+        self._check_owner()
+        question = (question or "").strip()
+        if not question:
+            raise UserError(_("Ask something first."))
+        if self.state != "done":
+            raise UserError(_("Wait for the answer, or start a new conversation."))
+        turns = json.loads(self.turns or "[]")
+        if len(turns) >= MAX_TURNS:
+            raise UserError(_("This conversation is long enough: start a new one for this question."))
+        blocker = self.env["odin.ai.llm"].readiness()
+        if blocker:
+            raise UserError(blocker)
+        messages = json.loads(self.messages)
+        messages.append({"role": "user", "content": "Question: %s" % question[:2000]})
+        turns.append({"question": question[:2000], "progress": [], "answer": None})
+        self.write({
+            "messages": json.dumps(messages),
+            "turns": json.dumps(turns),
+            "state": "running",
+            "turn_steps": 0,
+            "error": False,
+        })
+        return self._thread()
+
+    def ask_retry(self):
+        """Run the current question again after the API failed (the
+        conversation still ends with the question, so nothing is lost)."""
+        self.ensure_one()
+        self._check_owner()
+        messages = json.loads(self.messages)
+        if self.state != "error" or not messages or messages[-1]["role"] != "user":
+            raise UserError(_("This question cannot be retried: ask it again in a new conversation."))
+        blocker = self.env["odin.ai.llm"].readiness()
+        if blocker:
+            raise UserError(blocker)
+        self.write({"state": "running", "turn_steps": 0, "error": False})
+        return self._thread()
 
     def ask_step(self):
         """One call to the model and the tools it asked for. Returns the
         state for the page: progress so far and, when done, the answer."""
         self.ensure_one()
-        self._check_reader()
-        if self.user_id != self.env.user:
-            raise AccessError(_("This is someone else's conversation."))
+        self._check_owner()
         if self.state != "running":
             return self._thread()
         locked = self.try_lock_for_update()
@@ -90,7 +133,7 @@ class OdinAiConversation(models.Model):
             # A step for this conversation is already running (double click,
             # or Odoo retrying a request): let the page poll again.
             return dict(self._thread(), busy=True)
-        if self.step_no >= MAX_STEPS:
+        if self.turn_steps >= MAX_STEPS:
             self.write({"state": "error", "error": _(
                 "This question needed too many steps. Try asking something narrower.")})
             return self._thread()
@@ -107,11 +150,14 @@ class OdinAiConversation(models.Model):
         except UserError as error:
             self.write({"state": "error", "error": str(error)})
             return self._thread()
-        content = data.get("content") or []
-        messages.append({"role": "assistant", "content": echo_content(content)})
-        values = {"step_no": self.step_no + 1}
+        # Only what is echoed counts: tool calls a declined model made before
+        # a fallback are neither sent back nor run.
+        content = echo_content(data.get("content") or [])
+        messages.append({"role": "assistant", "content": content})
+        values = {"step_no": self.step_no + 1, "turn_steps": self.turn_steps + 1}
+        turns = json.loads(self.turns or "[]")
         if data.get("stop_reason") == "tool_use":
-            progress = json.loads(self.progress)
+            progress = turns[-1]["progress"]
             results = []
             for index, block in enumerate(b for b in content if b.get("type") == "tool_use"):
                 if index >= MAX_TOOLS_PER_STEP:
@@ -127,7 +173,7 @@ class OdinAiConversation(models.Model):
                     **({"is_error": True} if "error" in result else {}),
                 })
             messages.append({"role": "user", "content": results})
-            values.update(messages=json.dumps(messages), progress=json.dumps(progress))
+            values.update(messages=json.dumps(messages), turns=json.dumps(turns))
         else:
             try:
                 answer = self._clean_answer(final_json(data))
@@ -135,16 +181,15 @@ class OdinAiConversation(models.Model):
                 values.update(messages=json.dumps(messages), state="error", error=str(error))
                 self.write(values)
                 return self._thread()
-            values.update(messages=json.dumps(messages), answer=json.dumps(answer), state="done")
+            turns[-1]["answer"] = answer
+            values.update(messages=json.dumps(messages), turns=json.dumps(turns), state="done")
         self.write(values)
         return self._thread()
 
     def open_evidence(self, handle):
         """What an evidence chip opens: the P&L at that row, or the document."""
         self.ensure_one()
-        self._check_reader()
-        if self.user_id != self.env.user:
-            raise AccessError(_("This is someone else's conversation."))
+        self._check_owner()
         item = json.loads(self.evidence or "{}").get(handle)
         if not item:
             raise UserError(_("This reference is not in the conversation."))
@@ -179,10 +224,33 @@ class OdinAiConversation(models.Model):
         return [{"id": c.id, "name": c.name, "state": c.state, "date": fields.Datetime.to_string(c.create_date)}
                 for c in conversations]
 
+    @api.model
+    def ask_bootstrap(self):
+        """What the Ask page needs before the first question."""
+        self._check_reader()
+        return {
+            "ready": self.env["odin.ai.llm"].readiness() or False,
+            "recent": self.list_recent(),
+            "company": self.env.company.name,
+            "starters": [
+                {"icon": "fa-line-chart", "title": _("Revenue"),
+                 "question": _("How did revenue last month compare with the month before, and who drove the change?")},
+                {"icon": "fa-pie-chart", "title": _("Expenses"),
+                 "question": _("What were our ten largest expenses this quarter, by account?")},
+                {"icon": "fa-percent", "title": _("Margins"),
+                 "question": _("How has our gross margin moved over the last six months?")},
+                {"icon": "fa-users", "title": _("Customers"),
+                 "question": _("Which customers brought in the most revenue this fiscal year?")},
+                {"icon": "fa-truck", "title": _("Suppliers"),
+                 "question": _("Which suppliers did we spend the most with in the last three months?")},
+                {"icon": "fa-search", "title": _("Find"),
+                 "question": _("Show the journal items above 100,000 booked to expenses last month.")},
+            ],
+        }
+
     def get_thread(self):
         self.ensure_one()
-        if self.user_id != self.env.user:
-            raise AccessError(_("This is someone else's conversation."))
+        self._check_owner()
         return self._thread()
 
     # ------------------------------------------------------------------
@@ -193,11 +261,11 @@ class OdinAiConversation(models.Model):
         evidence = json.loads(self.evidence or "{}")
         return {
             "id": self.id,
-            "question": self.name,
+            "name": self.name,
             "state": self.state,
-            "step": self.step_no,
-            "progress": json.loads(self.progress or "[]"),
-            "answer": json.loads(self.answer) if self.answer else None,
+            "step": self.turn_steps,
+            "max_steps": MAX_STEPS,
+            "turns": json.loads(self.turns or "[]"),
             "error": self.error or "",
             "evidence": {handle: item["label"] for handle, item in evidence.items()},
             "feedback": self.feedback or False,
@@ -220,6 +288,11 @@ class OdinAiConversation(models.Model):
             block["evidence"] = [handle for handle in block.get("evidence") or [] if handle in known]
             blocks.append(block)
         return {"blocks": blocks, "follow_ups": (answer.get("follow_ups") or [])[:3]}
+
+    def _check_owner(self):
+        self._check_reader()
+        if self.user_id != self.env.user:
+            raise AccessError(_("This is someone else's conversation."))
 
     @api.model
     def _check_reader(self):

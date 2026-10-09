@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_ai.ReviewAction">
+        <div class="o_action o_odin_ai_review" t-ref="root" tabindex="-1" t-on-keydown="onKeydown">
+            <Layout display="{ controlPanel: {} }" className="'o_odin_ai_review_content'">
+                <t t-set-slot="layout-buttons">
+                    <div t-if="state.data" class="d-flex gap-1 align-items-center">
+                        <button t-if="!state.generating" class="btn btn-primary" t-on-click="generate"
+                                t-att-disabled="!state.data.can_apply or state.data.ai or !state.data.pending"
+                                t-att-data-tooltip="state.data.ai or ''">
+                            <i class="fa fa-magic me-1"/>Find suggestions
+                            <span t-if="state.data.pending" class="badge text-bg-light ms-1" t-esc="state.data.pending"/>
+                        </button>
+                        <button t-else="" class="btn btn-secondary" t-on-click="() => this.state.stop = true">
+                            <i class="fa fa-circle-o-notch fa-spin me-1"/>Finding… Stop
+                        </button>
+                        <button class="btn btn-secondary" t-on-click="acceptHigh"
+                                t-att-disabled="!highReady.length or !state.data.can_apply or state.working">
+                            <i class="fa fa-check-circle me-1"/>Accept all ready (<t t-esc="highReady.length"/>)
+                        </button>
+                        <div class="btn-group ms-2" role="group" aria-label="Show">
+                            <button class="btn btn-light btn-sm" t-att-class="{ active: state.filter === 'all' }"
+                                    t-on-click="() => this.state.filter = 'all'">All</button>
+                            <button class="btn btn-light btn-sm" t-att-class="{ active: state.filter === 'bank' }"
+                                    t-on-click="() => this.state.filter = 'bank'">Bank</button>
+                            <button class="btn btn-light btn-sm" t-att-class="{ active: state.filter === 'bill' }"
+                                    t-on-click="() => this.state.filter = 'bill'">Bills</button>
+                        </div>
+                    </div>
+                </t>
+                <div t-if="!state.data" class="p-5 text-center text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+                <div t-else="" class="o_odin_ai_review_body">
+                    <div t-if="state.data.ai and state.data.can_apply" class="alert alert-warning m-3 mb-0" role="alert">
+                        <i class="fa fa-plug me-1"/><t t-esc="state.data.ai"/> Your rules and open-item matching still work.
+                    </div>
+                    <div t-if="!items.length" class="o_odin_ai_empty">
+                        <i class="fa fa-check-circle-o"/>
+                        <h3>All caught up</h3>
+                        <p t-if="state.data.pending" class="text-muted">
+                            <t t-esc="state.data.pending"/> transaction(s) wait for a suggestion.
+                            <button class="btn btn-link p-0" t-on-click="generate" t-att-disabled="!state.data.can_apply">Find suggestions</button>
+                        </p>
+                        <p t-else="" class="text-muted">No bank line on suspense and no draft bill line on a default account.</p>
+                    </div>
+                    <div t-else="" class="o_odin_ai_review_split">
+                        <div class="o_odin_ai_queue" t-ref="list" role="listbox" aria-label="Transactions">
+                            <section t-foreach="groups" t-as="group" t-key="group.key">
+                                <header class="o_odin_ai_queue_head" t-att-data-group="group.key">
+                                    <span t-esc="group.title"/>
+                                    <span class="badge rounded-pill text-bg-light ms-1" t-esc="group.items.length"/>
+                                    <span class="small text-muted ms-2 d-none d-xl-inline" t-esc="group.help"/>
+                                </header>
+                                <div t-foreach="group.items" t-as="item" t-key="item.id" t-att-data-id="item.id"
+                                     class="o_odin_ai_queue_item" role="option"
+                                     t-att-aria-selected="item.id === state.selectedId ? 'true' : 'false'"
+                                     t-att-class="{ active: item.id === state.selectedId }" t-on-click="() => this.select(item)">
+                                    <div class="o_odin_ai_queue_main">
+                                        <div class="text-truncate fw-medium" t-esc="item.label or item.partner"/>
+                                        <div class="small text-muted text-truncate">
+                                            <i t-attf-class="fa {{item.source === 'bank' ? 'fa-university' : 'fa-file-text-o'}} me-1"/>
+                                            <t t-esc="item.date"/><t t-if="item.partner"> · <t t-esc="item.partner"/></t>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="o_odin_ai_num" t-att-class="item.amount > 0 ? 'o_odin_ai_in' : ''">
+                                            <t t-esc="fmt(item.amount)"/>
+                                        </div>
+                                        <div class="small text-muted text-truncate o_odin_ai_queue_account">
+                                            <t t-if="item.state === 'needs_reconcile'"><i class="fa fa-link me-1"/><t t-esc="item.match and item.match.name"/></t>
+                                            <t t-elif="item.account" t-esc="item.account.name"/>
+                                            <t t-else="">No suggestion</t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="o_odin_ai_detail" t-if="selected">
+                            <t t-set="item" t-value="selected"/>
+                            <div class="o_odin_ai_detail_head">
+                                <div class="text-muted small">
+                                    <i t-attf-class="fa {{item.source === 'bank' ? 'fa-university' : 'fa-file-text-o'}} me-1"/>
+                                    <t t-if="item.source === 'bank'">Bank line</t><t t-else="">Bill line</t> · <t t-esc="item.date"/>
+                                </div>
+                                <div class="o_odin_ai_detail_amount o_odin_ai_num" t-att-class="item.amount > 0 ? 'o_odin_ai_in' : ''">
+                                    <t t-esc="fmt(item.amount)"/> <span class="fs-6 text-muted" t-esc="item.currency"/>
+                                </div>
+                                <div class="fw-medium" t-esc="item.label"/>
+                                <div class="text-muted" t-if="item.partner" t-esc="item.partner"/>
+                            </div>
+
+                            <div t-if="item.state === 'needs_reconcile'" class="o_odin_ai_card o_odin_ai_card_match">
+                                <div class="o_odin_ai_card_title"><i class="fa fa-link me-1"/>Reconcile, don't categorise</div>
+                                <p class="mb-2" t-esc="item.rationale"/>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button t-if="item.match" class="btn btn-primary btn-sm"
+                                            t-on-click="() => this.openDocument(item, item.match.id)">
+                                        Open <t t-esc="item.match.name"/>
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.openDocument(item)">Open the transaction</button>
+                                    <button class="btn btn-link btn-sm" t-on-click="() => this.reject(item)"
+                                            t-att-disabled="!state.data.can_apply">Not a match</button>
+                                </div>
+                            </div>
+
+                            <div t-else="" class="o_odin_ai_card">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="o_odin_ai_card_title flex-grow-1">Category</div>
+                                    <span class="badge me-2" t-att-class="item.origin === 'rule' ? 'text-bg-success' : 'text-bg-light'"
+                                          t-esc="originLabel(item)"/>
+                                    <span t-if="item.account" class="small text-muted me-1"><t t-esc="item.confidence"/>%</span>
+                                    <span t-if="item.account" class="o_odin_ai_confidence" t-attf-data-band="{{item.band}}"
+                                          aria-hidden="true">
+                                        <span t-att-style="'width:' + item.confidence + '%'"/>
+                                    </span>
+                                </div>
+                                <label class="form-label small text-muted mb-1">Account</label>
+                                <RecordSelector resModel="'account.account'" resId="accountId(item)"
+                                                domain="accountDomain" placeholder="'Pick an income or expense account'"
+                                                update="(id) => this.setAccount(item, id)"/>
+                                <label class="form-label small text-muted mb-1 mt-2">Partner</label>
+                                <RecordSelector resModel="'res.partner'" resId="partnerId(item)" placeholder="'Optional'"
+                                                update="(id) => this.setPartner(item, id)"/>
+                                <div t-if="item.analytic.length" class="d-flex flex-wrap gap-1 mt-2">
+                                    <span t-foreach="item.analytic" t-as="name" t-key="name_index" class="badge text-bg-light" t-esc="name"/>
+                                </div>
+                                <p t-if="item.rationale" class="o_odin_ai_rationale">
+                                    <i class="fa fa-lightbulb-o me-1"/><t t-esc="item.rationale"/>
+                                </p>
+                                <div t-if="item.error" class="text-danger small mb-2" t-esc="item.error"/>
+                                <div class="form-check mb-2" t-if="item.partner or partnerId(item)">
+                                    <input class="form-check-input" type="checkbox" id="odin_ai_remember" t-model="state.remember"/>
+                                    <label class="form-check-label" for="odin_ai_remember">
+                                        <t t-if="item.amount > 0">Always categorise this partner's receipts like this</t>
+                                        <t t-else="">Always categorise this partner's payments like this</t>
+                                    </label>
+                                </div>
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button class="btn btn-primary" t-on-click="() => this.accept(item)"
+                                            t-att-disabled="!state.data.can_apply or !accountId(item) or state.working">
+                                        <i class="fa fa-check me-1"/>Accept <kbd>A</kbd>
+                                    </button>
+                                    <button class="btn btn-secondary" t-on-click="() => this.reject(item)"
+                                            t-att-disabled="!state.data.can_apply or state.working">
+                                        Reject <kbd>R</kbd>
+                                    </button>
+                                    <button class="btn btn-link" t-on-click="() => this.openDocument(item)">Open <kbd>O</kbd></button>
+                                </div>
+                                <div t-if="!state.data.can_apply" class="small text-muted mt-2">Only accountants can book suggestions.</div>
+                            </div>
+
+                            <section t-if="item.evidence.length" class="mt-3">
+                                <h6 class="o_odin_ai_section">How similar items were booked</h6>
+                                <div t-foreach="item.evidence" t-as="line" t-key="line_index" class="o_odin_ai_item o_odin_ai_clickable"
+                                     t-on-click="() => this.openDocument(item, line.move_id)">
+                                    <div class="flex-grow-1 text-truncate">
+                                        <div class="text-truncate" t-esc="line.account"/>
+                                        <div class="small text-muted text-truncate"><t t-esc="line.date"/> · <t t-esc="line.entry"/> · <t t-esc="line.label"/></div>
+                                    </div>
+                                    <span class="o_odin_ai_num" t-esc="fmt(line.amount)"/>
+                                </div>
+                            </section>
+                            <div class="small text-muted mt-3">
+                                <kbd>J</kbd>/<kbd>K</kbd> next and previous. Suggestions marked AI are proposals: nothing is booked until you accept.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        </div>
+    </t>
+
+</templates>

@@ -278,24 +278,29 @@ def _usage(data):
 
 
 def echo_content(content):
-    """The assistant content to send back on the next turn. After a fallback
-    in the middle of an answer, the blocks the declined model wrote before the
-    switch (thinking, tool calls) are not echoed; text and everything after
-    the last ``fallback`` block are."""
+    """The assistant content to send back on the next turn.
+
+    After a fallback in the middle of an answer, what the declined model
+    wrote before the last ``fallback`` block is echoed as text only: its
+    thinking, tool calls and any other model-internal block are left out.
+    The ``fallback`` blocks stay where they appeared, and everything after
+    the last one is echoed as is ("Echoing fallback turns back",
+    https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback).
+    """
     last = max((index for index, block in enumerate(content) if block.get("type") == "fallback"), default=None)
     if last is None:
         return content
-    dropped = {"thinking", "redacted_thinking", "tool_use", "server_tool_use"}
     return [
         block for index, block in enumerate(content)
-        if index > last or (block.get("type") not in dropped and block.get("type") != "fallback")
+        if index >= last or block.get("type") in ("text", "fallback")
     ]
 
 
 def final_json(data):
     """The structured answer: the text block of a response made with
-    ``output_config.format``."""
-    for block in data.get("content") or []:
+    ``output_config.format``. Read from the end: after a fallback the
+    answer is the last block, any earlier text is the declined partial."""
+    for block in reversed(data.get("content") or []):
         if block.get("type") == "text" and block.get("text", "").strip():
             try:
                 return json.loads(block["text"])

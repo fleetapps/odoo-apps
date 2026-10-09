@@ -6,14 +6,13 @@
         <field name="name">odin.ai.finding.kanban</field>
         <field name="model">odin.ai.finding</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="severity" quick_create="false" group_create="false" group_delete="false"
+            <kanban default_group_by="severity" create="0" quick_create="false" group_create="false" group_delete="false"
                     records_draggable="false" sample="1" class="o_odin_ai_findings">
                 <header>
                     <button name="action_run_checks" type="object" string="Run checks now" class="btn-secondary"
                             display="always" groups="account.group_account_user"/>
                 </header>
                 <field name="currency_id"/>
-                <progressbar field="state" colors='{"open": "danger", "in_progress": "warning"}'/>
                 <templates>
                     <t t-name="card">
                         <div class="d-flex align-items-baseline gap-2">
@@ -128,8 +127,9 @@
                             <div class="fw-bold">Suggested next step</div>
                             <field name="ai_action" nolabel="1"/>
                         </div>
-                        <div class="text-muted small mt-2">
-                            Written by AI from the entries below, <field name="ai_date" class="d-inline" readonly="1"/>. Check it before acting.
+                        <div class="d-flex flex-wrap gap-1 text-muted small mt-2">
+                            <span>Written by AI from the entries below. Check it before acting.</span>
+                            <field name="ai_date" readonly="1" class="ms-auto"/>
                         </div>
                     </div>
                     <notebook>

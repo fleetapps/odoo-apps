@@ -34,6 +34,7 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.fields import Command, Domain
+from odoo.tools.misc import formatLang
 
 from . import odin_ai_prompts as prompts
 from .odin_ai_llm import final_json
@@ -132,6 +133,7 @@ class OdinAiSuggestion(models.Model):
         self._check_reader()
         suggestions = self.search([("company_id", "in", self.env.companies.ids), ("state", "in", OPEN_STATES)],
                                   limit=500)
+        suggestions -= suggestions._retire_handled()
         return {
             "items": [suggestion._card() for suggestion in suggestions],
             "counts": dict(Counter(suggestions.mapped("band"))),
@@ -139,6 +141,20 @@ class OdinAiSuggestion(models.Model):
             "can_apply": self.env.user.has_group("account.group_account_user"),
             "ai": self.env["odin.ai.llm"].readiness() or False,
         }
+
+    def _retire_handled(self):
+        """Open suggestions whose item was dealt with elsewhere (a bank line
+        reconciled in the bank screen, a bill posted or recategorised): they
+        leave the inbox. Returns them."""
+        handled = self.filtered(lambda s: (
+            s.source == "bank" and s.st_line_id.is_reconciled
+        ) or (
+            s.source == "bill" and (s.aml_id.parent_state != "draft"
+                                    or s.aml_id.account_id != s.aml_id.move_id.journal_id.default_account_id)
+        ))
+        if handled:
+            handled.sudo().write({"state": "stale", "error": _("Handled outside Transaction Review.")})
+        return handled
 
     def _card(self):
         self.ensure_one()
@@ -326,8 +342,10 @@ class OdinAiSuggestion(models.Model):
     @api.model
     def action_generate(self):
         """From the page: rules and open items for everything, then one
-        batch for Claude. The page calls again while items remain."""
+        batch for Claude. The page calls again while items remain.
+        Accountants only: it spends the AI budget and makes suggestions."""
         self._check_reader()
+        self._check_accountant()
         self._generate(self.env.company, interactive=True)
         return self.inbox()
 
@@ -349,7 +367,10 @@ class OdinAiSuggestion(models.Model):
         handled = 0
         to_ask = []
         for item in self._pending_items(company):
-            if self._from_rule(company, item) or self._from_open_item(company, item):
+            # An exact match with an open invoice beats a rule; a rule (the
+            # accountant's own decision) beats the partner's open items.
+            if self._from_open_item(company, item) or self._from_rule(company, item) \
+                    or self._from_open_partner(company, item):
                 handled += 1
             else:
                 to_ask.append(item)
@@ -438,6 +459,36 @@ class OdinAiSuggestion(models.Model):
         return self.create(dict(
             self._base_values(company, item),
             state="needs_reconcile", match_move_id=match.id, confidence=0.95, origin="match", rationale=reason))
+
+    def _from_open_partner(self, company, item):
+        """Money from a customer with unpaid invoices (or to a supplier with
+        unpaid bills) is almost always a payment of some of them, even when
+        no single one matches the amount. Booking it to income or expenses
+        would count it twice, so it is sent to reconciliation, never to the
+        AI, whatever the partner's history says."""
+        if item["source"] != "bank" or not item["partner"]:
+            return False
+        st_line = item["record"]
+        account_type = "asset_receivable" if st_line.amount > 0 else "liability_payable"
+        open_lines = self.env["account.move.line"].search(
+            Domain(st_line._get_default_amls_matching_domain())
+            & Domain("account_id.account_type", "=", account_type)
+            & Domain("partner_id", "child_of", st_line.partner_id.commercial_partner_id.id),
+            order="date_maturity, id", limit=50)
+        if not open_lines:
+            return False
+        total = abs(sum(open_lines.mapped("amount_residual")))
+        what = _("unpaid invoices") if st_line.amount > 0 else _("unpaid bills")
+        return self.create(dict(
+            self._base_values(company, item),
+            state="needs_reconcile", match_move_id=open_lines[:1].move_id.id, confidence=0.8, origin="match",
+            rationale=_("%(partner)s has %(count)s %(what)s (%(total)s open, oldest %(doc)s). This is "
+                        "probably a payment of some of them: reconcile it in the bank screen rather than booking "
+                        "it to an account, or it would be counted twice.",
+                        partner=st_line.partner_id.commercial_partner_id.display_name,
+                        count=len(open_lines.move_id), what=what,
+                        total=formatLang(self.env, total, currency_obj=st_line.company_id.currency_id),
+                        doc=open_lines[:1].move_id.display_name)))
 
     def _open_item_match(self, st_line):
         AML = self.env["account.move.line"]

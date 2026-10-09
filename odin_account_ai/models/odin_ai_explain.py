@@ -258,7 +258,7 @@ class OdinAiExplain(models.AbstractModel):
         top, rest = rows[:limit], rows[limit:]
         if rest:
             rows = top + [{
-                "key": None, "name": _("%(count)s others", count=len(rest)), "code": "",
+                "key": None, "name": _("Others (%(count)s)", count=len(rest)), "code": "",
                 "current": sum(r["current"] for r in rest), "previous": sum(r["previous"] for r in rest),
                 "delta": sum(r["delta"] for r in rest)}]
         else:

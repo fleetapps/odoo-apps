@@ -1,0 +1,188 @@
+// Transaction Review: queue on the left, the transaction on the right.
+
+.o_odin_ai_review {
+    outline: none;
+    background-color: var(--#{$prefix}body-bg);
+
+    .o_odin_ai_review_content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .o_odin_ai_in { color: var(--#{$prefix}success-text-emphasis); }
+    .o_odin_ai_num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+}
+
+.o_odin_ai_review_body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.o_odin_ai_review_split {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.o_odin_ai_empty {
+    margin: 4rem auto;
+    text-align: center;
+
+    > .fa {
+        font-size: 3rem;
+        color: var(--#{$prefix}success);
+    }
+}
+
+.o_odin_ai_queue {
+    flex: 0 0 #{"min(28rem, 45%)"};
+    overflow-y: auto;
+    border-right: 1px solid var(--#{$prefix}border-color);
+}
+
+.o_odin_ai_queue_head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: var(--#{$prefix}tertiary-bg);
+    border-bottom: 1px solid var(--#{$prefix}border-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    &::before {
+        content: "";
+        width: 0.5rem;
+        height: 0.5rem;
+        margin-right: 0.5rem;
+        border-radius: 50%;
+        background-color: var(--#{$prefix}secondary-color);
+    }
+
+    &[data-group="high"]::before { background-color: var(--#{$prefix}success); }
+    &[data-group="medium"]::before { background-color: var(--#{$prefix}warning); }
+    &[data-group="low"]::before { background-color: var(--#{$prefix}danger); }
+    &[data-group="reconcile"]::before { background-color: var(--#{$prefix}info); }
+}
+
+.o_odin_ai_queue_item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+    border-left: 3px solid transparent;
+    cursor: pointer;
+
+    &:hover { background-color: var(--#{$prefix}tertiary-bg); }
+
+    &.active {
+        border-left-color: var(--#{$prefix}primary);
+        background-color: var(--#{$prefix}primary-bg-subtle);
+    }
+}
+
+.o_odin_ai_queue_main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_odin_ai_queue_account { max-width: 12rem; }
+
+.o_odin_ai_detail {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    max-width: 44rem;
+
+    kbd {
+        padding: 0.05rem 0.3rem;
+        font-size: 0.7rem;
+        background-color: var(--#{$prefix}secondary-bg);
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_odin_ai_detail_head { margin-bottom: 1rem; }
+
+.o_odin_ai_detail_amount {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.o_odin_ai_card {
+    padding: 1rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--#{$prefix}border-radius-lg);
+}
+
+.o_odin_ai_card_match { background-color: var(--#{$prefix}info-bg-subtle); }
+
+.o_odin_ai_card_title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_odin_ai_rationale {
+    margin: 0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--#{$prefix}border-radius);
+    background-color: var(--#{$prefix}tertiary-bg);
+    font-size: 0.875rem;
+}
+
+.o_odin_ai_confidence {
+    width: 4rem;
+    height: 0.4rem;
+    border-radius: 1rem;
+    background-color: var(--#{$prefix}secondary-bg);
+    overflow: hidden;
+
+    > span {
+        display: block;
+        height: 100%;
+        background-color: var(--#{$prefix}danger);
+    }
+
+    &[data-band="medium"] > span { background-color: var(--#{$prefix}warning); }
+    &[data-band="high"] > span { background-color: var(--#{$prefix}success); }
+}
+
+.o_odin_ai_review .o_odin_ai_section {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_odin_ai_review .o_odin_ai_item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.25rem;
+    border-radius: var(--#{$prefix}border-radius);
+}
+
+.o_odin_ai_review .o_odin_ai_clickable {
+    cursor: pointer;
+
+    &:hover { background-color: var(--#{$prefix}tertiary-bg); }
+}
+
+@include media-breakpoint-down(md) {
+    .o_odin_ai_review_split { flex-direction: column; }
+    .o_odin_ai_queue { flex: 0 0 45%; border-right: 0; border-bottom: 1px solid var(--#{$prefix}border-color); }
+    .o_odin_ai_detail { padding: 1rem; }
+}

@@ -27,6 +27,7 @@ from datetime import timedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 from odoo.fields import Domain
+from odoo.tools.misc import formatLang
 
 from . import odin_ai_prompts as prompts
 from .odin_ai_llm import final_json
@@ -197,6 +198,9 @@ class OdinAiDetector(models.Model):
     # severity, details, amount, date, moves, facts.
     # ------------------------------------------------------------------
 
+    def _money(self, company, amount):
+        return formatLang(self.env, amount, currency_obj=company.currency_id)
+
     def _since(self, days):
         return fields.Date.context_today(self) - timedelta(days=int(days))
 
@@ -241,9 +245,9 @@ class OdinAiDetector(models.Model):
                 "amount": abs(first.amount_total_signed),
                 "date": first.invoice_date or first.date,
                 "moves": moves,
-                "details": _("Both bills have %(reason)s (%(partner)s, %(amount)s %(currency)s).",
+                "details": _("Both bills have %(reason)s (%(partner)s, %(amount)s).",
                              reason=reason, partner=first.partner_id.display_name,
-                             amount=first.amount_total, currency=first.currency_id.name),
+                             amount=formatLang(self.env, first.amount_total, currency_obj=first.currency_id)),
             })
         return results
 
@@ -288,8 +292,8 @@ class OdinAiDetector(models.Model):
                     "date": bill.invoice_date or bill.date,
                     "moves": bill,
                     "details": _("%(amount)s against a usual %(median)s (median of %(count)s bills over the "
-                                 "previous year).", amount=round(amount, 2), median=round(median, 2),
-                                 count=len(amounts)),
+                                 "previous year).", amount=self._money(company, amount),
+                                 median=self._money(company, median), count=len(amounts)),
                     "facts": {"median": median, "mad": mad, "robust_z": score, "history": len(amounts)},
                 })
         return results
@@ -360,7 +364,7 @@ class OdinAiDetector(models.Model):
             results.append({
                 "fingerprint": f"manual:{move.id}",
                 "name": _("Manual entry %(entry)s moves %(amount)s on %(accounts)s",
-                          entry=move.display_name, amount=round(amount, 2),
+                          entry=move.display_name, amount=self._money(company, amount),
                           accounts=", ".join(sorted(set(group.account_id.mapped("display_name"))))),
                 "severity": "high" if equity else "medium",
                 "amount": amount,
@@ -368,7 +372,7 @@ class OdinAiDetector(models.Model):
                 "moves": move,
                 "details": _("Entered by %(user)s in %(journal)s; above %(threshold)s, the usual ceiling for "
                              "manual entries on these accounts.", user=move.create_uid.name,
-                             journal=move.journal_id.name, threshold=round(threshold, 2)),
+                             journal=move.journal_id.name, threshold=self._money(company, threshold)),
             })
         return results
 
@@ -454,7 +458,7 @@ class OdinAiDetector(models.Model):
                 "moves": group.move_id[:50],
                 "details": _("Oldest from %(date)s. The suspense account %(account)s holds %(balance)s.",
                              date=fields.Date.to_string(oldest), account=suspense.display_name or "-",
-                             balance=round(balance, 2)),
+                             balance=self._money(company, balance)),
             })
         return results
 
@@ -471,7 +475,8 @@ class OdinAiFinding(models.Model):
     detector_id = fields.Many2one("odin.ai.detector", required=True, ondelete="cascade", index=True)
     kind = fields.Selection(related="detector_id.kind")
     fingerprint = fields.Char(required=True)
-    severity = fields.Selection(SEVERITY, required=True, tracking=True)
+    # group_expand: the kanban shows High, Medium, Low in that order, even when empty.
+    severity = fields.Selection(SEVERITY, required=True, tracking=True, group_expand=True)
     priority = fields.Integer(compute="_compute_priority", store=True)
     state = fields.Selection([
         ("open", "Open"),

@@ -93,14 +93,16 @@ class OdinAiDraft(models.Model):
         if len(lines) < 2:
             issues.append(_("An entry needs at least two lines."))
         for line in lines:
-            label = line.name or line.account_id.display_name or _("A line")
-            if not line.account_id:
+            # sudo: an account of another company is reported, not an access error.
+            account = line.account_id.sudo()
+            label = line.name or account.display_name or _("A line")
+            if not account:
                 issues.append(_("%(line)s has no account.", line=label))
-            elif not line.account_id.active:
-                issues.append(_("%(account)s is archived.", account=line.account_id.display_name))
-            elif company not in line.account_id.company_ids:
+            elif not account.active:
+                issues.append(_("%(account)s is archived.", account=account.display_name))
+            elif company not in account.company_ids:
                 issues.append(_("%(account)s does not belong to %(company)s.",
-                                account=line.account_id.display_name, company=company.name))
+                                account=account.display_name, company=company.name))
             if line.debit < 0 or line.credit < 0:
                 issues.append(_("%(line)s has a negative amount.", line=label))
             elif bool(line.debit) == bool(line.credit):
