@@ -24,6 +24,13 @@ class HelpdeskTicket(models.Model):
         is added to it -- they need the client's replies, not a dead link. Lead
         Routing reserves membership for managers, and there they are told to ask
         the owner instead of being added behind the owner's back.
+
+        Deliberately wider than the connector, which auto-joins managers only
+        (``_find_or_create_member_for_self``). Here any helpdesk user working the
+        ticket may join a conversation nobody owns, because a new member of the
+        service team should not need the manager group to read the request they
+        have been handed. Do not narrow this to match: the divergence is the
+        decision, not an oversight.
         """
         self.ensure_one()
         channel = self.wa_channel_id.sudo()
