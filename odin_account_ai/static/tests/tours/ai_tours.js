@@ -40,8 +40,11 @@ registry.category("web_tour.tours").add("odin_account_ai_explain_tour", {
 registry.category("web_tour.tours").add("odin_account_ai_ask_tour", {
     steps: () => [
         { trigger: ".o_odin_ai_starter", run: "click" },
-        { trigger: ".o_odin_ai_steps li:contains(Reading the P&L)" },
+        // The steps fold away once the answer is in, and the mocked model
+        // answers in milliseconds: read them from the folded list.
         { trigger: ".o_odin_ai_text:contains(Revenue was)" },
+        { trigger: ".o_odin_ai_steps button:contains(1 step)", run: "click" },
+        { trigger: ".o_odin_ai_steps li:contains(Reading the P&L)" },
         { trigger: ".o_odin_ai_followups button" },
         { trigger: ".o_odin_ai_text .o_odin_ai_chip", run: "click" },
         { trigger: ".o_odin_pnl_table tr.o_odin_pnl_focus[data-key='L:REV']" },
