@@ -355,7 +355,11 @@ class DiscussChannel(models.Model):
         if self.wa_routed and self.env.user.partner_id not in self.sudo().channel_member_ids.partner_id:
             owner = self.sudo().wa_assigned_user_id
             raise UserError(
-                self.env._("This conversation is assigned to %s.", owner.name) if owner
+                self.env._(
+                    "This conversation is assigned to %s, so only they can reply. If they "
+                    "are away, a WhatsApp manager can take it over or assign it to you.",
+                    owner.name,
+                ) if owner
                 else self.env._("Take this conversation before writing in it."),
             )
         return super()._wa_check_can_send(attachments, text)
