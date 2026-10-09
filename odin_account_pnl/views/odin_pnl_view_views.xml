@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Saved views are made from the report ("Saved views" > Save current
+     view); this form is where an accountant sets the email schedule. -->
+<odoo>
+    <record id="odin_pnl_view_view_form" model="ir.ui.view">
+        <field name="name">odin.pnl.view.form</field>
+        <field name="model">odin.pnl.view</field>
+        <field name="arch" type="xml">
+            <form string="Saved P&amp;L view">
+                <header>
+                    <button name="action_send_now" type="object" string="Send now" class="btn-primary"
+                            invisible="schedule == 'none'"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period_rule" string="Period"/>
+                            <field name="shared"/>
+                            <field name="is_default"/>
+                        </group>
+                        <group>
+                            <field name="user_id" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                    </group>
+                    <separator string="Email it"/>
+                    <group>
+                        <group>
+                            <field name="schedule"/>
+                            <field name="send_weekday" invisible="schedule != 'weekly'"/>
+                            <field name="send_day" invisible="schedule != 'monthly'"/>
+                            <field name="send_hour" invisible="schedule == 'none'"/>
+                        </group>
+                        <group invisible="schedule == 'none'">
+                            <field name="send_pdf"/>
+                            <field name="send_xlsx"/>
+                            <field name="next_send"/>
+                            <field name="last_sent"/>
+                            <field name="last_status"/>
+                        </group>
+                    </group>
+                    <group invisible="schedule == 'none'">
+                        <field name="recipient_ids" widget="many2many_tags_email"/>
+                        <field name="recipient_emails" placeholder="cfo@example.com, board@example.com"/>
+                        <field name="message" placeholder="Here is last month's P&amp;L."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_pnl_view_view_list" model="ir.ui.view">
+        <field name="name">odin.pnl.view.list</field>
+        <field name="model">odin.pnl.view</field>
+        <field name="arch" type="xml">
+            <list string="Saved P&amp;L views">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="period_rule" string="Period"/>
+                <field name="shared"/>
+                <field name="schedule"/>
+                <field name="next_send"/>
+                <field name="last_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_pnl_view_action" model="ir.actions.act_window">
+        <field name="name">Saved P&amp;L Views</field>
+        <field name="res_model">odin.pnl.view</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

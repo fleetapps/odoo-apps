@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Categorisation rules: made from Transaction Review ("Always do this"),
+     editable here. A rule wins over the AI. -->
+<odoo>
+    <record id="odin_ai_rule_view_list" model="ir.ui.view">
+        <field name="name">odin.ai.rule.list</field>
+        <field name="model">odin.ai.rule</field>
+        <field name="arch" type="xml">
+            <list string="Categorisation rules" editable="bottom">
+                <field name="partner_id"/>
+                <field name="direction"/>
+                <field name="account_id"/>
+                <field name="analytic_distribution" widget="analytic_distribution"
+                       groups="analytic.group_analytic_accounting" options="{'force_applicability': 'optional'}"/>
+                <field name="hits"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_ai_rule_view_search" model="ir.ui.view">
+        <field name="name">odin.ai.rule.search</field>
+        <field name="model">odin.ai.rule</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_ai_rule_action" model="ir.actions.act_window">
+        <field name="name">Categorisation Rules</field>
+        <field name="res_model">odin.ai.rule</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No rules yet</p>
+            <p>In Transaction Review, "Always do this" turns an accepted suggestion into a rule: that partner's transactions then go to the same account without asking the AI.</p>
+        </field>
+    </record>
+</odoo>

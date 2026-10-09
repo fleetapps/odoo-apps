@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Root carries o_action: the action manager only styles a direct child
+         with that class (height 100%, column flex, overflow hidden). Layout
+         gives the breadcrumb bar; .o_odin_pnl_body then splits the rest into
+         the report, which scrolls on its own, and the side panel. -->
+    <t t-name="odin_account_pnl.PnlAction">
+        <div class="o_action o_odin_pnl" t-ref="root" tabindex="-1" t-on-keydown="onKeydown">
+            <Layout display="{ controlPanel: {} }" className="'o_odin_pnl_content'">
+                <t t-set-slot="layout-buttons">
+                    <div t-if="state.data" class="d-flex gap-1">
+                        <div class="btn-group">
+                            <button class="btn btn-primary" t-on-click="() => this.export('pdf')" t-att-disabled="state.exporting">
+                                <i t-if="state.exporting" class="fa fa-circle-o-notch fa-spin me-1"/>PDF
+                            </button>
+                            <Dropdown>
+                                <button class="btn btn-primary dropdown-toggle-split" aria-label="Other formats"><i class="fa fa-caret-down"/></button>
+                                <t t-set-slot="content">
+                                    <DropdownItem onSelected="() => this.export('xlsx')"><i class="fa fa-file-excel-o me-1"/>XLSX</DropdownItem>
+                                </t>
+                            </Dropdown>
+                        </div>
+                        <PnlViewsMenu report="this"/>
+                        <button class="btn btn-secondary" t-on-click="openShortcuts"
+                                aria-label="Keyboard shortcuts" data-tooltip="Keyboard shortcuts (?)">
+                            <i class="fa fa-keyboard-o"/>
+                        </button>
+                    </div>
+                </t>
+                <div t-if="state.loading" class="o_odin_pnl_loading text-muted">
+                    <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
+                </div>
+                <t t-else="">
+                    <PnlFilterBar t-if="state.data" options="state.options" data="state.data" journals="journals"
+                                  onChange.bind="changeOptions" onCreateBudget.bind="createBudget"
+                                  search="state.search" onSearch.bind="onSearch"/>
+                    <div t-if="state.error" class="alert alert-danger m-3" role="alert" t-esc="state.error"/>
+                    <div t-if="state.data" class="o_odin_pnl_body" t-att-class="{ o_odin_pnl_with_panel: state.panel }">
+                        <div class="o_odin_pnl_main" t-ref="scroller" t-att-class="{ o_odin_pnl_busy: state.busy }">
+                            <div t-if="state.data.warnings.length" class="o_odin_pnl_warnings">
+                                <div t-foreach="state.data.warnings" t-as="warning" t-key="warning_index"
+                                     class="alert py-2 mb-2" role="alert"
+                                     t-att-class="warning.type === 'integrity' ? 'alert-danger' : 'alert-warning'">
+                                    <i class="fa fa-exclamation-triangle me-1"/>
+                                    <t t-esc="warning.message"/>
+                                    <button t-if="state.data.can_configure" class="btn btn-link btn-sm p-0 ms-2"
+                                            t-on-click="editLayout">Edit the layout</button>
+                                </div>
+                            </div>
+                            <div t-if="!state.tipDismissed" class="o_odin_pnl_tip" role="note">
+                                <i class="fa fa-lightbulb-o" aria-hidden="true"/>
+                                <span>
+                                    Click a line to open it, a figure to list its journal items, <strong>By</strong> to
+                                    split a number. Press <kbd>?</kbd> for the keyboard shortcuts.
+                                </span>
+                                <button class="btn btn-link btn-sm ms-auto" aria-label="Dismiss the tip"
+                                        t-on-click="dismissTip"><i class="fa fa-times"/></button>
+                            </div>
+                            <t t-call="odin_account_pnl.PnlTable"/>
+                        </div>
+                        <PnlSidePanel t-if="state.panel" panel="state.panel" report="this"
+                                      close.bind="closePanel" select.bind="selectTab"/>
+                    </div>
+                    <t t-call="odin_account_pnl.PnlRowMenu"/>
+                </t>
+            </Layout>
+        </div>
+    </t>
+
+    <t t-name="odin_account_pnl.PnlTable">
+        <t t-set="options" t-value="state.options"/>
+        <t t-set="balanceColumn" t-value="showRunning"/>
+        <table class="o_odin_pnl_table">
+            <thead>
+                <tr>
+                    <th class="o_odin_pnl_name">
+                        Account <span class="text-muted fw-normal ms-1" t-esc="'(' + state.data.currency.symbol + ')'"/>
+                    </th>
+                    <th t-if="options.trend" class="o_odin_pnl_trend" data-tooltip="Last 12 months">12 m</th>
+                    <t t-foreach="columns" t-as="column" t-key="column.key">
+                        <th class="o_odin_pnl_num o_odin_pnl_sortable" t-att-class="'o_odin_pnl_col_' + column.group"
+                            t-att-data-tooltip="column.date_from + ' → ' + column.date_to + ' · click to sort'"
+                            t-on-click="() => this.toggleSort(column)">
+                            <t t-esc="column.label"/>
+                            <i t-if="sortIcon(column)" t-attf-class="fa {{sortIcon(column)}} ms-1"/>
+                        </th>
+                        <t t-if="column.budget">
+                            <th class="o_odin_pnl_num o_odin_pnl_budget_col">Budget</th>
+                            <th class="o_odin_pnl_num o_odin_pnl_budget_col" data-tooltip="Actual as a % of budget">%</th>
+                        </t>
+                    </t>
+                    <th t-if="balanceColumn" class="o_odin_pnl_num o_odin_pnl_running_col"
+                        data-tooltip="Running balance of the ledger, oldest first">Balance</th>
+                    <th t-if="hasGrowth" class="o_odin_pnl_num" data-tooltip="Change against the first comparison">%</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="visibleRows" t-as="row" t-key="row.key">
+                    <tr t-if="row.type === 'heading'" class="o_odin_pnl_row_heading">
+                        <td t-att-colspan="99" t-att-style="indent(row)" t-esc="row.name"/>
+                    </tr>
+                    <tr t-elif="row.type === 'more'" class="o_odin_pnl_row_more" t-att-data-key="row.key">
+                        <td t-att-colspan="99" t-att-style="indent(row)">
+                            <button class="btn btn-link btn-sm p-0" t-on-click.stop="() => this.loadMore(row)">
+                                <i class="fa fa-angle-double-down me-1"/>Load more
+                            </button>
+                        </td>
+                    </tr>
+                    <tr t-else="" t-att-class="rowClass(row)" t-att-data-key="row.key"
+                        t-on-click="() => this.onRowClick(row)">
+                        <td class="o_odin_pnl_name" t-att-style="indent(row)">
+                            <t t-call="odin_account_pnl.PnlNameCell"/>
+                        </td>
+                        <td t-if="options.trend" class="o_odin_pnl_trend">
+                            <svg t-if="row.trend and row.trend.length" width="48" height="14" viewBox="0 0 48 14" aria-hidden="true">
+                                <polyline t-att-points="sparkPoints(row.trend, 48, 14)" fill="none" stroke="currentColor" stroke-width="1.25"/>
+                            </svg>
+                        </td>
+                        <t t-foreach="columns" t-as="column" t-key="column.key">
+                            <td class="o_odin_pnl_num" t-att-class="{ o_odin_pnl_auditable: canAudit(row) }"
+                                t-att-data-tooltip="canAudit(row) ? 'Show the journal items behind this figure' : false"
+                                t-on-click="(ev) => this.onCellClick(ev, row, column)">
+                                <span t-esc="fmt(row.values[column.key])"/>
+                                <small t-if="options.percent_of_base and row.pct and row.pct[column.key] !== undefined and row.pct[column.key] !== null"
+                                       class="o_odin_pnl_pct" t-esc="formatPercent(row.pct[column.key])"/>
+                            </td>
+                            <t t-if="column.budget">
+                                <td class="o_odin_pnl_num o_odin_pnl_budget_col"
+                                    t-att-class="{ o_odin_pnl_editable: canEditBudget(row) }"
+                                    t-att-data-tooltip="canEditBudget(row) ? 'Click to type a budget' : false"
+                                    t-on-click.stop="() => this.editBudget(row, column)">
+                                    <input t-if="isEditing(row, column)" class="o_odin_pnl_budget_input form-control form-control-sm text-end"
+                                           t-att-value="row.budget[column.key] ? (row.budget[column.key] / (options.scale || 1)) : ''"
+                                           t-on-keydown="(ev) => this.onBudgetKey(ev, row, column)"
+                                           t-on-blur="(ev) => this.saveBudget(ev.target.value, row, column)"/>
+                                    <t t-elif="row.budget and row.budget[column.key]" t-esc="fmt(row.budget[column.key])"/>
+                                    <i t-elif="canEditBudget(row)" class="fa fa-pencil o_odin_pnl_budget_hint"/>
+                                </td>
+                                <td class="o_odin_pnl_num o_odin_pnl_budget_col" t-att-class="budgetPctClass(row, column)">
+                                    <t t-esc="formatPercent(row.budget_pct and row.budget_pct[column.key])"/>
+                                </td>
+                            </t>
+                        </t>
+                        <td t-if="balanceColumn" class="o_odin_pnl_num o_odin_pnl_running_col">
+                            <t t-if="row.running !== null and row.running !== undefined" t-esc="fmt(row.running)"/>
+                        </td>
+                        <td t-if="hasGrowth" class="o_odin_pnl_num" t-att-class="growthClass(row)"
+                            t-esc="formatGrowth(row.growth)"/>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+        <div t-if="!visibleRows.length" class="o_odin_pnl_empty text-center text-muted p-5">
+            <i class="fa fa-search fa-2x mb-2"/>
+            <p t-if="state.search">No account matches “<t t-esc="state.search"/>”.</p>
+            <p t-else="">Nothing was posted on P&amp;L accounts in this period.</p>
+        </div>
+    </t>
+
+    <t t-name="odin_account_pnl.PnlNameCell">
+        <div class="o_odin_pnl_namebox">
+            <i t-if="row.unfoldable" class="fa fa-fw o_odin_pnl_caret"
+               t-att-class="row.unfolded ? 'fa-caret-down' : 'fa-caret-right'"/>
+            <i t-elif="row.type !== 'entry'" class="fa fa-fw"/>
+            <t t-if="row.type === 'entry'">
+                <span class="o_odin_pnl_entry_date" t-esc="row.date"/>
+                <span class="o_odin_pnl_entry_name" t-esc="row.name"/>
+                <span t-if="row.draft" class="badge text-bg-warning">Draft</span>
+                <span class="o_odin_pnl_entry_partner" t-esc="row.partner"/>
+                <span class="o_odin_pnl_entry_label text-muted" t-esc="row.label"/>
+                <span class="badge text-bg-light" t-esc="row.journal"/>
+            </t>
+            <t t-elif="row.type === 'others'">
+                <span class="o_odin_pnl_label"><t t-esc="row.name"/></span>
+                <span class="text-muted small ms-1">· show all</span>
+            </t>
+            <t t-else="">
+                <span t-if="row.code and options.show_codes" class="o_odin_pnl_code" t-esc="row.code"/>
+                <span class="o_odin_pnl_label" t-esc="row.name"/>
+                <i t-if="row.warning" class="fa fa-exclamation-triangle text-warning ms-1"
+                   data-tooltip="These accounts are in no line of the layout"/>
+                <button t-if="row.annotations" class="btn btn-link btn-sm p-0 ms-1 o_odin_pnl_note_flag"
+                        t-att-data-tooltip="row.annotations + ' note(s)'"
+                        t-on-click.stop="() => this.openPanel('notes', row)">
+                    <i class="fa fa-sticky-note"/>
+                </button>
+            </t>
+            <span class="o_odin_pnl_rowtools">
+                <button t-if="row.unfoldable and row.type !== 'entry'" class="btn btn-sm o_odin_pnl_by"
+                        t-att-class="row.unfolded and row.mode !== 'accounts' and row.mode !== 'entries' ? 'btn-primary' : 'btn-light'"
+                        data-tooltip="What's in this number" t-on-click="(ev) => this.openMenu(ev, row, 'by')">
+                    <t t-esc="modeLabel(row)"/> <i class="fa fa-caret-down"/>
+                </button>
+                <button t-if="row.type !== 'formula' and row.type !== 'others'" class="btn btn-sm btn-light o_odin_pnl_more"
+                        aria-label="More actions" data-tooltip="More" t-on-click="(ev) => this.openMenu(ev, row, 'actions')">
+                    <i class="fa fa-ellipsis-h"/>
+                </button>
+            </span>
+        </div>
+        <div t-if="row.share !== undefined" class="o_odin_pnl_share" t-att-data-tooltip="formatPercent(row.share) + ' of the total'">
+            <div t-att-style="shareStyle(row)"/>
+        </div>
+    </t>
+
+    <t t-name="odin_account_pnl.PnlRowMenu">
+        <!-- The menu is driven by OWL, not by Bootstrap: Bootstrap's keyboard
+             handler skips menus carrying the class of Odoo's own dropdown menus
+             (Odoo's patch in web/static/lib/bootstrap/js/dist/dropdown.js). -->
+        <div t-if="state.menu and menuRow" class="o_odin_pnl_rowmenu o-dropdown--menu dropdown-menu show"
+             t-attf-style="top: {{state.menu.top}}px; left: {{state.menu.left}}px;">
+            <t t-if="state.menu.kind === 'by'">
+                <h6 class="dropdown-header">Show by</h6>
+                <button t-foreach="menuModes" t-as="mode" t-key="mode[0]" class="dropdown-item"
+                        t-att-class="{ active: menuRow.mode === mode[0] }"
+                        t-on-click="() => this.setMode(menuRow, mode[0])">
+                    <t t-esc="mode[1]"/>
+                </button>
+            </t>
+            <t t-else="">
+                <button t-foreach="menuActions" t-as="item" t-key="item_index" class="dropdown-item"
+                        t-on-click="() => this.runMenuAction(item)">
+                    <i t-attf-class="fa fa-fw {{item.icon}} me-1"/><t t-esc="item.label"/>
+                </button>
+                <div t-if="!menuActions.length" class="dropdown-item-text text-muted">Nothing to do here</div>
+            </t>
+        </div>
+    </t>
+
+</templates>

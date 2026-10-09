@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The two custom screens (OWL client actions in static/src). -->
+<odoo>
+    <record id="odin_ai_ask_action" model="ir.actions.client">
+        <field name="name">Ask</field>
+        <field name="tag">odin_account_ai.ask</field>
+        <field name="path">ai-ask</field>
+    </record>
+
+    <record id="odin_ai_review_action" model="ir.actions.client">
+        <field name="name">Transaction Review</field>
+        <field name="tag">odin_account_ai.review</field>
+        <field name="path">ai-review</field>
+    </record>
+</odoo>

@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_ai_run_user,odin.ai.run user,model_odin_ai_run,group_ai_user,1,0,0,0
+access_odin_ai_conversation_user,odin.ai.conversation user,model_odin_ai_conversation,group_ai_user,1,1,1,1
+access_odin_ai_suggestion_reader,odin.ai.suggestion reader,model_odin_ai_suggestion,account.group_account_readonly,1,0,0,0
+access_odin_ai_suggestion_accountant,odin.ai.suggestion accountant,model_odin_ai_suggestion,account.group_account_user,1,1,1,0
+access_odin_ai_suggestion_manager,odin.ai.suggestion manager,model_odin_ai_suggestion,group_ai_manager,1,1,1,1
+access_odin_ai_rule_reader,odin.ai.rule reader,model_odin_ai_rule,account.group_account_readonly,1,0,0,0
+access_odin_ai_rule_accountant,odin.ai.rule accountant,model_odin_ai_rule,account.group_account_user,1,1,1,1
+access_odin_ai_detector_reader,odin.ai.detector reader,model_odin_ai_detector,account.group_account_readonly,1,0,0,0
+access_odin_ai_detector_manager,odin.ai.detector manager,model_odin_ai_detector,group_ai_manager,1,1,1,1
+access_odin_ai_finding_reader,odin.ai.finding reader,model_odin_ai_finding,account.group_account_readonly,1,0,0,0
+access_odin_ai_finding_accountant,odin.ai.finding accountant,model_odin_ai_finding,account.group_account_user,1,1,1,0
+access_odin_ai_finding_manager,odin.ai.finding manager,model_odin_ai_finding,group_ai_manager,1,1,1,1
+access_odin_ai_draft_accountant,odin.ai.draft accountant,model_odin_ai_draft,account.group_account_user,1,1,1,1
+access_odin_ai_draft_line_accountant,odin.ai.draft.line accountant,model_odin_ai_draft_line,account.group_account_user,1,1,1,1

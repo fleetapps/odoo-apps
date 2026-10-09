@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The seven checks of Anomalies. Thresholds can be changed per check in
+     its "params" (see DEFAULTS in models/odin_ai_anomaly.py). -->
+<odoo noupdate="1">
+    <record id="detector_duplicate_bill" model="odin.ai.detector">
+        <field name="name">Possible duplicate bills</field>
+        <field name="code">duplicate_bill</field>
+        <field name="kind">condition</field>
+        <field name="sequence">10</field>
+        <field name="description">Two draft or posted bills with the same supplier reference in the same year, or the same supplier and amount within three days.</field>
+    </record>
+    <record id="detector_amount_outlier" model="odin.ai.detector">
+        <field name="name">Unusual bill amount</field>
+        <field name="code">amount_outlier</field>
+        <field name="kind">event</field>
+        <field name="sequence">20</field>
+        <field name="description">A bill posted in the last 30 days far above what the supplier usually bills (median and median absolute deviation of its bills over the previous year).</field>
+    </record>
+    <record id="detector_new_account" model="odin.ai.detector">
+        <field name="name">New account for a supplier</field>
+        <field name="code">new_account</field>
+        <field name="kind">event</field>
+        <field name="sequence">30</field>
+        <field name="description">A bill line booked to an account the supplier's bills never used over the previous year.</field>
+    </record>
+    <record id="detector_large_manual" model="odin.ai.detector">
+        <field name="name">Large manual entry</field>
+        <field name="code">large_manual</field>
+        <field name="kind">event</field>
+        <field name="sequence">40</field>
+        <field name="description">A miscellaneous entry moving a large amount on cash, receivables, payables or equity (above the 95th percentile of such amounts over the past year, unless a minimum is set).</field>
+    </record>
+    <record id="detector_backdated" model="odin.ai.detector">
+        <field name="name">Backdated entry</field>
+        <field name="code">backdated</field>
+        <field name="kind">event</field>
+        <field name="sequence">50</field>
+        <field name="description">A miscellaneous entry dated more than 30 days before the day it was entered.</field>
+    </record>
+    <record id="detector_missing_analytic" model="odin.ai.detector">
+        <field name="name">Income or expense without analytic</field>
+        <field name="code">missing_analytic</field>
+        <field name="kind">condition</field>
+        <field name="sequence">60</field>
+        <field name="description">Recent income and expense lines without an analytic distribution, in a company where most of them have one.</field>
+    </record>
+    <record id="detector_stale_bank" model="odin.ai.detector">
+        <field name="name">Bank lines left unreconciled</field>
+        <field name="code">stale_bank</field>
+        <field name="kind">condition</field>
+        <field name="sequence">70</field>
+        <field name="description">Bank and cash lines still unreconciled 30 days after their date, per journal.</field>
+    </record>
+</odoo>

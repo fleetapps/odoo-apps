@@ -1,0 +1,226 @@
+// Ask the Ledger: a chat-first page in the style of the AI-native ledgers.
+// Bootstrap variables only, so it follows the light and dark themes.
+
+.o_odin_ai_ask {
+    background-color: var(--#{$prefix}body-bg);
+
+    .o_odin_ai_ask_content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+    }
+}
+
+.o_odin_ai_ask_body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.o_odin_ai_history {
+    flex: 0 0 15rem;
+    overflow-y: auto;
+    padding: 0.75rem 0;
+    border-right: 1px solid var(--#{$prefix}border-color);
+    background-color: var(--#{$prefix}tertiary-bg);
+}
+
+.o_odin_ai_history_head {
+    padding: 0 1rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_odin_ai_history_item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.4rem 1rem;
+    border: 0;
+    background: none;
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+    font-size: 0.875rem;
+
+    &:hover { background-color: var(--#{$prefix}secondary-bg); }
+    &.active { background-color: var(--#{$prefix}primary-bg-subtle); font-weight: 500; }
+}
+
+.o_odin_ai_main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.o_odin_ai_thread {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    // Plain CSS max(): interpolated so Sass does not take it for its own max().
+    padding: 1.5rem #{"max(1rem, calc((100% - 52rem) / 2))"};
+}
+
+.o_odin_ai_hero {
+    margin: 3rem 0 1.5rem;
+    text-align: center;
+}
+
+.o_odin_ai_hero_icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.75rem;
+    border-radius: 50%;
+    background-color: var(--#{$prefix}primary-bg-subtle);
+    color: var(--#{$prefix}primary-text-emphasis);
+    font-size: 1.25rem;
+}
+
+.o_odin_ai_starters {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+
+.o_odin_ai_starter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--#{$prefix}border-radius-lg);
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}body-color);
+    text-align: left;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:hover:not(:disabled) {
+        border-color: var(--#{$prefix}primary);
+        box-shadow: var(--#{$prefix}box-shadow-sm);
+    }
+}
+
+.o_odin_ai_starter_title { font-weight: 600; }
+.o_odin_ai_starter_text { font-size: 0.875rem; color: var(--#{$prefix}secondary-color); }
+
+.o_odin_ai_question {
+    display: flex;
+    justify-content: flex-end;
+    margin: 1rem 0 0.75rem;
+
+    > div {
+        max-width: 80%;
+        padding: 0.6rem 0.9rem;
+        border-radius: 1rem 1rem 0.25rem 1rem;
+        background-color: var(--#{$prefix}primary-bg-subtle);
+        color: var(--#{$prefix}body-color);
+        white-space: pre-wrap;
+    }
+}
+
+.o_odin_ai_answer {
+    margin-bottom: 1rem;
+}
+
+.o_odin_ai_steps {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+
+    li { padding: 0.15rem 0; }
+}
+
+.o_odin_ai_kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.o_odin_ai_kpi {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--#{$prefix}border-radius-lg);
+}
+
+.o_odin_ai_kpi_value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.o_odin_ai_kpi_label {
+    font-size: 0.875rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_odin_ai_text { margin-bottom: 0.75rem; line-height: 1.55; }
+.o_odin_ai_bullets { padding-left: 1.2rem; li { margin-bottom: 0.3rem; } }
+
+.o_odin_ai_table {
+    margin-bottom: 0.75rem;
+
+    .table { font-size: 0.875rem; }
+    th { font-weight: 600; white-space: nowrap; }
+}
+
+.o_odin_ai_num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.o_odin_ai_answer_foot {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-top: 1px solid var(--#{$prefix}border-color-translucent);
+    padding-top: 0.25rem;
+}
+
+.o_odin_ai_followups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+
+    .btn { border-radius: 1rem; text-align: left; }
+}
+
+.o_odin_ai_composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.75rem #{"max(1rem, calc((100% - 52rem) / 2))"} 1rem;
+    border-top: 1px solid var(--#{$prefix}border-color);
+
+    textarea {
+        resize: none;
+        field-sizing: content;
+        max-height: 10rem;
+        border-radius: 1.25rem;
+        padding: 0.55rem 1rem;
+    }
+
+    .btn {
+        flex: 0 0 auto;
+        width: 2.4rem;
+        height: 2.4rem;
+        border-radius: 50%;
+    }
+}
+
+@include media-breakpoint-down(md) {
+    .o_odin_ai_history {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        box-shadow: var(--#{$prefix}box-shadow);
+    }
+
+    .o_odin_ai_ask_body { position: relative; }
+}

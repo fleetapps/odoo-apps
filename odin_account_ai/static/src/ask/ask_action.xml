@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_ai.AskAction">
+        <div class="o_action o_odin_ai_ask">
+            <Layout display="{ controlPanel: {} }" className="'o_odin_ai_ask_content'">
+                <t t-set-slot="layout-buttons">
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-primary" t-on-click="newConversation" t-att-disabled="!state.thread">
+                            <i class="fa fa-plus me-1"/>New question
+                        </button>
+                        <button class="btn btn-secondary" t-on-click="() => this.state.history = !this.state.history"
+                                t-att-aria-pressed="state.history ? 'true' : 'false'">
+                            <i class="fa fa-history me-1"/>History
+                        </button>
+                    </div>
+                </t>
+                <div t-if="!state.boot" class="p-5 text-center text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+                <div t-else="" class="o_odin_ai_ask_body">
+                    <aside t-if="state.history" class="o_odin_ai_history" aria-label="Recent questions">
+                        <div class="o_odin_ai_history_head">Recent</div>
+                        <div t-if="!state.boot.recent.length" class="text-muted small px-3">Your questions will show here.</div>
+                        <button t-foreach="state.boot.recent" t-as="item" t-key="item.id" class="o_odin_ai_history_item"
+                                t-att-class="{ active: state.thread and state.thread.id === item.id }"
+                                t-on-click="() => this.open(item.id)">
+                            <i t-if="item.state === 'running'" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <i t-elif="item.state === 'error'" class="fa fa-exclamation-circle text-warning me-1"/>
+                            <span class="text-truncate" t-esc="item.name"/>
+                        </button>
+                    </aside>
+                    <main class="o_odin_ai_main">
+                        <div class="o_odin_ai_thread" t-ref="thread">
+                            <div t-if="state.boot.ready" class="alert alert-warning m-3" role="alert">
+                                <i class="fa fa-plug me-1"/><t t-esc="state.boot.ready"/>
+                            </div>
+                            <t t-if="!state.thread">
+                                <div class="o_odin_ai_hero">
+                                    <div class="o_odin_ai_hero_icon"><i class="fa fa-magic"/></div>
+                                    <h2>Ask about <t t-esc="state.boot.company"/>'s books</h2>
+                                    <p class="text-muted">Answers come from your ledger, with every figure linked to the entries behind it.</p>
+                                </div>
+                                <div class="o_odin_ai_starters">
+                                    <button t-foreach="state.boot.starters" t-as="starter" t-key="starter_index"
+                                            class="o_odin_ai_starter" t-att-disabled="state.boot.ready"
+                                            t-on-click="() => this.ask(starter.question)">
+                                        <span class="o_odin_ai_starter_title"><i t-attf-class="fa {{starter.icon}} me-2"/><t t-esc="starter.title"/></span>
+                                        <span class="o_odin_ai_starter_text" t-esc="starter.question"/>
+                                    </button>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <t t-foreach="state.thread.turns" t-as="turn" t-key="turn_index">
+                                    <div class="o_odin_ai_question"><div t-esc="turn.question"/></div>
+                                    <div class="o_odin_ai_answer">
+                                        <t t-set="isLast" t-value="turn_index === state.thread.turns.length - 1"/>
+                                        <t t-set="working" t-value="isLast and state.thread.state === 'running'"/>
+                                        <div t-if="turn.progress.length or working" class="o_odin_ai_steps">
+                                            <button t-if="!working" class="btn btn-link btn-sm p-0 text-muted"
+                                                    t-on-click="() => this.toggleSteps(turn_index)">
+                                                <i t-attf-class="fa fa-caret-{{state.openSteps[turn_index] ? 'down' : 'right'}} me-1"/>
+                                                Read the books in <t t-esc="turn.progress.length"/> step(s)
+                                            </button>
+                                            <ul t-if="working or state.openSteps[turn_index]" class="list-unstyled mb-0">
+                                                <li t-foreach="turn.progress" t-as="step" t-key="step_index">
+                                                    <i class="fa fa-check text-success me-2"/><t t-esc="step"/>
+                                                </li>
+                                                <li t-if="working" class="text-muted">
+                                                    <i class="fa fa-circle-o-notch fa-spin me-2"/>Thinking…
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <t t-if="turn.answer">
+                                            <t t-set="kpis" t-value="turn.answer.blocks.filter((b) => b.type === 'kpi')"/>
+                                            <div t-if="kpis.length" class="o_odin_ai_kpis">
+                                                <div t-foreach="kpis" t-as="block" t-key="block_index" class="o_odin_ai_kpi">
+                                                    <div class="o_odin_ai_kpi_value" t-esc="plain(block.value)"/>
+                                                    <div class="o_odin_ai_kpi_label">
+                                                        <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
+                                                            <t t-call="odin_account_ai.AskPart"/>
+                                                        </t>
+                                                        <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
+                                                            <button class="o_odin_ai_chip" t-att-data-tooltip="label(ref)"
+                                                                    t-on-click="() => this.openEvidence(ref)" t-esc="ref"/>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <t t-foreach="turn.answer.blocks" t-as="block" t-key="block_index">
+                                                <p t-if="block.type === 'text'" class="o_odin_ai_text">
+                                                    <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
+                                                        <t t-call="odin_account_ai.AskPart"/>
+                                                    </t>
+                                                </p>
+                                                <ul t-elif="block.type === 'bullets'" class="o_odin_ai_bullets">
+                                                    <li t-foreach="block.items or []" t-as="item" t-key="item_index">
+                                                        <t t-foreach="parts(item)" t-as="part" t-key="part_index">
+                                                            <t t-call="odin_account_ai.AskPart"/>
+                                                        </t>
+                                                    </li>
+                                                </ul>
+                                                <div t-elif="block.type === 'table'" class="o_odin_ai_table table-responsive">
+                                                    <div t-if="block.text" class="fw-semibold mb-1" t-esc="block.text"/>
+                                                    <table class="table table-sm mb-0">
+                                                        <thead><tr>
+                                                            <th t-foreach="block.columns or []" t-as="column" t-key="column_index"
+                                                                t-att-class="{ 'text-end': numericColumn(block, column_index) }" t-esc="column"/>
+                                                        </tr></thead>
+                                                        <tbody>
+                                                            <tr t-foreach="block.rows or []" t-as="row" t-key="row_index">
+                                                                <td t-foreach="row" t-as="cell" t-key="cell_index"
+                                                                    t-att-class="{ 'text-end o_odin_ai_num': isNumeric(cell) }">
+                                                                    <t t-foreach="parts(cell)" t-as="part" t-key="part_index">
+                                                                        <t t-call="odin_account_ai.AskPart"/>
+                                                                    </t>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </t>
+                                            <div class="o_odin_ai_answer_foot">
+                                                <button class="btn btn-link btn-sm text-muted" t-on-click="() => this.copy(turn)"
+                                                        data-tooltip="Copy the answer"><i class="fa fa-clone"/></button>
+                                                <t t-if="isLast">
+                                                    <button class="btn btn-link btn-sm" aria-label="Helpful"
+                                                            t-att-class="state.thread.feedback === 'up' ? 'text-success' : 'text-muted'"
+                                                            t-on-click="() => this.feedback('up')"><i class="fa fa-thumbs-o-up"/></button>
+                                                    <button class="btn btn-link btn-sm" aria-label="Not helpful"
+                                                            t-att-class="state.thread.feedback === 'down' ? 'text-danger' : 'text-muted'"
+                                                            t-on-click="() => this.feedback('down')"><i class="fa fa-thumbs-o-down"/></button>
+                                                </t>
+                                                <span class="small text-muted ms-auto">AI answer from your ledger. Check the linked entries before relying on it.</span>
+                                            </div>
+                                            <div t-if="isLast and turn.answer.follow_ups.length and state.thread.state === 'done'"
+                                                 class="o_odin_ai_followups">
+                                                <button t-foreach="turn.answer.follow_ups" t-as="follow" t-key="follow_index"
+                                                        class="btn btn-sm btn-outline-secondary" t-on-click="() => this.ask(follow)">
+                                                    <t t-esc="follow"/>
+                                                </button>
+                                            </div>
+                                        </t>
+                                        <div t-if="isLast and state.thread.state === 'error'" class="alert alert-warning mb-0">
+                                            <t t-esc="state.thread.error"/>
+                                            <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                        </div>
+                        <div class="o_odin_ai_composer">
+                            <textarea t-ref="input" class="form-control" rows="1" t-model="state.input"
+                                      t-on-keydown="onKeydown" t-att-disabled="state.boot.ready"
+                                      t-att-placeholder="state.thread and state.thread.state === 'done' ? 'Ask a follow-up…' : 'Ask about revenue, costs, customers, suppliers…'"
+                                      aria-label="Your question"/>
+                            <button class="btn btn-primary" t-on-click="() => this.ask(state.input)" t-att-disabled="!canAsk"
+                                    aria-label="Send">
+                                <i t-if="state.sending or running" class="fa fa-circle-o-notch fa-spin"/>
+                                <i t-else="" class="fa fa-arrow-up"/>
+                            </button>
+                        </div>
+                    </main>
+                </div>
+            </Layout>
+        </div>
+    </t>
+
+    <t t-name="odin_account_ai.AskPart">
+        <button t-if="part.ref" class="o_odin_ai_chip" t-att-data-tooltip="label(part.ref)"
+                t-on-click="() => this.openEvidence(part.ref)" t-esc="part.ref"/>
+        <strong t-elif="part.bold" t-esc="part.text"/>
+        <t t-else="" t-esc="part.text"/>
+    </t>
+
+</templates>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_ai.ExplainPanel">
+        <div class="o_odin_ai_explain">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <h5 class="mb-0 flex-grow-1" t-esc="props.row.name"/>
+                <select t-if="columns.length > 1" class="form-select form-select-sm w-auto" aria-label="Period"
+                        t-on-change="changeColumn">
+                    <option t-foreach="columns" t-as="column" t-key="column.key" t-att-value="column.key"
+                            t-att-selected="column.key === state.column" t-esc="column.label"/>
+                </select>
+            </div>
+            <div t-if="state.error" class="alert alert-warning" t-esc="state.error"/>
+            <div t-elif="!state.data" class="text-muted p-3"><i class="fa fa-circle-o-notch fa-spin me-1"/>Working out the change…</div>
+            <t t-else="">
+                <t t-set="d" t-value="state.data"/>
+                <div class="o_odin_ai_change" t-att-class="{ 'opacity-50': state.loading }">
+                    <div class="o_odin_ai_change_cell">
+                        <div class="text-muted small" t-esc="d.previous_label"/>
+                        <div class="o_odin_ai_num" t-esc="fmt(d.previous)"/>
+                    </div>
+                    <i class="fa fa-long-arrow-right text-muted" aria-hidden="true"/>
+                    <div class="o_odin_ai_change_cell">
+                        <div class="text-muted small" t-esc="d.current_label"/>
+                        <div class="o_odin_ai_num fw-bold" t-esc="fmt(d.current)"/>
+                    </div>
+                    <div class="o_odin_ai_change_cell ms-auto text-end"
+                         t-att-class="d.good === null ? '' : (d.good ? 'o_odin_ai_good' : 'o_odin_ai_bad')">
+                        <div class="o_odin_ai_num fw-bold" t-esc="signed(d.delta)"/>
+                        <div class="small" t-if="d.pct !== null" t-esc="growth(d.pct)"/>
+                    </div>
+                </div>
+
+                <section class="o_odin_ai_story" aria-live="polite">
+                    <div class="o_odin_ai_story_head">
+                        <i class="fa fa-magic me-1" aria-hidden="true"/>Summary
+                        <span class="badge text-bg-light ms-1">AI</span>
+                    </div>
+                    <div t-if="!d.delta" class="text-muted">No change between the two periods.</div>
+                    <div t-elif="d.ai" class="text-muted small" t-esc="d.ai"/>
+                    <div t-elif="state.writing" class="o_odin_ai_shimmer" aria-label="Writing the summary">
+                        <span/><span/><span/>
+                    </div>
+                    <div t-elif="state.storyError" class="text-warning small">
+                        <t t-esc="state.storyError"/>
+                        <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="write">Try again</button>
+                    </div>
+                    <t t-elif="state.story">
+                        <p class="fw-semibold mb-2" t-esc="state.story.headline"/>
+                        <ul class="o_odin_ai_points">
+                            <li t-foreach="state.story.points" t-as="point" t-key="point_index">
+                                <t t-foreach="parts(point.text)" t-as="part" t-key="part_index">
+                                    <t t-if="part.text" t-esc="part.text"/>
+                                    <button t-else="" class="o_odin_ai_chip" t-att-data-tooltip="handleLabel(part.ref)"
+                                            t-on-click="() => this.openHandle(part.ref)" t-esc="part.ref"/>
+                                </t>
+                            </li>
+                        </ul>
+                        <div t-if="state.story.caveats.length" class="small text-muted">
+                            <div t-foreach="state.story.caveats" t-as="caveat" t-key="caveat_index">
+                                <i class="fa fa-info-circle me-1"/><t t-esc="caveat"/>
+                            </div>
+                        </div>
+                    </t>
+                    <button t-else="" class="btn btn-link btn-sm p-0" t-on-click="write">Write a summary</button>
+                </section>
+
+                <section t-if="d.drivers.length" class="mt-3">
+                    <h6 class="o_odin_ai_section">What moved it, by <t t-esc="d.driver_kind"/></h6>
+                    <div t-foreach="d.drivers" t-as="driver" t-key="driver_index" class="o_odin_ai_driver"
+                         t-att-class="{ o_odin_ai_clickable: driver.key }"
+                         t-on-click="() => driver.key and this.showRow(driver.key)">
+                        <span class="o_odin_ai_ref" t-esc="driver.ref"/>
+                        <span class="o_odin_ai_driver_name text-truncate" t-att-title="driver.name">
+                            <t t-if="driver.code"><span class="text-muted" t-esc="driver.code"/> </t><t t-esc="driver.name"/>
+                        </span>
+                        <span class="o_odin_ai_bar"><span t-att-class="goodClass(driver.delta)" t-att-style="'width:' + barWidth(driver)"/></span>
+                        <span class="o_odin_ai_num" t-att-class="goodClass(driver.delta)" t-esc="signed(driver.delta)"/>
+                    </div>
+                    <t t-if="d.second.length">
+                        <div class="small text-muted mt-2 mb-1">Within <t t-esc="d.second[0].parent"/></div>
+                        <div t-foreach="d.second" t-as="driver" t-key="driver_index" class="o_odin_ai_driver o_odin_ai_sub"
+                             t-att-class="{ o_odin_ai_clickable: driver.key }"
+                             t-on-click="() => driver.key and this.showRow(driver.key)">
+                            <span class="o_odin_ai_ref" t-esc="driver.ref"/>
+                            <span class="o_odin_ai_driver_name text-truncate" t-esc="driver.name"/>
+                            <span class="o_odin_ai_num" t-esc="signed(driver.delta)"/>
+                        </div>
+                    </t>
+                </section>
+
+                <section t-if="d.items.length" class="mt-3">
+                    <h6 class="o_odin_ai_section">Largest items in <t t-esc="d.current_label"/></h6>
+                    <div t-foreach="d.items" t-as="item" t-key="item.ref" class="o_odin_ai_item o_odin_ai_clickable"
+                         t-on-click="() => this.openHandle(item.ref)">
+                        <span class="o_odin_ai_ref" t-esc="item.ref"/>
+                        <div class="flex-grow-1 text-truncate">
+                            <div class="text-truncate"><t t-esc="item.name"/> <span class="text-muted" t-esc="item.partner"/></div>
+                            <div class="small text-muted text-truncate"><t t-esc="item.date"/> · <t t-esc="item.label"/></div>
+                        </div>
+                        <span class="o_odin_ai_num" t-esc="fmt(item.amount)"/>
+                    </div>
+                </section>
+
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-secondary btn-sm" t-on-click="continueInAsk" t-att-disabled="d.ai">
+                        <i class="fa fa-comments-o me-1"/>Continue in Ask
+                    </button>
+                </div>
+                <div class="small text-muted mt-2">
+                    Compared with <t t-esc="d.previous_label"/>. The drivers are computed from the books and add up
+                    to the change; the summary is written by AI from them.
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

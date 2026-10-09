@@ -1,0 +1,12 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_pnl_layout_readonly,odin.pnl.layout readonly,model_odin_pnl_layout,account.group_account_readonly,1,0,0,0
+access_odin_pnl_layout_manager,odin.pnl.layout manager,model_odin_pnl_layout,account.group_account_manager,1,1,1,1
+access_odin_pnl_layout_line_readonly,odin.pnl.layout.line readonly,model_odin_pnl_layout_line,account.group_account_readonly,1,0,0,0
+access_odin_pnl_layout_line_manager,odin.pnl.layout.line manager,model_odin_pnl_layout_line,account.group_account_manager,1,1,1,1
+access_odin_pnl_budget_readonly,odin.pnl.budget readonly,model_odin_pnl_budget,account.group_account_readonly,1,0,0,0
+access_odin_pnl_budget_user,odin.pnl.budget user,model_odin_pnl_budget,account.group_account_user,1,1,1,1
+access_odin_pnl_budget_line_readonly,odin.pnl.budget.line readonly,model_odin_pnl_budget_line,account.group_account_readonly,1,0,0,0
+access_odin_pnl_budget_line_user,odin.pnl.budget.line user,model_odin_pnl_budget_line,account.group_account_user,1,1,1,1
+access_odin_pnl_annotation_readonly,odin.pnl.annotation readonly,model_odin_pnl_annotation,account.group_account_readonly,1,0,0,0
+access_odin_pnl_annotation_user,odin.pnl.annotation user,model_odin_pnl_annotation,account.group_account_user,1,1,1,1
+access_odin_pnl_view_readonly,odin.pnl.view readonly,model_odin_pnl_view,account.group_account_readonly,1,1,1,1

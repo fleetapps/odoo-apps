@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scheduled actions. Transaction Review and the checks report progress
+     with ir.cron._commit_progress, so a long run is picked up again by the
+     cron runner instead of hitting the time limit.
+     https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html#scheduled-actions -->
+<odoo noupdate="1">
+    <record id="ir_cron_review_generate" model="ir.cron">
+        <field name="name">Accounting AI: suggest categories for new transactions</field>
+        <field name="model_id" ref="model_odin_ai_suggestion"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_generate()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=2, minute=30) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="ir_cron_anomaly_run" model="ir.cron">
+        <field name="name">Accounting AI: run anomaly checks</field>
+        <field name="model_id" ref="model_odin_ai_detector"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_run()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=3, minute=15) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="ir_cron_run_purge" model="ir.cron">
+        <field name="name">Accounting AI: forget stored responses after the retention period</field>
+        <field name="model_id" ref="model_odin_ai_run"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_purge()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
