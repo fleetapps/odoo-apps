@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_pnl.PnlViewsMenu">
+        <Dropdown menuClass="'o_odin_pnl_menu o_odin_pnl_views_menu'" onOpened.bind="refresh">
+            <button class="btn btn-secondary">
+                <i class="fa fa-star me-1"/>
+                <t t-if="current" t-esc="current.name"/>
+                <t t-else="">Views</t>
+            </button>
+            <t t-set-slot="content">
+                <t t-if="state.views.length">
+                    <h6 class="dropdown-header">Saved views</h6>
+                    <DropdownItem t-foreach="state.views" t-as="view" t-key="view.id"
+                                  class="{ 'selected': current and current.id === view.id }"
+                                  onSelected="() => this.apply(view)">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="flex-grow-1">
+                                <t t-esc="view.name"/>
+                                <span class="text-muted small ms-1" t-esc="view.period"/>
+                                <i t-if="view.shared" class="fa fa-users text-muted ms-1"
+                                   t-att-data-tooltip="'Shared by ' + view.owner"/>
+                                <i t-if="view.schedule" class="fa fa-envelope-o text-muted ms-1"
+                                   t-att-data-tooltip="view.schedule"/>
+                            </span>
+                            <button class="btn btn-link btn-sm p-0" t-att-aria-label="view.is_default ? 'Default view' : 'Make default'"
+                                    t-att-data-tooltip="view.is_default ? 'Opens by default' : 'Open this by default'"
+                                    t-on-click="(ev) => this.toggleDefault(view, ev)">
+                                <i class="fa" t-att-class="view.is_default ? 'fa-star text-warning' : 'fa-star-o text-muted'"/>
+                            </button>
+                            <button t-if="view.mine" class="btn btn-link btn-sm p-0 text-muted" aria-label="Delete"
+                                    data-tooltip="Delete" t-on-click="(ev) => this.remove(view, ev)">
+                                <i class="fa fa-trash-o"/>
+                            </button>
+                        </div>
+                    </DropdownItem>
+                    <div class="dropdown-divider"/>
+                </t>
+                <DropdownItem t-if="current and current.mine" onSelected="update">
+                    <i class="fa fa-floppy-o me-1"/>Update “<t t-esc="current.name"/>”
+                </DropdownItem>
+                <div class="px-3 py-2">
+                    <div class="text-muted small mb-1">Save the page as a view</div>
+                    <div class="d-flex gap-1">
+                        <input class="form-control form-control-sm" placeholder="Monthly board P&amp;L"
+                               t-model="state.name" t-on-keydown="onNameKey"/>
+                        <button class="btn btn-sm btn-primary" t-on-click="save" t-att-disabled="!state.name.trim()">Save</button>
+                    </div>
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" id="odin_pnl_view_shared" t-model="state.shared"/>
+                        <label class="form-check-label small" for="odin_pnl_view_shared">Share with the team</label>
+                    </div>
+                </div>
+                <div class="dropdown-divider"/>
+                <DropdownItem onSelected="manage">
+                    <i class="fa fa-envelope-o me-1"/>Schedule &amp; manage…
+                </DropdownItem>
+            </t>
+        </Dropdown>
+    </t>
+
+</templates>

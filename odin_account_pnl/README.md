@@ -37,6 +37,31 @@ balance, as the General Ledger does.
 **Audit a cell.** Clicking a figure lists the journal items behind exactly that
 figure (that row, that column), largest first.
 
+**Side panel.** A journal item opens beside the report, not instead of it:
+its document, lines with their analytic split, the attached PDF or image,
+the last notes, and ◀ ▶ (or J/K) to step through the other items behind
+the same figure. *Open* goes to the full form; the breadcrumb comes back to
+the report exactly as it was (options, unfolded rows, panel, scroll).
+
+**Notes.** *⋯ → Annotate* on a line or account. Notes show as a flag on the
+row and as numbered footnotes in the PDF.
+
+**Budget.** Pick or name a budget with the Budget chip: a Budget and a % column
+appear, and an accountant types an account's budget straight into its cell. A
+figure typed in a quarter or year column is spread evenly over its months.
+
+**Exports.** *PDF* (▾ *XLSX*) next to the title exports exactly what is
+unfolded. The workbook holds real numbers with a number format, so it adds
+up; thousands and millions are a format, not a rounding.
+
+**Saved views.** *★ Views* saves the page: layout, period rule ("last month",
+"financial year to date"), comparison, filters, display and unfolded rows.
+A view can be shared with the team and made one's default. From *Schedule &
+manage* an accountant has it emailed daily, weekly or monthly at an hour of
+their time zone, as PDF and/or Excel, with the key lines in the email body.
+The period is worked out at sending time, and the report is computed as the
+view's owner: recipients never get more than the owner can see.
+
 ## How the figures are computed
 
 * Only P&L accounts are counted: the account types `income`, `income_other`,
@@ -85,8 +110,8 @@ The default layout:
 
 | Group (Accounting) | P&L |
 |---|---|
-| Show Accounting Features - Readonly | Opens the report, unfolds, exports |
-| Show Full Accounting Features (accountant) | Also keeps budgets and annotations |
+| Show Accounting Features - Readonly | Opens the report, unfolds, exports, saves and shares views |
+| Show Full Accounting Features (accountant) | Also keeps budgets and annotations, schedules emailed views |
 | Administrator | Also edits layouts |
 
 Invoicing-only users do not get the report: it shows the whole ledger.

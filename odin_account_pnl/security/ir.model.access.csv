@@ -9,3 +9,4 @@ access_odin_pnl_budget_line_readonly,odin.pnl.budget.line readonly,model_odin_pn
 access_odin_pnl_budget_line_user,odin.pnl.budget.line user,model_odin_pnl_budget_line,account.group_account_user,1,1,1,1
 access_odin_pnl_annotation_readonly,odin.pnl.annotation readonly,model_odin_pnl_annotation,account.group_account_readonly,1,0,0,0
 access_odin_pnl_annotation_user,odin.pnl.annotation user,model_odin_pnl_annotation,account.group_account_user,1,1,1,1
+access_odin_pnl_view_readonly,odin.pnl.view readonly,model_odin_pnl_view,account.group_account_readonly,1,1,1,1

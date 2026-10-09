@@ -366,6 +366,89 @@ class OdinPnlReport(models.AbstractModel):
         return True
 
     # ------------------------------------------------------------------
+    # Saved views
+    # ------------------------------------------------------------------
+
+    @api.model
+    def list_views(self):
+        self._check_access()
+        views = self.env["odin.pnl.view"].search([
+            "|", ("user_id", "=", self.env.uid), ("shared", "=", True),
+        ])
+        schedules = dict(self.env["odin.pnl.view"]._fields["schedule"]._description_selection(self.env))
+        return [
+            {
+                "id": view.id,
+                "name": view.name,
+                "mine": view.user_id == self.env.user,
+                "owner": view.user_id.name,
+                "shared": view.shared,
+                "is_default": view.is_default and view.user_id == self.env.user,
+                "period": view.period_rule,
+                "schedule": schedules.get(view.schedule) if view.schedule != "none" else False,
+            }
+            for view in views
+        ]
+
+    @api.model
+    def save_view(self, options, name, shared=False, view_id=False):
+        """Save the page as a view (or overwrite one of the user's own)."""
+        self._check_access()
+        ctx = self._context(options)
+        values = {"options": ctx.options, "shared": bool(shared)}
+        if view_id:
+            view = self.env["odin.pnl.view"].browse(int(view_id)).exists()
+            if not view or view.user_id != self.env.user:
+                raise AccessError(_("You can only update your own views."))
+            view.write(values)
+        else:
+            if not (name or "").strip():
+                raise UserError(_("Give the view a name."))
+            values["name"] = name.strip()
+            view = self.env["odin.pnl.view"].create(values)
+        return {"id": view.id, "views": self.list_views()}
+
+    @api.model
+    def delete_view(self, view_id):
+        self._check_access()
+        view = self.env["odin.pnl.view"].browse(int(view_id)).exists()
+        if view and view.user_id != self.env.user and not self.env.user.has_group("account.group_account_manager"):
+            raise AccessError(_("You can only delete your own views."))
+        view.unlink()
+        return self.list_views()
+
+    @api.model
+    def set_default_view(self, view_id):
+        self._check_access()
+        Views = self.env["odin.pnl.view"]
+        if not view_id:
+            Views.search([("user_id", "=", self.env.uid), ("is_default", "=", True)]).write({"is_default": False})
+            return self.list_views()
+        view = Views.browse(int(view_id)).exists()
+        if not view:
+            raise UserError(_("This view no longer exists."))
+        if view.user_id != self.env.user:
+            # Someone else's shared view becomes a copy of one's own.
+            view = view.copy({"user_id": self.env.uid, "shared": False, "schedule": "none",
+                              "recipient_ids": [(5, 0, 0)], "name": view.name})
+        view.is_default = True
+        return self.list_views()
+
+    @api.model
+    def get_view_options(self, view_id=False):
+        """The options of a view, or of the user's default one, with the
+        period computed again from today (``False`` when there is none)."""
+        self._check_access()
+        Views = self.env["odin.pnl.view"]
+        if view_id:
+            view = Views.browse(int(view_id)).exists()
+        else:
+            view = Views.search([("user_id", "=", self.env.uid), ("is_default", "=", True)], limit=1)
+        if not view:
+            return False
+        return self._normalize_options(view._live_options())
+
+    # ------------------------------------------------------------------
     # Access
     # ------------------------------------------------------------------
 

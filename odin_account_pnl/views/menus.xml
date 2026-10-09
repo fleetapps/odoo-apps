@@ -22,4 +22,11 @@
               action="odin_pnl_budget_action"
               groups="account.group_account_user"
               sequence="61"/>
+
+    <menuitem id="menu_odin_pnl_views"
+              name="Saved P&amp;L Views"
+              parent="account.menu_finance_configuration"
+              action="odin_pnl_view_action"
+              groups="account.group_account_user"
+              sequence="62"/>
 </odoo>

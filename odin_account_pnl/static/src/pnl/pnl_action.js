@@ -8,6 +8,10 @@ import { useSetupAction } from "@web/search/action_hook";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { PnlFilterBar } from "./pnl_filters";
 import { PnlSidePanel } from "./pnl_side_panel";
+import { PnlViewsMenu } from "./pnl_views_menu";
+import { download } from "@web/core/network/download";
+import { Dropdown } from "@web/core/dropdown/dropdown";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { formatAmount, formatGrowth, formatPercent, sparkPoints } from "./pnl_format";
 import { lineActionRegistry, sidePanelRegistry } from "./pnl_registries";
 
@@ -64,7 +68,7 @@ function modesFor(row, plans) {
  */
 export class PnlAction extends Component {
     static template = "odin_account_pnl.PnlAction";
-    static components = { Layout, PnlFilterBar, PnlSidePanel };
+    static components = { Layout, PnlFilterBar, PnlSidePanel, PnlViewsMenu, Dropdown, DropdownItem };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -88,6 +92,8 @@ export class PnlAction extends Component {
             search: "",
             sort: restored?.sort || null,
             editing: null,
+            viewId: restored?.viewId || false,
+            exporting: false,
         });
         this.journals = [];
         this.rootRef = useRef("root");
@@ -100,12 +106,20 @@ export class PnlAction extends Component {
                     panel: this.state.panel,
                     focusKey: this.state.focusKey,
                     sort: this.state.sort,
+                    viewId: this.state.viewId,
                     scrollTop: this.scrollerRef.el?.scrollTop || 0,
                 },
             }),
         });
         useExternalListener(window, "click", this.onWindowClick.bind(this), { capture: true });
         onWillStart(async () => {
+            if (!restored && !this.props.action.params?.options) {
+                // The user's default saved view, its period computed from today.
+                const options = await this.orm.call("odin.pnl.report", "get_view_options", [false]);
+                if (options) {
+                    this.state.options = options;
+                }
+            }
             const [journals] = await Promise.all([
                 this.orm.searchRead("account.journal", [], ["name", "code"], { order: "sequence, name" }),
                 this.load(),
@@ -159,6 +173,25 @@ export class PnlAction extends Component {
         this.state.options = options;
         this.state.editing = null;
         await this.load();
+    }
+
+    async replaceOptions(options) {
+        this.state.options = options;
+        this.state.editing = null;
+        this.state.panel = null;
+        await this.load();
+    }
+
+    async export(fmt) {
+        this.state.exporting = true;
+        try {
+            await download({
+                url: "/odin_account_pnl/export",
+                data: { options: JSON.stringify(this.state.options), fmt },
+            });
+        } finally {
+            this.state.exporting = false;
+        }
     }
 
     async createBudget(name) {

@@ -8,6 +8,22 @@
     <t t-name="odin_account_pnl.PnlAction">
         <div class="o_action o_odin_pnl" t-ref="root" tabindex="-1" t-on-keydown="onKeydown">
             <Layout display="{ controlPanel: {} }" className="'o_odin_pnl_content'">
+                <t t-set-slot="layout-buttons">
+                    <div t-if="state.data" class="d-flex gap-1">
+                        <div class="btn-group">
+                            <button class="btn btn-primary" t-on-click="() => this.export('pdf')" t-att-disabled="state.exporting">
+                                <i t-if="state.exporting" class="fa fa-circle-o-notch fa-spin me-1"/>PDF
+                            </button>
+                            <Dropdown>
+                                <button class="btn btn-primary dropdown-toggle-split" aria-label="Other formats"><i class="fa fa-caret-down"/></button>
+                                <t t-set-slot="content">
+                                    <DropdownItem onSelected="() => this.export('xlsx')"><i class="fa fa-file-excel-o me-1"/>XLSX</DropdownItem>
+                                </t>
+                            </Dropdown>
+                        </div>
+                        <PnlViewsMenu report="this"/>
+                    </div>
+                </t>
                 <div t-if="state.loading" class="o_odin_pnl_loading text-muted">
                     <i class="fa fa-circle-o-notch fa-spin fa-2x"/>
                 </div>

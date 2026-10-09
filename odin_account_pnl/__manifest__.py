@@ -20,7 +20,10 @@ report, and save views that are emailed on a schedule. See README.md.
         "security/odin_pnl_security.xml",
         "security/ir.model.access.csv",
         "data/odin_pnl_layout_data.xml",
+        "data/ir_cron_data.xml",
+        "report/report_pnl.xml",
         "views/odin_pnl_layout_views.xml",
+        "views/odin_pnl_view_views.xml",
         # Menus last: they reference the actions defined above.
         "views/menus.xml",
     ],
