@@ -44,7 +44,8 @@ export async function lineContext(row, report) {
         line: row.name,
         code: row.code || undefined,
         under: path.length ? path : undefined,
-        period: columns.filter((c) => c.group !== "comparison").map((c) => c.label).join(", "),
+        // The periods themselves: not the "Total" column of a divided P&L.
+        period: columns.filter((c) => c.group === "current").map((c) => c.label).join(", "),
         comparison: columns.filter((c) => c.group === "comparison").map((c) => c.label).join(", ") || undefined,
         figures: Object.fromEntries(columns.map((c) => [c.label, row.values?.[c.key] ?? null])),
         journals: (options.journal_ids || [])
@@ -97,7 +98,10 @@ registry.category("command_provider").add("odin_account_ai.ask", {
         }
         return [
             {
-                name: _t("Ask the Ledger: %s", text),
+                // The palette keeps a command only if its name holds every
+                // character typed, a trailing space included: name it with
+                // the search as typed.
+                name: _t("Ask the Ledger: %s", options.searchValue),
                 action: () => openAsk(env, { draft: text }),
             },
         ];

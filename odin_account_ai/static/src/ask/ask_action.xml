@@ -52,7 +52,7 @@
                                 <div class="o_odin_ai_starters">
                                     <button t-foreach="state.boot.starters" t-as="starter" t-key="starter_index"
                                             class="o_odin_ai_starter" t-att-disabled="state.boot.ready"
-                                            t-on-click="() => this.ask(starter.question)">
+                                            t-on-click="() => this.ask(starter.question, null)">
                                         <span class="o_odin_ai_starter_title"><i t-attf-class="fa {{starter.icon}} me-2"/><t t-esc="starter.title"/></span>
                                         <span class="o_odin_ai_starter_text" t-esc="starter.question"/>
                                     </button>
@@ -108,6 +108,11 @@
                                                     </t>
                                                 </p>
                                                 <t t-elif="block.type === 'bullets'">
+                                                    <p t-if="block.text" class="o_odin_ai_lead">
+                                                        <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
+                                                            <t t-call="odin_account_ai.AskPart"/>
+                                                        </t>
+                                                    </p>
                                                     <ul class="o_odin_ai_bullets">
                                                         <li t-foreach="block.items or []" t-as="item" t-key="item_index">
                                                             <t t-foreach="parts(item)" t-as="part" t-key="part_index">
@@ -123,7 +128,11 @@
                                                 </t>
                                                 <div t-elif="block.type === 'table'" class="o_odin_ai_table">
                                                     <div class="o_odin_ai_table_head">
-                                                        <div t-if="block.text" class="fw-semibold" t-esc="block.text"/>
+                                                        <div t-if="block.text" class="fw-semibold">
+                                                            <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
+                                                                <t t-call="odin_account_ai.AskPart"/>
+                                                            </t>
+                                                        </div>
                                                         <div class="o_odin_ai_table_tools">
                                                             <button class="btn btn-link btn-sm" aria-label="Copy the table"
                                                                     data-tooltip="Copy the table"
@@ -179,7 +188,7 @@
                                                     <span t-else="" t-esc="item.label"/>
                                                     <t t-if="!item_last"> · </t>
                                                 </t>
-                                                · posted entries · <t t-esc="state.thread.company"/> (<t t-esc="state.thread.currency"/>)
+                                                · posted entries · <t t-esc="companiesLabel(turn)"/> (<t t-esc="state.thread.currency"/>)
                                             </div>
                                             <div class="o_odin_ai_answer_foot">
                                                 <button class="btn btn-link btn-sm text-muted" t-on-click="() => this.copy(turn)"
@@ -197,7 +206,7 @@
                                             <div t-if="isLast and turn.answer.follow_ups.length and state.thread.state === 'done'"
                                                  class="o_odin_ai_followups">
                                                 <button t-foreach="turn.answer.follow_ups" t-as="follow" t-key="follow_index"
-                                                        class="btn btn-sm btn-outline-secondary" t-on-click="() => this.ask(follow)">
+                                                        class="btn btn-sm btn-outline-secondary" t-on-click="() => this.ask(follow, null)">
                                                     <t t-esc="follow"/>
                                                 </button>
                                             </div>
@@ -214,7 +223,7 @@
                                             <button t-else="" class="btn btn-link btn-sm p-0 ms-1" t-on-click="askAgain">Ask again in a new conversation</button>
                                         </div>
                                         <div t-elif="isLast and lost" class="o_odin_ai_lost alert alert-secondary mb-0" role="status">
-                                            <i class="fa fa-chain-broken me-1"/>The connection was lost while the answer was being prepared.
+                                            <i class="fa fa-chain-broken me-1"/><t t-esc="lostLabel"/>
                                             <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="resume">Resume</button>
                                             <span class="text-muted"> · </span>
                                             <button class="btn btn-link btn-sm p-0" t-on-click="stop">Stop</button>

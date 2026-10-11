@@ -479,25 +479,36 @@ class OdinAiTools(models.AbstractModel):
         for arg, model, key, domain in FILTERS:
             name = (args.get(arg) or "").strip()
             if name:
-                record = self._resolve(model, name, arg.replace("_", " "), domain)
-                options[key] = [record.id]
-                names.append(record.display_name)
+                records = self._resolve(model, name, arg.replace("_", " "), domain, several=True)
+                options[key] = records.ids
+                names.append(records[:1].display_name)
         return options, names
 
-    def _resolve(self, model, name, what, domain=None):
-        """One record by name: the only one named exactly so (case aside), by
+    def _resolve(self, model, name, what, domain=None, several=False):
+        """Records by name: the only one named exactly so (case aside), by
         any field the model is searched by (its name, a code), else the only
         one whose name contains it. The exact search comes first, so partial
-        matches cannot crowd it out of the candidates."""
+        matches cannot crowd it out of the candidates.
+
+        With several companies selected, a name each of them has (every
+        company's "Sales" journal) stands for all of them when ``several``
+        (a filter takes a list, as in the P&L), else for the current
+        company's."""
         Model = self.env[model]
         records = Model
-        for operator, value, limit in (("=ilike", escape_psql(name), 2), ("ilike", name, 6)):
+        for operator, value, limit in (("=ilike", escape_psql(name), 20), ("ilike", name, 6)):
             records = Model.browse([record_id for record_id, _display in Model.name_search(
                 value, domain=domain or [], operator=operator, limit=limit)])
             if records:
                 break
         if not records:
             raise ToolError(f"No {what} matches {name!r}.")
+        if len(records) > 1 and _one_per_company(records):
+            if several:
+                return records
+            own = records.filtered(lambda record: record.company_id == self.env.company)
+            if own:
+                return own
         if len(records) == 1:
             return records
         listed = "; ".join(_plain_name(record) for record in records)
@@ -535,7 +546,17 @@ class OdinAiTools(models.AbstractModel):
     # Journal items
     # ------------------------------------------------------------------
 
+    def _check_one_currency(self):
+        """Amounts of several selected companies read as one figure only in
+        one currency: refused otherwise, as the P&L refuses them."""
+        currencies = self.env.companies.currency_id
+        if len(currencies) > 1:
+            raise ToolError(
+                f"The selected companies keep their books in different currencies "
+                f"({', '.join(currencies.mapped('name'))}). Ask the user to select companies that share a currency.")
+
     def _tool_journal_items(self, conversation, args):
+        self._check_one_currency()
         AML = self.env["account.move.line"]
         date_from = fields.Date.to_date(args.get("date_from"))
         date_to = fields.Date.to_date(args.get("date_to"))
@@ -600,6 +621,7 @@ class OdinAiTools(models.AbstractModel):
             "ref": handle,
             "number": move.name,
             "company": move.company_id.name,
+            "amounts_in": move.company_id.currency_id.name,
             "type": dict(move._fields["move_type"]._description_selection(self.env)).get(move.move_type),
             "date": fields.Date.to_string(move.date),
             "partner": _text(move.partner_id.display_name or ""),
@@ -650,6 +672,9 @@ class OdinAiTools(models.AbstractModel):
                 entry["code"] = record.code
             if kind == "analytic_account":
                 entry["plan"] = record.plan_id.name
+            if len(self.env.companies) > 1 and "company_id" in record._fields and record.company_id:
+                # Each selected company can have its own record of that name.
+                entry["company"] = record.company_id.name
             found.append(entry)
         return {"matches": found}, label
 
@@ -658,6 +683,7 @@ class OdinAiTools(models.AbstractModel):
     # ------------------------------------------------------------------
 
     def _tool_open_items(self, conversation, args):
+        self._check_one_currency()
         kind = "payable" if args.get("kind") == "payable" else "receivable"
         group_by = args.get("group_by") if args.get("group_by") in ("partner", "bucket", "document") else "partner"
         today = fields.Date.context_today(self)
@@ -673,8 +699,8 @@ class OdinAiTools(models.AbstractModel):
         )
         partner_name = (args.get("partner") or "").strip()
         if partner_name:
-            partner = self._resolve("res.partner", partner_name, "partner", PARTNER_DOMAIN)
-            domain &= Domain("partner_id", "child_of", partner.id)
+            partners = self._resolve("res.partner", partner_name, "partner", PARTNER_DOMAIN, several=True)
+            domain &= Domain("partner_id", "child_of", partners.ids)
         what = _("receivables") if kind == "receivable" else _("payables")
         on_date = self._date(today)
         scope_label = _("%(what)s open on %(date)s", what=what.capitalize(), date=on_date)
@@ -776,6 +802,14 @@ def _plain_name(record):
     name = record[record._rec_name] or ""
     code = "code" in record._fields and record.code
     return f"{name} (code {code})" if code else name
+
+
+def _one_per_company(records):
+    """Whether ``records`` are one name in several companies: the same name
+    and code, each record in a company of its own."""
+    return ("company_id" in records._fields
+            and len({_plain_name(record) for record in records}) == 1
+            and len(records.company_id) == len(records))
 
 
 def dumps(value):

@@ -215,10 +215,16 @@
     &:focus-visible .o_odin_ai_sort_idle { opacity: 0.8; }
 }
 
-// Chips of a block that its text does not cite inline.
+// Chips of a block that its text does not cite inline: tucked under a list
+// (which keeps a bottom margin), clear of a table (which has none).
 .o_odin_ai_sources {
     margin: -0.5rem 0 0.75rem;
+
+    .o_odin_ai_table & { margin: 0.35rem 0 0; }
 }
+
+// The sentence leading into a list.
+.o_odin_ai_lead { margin-bottom: 0.25rem; }
 
 // "Based on Sep 2026 vs Aug 2026 · posted entries · Company (KES)".
 .o_odin_ai_scope {

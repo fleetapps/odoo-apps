@@ -94,6 +94,7 @@ class OdinAiConversation(models.Model):
         today = fields.Date.context_today(self)
         lines = [
             "Today is %s." % fields.Date.to_string(today),
+            *self._companies_note(),
             "Question: %s" % question[:2000],
         ]
         if context:
@@ -128,7 +129,7 @@ class OdinAiConversation(models.Model):
         if blocker:
             raise UserError(blocker)
         messages = json.loads(self.messages)
-        messages.append({"role": "user", "content": "Question: %s" % question[:2000]})
+        messages.append({"role": "user", "content": "\n".join([*self._companies_note(), "Question: %s" % question[:2000]])})
         turns.append({"question": question[:2000], "progress": [], "answer": None})
         self.sudo().write({
             "messages": json.dumps(messages),
@@ -219,6 +220,10 @@ class OdinAiConversation(models.Model):
         turn = turns[-1]
         progress = turn["progress"]
         wants_tools = data.get("stop_reason") == "tool_use"
+        if wants_tools:
+            # The tools read the companies selected on the page, as the P&L
+            # does: the answer's "Based on" line names them.
+            turn["companies"] = sorted(set(turn.get("companies") or []) | set(self.env.companies.mapped("name")))
         results = []
         for block in content:
             if block.get("type") == "thinking":
@@ -393,6 +398,15 @@ class OdinAiConversation(models.Model):
             "company": self.company_id.name,
             "currency": self.company_id.currency_id.name,
         }
+
+    @api.model
+    def _companies_note(self):
+        """For the model, when several companies are selected: the tools add
+        up their figures, as the P&L does."""
+        companies = self.env.companies
+        if len(companies) < 2:
+            return []
+        return ["Companies selected, whose figures the tools add up: %s." % ", ".join(companies.mapped("name"))]
 
     def _can_retry(self, turns=None):
         """Whether the current question can be asked again in place: only

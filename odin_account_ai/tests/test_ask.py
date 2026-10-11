@@ -296,6 +296,25 @@ class TestAsk(AiCase):
     # What an answer says it read
     # ------------------------------------------------------------------
 
+    def test_two_companies_selected(self):
+        """The tools add up the companies selected on the page, as the P&L
+        does: the model is told so, and the answer's "Based on" line names
+        them."""
+        other = self.setup_other_company(name="Second company")["company"]
+        self.accountant.write({"company_ids": [Command.link(other.id)]})
+        requests = self.mock_api(tool_call("pnl", PNL_SEPTEMBER), answer("Done.", []))
+        Conversation = self.Conversation.with_context(allowed_company_ids=[self.env.company.id, other.id])
+        conversation = Conversation.browse(Conversation.ask_start("Revenue?"))
+        conversation.ask_step()
+        thread = conversation.ask_step()
+        self.assertIn(f"Companies selected, whose figures the tools add up: {self.env.company.name}, {other.name}.",
+                      requests[0]["messages"][0]["content"])
+        self.assertEqual(thread["turns"][0]["companies"], sorted([self.env.company.name, other.name]))
+        self.assertEqual(thread["company"], self.env.company.name, "the conversation's own company")
+        # One company selected: nothing to add.
+        single = self.Conversation.with_context(allowed_company_ids=[self.env.company.id])
+        self.assertNotIn("Companies selected", single.browse(single.ask_start("And?")).messages)
+
     def test_an_answer_says_what_it_read(self):
         self.mock_api(tool_call("pnl", dict(PNL_SEPTEMBER, comparison="previous_period")), answer("Done.", []))
         conversation = self.start()

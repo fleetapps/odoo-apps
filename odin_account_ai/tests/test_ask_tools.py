@@ -191,6 +191,54 @@ class TestAskTools(AiCase):
         self.assertEqual([row["partner"] for row in result["rows"]], [self.partner_b.display_name])
 
     # ------------------------------------------------------------------
+    # Several companies selected
+    # ------------------------------------------------------------------
+
+    def with_companies(self, *companies):
+        """The tools as run with ``companies`` selected on the page."""
+        self.accountant.write({"company_ids": [Command.link(company.id) for company in companies]})
+        return self.env["odin.ai.tools"].with_user(self.accountant).with_context(
+            allowed_company_ids=[company.id for company in companies])
+
+    def test_several_companies_add_up_as_in_the_pnl(self):
+        """Each company gets "Miscellaneous Operations" from its chart of
+        accounts: with two selected, that name stands for both journals, and
+        the figures add up, as the P&L shows them."""
+        other = self.setup_other_company(name="Second company")
+        journal = other["default_journal_misc"]
+        self.assertEqual((journal.name, journal.code), (self.misc.name, self.misc.code))
+        move = self.env["account.move"].create({
+            "move_type": "entry", "company_id": other["company"].id, "journal_id": journal.id, "date": "2026-09-15",
+            "line_ids": [
+                Command.create({"account_id": other["default_account_revenue"].id, "credit": 300.0, "name": "x"}),
+                Command.create({"account_id": other["default_account_assets"].id, "debit": 300.0, "name": "x"}),
+            ],
+        })
+        move.action_post()
+        tools = self.with_companies(self.env.company, other["company"])
+        self.assertEqual(self.revenue_of(tools.run(self.conversation, "pnl", PNL)[0]), 1700.0)
+        result, _label = tools.run(self.conversation, "pnl", dict(PNL, journal=self.misc.name))
+        self.assertEqual(self.revenue_of(result), 1300.0, "the journal of that name in each company")
+        result, _label = tools.run(self.conversation, "find", {"kind": "journal", "query": self.misc.code})
+        self.assertIn({"name": journal.name, "code": journal.code, "company": other["company"].name},
+                      result["matches"])
+        # The current company alone: its own journal.
+        result, _label = self.with_companies(self.env.company).run(self.conversation, "pnl",
+                                                                   dict(PNL, journal=self.misc.name))
+        self.assertEqual(self.revenue_of(result), 1000.0)
+
+    def test_companies_in_different_currencies_are_not_added_up(self):
+        other = self.setup_other_company(name="Euro company", currency_id=self.setup_other_currency("EUR").id)
+        self.assertNotEqual(other["company"].currency_id, self.env.company.currency_id)
+        tools = self.with_companies(self.env.company, other["company"])
+        journal_items = {"date_from": "2026-09-01", "date_to": "2026-09-30", "account_code": None, "line_code": None,
+                         "partner": None, "text": None, "min_amount": None, "order": "largest", "limit": 10}
+        for name, args in (("pnl", PNL), ("journal_items", journal_items),
+                           ("open_items", {"kind": "receivable", "group_by": "bucket", "partner": ""})):
+            result, _label = tools.run(self.conversation, name, args)
+            self.assertIn("different currencies", result.get("error", ""), name)
+
+    # ------------------------------------------------------------------
     # Entries, retention, the page's first look
     # ------------------------------------------------------------------
 

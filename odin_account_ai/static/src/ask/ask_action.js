@@ -172,6 +172,13 @@ export class AskAction extends Component {
         return Boolean(id && this.state.lost[id]);
     }
 
+    /** Why the step loop of the conversation shown gave up. */
+    get lostLabel() {
+        return this.state.lost[this.state.thread?.id] === "connection"
+            ? _t("The connection was lost while the answer was being prepared.")
+            : _t("Preparing the answer failed.");
+    }
+
     /** The server caps a question at max_steps and says where it has got to;
      * "Thinking…" alone leaves the reader unable to tell progress from a hang. */
     get progressLabel() {
@@ -243,11 +250,16 @@ export class AskAction extends Component {
     // Asking
     // ------------------------------------------------------------------
 
+    /** Ask ``question``: a follow-up in the conversation shown when it is
+     * answered, else a new conversation. ``context`` (the P&L line's) goes
+     * with the composer's question; suggestions and starters pass none. */
     async ask(question, context = this.state.context) {
         question = (question || "").trim();
         if (!question || this.running || this.state.sending) {
             return;
         }
+        // A suggestion or a starter leaves what is being typed alone.
+        const fromComposer = question === this.state.input.trim();
         this.state.sending = true;
         this.stickToBottom = true;
         let id;
@@ -263,9 +275,13 @@ export class AskAction extends Component {
                 id = await this.orm.call("odin.ai.conversation", "ask_start", [question, context]);
                 this.state.thread = await this.orm.call("odin.ai.conversation", "get_thread", [[id]]);
                 this.state.boot.recent.unshift({ id, name: question, state: "running" });
-                this.state.context = null;
+                if (context && context === this.state.context) {
+                    this.state.context = null;
+                }
             }
-            this.state.input = "";
+            if (fromComposer) {
+                this.state.input = "";
+            }
         } catch (error) {
             this.notify(error);
             return;
@@ -316,8 +332,12 @@ export class AskAction extends Component {
             }
         } finally {
             this.loops.delete(id);
-            this.stopRequests.delete(id);
-            delete this.state.stopping[id];
+            // A Stop pressed while the loop was giving up waits for Stop or
+            // Resume on the "lost" line; otherwise it is settled.
+            if (!this.state.lost[id]) {
+                this.stopRequests.delete(id);
+                delete this.state.stopping[id];
+            }
             if (this.alive && this.state.thread?.id === id) {
                 this.focusInput();
             }
@@ -342,7 +362,7 @@ export class AskAction extends Component {
             this.show(thread);
         }
         if (this.alive && (!thread || thread.state === "running")) {
-            this.state.lost[id] = true;
+            this.state.lost[id] = error instanceof ConnectionLostError ? "connection" : "error";
         }
     }
 
@@ -361,7 +381,8 @@ export class AskAction extends Component {
     /** Stop the question on screen once the step in flight has landed. */
     stop() {
         const id = this.state.thread?.id;
-        if (!id || !this.running || this.state.stopping[id]) {
+        // Pressed again with no loop running (the connection was lost): send it.
+        if (!id || !this.running || (this.state.stopping[id] && this.loops.has(id))) {
             return;
         }
         this.state.stopping[id] = true;
@@ -369,8 +390,12 @@ export class AskAction extends Component {
         this.run(id);
     }
 
+    /** Go on with the question: Resume overrides a Stop still waiting. */
     resume() {
-        this.run(this.state.thread?.id);
+        const id = this.state.thread?.id;
+        this.stopRequests.delete(id);
+        delete this.state.stopping[id];
+        this.run(id);
     }
 
     async retry() {
@@ -460,6 +485,12 @@ export class AskAction extends Component {
 
     label(ref) {
         return this.state.thread?.evidence?.[ref]?.label || ref;
+    }
+
+    /** The companies an answer's figures cover: those selected while it was
+     * worked out (the conversation's company for answers from before). */
+    companiesLabel(turn) {
+        return turn.companies?.length ? turn.companies.join(", ") : this.state.thread.company;
     }
 
     kindIcon(ref) {
@@ -590,7 +621,8 @@ export class AskAction extends Component {
         if (rows.length < 2 || !last) {
             return null;
         }
-        const label = plainText(last[0]);
+        // The label is the first filled cell: a code column may be left empty.
+        const label = plainText(last.find((cell) => plainText(cell)) || "");
         const word = _t("Total").toLowerCase();
         const lower = label.toLowerCase().replace(/:$/, "");
         if (TOTAL_LABEL.test(label) || lower === word || lower === _t("Grand total").toLowerCase()) {
@@ -602,16 +634,18 @@ export class AskAction extends Component {
         // Every figure column must add up (percentages aside: a growth does
         // not), so that one small count matching by chance is not enough.
         const body = rows.slice(0, -1);
+        const headers = block.columns || [];
         let added = 0;
         for (let index = 1; index < last.length; index++) {
             const total = this.cellNumber(last[index]);
-            if (total === null || !this.numericColumn(block, index) || this.figureText(last[index]).endsWith("%")) {
+            const percent = (headers[index] || "").includes("%") || this.figureText(last[index]).endsWith("%");
+            if (total === null || percent || !this.numericColumn(block, index)) {
                 continue;
             }
             const values = body.map((row) => this.cellNumber(row[index])).filter((value) => value !== null);
             const sum = values.reduce((a, b) => a + b, 0);
-            // Figures in an answer are rounded: allow for it.
-            if (!values.length || Math.abs(sum - total) > Math.abs(total) * 0.005 + values.length) {
+            // Figures in an answer are rounded: half a unit, or 0.5%, of slack.
+            if (!values.length || Math.abs(sum - total) > Math.max(Math.abs(total) * 0.005, 0.5)) {
                 return null;
             }
             added++;
