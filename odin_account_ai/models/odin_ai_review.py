@@ -404,9 +404,11 @@ class OdinAiSuggestion(models.Model):
             # counterpart having been proposed, which is the same "other" that
             # _seek_for_lines reports; liquidity and suspense are the line's
             # own two rows.
-            proposal = (st_line.reconcile_data or {}).get("data") or []
-            if any(row.get("kind") == "other" for row in proposal):
-                continue
+            # The field only exists with account_reconcile_oca installed.
+            if "reconcile_data" in st_line._fields:
+                proposal = (st_line.reconcile_data or {}).get("data") or []
+                if any(row.get("kind") == "other" for row in proposal):
+                    continue
             items.append({
                 "source": "bank", "record": st_line, "date": st_line.date, "label": st_line.payment_ref or "",
                 "amount": st_line.amount, "currency": st_line.currency_id, "partner": st_line.partner_id,
