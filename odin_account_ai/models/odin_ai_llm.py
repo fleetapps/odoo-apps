@@ -42,11 +42,21 @@ INTERACTIVE = {"timeout": 75.0, "max_retries": 0, "max_tokens": 8000}
 BACKGROUND = {"timeout": 240.0, "max_retries": 2, "max_tokens": 16000}
 EFFORT = {"ask": "medium", "explain": "low", "review": "low", "anomaly": "medium", "draft": "medium", "test": "low"}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# Progress updates between tool calls as readable thinking blocks
+# (thinking.display "updates", beta), and the models that write them.
+# https://platform.claude.com/docs/en/build-with-claude/thinking#progress-updates
+UPDATES_BETA = "thinking-display-updates-2026-08-18"
+UPDATE_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5", "claude-mythos-5-1")
 
 # One SDK client per worker process and settings: created on first use (never
 # at import, which happens before the prefork workers are spawned).
 _CLIENTS = {}
 _CLIENTS_LOCK = threading.Lock()
+
+
+class ContextWindowExceeded(UserError):
+    """The conversation no longer fits the model's context window: asking the
+    same thing again cannot help, only a new conversation can."""
 
 
 class OdinAiLlm(models.AbstractModel):
@@ -74,33 +84,52 @@ class OdinAiLlm(models.AbstractModel):
     def readiness(self):
         """What stops the AI from answering here, for the screens to say so
         before the user types anything. ``False`` when ready."""
+        return self._readiness()[1]
+
+    @api.model
+    def _readiness(self):
+        """``(code, message)`` of what stops the AI, the code being
+        ``consent``, ``key`` or ``budget``; ``(False, False)`` when ready."""
         company = self.env.company
         if not company.odin_ai_consent:
-            return _("An administrator has to allow sending accounting data to Anthropic "
-                     "(Accounting > Settings > Accounting AI).")
+            return "consent", _("An administrator has to allow sending accounting data to Anthropic "
+                                "(Accounting > Settings > Accounting AI).")
         if not self._api_key():
-            return _("No Anthropic API key is set (Accounting > Settings > Accounting AI).")
+            return "key", _("No Anthropic API key is set (Accounting > Settings > Accounting AI).")
         if self._budget_left(company) <= 0:
-            return _("This month's AI budget for %(company)s is used up.", company=company.name)
-        return False
+            return "budget", _("This month's AI budget for %(company)s is used up.", company=company.name)
+        return False, False
+
+    @api.model
+    def _budget_used(self, company):
+        month_start = fields.Datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        groups = self.env["odin.ai.run"].sudo()._read_group(
+            [("company_id", "=", company.id), ("create_date", ">=", month_start)],
+            aggregates=["budget_tokens:sum"])
+        return (groups[0][0] or 0) if groups else 0
 
     @api.model
     def _budget_left(self, company):
         if not company.odin_ai_monthly_tokens:
             return float("inf")
-        month_start = fields.Datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        groups = self.env["odin.ai.run"].sudo()._read_group(
-            [("company_id", "=", company.id), ("create_date", ">=", month_start)],
-            aggregates=["total_tokens:sum"])
-        used = (groups[0][0] or 0) if groups else 0
-        return company.odin_ai_monthly_tokens - used
+        return company.odin_ai_monthly_tokens - self._budget_used(company)
+
+    @api.model
+    def _budget_status(self, company):
+        """This month's use of the budget, or None when there is no budget."""
+        limit = company.odin_ai_monthly_tokens
+        if not limit:
+            return None
+        used = self._budget_used(company)
+        return {"used": used, "limit": limit, "pct": used * 100.0 / limit}
 
     # ------------------------------------------------------------------
     # The call
     # ------------------------------------------------------------------
 
     @api.model
-    def call(self, feature, *, system, messages, schema=None, tools=None, step_key=None, interactive=True):
+    def call(self, feature, *, system, messages, schema=None, tools=None, step_key=None, interactive=True,
+             cache_conversation=False, progress_updates=False):
         """Send one request and return the response as a dict (``content``,
         ``stop_reason``, ``model``, ``usage``).
 
@@ -109,6 +138,12 @@ class OdinAiLlm(models.AbstractModel):
         :param tools: tool definitions, already in a fixed order.
         :param step_key: a key unique to this request; a response already
             stored under it is returned instead of calling again.
+        :param cache_conversation: also cache the messages, for a conversation
+            that grows from one request to the next (automatic caching).
+        :param progress_updates: ask for the model's notes between tool calls
+            as readable thinking blocks, on the models that write them. It must
+            be the same on every request of a conversation: a change of
+            thinking settings invalidates the cached messages.
         :raises UserError: with a message for the user when the AI cannot
             answer (not configured, budget, refusal, timeout, API error).
         """
@@ -133,9 +168,23 @@ class OdinAiLlm(models.AbstractModel):
             params["output_config"]["format"] = {"type": "json_schema", "schema": schema}
         if tools:
             params["tools"] = tools
+        if cache_conversation:
+            # A top-level breakpoint the API places on the last cacheable block
+            # and moves forward as the conversation grows; with the explicit one
+            # on the system prompt it is "the robust combination for agent loops"
+            # (two of the four breakpoints). Steps follow each other within the
+            # 5-minute TTL, so each one reads the previous steps from cache.
+            # https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+            params["cache_control"] = {"type": "ephemeral"}
+        betas = []
         if _has_server_fallback(model):
-            params["betas"] = [FALLBACK_BETA]
+            betas.append(FALLBACK_BETA)
             params["fallbacks"] = "default"
+        if progress_updates and supports_progress_updates(model):
+            params["thinking"] = {"type": "adaptive", "display": "updates"}
+            betas.append(UPDATES_BETA)
+        if betas:
+            params["betas"] = betas
 
         log = {
             "step_key": step_key,
@@ -155,7 +204,8 @@ class OdinAiLlm(models.AbstractModel):
         data = _to_dict(response)
         usage = _usage(data)
         log.update(
-            status={"refusal": "refusal", "max_tokens": "max_tokens"}.get(data.get("stop_reason"), "ok"),
+            status={"refusal": "refusal", "max_tokens": "max_tokens",
+                    "model_context_window_exceeded": "context"}.get(data.get("stop_reason"), "ok"),
             served_model=data.get("model"),
             request_id=getattr(response, "_request_id", None) or data.get("id"),
             duration_ms=_ms(started),
@@ -167,6 +217,10 @@ class OdinAiLlm(models.AbstractModel):
             raise UserError(_("The AI declined to answer this one. Try rephrasing the question."))
         if data.get("stop_reason") == "max_tokens":
             raise UserError(_("The answer was too long and got cut off. Ask for something narrower."))
+        if data.get("stop_reason") == "model_context_window_exceeded":
+            # Not max_tokens: the context window itself is full (Claude 4.5 and
+            # later stop with this reason; shared/model-migration.md).
+            raise ContextWindowExceeded(_("This conversation is too long for the AI: start a new one."))
         return data
 
     @api.model
@@ -246,6 +300,11 @@ class OdinAiLlm(models.AbstractModel):
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+
+def supports_progress_updates(model):
+    """Whether the model writes progress updates between tool calls."""
+    return model.startswith(UPDATE_MODELS)
+
 
 def _has_server_fallback(model):
     """Server-side fallbacks exist for the Opus, Sonnet and Fable families on

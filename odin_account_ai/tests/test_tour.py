@@ -1,6 +1,7 @@
 """The AI screens in a real browser, with the model mocked by feature."""
 
 import json
+import time
 
 from dateutil.relativedelta import relativedelta
 
@@ -48,9 +49,19 @@ class TestAiTours(AiCase, HttpCase):
             end = self.last_month + relativedelta(months=1, days=-1)
             return tool_call("pnl", {"date_from": str(self.last_month), "date_to": str(end),
                                      "comparison": "none", "line_code": None})
-        return message({"blocks": [{"type": "text", "text": "Revenue was 1,000 [E1].", "items": None,
-                                    "columns": None, "rows": None, "value": None, "evidence": ["E1"]}],
-                        "follow_ups": ["And the month before?"]})
+        return message({"blocks": [
+            {"type": "text", "text": "Revenue was 1,000 [E1].", "items": None,
+             "columns": None, "rows": None, "value": None, "evidence": ["E1"]},
+            # A supplier whose name starts with "Total", last, with a bill
+            # count that adds up by chance (the amounts do not)...
+            {"type": "table", "text": "Fuel suppliers", "items": None, "value": None, "evidence": [],
+             "columns": ["Supplier", "Bills", "Amount (KES)"],
+             "rows": [["Shell", "1", "500"], ["Rubis", "2", "300"], ["Total Kenya Ltd", "3", "900"]]},
+            # ... and a closing total that adds up the rows above.
+            {"type": "table", "text": "Revenue by customer", "items": None, "value": None, "evidence": [],
+             "columns": ["Customer", "Revenue (KES)", "Share"],
+             "rows": [["Tour Customer", "1,000", "71%"], ["Others", "400", "29%"], ["Total revenue", "1,400", "100%"]]},
+        ], "follow_ups": ["And the month before?"]})
 
     def test_review(self):
         self.mock_api(*[self.respond] * 5)
@@ -67,3 +78,21 @@ class TestAiTours(AiCase, HttpCase):
         self.mock_api(*[self.respond] * 5)
         self.start_tour("/odoo/action-odin_account_ai.odin_ai_ask_action", "odin_account_ai_ask_tour",
                         login="admin")
+
+    def respond_slowly(self, params):
+        """The model taking two seconds over a tool step, so that the tour
+        can act while the step runs."""
+        if isinstance(params["messages"][-1]["content"], str):
+            time.sleep(2)
+        return self.respond(params)
+
+    def test_ask_stop_and_switch(self):
+        self.mock_api(*[self.respond_slowly] * 6)
+        self.start_tour("/odoo/action-odin_account_ai.odin_ai_ask_action", "odin_account_ai_ask_stop_tour",
+                        login="admin")
+
+    def test_ask_about_a_line(self):
+        self.mock_api(*[self.respond] * 4)
+        self.start_tour("/odoo/action-odin_account_pnl.odin_pnl_report_action", "odin_account_ai_ask_line_tour",
+                        login="admin")
+

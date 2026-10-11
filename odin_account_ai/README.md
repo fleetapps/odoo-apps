@@ -15,11 +15,16 @@ Odoo 19 Community. Depends on `odin_account_pnl` (the interactive P&L) and
 
 | Screen | What it does |
 |---|---|
-| **Ask** | Questions in plain words ("How did revenue last month compare with the month before, and who drove the change?"). The answer comes from the ledger through read-only tools, as text, figures, tables and key numbers. Every figure carries a reference chip (`E3`) that opens the P&L at that row or the document itself. Follow-up questions continue the same conversation; past questions are in *History*. |
+| **Ask** | Questions in plain words ("How did revenue last month compare with the month before, and who drove the change?", "Who owes us the most and how late?", "Are we over budget on OPEX this quarter?"). The answer comes from the ledger through read-only tools, as text, figures, tables and key numbers. Every figure carries a numbered chip, numbered within each answer, whose tooltip says what it cites ("Revenue · Sep 2026", "INV/2026/0042 · 12 Sep 2026 · 1,250.00") and which opens the P&L at that row, a partner's open items or the document itself. Under each answer, *Based on* names the periods, comparison and filters it read, each opening the P&L on them. Tables can be sorted (a closing total stays last), copied and downloaded as CSV. *Stop* ends a question after the step in progress; a lost connection offers *Resume*. Follow-up questions continue the same conversation; past questions are in *History*, and a question left running finishes there in the background. |
 | **Transaction Review** | Bank lines still on the suspense account and draft bill lines still on the purchase journal's default account, each with a proposed income or expense account, grouped *Ready to accept*, *Worth a look*, *Needs you* and *Reconcile instead*. J/K to move, A to accept, R to reject; the account and partner can be changed before accepting; *Always categorise this partner like this* makes a rule. |
 | **Anomalies** | Seven checks run every night (and on *Run checks now*): possible duplicate bills, unusual bill amounts, an account new for a supplier, large manual entries on cash/receivables/payables/equity, backdated entries, income and expenses without analytic, and bank lines left unreconciled. Findings by severity, with their entries, an owner, a deadline, chatter and activities. *Explain with AI* suggests the likely cause and the next step. |
 | **Draft Entry** | Describe the entry ("Accrue 120,000 audit fees for September, to reverse on 1 October"); the AI proposes the lines from your chart of accounts and says what it assumed. The lines stay editable, and a banner lists what blocks the entry. *Create draft entry* or *Post and schedule reversal*. |
 | Categorisation Rules, Anomaly Checks, Activity Log, Settings | Rules made from Review; the checks' thresholds; every call to the model with its tokens (AI managers). |
+
+**Ask from where the question comes up:** *⋯ → Ask about this line* in the P&L
+(or the `a` key) opens Ask with a draft question and the line's periods,
+figures and filters attached; Odoo's command palette (Ctrl+K) offers *Ask the
+Ledger: …* for what was typed. Both wait for the user to send.
 
 **Explain** is in the P&L itself: *⋯ → Explain this change* on a line or an
 account (or the `e` key) opens a side-panel tab. It splits the change against
@@ -67,15 +72,21 @@ the bill stays a draft. Every booking leaves a note in the document's chatter.
   (P&L figures, journal items, account and partner names), as JSON data. The
   system prompt tells the model that text from the books is data, never
   instructions.
-* **What the model can do:** read, through five tools (P&L, splits, journal
-  items, one entry, look up a name) that run with the asking user's access
-  rights and record rules, at most 50 rows each. It has no tool that writes.
+* **What the model can do:** read, through six tools (the P&L with budgets
+  and filters by journal, partner or analytic account; splits, also by
+  analytic plan; journal items; one entry; open receivables and payables by
+  age; look up a name) that run with the asking user's access rights and
+  record rules, at most 50 rows each. It has no tool that writes.
   Every id and code it returns is checked here; references it invents are
   dropped; answers are shown as structured blocks, never as HTML.
 * **Budget:** a monthly token budget per company (3 million by default).
+  Cached input counts at its price (about a tenth); the Ask page warns at 80%.
 * **Log:** every call is in *Activity Log* with its tokens, duration and
   outcome. Responses are erased after the retention period (90 days by
-  default); the log line stays.
+  default); the log line stays. Ask conversations untouched for that long are
+  deleted too.
+* **Conversations** are private to the user who asked, who can read and
+  delete them; only the page's actions write them, never a direct edit.
 * **Key:** the API key is a system parameter only administrators can read;
   the server variable `ANTHROPIC_API_KEY`, when set, takes precedence so the
   key can stay out of the database.
@@ -89,7 +100,15 @@ The official SDK's Messages API (`client.beta.messages.create`), with:
 * structured outputs (`output_config.format` with a JSON schema) for every
   answer, and the effort set per feature (low for Explain and Review, medium
   for Ask, Anomalies and Draft);
-* the system prompt cached (`cache_control`), tools in a fixed order;
+* the system prompt cached (`cache_control`), tools in a fixed order, and
+  for Ask the growing conversation cached too (top-level automatic caching:
+  each step reads the earlier ones from cache);
+* an Ask conversation keeps the system prompt, the tool list and the thinking
+  settings it started with, and its history is append-only, so the model's
+  earlier reasoning stays valid across releases;
+* progress updates between tool calls (`thinking.display: "updates"`, beta
+  `thinking-display-updates-2026-08-18`) shown as the steps' notes, on the
+  models that write them;
 * server-side fallbacks (`fallbacks: "default"`, beta
   `server-side-fallback-2026-07-01`) except for Haiku models, which have
   none; after a fallback, the turn is echoed back as the API requires;
@@ -99,7 +118,10 @@ Odoo stops a request after `limit_time_real` (120 s by default), so
 interactive calls time out after 75 s without SDK retries, and Ask runs one
 model call per request, the page stepping through them ("Reading the P&L for
 Sep 2026", "Splitting by partner"). A request Odoo retries (serialization
-failure) reuses the stored answer instead of paying twice. The nightly
+failure) reuses the stored answer instead of paying twice. A step holds its
+conversation while it waits on the API, so *Stop* is sent between two steps,
+never written into a row a step holds; the step before the last tells the
+model to answer with what it has. The nightly
 Transaction Review job takes one batch per company per run and reports its
 progress so Odoo's cron runner calls it again while items remain.
 
