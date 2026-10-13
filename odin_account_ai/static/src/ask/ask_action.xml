@@ -25,13 +25,23 @@
                                 t-on-click="() => this.open(item.id)">
                             <i t-if="item.state === 'running'" class="fa fa-circle-o-notch fa-spin me-1"/>
                             <i t-elif="item.state === 'error'" class="fa fa-exclamation-circle text-warning me-1"/>
+                            <i t-elif="item.state === 'stopped'" class="fa fa-stop-circle-o text-muted me-1"/>
                             <span class="text-truncate" t-esc="item.name"/>
                         </button>
                     </aside>
                     <main class="o_odin_ai_main">
                         <div class="o_odin_ai_thread" t-ref="thread" t-on-scroll="onThreadScroll">
-                            <div t-if="state.boot.ready" class="alert alert-warning m-3" role="alert">
-                                <i class="fa fa-plug me-1"/><t t-esc="state.boot.ready"/>
+                            <div t-if="state.boot.ready" class="alert alert-warning m-3 d-flex align-items-center gap-3" role="alert">
+                                <i class="fa fa-plug fa-lg"/>
+                                <div class="flex-grow-1">
+                                    <div t-esc="state.boot.ready"/>
+                                    <div t-if="!state.boot.can_configure" class="small mt-1" t-esc="setupHint"/>
+                                </div>
+                                <button t-if="state.boot.can_configure" class="btn btn-sm btn-primary text-nowrap"
+                                        t-on-click="openSettings">Open AI settings</button>
+                            </div>
+                            <div t-elif="state.boot.budget_warning" class="alert alert-info m-3" role="status">
+                                <i class="fa fa-tachometer me-1"/><t t-esc="state.boot.budget_warning"/>
                             </div>
                             <t t-if="!state.thread">
                                 <div class="o_odin_ai_hero">
@@ -42,7 +52,7 @@
                                 <div class="o_odin_ai_starters">
                                     <button t-foreach="state.boot.starters" t-as="starter" t-key="starter_index"
                                             class="o_odin_ai_starter" t-att-disabled="state.boot.ready"
-                                            t-on-click="() => this.ask(starter.question)">
+                                            t-on-click="() => this.ask(starter.question, null)">
                                         <span class="o_odin_ai_starter_title"><i t-attf-class="fa {{starter.icon}} me-2"/><t t-esc="starter.title"/></span>
                                         <span class="o_odin_ai_starter_text" t-esc="starter.question"/>
                                     </button>
@@ -53,16 +63,20 @@
                                     <div class="o_odin_ai_question"><div t-esc="turn.question"/></div>
                                     <div class="o_odin_ai_answer">
                                         <t t-set="isLast" t-value="turn_index === state.thread.turns.length - 1"/>
-                                        <t t-set="working" t-value="isLast and state.thread.state === 'running'"/>
+                                        <t t-set="working" t-value="isLast and state.thread.state === 'running' and !lost"/>
                                         <div t-if="turn.progress.length or working" class="o_odin_ai_steps">
                                             <button t-if="!working" class="btn btn-link btn-sm p-0 text-muted"
+                                                    t-att-aria-expanded="state.openSteps[turn_index] ? 'true' : 'false'"
                                                     t-on-click="() => this.toggleSteps(turn_index)">
                                                 <i t-attf-class="fa fa-caret-{{state.openSteps[turn_index] ? 'down' : 'right'}} me-1"/>
-                                                Read the books in <t t-esc="turn.progress.length"/> step(s)
+                                                <t t-esc="stepsLabel(turn)"/>
                                             </button>
                                             <ul t-if="working or state.openSteps[turn_index]" class="list-unstyled mb-0">
-                                                <li t-foreach="turn.progress" t-as="step" t-key="step_index">
-                                                    <i class="fa fa-check text-success me-2"/><t t-esc="step"/>
+                                                <li t-foreach="stepItems(turn)" t-as="step" t-key="step_index"
+                                                    t-att-class="{ o_odin_ai_note: step.note }">
+                                                    <i t-if="step.note" class="fa fa-comment-o me-2"/>
+                                                    <i t-else="" class="fa fa-check text-success me-2"/>
+                                                    <t t-esc="step.text"/>
                                                 </li>
                                                 <li t-if="working" class="text-muted">
                                                     <i class="fa fa-circle-o-notch fa-spin me-2"/><t t-esc="progressLabel"/>
@@ -79,10 +93,7 @@
                                                             <t t-call="odin_account_ai.AskPart"/>
                                                         </t>
                                                         <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
-                                                            <button class="o_odin_ai_chip" t-att-data-tooltip="label(ref)"
-                                                                    t-att-aria-label="label(ref)"
-                                                                    t-on-click="() => this.openEvidence(ref)"
-                                                                    t-esc="refNumber(ref)"/>
+                                                            <t t-call="odin_account_ai.AskChip"/>
                                                         </t>
                                                     </div>
                                                 </div>
@@ -92,51 +103,110 @@
                                                     <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
                                                         <t t-call="odin_account_ai.AskPart"/>
                                                     </t>
+                                                    <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
+                                                        <t t-call="odin_account_ai.AskChip"/>
+                                                    </t>
                                                 </p>
-                                                <ul t-elif="block.type === 'bullets'" class="o_odin_ai_bullets">
-                                                    <li t-foreach="block.items or []" t-as="item" t-key="item_index">
-                                                        <t t-foreach="parts(item)" t-as="part" t-key="part_index">
+                                                <t t-elif="block.type === 'bullets'">
+                                                    <p t-if="block.text" class="o_odin_ai_lead">
+                                                        <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
                                                             <t t-call="odin_account_ai.AskPart"/>
                                                         </t>
-                                                    </li>
-                                                </ul>
-                                                <div t-elif="block.type === 'table'" class="o_odin_ai_table table-responsive">
-                                                    <div t-if="block.text" class="fw-semibold mb-1" t-esc="block.text"/>
-                                                    <table class="table table-sm mb-0">
-                                                        <thead><tr>
-                                                            <th t-foreach="block.columns or []" t-as="column" t-key="column_index"
-                                                                t-att-class="{ 'text-end': numericColumn(block, column_index) }" t-esc="column"/>
-                                                        </tr></thead>
-                                                        <tbody>
-                                                            <tr t-foreach="block.rows or []" t-as="row" t-key="row_index">
-                                                                <td t-foreach="row" t-as="cell" t-key="cell_index"
-                                                                    t-att-class="{ 'text-end o_odin_ai_num': isNumeric(cell) }">
-                                                                    <t t-foreach="parts(cell)" t-as="part" t-key="part_index">
-                                                                        <t t-call="odin_account_ai.AskPart"/>
-                                                                    </t>
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
+                                                    </p>
+                                                    <ul class="o_odin_ai_bullets">
+                                                        <li t-foreach="block.items or []" t-as="item" t-key="item_index">
+                                                            <t t-foreach="parts(item)" t-as="part" t-key="part_index">
+                                                                <t t-call="odin_account_ai.AskPart"/>
+                                                            </t>
+                                                        </li>
+                                                    </ul>
+                                                    <div t-if="extraRefs(block).length" class="o_odin_ai_sources">
+                                                        <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
+                                                            <t t-call="odin_account_ai.AskChip"/>
+                                                        </t>
+                                                    </div>
+                                                </t>
+                                                <div t-elif="block.type === 'table'" class="o_odin_ai_table">
+                                                    <div class="o_odin_ai_table_head">
+                                                        <div t-if="block.text" class="fw-semibold">
+                                                            <t t-foreach="parts(block.text)" t-as="part" t-key="part_index">
+                                                                <t t-call="odin_account_ai.AskPart"/>
+                                                            </t>
+                                                        </div>
+                                                        <div class="o_odin_ai_table_tools">
+                                                            <button class="btn btn-link btn-sm" aria-label="Copy the table"
+                                                                    data-tooltip="Copy the table"
+                                                                    t-on-click="() => this.copyTable(turn_index, block_index, block)">
+                                                                <i class="fa fa-clone"/>
+                                                            </button>
+                                                            <button class="btn btn-link btn-sm" aria-label="Download as CSV"
+                                                                    data-tooltip="Download as CSV"
+                                                                    t-on-click="() => this.downloadCsv(turn_index, block_index, block)">
+                                                                <i class="fa fa-download"/>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm mb-0">
+                                                            <thead><tr>
+                                                                <th t-foreach="block.columns or []" t-as="column" t-key="column_index"
+                                                                    t-att-class="{ 'text-end': numericColumn(block, column_index) }"
+                                                                    t-att-aria-sort="ariaSort(turn_index, block_index, column_index)">
+                                                                    <button class="o_odin_ai_sort"
+                                                                            t-on-click="() => this.sortTable(turn_index, block_index, block, column_index)">
+                                                                        <t t-esc="column"/>
+                                                                        <i t-attf-class="fa {{sortIcon(turn_index, block_index, column_index)}} ms-1"/>
+                                                                    </button>
+                                                                </th>
+                                                            </tr></thead>
+                                                            <tbody>
+                                                                <tr t-foreach="tableRows(turn_index, block_index, block)" t-as="row" t-key="row_index"
+                                                                    t-att-class="{ o_odin_ai_total: row === tableTotal(block) }">
+                                                                    <td t-foreach="row" t-as="cell" t-key="cell_index"
+                                                                        t-att-class="{ 'text-end o_odin_ai_num': isNumeric(cell) }">
+                                                                        <t t-foreach="parts(cell)" t-as="part" t-key="part_index">
+                                                                            <t t-call="odin_account_ai.AskPart"/>
+                                                                        </t>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div t-if="extraRefs(block).length" class="o_odin_ai_sources">
+                                                        <t t-foreach="extraRefs(block)" t-as="ref" t-key="ref">
+                                                            <t t-call="odin_account_ai.AskChip"/>
+                                                        </t>
+                                                    </div>
                                                 </div>
                                             </t>
+                                            <div t-if="turn.scope and turn.scope.length" class="o_odin_ai_scope">
+                                                <i class="fa fa-filter me-1"/>Based on
+                                                <t t-foreach="turn.scope" t-as="item" t-key="item.key">
+                                                    <button t-if="item.ref" class="o_odin_ai_scope_link"
+                                                            data-tooltip="Open the P&amp;L on these figures"
+                                                            t-on-click="() => this.openEvidence(item.ref)" t-esc="item.label"/>
+                                                    <span t-else="" t-esc="item.label"/>
+                                                    <t t-if="!item_last"> · </t>
+                                                </t>
+                                                · posted entries · <t t-esc="companiesLabel(turn)"/> (<t t-esc="state.thread.currency"/>)
+                                            </div>
                                             <div class="o_odin_ai_answer_foot">
                                                 <button class="btn btn-link btn-sm text-muted" t-on-click="() => this.copy(turn)"
-                                                        data-tooltip="Copy the answer"><i class="fa fa-clone"/></button>
-                                                <t t-if="isLast">
+                                                        aria-label="Copy the answer" data-tooltip="Copy the answer"><i class="fa fa-clone"/></button>
+                                                <t t-if="state.thread.state !== 'running'">
                                                     <button class="btn btn-link btn-sm" aria-label="Helpful"
-                                                            t-att-class="state.thread.feedback === 'up' ? 'text-success' : 'text-muted'"
-                                                            t-on-click="() => this.feedback('up')"><i class="fa fa-thumbs-o-up"/></button>
+                                                            t-att-class="turn.feedback === 'up' ? 'text-success' : 'text-muted'"
+                                                            t-on-click="() => this.feedback(turn_index, 'up')"><i class="fa fa-thumbs-o-up"/></button>
                                                     <button class="btn btn-link btn-sm" aria-label="Not helpful"
-                                                            t-att-class="state.thread.feedback === 'down' ? 'text-danger' : 'text-muted'"
-                                                            t-on-click="() => this.feedback('down')"><i class="fa fa-thumbs-o-down"/></button>
+                                                            t-att-class="turn.feedback === 'down' ? 'text-danger' : 'text-muted'"
+                                                            t-on-click="() => this.feedback(turn_index, 'down')"><i class="fa fa-thumbs-o-down"/></button>
                                                 </t>
                                                 <span class="small text-muted ms-auto">AI answer from your ledger. Check the linked entries before relying on it.</span>
                                             </div>
                                             <div t-if="isLast and turn.answer.follow_ups.length and state.thread.state === 'done'"
                                                  class="o_odin_ai_followups">
                                                 <button t-foreach="turn.answer.follow_ups" t-as="follow" t-key="follow_index"
-                                                        class="btn btn-sm btn-outline-secondary" t-on-click="() => this.ask(follow)">
+                                                        class="btn btn-sm btn-outline-secondary" t-on-click="() => this.ask(follow, null)">
                                                     <t t-esc="follow"/>
                                                 </button>
                                             </div>
@@ -144,33 +214,47 @@
                                         <div t-if="isLast and state.thread.state === 'stopped'"
                                              class="o_odin_ai_stopped text-muted small">
                                             <i class="fa fa-stop-circle-o me-1"/><t t-esc="state.thread.error"/>
-                                            <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                            <button t-if="state.thread.can_retry" class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                            <button t-else="" class="btn btn-link btn-sm p-0 ms-1" t-on-click="askAgain">Ask again in a new conversation</button>
                                         </div>
                                         <div t-elif="isLast and state.thread.state === 'error'" class="alert alert-warning mb-0">
                                             <t t-esc="state.thread.error"/>
-                                            <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                            <button t-if="state.thread.can_retry" class="btn btn-link btn-sm p-0 ms-1" t-on-click="retry">Try again</button>
+                                            <button t-else="" class="btn btn-link btn-sm p-0 ms-1" t-on-click="askAgain">Ask again in a new conversation</button>
+                                        </div>
+                                        <div t-elif="isLast and lost" class="o_odin_ai_lost alert alert-secondary mb-0" role="status">
+                                            <i class="fa fa-chain-broken me-1"/><t t-esc="lostLabel"/>
+                                            <button class="btn btn-link btn-sm p-0 ms-1" t-on-click="resume">Resume</button>
+                                            <span class="text-muted"> · </span>
+                                            <button class="btn btn-link btn-sm p-0" t-on-click="stop">Stop</button>
                                         </div>
                                     </div>
                                 </t>
                             </t>
                         </div>
-                        <div class="o_odin_ai_composer">
-                            <textarea t-ref="input" class="form-control" rows="1" t-model="state.input"
-                                      t-on-keydown="onKeydown" t-att-disabled="state.boot.ready"
-                                      t-att-placeholder="state.thread and state.thread.state === 'done' ? 'Ask a follow-up…' : 'Ask about revenue, costs, customers, suppliers…'"
-                                      aria-label="Your question"/>
-                            <button t-if="running" class="btn btn-secondary" t-on-click="stop"
-                                    t-att-disabled="state.stopping"
-                                    t-att-aria-label="state.stopping ? 'Stopping' : 'Stop'"
-                                    t-att-data-tooltip="state.stopping ? 'Stopping…' : 'Stop this question'">
-                                <i t-if="state.stopping" class="fa fa-circle-o-notch fa-spin"/>
-                                <i t-else="" class="fa fa-stop"/>
-                            </button>
-                            <button t-else="" class="btn btn-primary" t-on-click="() => this.ask(state.input)"
-                                    t-att-disabled="!canAsk" aria-label="Send">
-                                <i t-if="state.sending" class="fa fa-circle-o-notch fa-spin"/>
-                                <i t-else="" class="fa fa-arrow-up"/>
-                            </button>
+                        <div class="o_odin_ai_composer_wrap">
+                            <div t-if="state.context" class="o_odin_ai_context">
+                                <i class="fa fa-table me-1"/>From the P&amp;L: <t t-esc="contextLabel"/>
+                                <button class="btn btn-link btn-sm p-0 ms-1" aria-label="Leave out this context"
+                                        data-tooltip="Leave out this context" t-on-click="() => this.state.context = null">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </div>
+                            <div class="o_odin_ai_composer">
+                                <textarea t-ref="input" class="form-control" rows="1" t-model="state.input"
+                                          t-on-keydown="onKeydown" t-att-disabled="state.boot.ready"
+                                          t-att-placeholder="placeholder" aria-label="Your question"/>
+                                <button t-if="running" class="btn btn-secondary" t-on-click="stop"
+                                        t-att-disabled="stopping" t-att-aria-label="stopLabel" t-att-data-tooltip="stopLabel">
+                                    <i t-if="stopping" class="fa fa-circle-o-notch fa-spin"/>
+                                    <i t-else="" class="fa fa-stop"/>
+                                </button>
+                                <button t-else="" class="btn btn-primary" t-on-click="() => this.ask(state.input)"
+                                        t-att-disabled="!canAsk" aria-label="Send">
+                                    <i t-if="state.sending" class="fa fa-circle-o-notch fa-spin"/>
+                                    <i t-else="" class="fa fa-arrow-up"/>
+                                </button>
+                            </div>
                         </div>
                     </main>
                 </div>
@@ -179,11 +263,18 @@
     </t>
 
     <t t-name="odin_account_ai.AskPart">
-        <button t-if="part.ref" class="o_odin_ai_chip" t-att-data-tooltip="label(part.ref)"
-                t-att-aria-label="label(part.ref)"
-                t-on-click="() => this.openEvidence(part.ref)" t-esc="refNumber(part.ref)"/>
+        <t t-if="part.ref">
+            <t t-call="odin_account_ai.AskChip"><t t-set="ref" t-value="part.ref"/></t>
+        </t>
         <strong t-elif="part.bold" t-esc="part.text"/>
         <t t-else="" t-esc="part.text"/>
+    </t>
+
+    <t t-name="odin_account_ai.AskChip">
+        <button class="o_odin_ai_chip" t-att-data-tooltip="label(ref)" t-att-aria-label="label(ref)"
+                t-on-click="() => this.openEvidence(ref)">
+            <i t-attf-class="fa {{kindIcon(ref)}} me-1" aria-hidden="true"/><t t-esc="refNumber(turn, ref)"/>
+        </button>
     </t>
 
 </templates>

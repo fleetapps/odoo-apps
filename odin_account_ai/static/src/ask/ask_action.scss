@@ -134,6 +134,12 @@
     font-size: 0.875rem;
 
     li { padding: 0.15rem 0; }
+
+    // The model's own notes between tool calls (progress updates).
+    .o_odin_ai_note {
+        color: var(--#{$prefix}secondary-color);
+        font-style: italic;
+    }
 }
 
 .o_odin_ai_kpis {
@@ -168,6 +174,73 @@
 
     .table { font-size: 0.875rem; }
     th { font-weight: 600; white-space: nowrap; }
+
+    .o_odin_ai_total td {
+        font-weight: 600;
+        border-top: 1px solid var(--#{$prefix}emphasis-color);
+    }
+}
+
+.o_odin_ai_table_head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.o_odin_ai_table_tools {
+    margin-left: auto;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+
+    .btn { padding: 0 0.35rem; color: var(--#{$prefix}secondary-color); }
+}
+
+.o_odin_ai_table:hover .o_odin_ai_table_tools,
+.o_odin_ai_table_tools:focus-within {
+    opacity: 1;
+}
+
+// A header that sorts its column: a plain button in the header's style.
+.o_odin_ai_sort {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    white-space: nowrap;
+
+    .o_odin_ai_sort_idle { opacity: 0.3; }
+    &:hover .o_odin_ai_sort_idle,
+    &:focus-visible .o_odin_ai_sort_idle { opacity: 0.8; }
+}
+
+// Chips of a block that its text does not cite inline: tucked under a list
+// (which keeps a bottom margin), clear of a table (which has none).
+.o_odin_ai_sources {
+    margin: -0.5rem 0 0.75rem;
+
+    .o_odin_ai_table & { margin: 0.35rem 0 0; }
+}
+
+// The sentence leading into a list.
+.o_odin_ai_lead { margin-bottom: 0.25rem; }
+
+// "Based on Sep 2026 vs Aug 2026 · posted entries · Company (KES)".
+.o_odin_ai_scope {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_odin_ai_scope_link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--#{$prefix}link-color);
+    font: inherit;
+
+    &:hover, &:focus-visible { text-decoration: underline; }
 }
 
 .o_odin_ai_num { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -189,12 +262,28 @@
     .btn { border-radius: 1rem; text-align: left; }
 }
 
+.o_odin_ai_composer_wrap {
+    padding: 0.75rem #{"max(1rem, calc((100% - 52rem) / 2))"} 1rem;
+    border-top: 1px solid var(--#{$prefix}border-color);
+}
+
+// The page a question comes from (the P&L's "Ask about this line").
+.o_odin_ai_context {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: 1rem;
+    background-color: var(--#{$prefix}tertiary-bg);
+    font-size: 0.8rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
 .o_odin_ai_composer {
     display: flex;
     align-items: flex-end;
     gap: 0.5rem;
-    padding: 0.75rem #{"max(1rem, calc((100% - 52rem) / 2))"} 1rem;
-    border-top: 1px solid var(--#{$prefix}border-color);
 
     textarea {
         resize: none;

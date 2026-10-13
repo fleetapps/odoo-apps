@@ -33,7 +33,7 @@
                         </div>
                     </setting>
                     <setting id="odin_ai_budget" company_dependent="1" string="Monthly budget"
-                             help="Input and output tokens per calendar month for this company. 0: no limit.">
+                             help="Tokens per calendar month for this company; cached input counts at its price (about a tenth). 0: no limit.">
                         <field name="odin_ai_monthly_tokens"/>
                         <div class="mt-2">
                             <button name="%(odin_account_ai.odin_ai_run_action)d" type="action" string="Activity log"
@@ -41,7 +41,7 @@
                         </div>
                     </setting>
                     <setting id="odin_ai_retention" string="Keep responses"
-                             help="Days a response is kept in the activity log before it is erased (the log line stays).">
+                             help="Days AI responses are kept: in the activity log (the log line stays), and in Ask conversations, which are deleted once untouched for that long.">
                         <field name="odin_ai_retention_days" class="o_light_label" style="width: 6rem"/> days
                     </setting>
                 </block>

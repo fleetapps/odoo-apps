@@ -1,6 +1,7 @@
 """The AI screens in a real browser, with the model mocked by feature."""
 
 import json
+import time
 
 from dateutil.relativedelta import relativedelta
 
@@ -48,9 +49,26 @@ class TestAiTours(AiCase, HttpCase):
             end = self.last_month + relativedelta(months=1, days=-1)
             return tool_call("pnl", {"date_from": str(self.last_month), "date_to": str(end),
                                      "comparison": "none", "line_code": None})
-        return message({"blocks": [{"type": "text", "text": "Revenue was 1,000 [E1].", "items": None,
-                                    "columns": None, "rows": None, "value": None, "evidence": ["E1"]}],
-                        "follow_ups": ["And the month before?"]})
+        return message({"blocks": [
+            {"type": "text", "text": "Revenue was 1,000 [E1].", "items": None,
+             "columns": None, "rows": None, "value": None, "evidence": ["E1"]},
+            # A supplier whose name starts with "Total", last, its small
+            # figures nearly adding up the rows above...
+            {"type": "table", "text": "Fuel suppliers", "items": None, "value": None, "evidence": [],
+             "columns": ["Supplier", "Bills", "Amount (KES)"],
+             "rows": [["Shell", "4", "500"], ["Rubis", "3", "300"], ["Total Kenya Ltd", "6", "798"]]},
+            # ... a closing total that adds them up, beside a change in % that
+            # does not (the % only in the header), with a reference in the
+            # caption...
+            {"type": "table", "text": "Revenue by customer [E1]", "items": None, "value": None, "evidence": ["E1"],
+             "columns": ["Customer", "Revenue (KES)", "Change (%)"],
+             "rows": [["Tour Customer", "1,000", "25.0"], ["Others", "400", "-10.0"],
+                      ["Total revenue", "1,400", "9.3"]]},
+            # ... and a total labelled after an empty code cell.
+            {"type": "table", "text": "Revenue by account", "items": None, "value": None, "evidence": [],
+             "columns": ["Code", "Account", "Amount (KES)"],
+             "rows": [["400000", "Sales", "1,000"], ["400100", "Services", "400"], ["", "Total", "1,400"]]},
+        ], "follow_ups": ["And the month before?"]})
 
     def test_review(self):
         self.mock_api(*[self.respond] * 5)
@@ -67,3 +85,31 @@ class TestAiTours(AiCase, HttpCase):
         self.mock_api(*[self.respond] * 5)
         self.start_tour("/odoo/action-odin_account_ai.odin_ai_ask_action", "odin_account_ai_ask_tour",
                         login="admin")
+
+    def respond_slowly(self, params):
+        """The model taking two seconds over a tool step, so that the tour
+        can act while the step runs."""
+        if isinstance(params["messages"][-1]["content"], str):
+            time.sleep(2)
+        return self.respond(params)
+
+    def test_ask_stop_and_switch(self):
+        self.mock_api(*[self.respond_slowly] * 6)
+        self.start_tour("/odoo/action-odin_account_ai.odin_ai_ask_action", "odin_account_ai_ask_stop_tour",
+                        login="admin")
+
+    def test_ask_about_a_line(self):
+        self.mock_api(*[self.respond] * 4)
+        self.start_tour("/odoo/action-odin_account_pnl.odin_pnl_report_action", "odin_account_ai_ask_line_tour",
+                        login="admin")
+        # The tour's conversations are the admin's own: read them as superuser.
+        starter, line = self.env["odin.ai.conversation"].sudo().search(
+            [("user_id", "=", self.env.ref("base.user_admin").id)], order="id desc", limit=2)[::-1]
+        self.assertNotIn("Context from the page", starter.messages, "a starter goes without the line's context")
+        self.assertIn("Context from the page", line.messages)
+
+    def test_ask_from_the_command_palette(self):
+        self.mock_api()  # a draft only: nothing is sent
+        self.start_tour("/odoo/action-odin_account_pnl.odin_pnl_report_action", "odin_account_ai_ask_palette_tour",
+                        login="admin")
+
