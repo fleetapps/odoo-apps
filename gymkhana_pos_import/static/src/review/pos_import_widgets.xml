@@ -8,20 +8,20 @@
                  role="button" tabindex="0"
                  t-on-click="onClick" t-on-dragover="onDragOver" t-on-dragenter="onDragOver"
                  t-on-dragleave="onDragLeave" t-on-drop="onDrop">
-                <i class="fa fa-file-pdf-o fa-3x mb-3 text-muted" aria-hidden="true"/>
+                <i class="fa fa-file-text-o fa-3x mb-3 text-muted" aria-hidden="true"/>
                 <t t-if="state.busy">
                     <strong>Reading the report…</strong>
                 </t>
                 <t t-elif="fileName">
                     <strong t-esc="fileName"/>
-                    <span class="text-muted">Drop another PDF to replace it</span>
+                    <span class="text-muted">Drop another file to replace it</span>
                 </t>
                 <t t-else="">
-                    <strong>Drop the Group Sales Register PDF here</strong>
+                    <strong>Drop the Group Sales Register here</strong>
                     <span class="text-muted">or click to choose it</span>
                 </t>
             </div>
-            <input type="file" class="d-none" accept=".pdf,application/pdf" t-ref="input" t-on-change="onFileChange"/>
+            <input type="file" class="d-none" accept=".pdf,.xls,.xlsx,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" t-ref="input" t-on-change="onFileChange"/>
         </div>
     </t>
 
@@ -127,10 +127,10 @@
                     <td>
                         <t t-if="money.total">
                             <span t-if="money.total_matches" class="text-success">
-                                <i class="fa fa-check"/> equals the PDF grand total (<t t-esc="money.pdf_net"/>)
+                                <i class="fa fa-check"/> equals the report grand total (<t t-esc="money.pdf_net"/>)
                             </span>
                             <span t-else="" class="text-danger">
-                                <i class="fa fa-times"/> PDF grand total is <t t-esc="money.pdf_net"/>
+                                <i class="fa fa-times"/> Report grand total is <t t-esc="money.pdf_net"/>
                             </span>
                         </t>
                     </td>
@@ -138,7 +138,7 @@
                 <tr t-if="money.untaxed">
                     <th>Untaxed</th>
                     <td class="text-end" t-esc="money.untaxed"/>
-                    <td class="text-muted">PDF amount <t t-esc="money.pdf_amount"/></td>
+                    <td class="text-muted">Report amount <t t-esc="money.pdf_amount"/></td>
                 </tr>
                 <tr t-foreach="money.taxes || []" t-as="tax" t-key="tax_index">
                     <th t-esc="tax.name"/>
@@ -149,7 +149,7 @@
                     <th>Total tax</th>
                     <td class="text-end" t-esc="money.odoo_tax"/>
                     <td class="text-muted">
-                        PDF tax <t t-esc="money.pdf_tax"/>, rounding difference <t t-esc="money.tax_difference"/> (for information)
+                        Report tax <t t-esc="money.pdf_tax"/>, rounding difference <t t-esc="money.tax_difference"/> (for information)
                     </td>
                 </tr>
             </tbody>

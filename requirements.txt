@@ -1,4 +1,7 @@
 # Python dependencies of the modules in this repository
 pdfplumber==0.11.9  # gymkhana_pos_import; 0.11.10 needs Pillow>=12.2, which conflicts with Odoo 19
+# gymkhana_pos_import also reads the register as a spreadsheet, with xlrd
+# (.xls) and openpyxl (.xlsx). Both ship with Odoo 19, so neither is pinned
+# here -- pinning them would fight Odoo's own requirements.
 phonenumbers==9.0.40  # crm_3cx, whatsapp_connector
 anthropic==1.8.0  # odin_account_ai; the official Claude SDK (Python 3.10+)

@@ -5,8 +5,14 @@ import { useService } from "@web/core/utils/hooks";
 import { getDataURLFromFile } from "@web/core/utils/urls";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
+// The POS exports the register as a PDF or a spreadsheet and both are read.
+// The name is only a first sieve to catch an obviously wrong file before it
+// is uploaded: the server decides what a file really is by looking inside it,
+// so a report saved under the wrong extension is still rejected with a reason.
+const ACCEPTED_RE = /\.(pdf|xlsx?)$/i;
+
 /**
- * Screen 1: a drop zone for the Group Sales Register PDF.
+ * Screen 1: a drop zone for the Group Sales Register, PDF or spreadsheet.
  * The server parses and checks the file as soon as it lands (onchange); a
  * problem comes back as one sentence under the zone, a good file goes
  * straight on to the review screen.
@@ -65,8 +71,9 @@ export class PosImportDropzone extends Component {
         if (this.props.readonly) {
             return;
         }
-        if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
-            this.notification.add(_t("Drop the report as a PDF file."), { type: "danger" });
+        if (!ACCEPTED_RE.test(file.name)) {
+            this.notification.add(
+                _t("Drop the report as a PDF, .xls or .xlsx file."), { type: "danger" });
             return;
         }
         const record = this.props.record;
@@ -93,7 +100,7 @@ export class PosImportDropzone extends Component {
 
 registry.category("fields").add("pos_import_dropzone", {
     component: PosImportDropzone,
-    displayName: _t("PDF drop zone"),
+    displayName: _t("Sales register drop zone"),
     supportedTypes: ["binary"],
     extractProps: ({ attrs }) => ({ fileNameField: attrs.filename }),
 });

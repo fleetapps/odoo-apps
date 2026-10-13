@@ -80,7 +80,7 @@
                     <field name="can_undo" invisible="1"/>
                     <field name="invoice_id" invisible="1"/>
 
-                    <!-- Screen 1: drop the PDF -->
+                    <!-- Screen 1: drop the report -->
                     <div invisible="state != 'draft'" class="o_pos_import_upload">
                         <h1>Import a POS day</h1>
                         <field name="pdf_filename" invisible="1"/>
@@ -117,7 +117,7 @@
                         </div>
                         <field name="review_detail" widget="pos_import_review" options="{'section': 'detail'}" nolabel="1"/>
                         <notebook invisible="state == 'draft'">
-                            <page string="All PDF lines" name="lines">
+                            <page string="All report lines" name="lines">
                                 <field name="line_ids" nolabel="1" readonly="1">
                                     <list decoration-danger="match_state != 'ok'" decoration-warning="price_warning or rate_mismatch">
                                         <field name="currency_id" column_invisible="1"/>
@@ -171,7 +171,8 @@
         <field name="search_view_id" ref="pos_import_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Import a POS day</p>
-            <p>Drop the Group Sales Register PDF printed from the POS: one sale order and one
+            <p>Drop the Group Sales Register exported from the POS, as a PDF or a spreadsheet:
+               one sale order and one
                delivery per bar and one invoice are posted in a single step.</p>
         </field>
     </record>

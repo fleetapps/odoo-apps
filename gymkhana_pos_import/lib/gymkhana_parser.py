@@ -1,9 +1,16 @@
 """
 Parser for the Nairobi Gymkhana "Group Sales Register - [Group, Sub Group And
-Item Wise Sales Register [Summary]]" (Crystal Reports PDF).
+Item Wise Sales Register [Summary]]" (Crystal Reports).
+
+The same report comes out of the POS as a PDF or as a spreadsheet, and both
+are accepted: ``parse()`` looks at the file itself to tell which it is. A
+spreadsheet is laid out onto a synthetic page so that it arrives at the
+reading and checking step in exactly the shape a PDF page does -- one code
+path interprets both, so neither can drift away from the other's checks.
 
 Pure Python, no Odoo imports: it is unit-tested on its own and called from the
-Odoo import. Depends only on pdfplumber.
+Odoo import. Needs pdfplumber for PDFs, xlrd for .xls and openpyxl for .xlsx,
+each imported only when a file of that kind turns up.
 
 ``parse()`` returns a dict, or raises ``ParseError`` with a single plain-English
 sentence when the document cannot be trusted. Every figure is cross-checked
@@ -12,9 +19,10 @@ amount, discount and tax, which the report rounds column by column; zero
 tolerance on net), so a mis-read line can never pass silently.
 """
 import io
+import math
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 CENT = Decimal("0.01")
@@ -35,6 +43,25 @@ NUM_RE = re.compile(r"^-?[\d,]+\.\d{2}$|^-?\d+$")
 DATE_LINE_RE = re.compile(
     r"Date From:\s*(\d{2}/\d{2}/\d{4})\s+to\s+(\d{2}/\d{2}/\d{4})\s+"
     r"Outlet:\s*(.+?)(?:\s+Ignore Item Sales Rate)?\s*$")
+# "Printed Date : 09/28/2026 10:52:34" -- a date followed by a time, which the
+# period line above never is, so the two cannot be confused for one another.
+PRINTED_RE = re.compile(r"\b(\d{2}/\d{2}/\d{4})\s+\d{1,2}:\d{2}(?::\d{2})?\b")
+
+# The report writes its period one way in the PDF and the other way in the
+# spreadsheet: 09/27/2026 is 27 September in the PDF, 01/10/2026 is 1 October
+# in the sheet. Nothing in a single file distinguishes 01/10 from 10/01, so
+# the format is fixed per kind of export rather than guessed per file, and
+# the printed-on stamp is used to catch an export that changes its mind.
+PDF_DATE_FORMAT = "%m/%d/%Y"
+SHEET_DATE_FORMAT = "%d/%m/%Y"
+
+PDF_MAGIC = b"%PDF"
+OLE2_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # legacy .xls workbook
+ZIP_MAGIC = b"PK\x03\x04"  # .xlsx, and every other zip
+# Synthetic width of one spreadsheet column, in the points a PDF is measured
+# in. Only the ratios matter: it has to be comfortably more than the drift a
+# figure is allowed from its heading, so neighbouring columns stay distinct.
+CELL_WIDTH = 100.0
 MAX_COLUMN_DRIFT = 25    # pt between a figure's right edge and its header's
 ROW_MERGE_GAP = 2        # pt: words whose tops differ by less are one row
 
@@ -99,6 +126,173 @@ def _open(source):
                          "it could not be opened as a PDF.") from None
 
 
+# ----------------------------------------------------------------------------
+# Which kind of file this is, and reading a spreadsheet like a page
+# ----------------------------------------------------------------------------
+
+
+def _peek(source, size=8):
+    """The first bytes of ``source`` (path, bytes or file object), leaving a
+    file object where it was found."""
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source[:size])
+    if hasattr(source, "read"):
+        position = source.tell()
+        head = source.read(size)
+        source.seek(position)
+        return head
+    with open(source, "rb") as fh:
+        return fh.read(size)
+
+
+def _read_bytes(source):
+    if isinstance(source, (bytes, bytearray)):
+        return bytes(source)
+    if hasattr(source, "read"):
+        position = source.tell()
+        data = source.read()
+        source.seek(position)
+        return data
+    with open(source, "rb") as fh:
+        return fh.read()
+
+
+def sniff(source):
+    """'pdf', 'xls' or 'xlsx', from the file's own first bytes.
+
+    The extension is not consulted: the POS has been seen to hand out a file
+    named .xls that is really something else, and the user should be told what
+    is wrong with the file rather than what it is called.
+    """
+    head = _peek(source)
+    if head.startswith(PDF_MAGIC):
+        return "pdf"
+    if head.startswith(OLE2_MAGIC):
+        return "xls"
+    if head.startswith(ZIP_MAGIC):
+        return "xlsx"
+    if head.lstrip()[:1] == b"<":
+        raise ParseError("This file is a web page, not a Group Sales Register: "
+                         "export it from the POS as PDF, Excel or Excel 97.")
+    raise ParseError("This file isn't a Gymkhana Group Sales Register: it is "
+                     "not a PDF, an .xls or an .xlsx file.")
+
+
+def _cell_text(value):
+    """A spreadsheet cell as the report prints it.
+
+    Figures arrive from a sheet as numbers, so 760.0 has to be written '760'
+    and 4995.8 '4995.80' -- the two shapes a figure is allowed to take -- or a
+    total the report shows plainly would be read as not a number at all.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, date):  # datetime too: it is a date
+        return value.strftime(SHEET_DATE_FORMAT)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return str(value)
+        return str(int(value)) if value == int(value) else f"{value:.2f}"
+    return str(value).strip()
+
+
+def _row_words(top, cells):
+    """Lay one sheet row out on a synthetic page as PDF-shaped words.
+
+    Each cell takes its column's slice of the page and the words inside it
+    share that slice, so the last word of a cell always ends exactly on the
+    column's right edge. That is what makes a figure line up with its heading:
+    'Net. Amt.' ends on the right edge of its column, and so does every net
+    figure underneath it.
+    """
+    words = []
+    for index, text in cells:
+        parts = text.split()
+        if not parts:
+            continue
+        left = index * CELL_WIDTH
+        width = CELL_WIDTH / len(parts)
+        for position, part in enumerate(parts):
+            x0 = left + position * width
+            words.append({"text": part, "x0": x0, "x1": x0 + width, "top": float(top)})
+    return words
+
+
+def _xls_rows(source):
+    try:
+        import xlrd
+    except ImportError:
+        raise ParseError("This server cannot read .xls files: the xlrd library "
+                         "is not installed. Export the report as PDF or .xlsx.") from None
+    try:
+        book = xlrd.open_workbook(file_contents=_read_bytes(source))
+        sheet = book.sheet_by_index(0)
+    except Exception:
+        raise ParseError("This file isn't a Gymkhana Group Sales Register: it "
+                         "could not be opened as an Excel 97 workbook.") from None
+    rows = []
+    for r in range(sheet.nrows):
+        cells = []
+        for c in range(sheet.ncols):
+            if sheet.cell_type(r, c) == xlrd.XL_CELL_DATE:
+                value = xlrd.xldate_as_datetime(sheet.cell_value(r, c), book.datemode)
+            else:
+                value = sheet.cell_value(r, c)
+            text = _cell_text(value)
+            if text:
+                cells.append((c, text))
+        rows.append(cells)
+    return rows
+
+
+def _xlsx_rows(source):
+    try:
+        import openpyxl
+    except ImportError:
+        raise ParseError("This server cannot read .xlsx files: the openpyxl "
+                         "library is not installed. Export the report as a PDF.") from None
+    try:
+        book = openpyxl.load_workbook(io.BytesIO(_read_bytes(source)),
+                                      read_only=True, data_only=True)
+    except Exception:
+        raise ParseError("This file isn't a Gymkhana Group Sales Register: it "
+                         "could not be opened as an Excel workbook.") from None
+    try:
+        sheet = book.worksheets[0]
+        rows = []
+        for raw in sheet.iter_rows(values_only=True):
+            cells = []
+            for index, value in enumerate(raw):
+                text = _cell_text(value)
+                if text:
+                    cells.append((index, text))
+            rows.append(cells)
+        return rows
+    except Exception:
+        raise ParseError("This file isn't a Gymkhana Group Sales Register: its "
+                         "first sheet could not be read.") from None
+    finally:
+        book.close()
+
+
+def extract_sheet(source, kind):
+    """Read a spreadsheet into one page of visual rows.
+
+    The export is one continuous sheet -- the page furniture and the column
+    headings appear once, not once per printed page -- so it is read as a
+    single page however many pages it would print on.
+    """
+    rows = _xls_rows(source) if kind == "xls" else _xlsx_rows(source)
+    page = [words for words in (_row_words(top, cells) for top, cells in enumerate(rows)) if words]
+    if not page:
+        raise ParseError("This file isn't a Gymkhana Group Sales Register: the sheet is empty.")
+    return [page]
+
+
 def _rows(page):
     """Group words into visual rows by their 'top' coordinate."""
     words = page.extract_words(keep_blank_chars=False, use_text_flow=False)
@@ -151,8 +345,15 @@ def _require(values, cols, pno, line):
 
 
 def parse(source, suffixes=DEFAULT_SUFFIXES):
-    """Parse a Group Sales Register PDF (path, bytes or file object)."""
-    return interpret(extract(source), suffixes)
+    """Parse a Group Sales Register (path, bytes or file object).
+
+    PDF or spreadsheet, told apart by the file itself; both end up in
+    ``interpret()`` and face exactly the same checks.
+    """
+    kind = sniff(source)
+    if kind == "pdf":
+        return interpret(extract(source), suffixes, PDF_DATE_FORMAT)
+    return interpret(extract_sheet(source, kind), suffixes, SHEET_DATE_FORMAT)
 
 
 def extract(source):
@@ -167,7 +368,7 @@ def extract(source):
                              "its pages could not be read.") from None
 
 
-def interpret(pages, suffixes=DEFAULT_SUFFIXES):
+def interpret(pages, suffixes=DEFAULT_SUFFIXES, date_format=PDF_DATE_FORMAT):
     """Turn the rows produced by ``extract()`` into checked sales lines."""
     header = None
     groups = []
@@ -189,14 +390,21 @@ def interpret(pages, suffixes=DEFAULT_SUFFIXES):
 
         # ---- page furniture above the column header -------------------
         page_header = None
+        printed_on = None
         for row in rows[:hidx]:
             line = " ".join(w["text"] for w in row)
+            stamp = PRINTED_RE.search(line)
+            if stamp and printed_on is None:
+                try:
+                    printed_on = datetime.strptime(stamp.group(1), date_format).date()
+                except ValueError:
+                    printed_on = None
             m = DATE_LINE_RE.search(line)
             if m:
                 try:
                     page_header = {
-                        "date_from": datetime.strptime(m.group(1), "%m/%d/%Y").date(),
-                        "date_to": datetime.strptime(m.group(2), "%m/%d/%Y").date(),
+                        "date_from": datetime.strptime(m.group(1), date_format).date(),
+                        "date_to": datetime.strptime(m.group(2), date_format).date(),
                         "outlet": m.group(3).strip(),
                     }
                 except ValueError:
@@ -204,6 +412,18 @@ def interpret(pages, suffixes=DEFAULT_SUFFIXES):
                                      f"{m.group(2)}' is not a valid date.") from None
         if page_header is None:
             raise ParseError(f"Page {pno}: the 'Date From ... Outlet' line was not found.")
+        # Two things the report cannot truthfully say. Both are what a period
+        # read back to front looks like -- 01/10 to 31/10 read month-first
+        # gives an impossible month, and 02/10 printed for 01/10 read the
+        # wrong way round lands a month out -- so if the POS ever changes how
+        # it writes dates, the import stops instead of booking the wrong day.
+        if page_header["date_from"] > page_header["date_to"]:
+            raise ParseError(f"Page {pno}: the report covers {page_header['date_from']} "
+                             f"to {page_header['date_to']}, which ends before it starts.")
+        if printed_on is not None and printed_on < page_header["date_to"]:
+            raise ParseError(f"Page {pno}: the report covers up to {page_header['date_to']} "
+                             f"but says it was printed on {printed_on}, before the day it "
+                             f"reports. Check the date format of the POS export.")
         if header is None:
             header = page_header
         elif page_header != header:

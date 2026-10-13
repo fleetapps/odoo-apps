@@ -1,9 +1,14 @@
 # Gymkhana POS Day Import (Odoo 19)
 
-Posts one day of Nairobi Gymkhana bar sales from the POS **Group Sales Register**
-PDF: one sale order and one delivery per bar (stock taken from the bar's own
+Posts one day of Nairobi Gymkhana bar sales from the POS **Group Sales Register**:
+one sale order and one delivery per bar (stock taken from the bar's own
 location, kits exploded into their components) and **one invoice** whose total
-equals the PDF's grand total to the cent.
+equals the report's grand total to the cent.
+
+The POS exports that report as a **PDF**, an **.xls** or an **.xlsx**, and all
+three are read. Which one you dropped is decided by looking inside the file,
+not at its name, so a report saved under the wrong extension is still read (or
+refused with a reason) rather than silently mis-handled.
 
 It lives in **Bar Control**, next to the bars and their counts: *POS import →
 Import a day / Imported days*, and *Configuration → Bars / POS import settings
@@ -14,13 +19,14 @@ apps as usual.
 
 ## Flow
 
-1. **Drop the PDF.** It is read and checked at once; any problem comes back as one
+1. **Drop the file.** PDF or spreadsheet. It is read and checked at once; any
+   problem comes back as one
    sentence (e.g. *Sub group Beer/RTD/0.0/Cans(BE): lines add up to 56,216.18 but
    the report says 56,261.18.*).
 2. **Review.** Header (date · total · lines) and a card per bar; red banner for POS
    items without a product, fixed inline (every choice is saved to the item
-   mapping); *Money* tab (invoice total = PDF total, VAT and CTL, the rounding
-   difference with the PDF's tax for information); a tab per bar with the stock
+   mapping); *Money* tab (invoice total = report total, VAT and CTL, the rounding
+   difference with the report's tax for information); a tab per bar with the stock
    deducted (after kits) and the bar's stock before → after (orange when it goes
    negative, not blocking); the records to be created. **Post day** stays disabled
    while anything is red.
@@ -43,21 +49,39 @@ account · an unmatched item,
 or one mapped to an archived or other-company product · a date or file already
 imported.
 
-Warnings (not blocking): negative stock after the day · a PDF price different
+### The date on the report
+
+The two exports disagree about how they write it, and the difference is
+invisible on a date like `01/10/2026`:
+
+| export | `Date From: 09/27/2026` | `Date From: 01/10/2026` |
+|---|---|---|
+| PDF | month first → 27 Sep 2026 | 1 Oct would print as `10/01/2026` |
+| .xls / .xlsx | 27 could not be a month | day first → **1 Oct 2026** |
+
+So the format is fixed per kind of file rather than guessed per file
+(`PDF_DATE_FORMAT` / `SHEET_DATE_FORMAT` in the parser). Two things the report
+cannot truthfully say are refused, because both are what a period read back to
+front looks like: a period that ends before it starts, and a report whose
+*Printed Date* falls before the last day it covers. If the POS is ever
+reconfigured to write dates the other way, that is what stops the import
+instead of a day being posted to the wrong date.
+
+Warnings (not blocking): negative stock after the day · a price different
 from the Odoo list price · a configured bar with no sales · a quantity that
-doesn't agree with rate × quantity = amount on the PDF.
+doesn't agree with rate × quantity = amount on the report.
 
 ## Posting (one transaction, all or nothing)
 
 The import row is locked (`SELECT … FOR UPDATE`) and every check is re-run
-against the stored PDF. Then, per bar: a sale order (customer = the club,
+against the stored file. Then, per bar: a sale order (customer = the club,
 shipping = the bar's contact, date = business date, analytic = the bar,
 price = Net ÷ Qty with the configured taxes, plus a "POS rounding" line when a
 Net can't be split exactly). The deliveries are created with the bar's SAL
 operation type and the bar as source **before any reservation** (so kit
 components come off the bar too), validated and dated 23:59 Nairobi time. One
 invoice is created from the three orders, dated the business date, posted, and
-checked against the PDF total. Any error rolls everything back; the import stays
+checked against the report total. Any error rolls everything back; the import stays
 in review.
 
 Last, the day is recorded in Bar Control: every delivery carries the trading

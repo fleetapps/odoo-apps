@@ -43,17 +43,17 @@ class PosImport(models.Model):
         ('cancelled', "Cancelled"),
     ], default='draft', required=True, readonly=True, copy=False, tracking=True)
 
-    pdf_file = fields.Binary(string="Group Sales Register (PDF)", attachment=True, copy=False)
+    pdf_file = fields.Binary(string="Group Sales Register", attachment=True, copy=False)
     pdf_filename = fields.Char(copy=False)
     file_hash = fields.Char(readonly=True, copy=False, index=True)
     parse_error = fields.Char(readonly=True, copy=False)
 
     business_date = fields.Date(readonly=True, copy=False, index=True, tracking=True)
     outlet = fields.Char(readonly=True, copy=False)
-    pdf_amount = fields.Monetary(string="PDF Amount excl. Tax", readonly=True, copy=False)
-    pdf_tax = fields.Monetary(string="PDF Tax", readonly=True, copy=False)
-    pdf_net = fields.Monetary(string="PDF Grand Total", readonly=True, copy=False, tracking=True)
-    pdf_line_count = fields.Integer(string="PDF Lines", readonly=True, copy=False)
+    pdf_amount = fields.Monetary(string="Report Amount excl. Tax", readonly=True, copy=False)
+    pdf_tax = fields.Monetary(string="Report Tax", readonly=True, copy=False)
+    pdf_net = fields.Monetary(string="Report Grand Total", readonly=True, copy=False, tracking=True)
+    pdf_line_count = fields.Integer(string="Report Lines", readonly=True, copy=False)
 
     line_ids = fields.One2many('pos.import.line', 'import_id', string="Lines", copy=False)
     unmatched_line_ids = fields.One2many(
@@ -129,7 +129,7 @@ class PosImport(models.Model):
             imp.can_post = imp.state == 'review' and not summary['blocking'] and not imp.unmatched_count
 
     # ------------------------------------------------------------------
-    # Screen 1: drop the PDF
+    # Screen 1: drop the report
     # ------------------------------------------------------------------
 
     @api.onchange('pdf_file')
@@ -151,7 +151,7 @@ class PosImport(models.Model):
         if self.state != 'draft':
             raise UserError(self.env._("This import has already been read."))
         if not self.pdf_file:
-            raise UserError(self.env._("Drop the day's Group Sales Register PDF first."))
+            raise UserError(self.env._("Drop the day's Group Sales Register first."))
         data = base64.b64decode(self.pdf_file)
         result, file_hash = self._pos_parse_and_check(data)
         bars = self._pos_bars()
@@ -211,7 +211,7 @@ class PosImport(models.Model):
         return {bar.pos_group_name: bar for bar in self._pos_bar_records()}
 
     def _pos_parse_and_check(self, data):
-        """Parse the PDF and apply every hard block that doesn't need the item
+        """Parse the report and apply every hard block that doesn't need the item
         mapping. Raises UserError with a single plain-English sentence."""
         company = self.company_id or self.env.company
         bars = self._pos_bars()
@@ -300,7 +300,7 @@ class PosImport(models.Model):
         if not taxes:
             issues.append(self.env._("Set the POS taxes in Settings."))
         elif not all(taxes.mapped('price_include')):
-            issues.append(self.env._("The POS taxes must be price-included: the PDF's net amounts include tax."))
+            issues.append(self.env._("The POS taxes must be price-included: the report's net amounts include tax."))
         elif any(t.company_id != company or t.type_tax_use != 'sale' for t in taxes):
             issues.append(self.env._("The POS taxes must be sales taxes of %(company)s.", company=company.name))
         if not company.pos_import_rounding_product_id:
@@ -447,7 +447,7 @@ class PosImport(models.Model):
         rate_rows = self.line_ids.filtered('rate_mismatch')
         if rate_rows and self.state == 'review':
             warnings.append(self.env._(
-                "Check the quantity of %(items)s: rate x quantity doesn't match the amount on the PDF.",
+                "Check the quantity of %(items)s: rate x quantity doesn't match the amount on the report.",
                 items=", ".join(f"{l.pos_name} ({l.bar_id.name})" for l in rate_rows)))
 
         # ---- money -----------------------------------------------------------
@@ -473,7 +473,7 @@ class PosImport(models.Model):
             })
             if not money_data['total_matches'] and self.state == 'review':
                 blocking.append(self.env._(
-                    "The invoice would total %(odoo)s but the PDF says %(pdf)s.",
+                    "The invoice would total %(odoo)s but the report says %(pdf)s.",
                     odoo=money(totals['total_amount_currency']), pdf=money(self.pdf_net)))
         money_data['bars'] = [{'name': bar.name, 'net': money(sum(lines.mapped('net'))),
                                'untaxed': money(sum(lines.mapped('amount'))), 'lines': len(lines),
@@ -548,7 +548,7 @@ class PosImport(models.Model):
         return True
 
     def _pos_check_before_posting(self):
-        """Re-validate everything at the last moment, from the stored PDF."""
+        """Re-validate everything at the last moment, from the stored file."""
         if self.unmatched_count:
             raise UserError(self.env._("%(count)s line(s) are not matched to a usable product.", count=self.unmatched_count))
         issues = self._pos_blocking_issues()
@@ -556,14 +556,14 @@ class PosImport(models.Model):
             raise UserError(issues[0])
         result, file_hash = self._pos_parse_and_check(base64.b64decode(self.pdf_file))
         if file_hash != self.file_hash:
-            raise UserError(self.env._("The stored PDF has changed since it was reviewed."))
+            raise UserError(self.env._("The stored file has changed since it was reviewed."))
         pdf_lines = [(ln['key'], ln['group'], dec(ln['qty']), dec(ln['net'])) for ln in result['lines']]
         our_lines = [(l.pos_key, l.group_name, dec(l.qty), dec(l.net)) for l in self.line_ids.sorted('sequence')]
         if pdf_lines != our_lines:
-            raise UserError(self.env._("The import lines no longer match the PDF; delete this import and drop the PDF again."))
+            raise UserError(self.env._("The import lines no longer match the report; delete this import and drop the file again."))
         if any(bar.pos_group_name != group for bar, group in
                ((l.bar_id, l.group_name) for l in self.line_ids)):
-            raise UserError(self.env._("The bar configuration changed since the PDF was read; delete this import and drop the PDF again."))
+            raise UserError(self.env._("The bar configuration changed since the report was read; delete this import and drop the file again."))
 
     def _pos_business_datetime(self):
         """Business date 23:59 Nairobi time, as a naive UTC datetime."""
@@ -577,13 +577,13 @@ class PosImport(models.Model):
         cents over every line it rounds together: on the one invoice of the day
         that would move a cent or two from one bar to another. Rounding each bar
         on its own keeps every bar's invoiced total (and so its analytic split)
-        equal to its group total on the PDF, and the invoice equal to the grand total."""
+        equal to its group total on the report, and the invoice equal to the grand total."""
         return f"odin_bar,{bar.id}"
 
     def _pos_order_line_values(self, bar, lines):
         """Order lines of one bar: price_unit = Net / Qty (tax included), plus a
         "POS rounding" line when a Net can't be split exactly, so the order
-        still totals the PDF's net to the cent."""
+        still totals the report's net to the cent."""
         company = self.company_id
         precision = self.env['decimal.precision'].precision_get('Product Price')
         quantum = Decimal(1).scaleb(-precision)
@@ -608,7 +608,7 @@ class PosImport(models.Model):
         day = self.business_date
         by_bar = self._pos_lines_by_bar()
 
-        # 2. One sale order per bar present in the PDF. Prices come from the PDF, so a
+        # 2. One sale order per bar present in the report. Prices come from it, so a
         #    pricelist is only kept when it is in the company currency (the order's
         #    currency follows its pricelist).
         pricelist = partner.with_company(company).property_product_pricelist
@@ -648,7 +648,7 @@ class PosImport(models.Model):
                 raise UserError(self.env._("The order for %(bar)s is not in %(currency)s; check the customer's pricelist.",
                                            bar=order.pos_import_bar_id.name, currency=company.currency_id.name))
             if order.currency_id.compare_amounts(order.amount_total, float(group_net)):
-                raise UserError(self.env._("The %(bar)s order totals %(odoo)s but the PDF says %(pdf)s.",
+                raise UserError(self.env._("The %(bar)s order totals %(odoo)s but the report says %(pdf)s.",
                                            bar=order.pos_import_bar_id.name, odoo=order.amount_total, pdf=group_net))
 
         # 3. Confirm. The deliveries are born with the bar's SAL operation type
@@ -697,7 +697,7 @@ class PosImport(models.Model):
         if invoice.state != 'posted':
             raise UserError(self.env._("The invoice could not be posted."))
         if invoice.currency_id.compare_amounts(invoice.amount_total, self.pdf_net):
-            raise UserError(self.env._("The invoice totals %(odoo)s but the PDF says %(pdf)s; nothing was posted.",
+            raise UserError(self.env._("The invoice totals %(odoo)s but the report says %(pdf)s; nothing was posted.",
                                        odoo=invoice.amount_total, pdf=self.pdf_net))
         if invoice.invoice_date != day or invoice.date != day:
             raise UserError(self.env._("The invoice could not be dated %(day)s.", day=format_date(self.env, day)))

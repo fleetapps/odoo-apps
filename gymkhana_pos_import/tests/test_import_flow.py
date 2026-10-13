@@ -416,13 +416,13 @@ class TestPostDay(PosImportCommon):
             imp.action_post()
         self.assertEqual(len(imp.order_ids), 3)
 
-    def test_stored_pdf_must_match_lines(self):
+    def test_stored_file_must_match_lines(self):
         imp = self._upload()
         self._fix_unmatched(imp)
         imp.line_ids[0].with_context(pos_import_system=True).qty = 99
         with self.assertRaises(UserError) as cm:
             imp.action_post()
-        self.assertIn("no longer match the PDF", cm.exception.args[0])
+        self.assertIn("no longer match the report", cm.exception.args[0])
 
     def test_undo(self):
         before = self._stock_snapshot()
