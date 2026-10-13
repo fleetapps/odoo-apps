@@ -193,6 +193,88 @@ class QuoteComparison(models.Model):
         details += [None] * padding
         return [details[i:i + columns] for i in range(0, len(details), columns)]
 
+    # -- who is covered ---------------------------------------------------
+
+    member_ids = fields.One2many(
+        "odin.quote.comparison.member", "comparison_id", string="Members",
+        help="Who the comparison is priced for. Set by the household builder.")
+
+    def _apply_members_to(self, order):
+        """Point a quotation's core cover at the right people.
+
+        A template carries the 21-40 band for principal, spouse and child,
+        because that is the commonest family. Quoting anyone else means putting
+        the line on the product for their band -- the bands live in the product
+        names and nowhere else -- and setting the child line to how many there
+        are. Returns what the agent should be told.
+        """
+        self.ensure_one()
+        import re
+        band_in_name = re.compile(r"\((?:Day 1 to 20|\d{2}–\d{2}) Years\)")
+        notes = []
+        plan_name = order.name
+        principal = self.member_ids.filtered(lambda m: m.role == "principal")[:1]
+        spouse = self.member_ids.filtered(lambda m: m.role == "spouse")[:1]
+        children = self.member_ids.filtered(lambda m: m.role == "child")
+
+        def retarget(line, member):
+            """Swap the line onto the product for this member's band."""
+            name = line.product_id.name or ""
+            if not member.band or not band_in_name.search(name):
+                return True  # nothing banded to change; leave it alone
+            wanted = band_in_name.sub("(%s)" % member.band, name)
+            if wanted == name:
+                return True
+            product = self.env["product.product"].search(
+                [("name", "=", wanted)], limit=1)
+            if not product:
+                notes.append(_(
+                    "%(plan)s has no rate for %(who)s at %(age)s (%(band)s), so that "
+                    "line is left as it was -- the insurer does not price that age on "
+                    "this cover.",
+                    plan=plan_name, who=member.name, age=member.age, band=member.band))
+                return False
+            line.write({"product_id": product.id, "price_unit": product.list_price,
+                        "tax_ids": [(6, 0, product.taxes_id.ids)]})
+            return True
+
+        for line in order.order_line.filtered(lambda sol: sol.product_id):
+            name = line.product_id.name or ""
+            if "Principal" in name:
+                if principal:
+                    retarget(line, principal)
+                    line.product_uom_qty = 1
+                else:
+                    line.product_uom_qty = 0
+            elif "Spouse" in name:
+                if spouse:
+                    retarget(line, spouse)
+                    line.product_uom_qty = 1
+                else:
+                    line.product_uom_qty = 0
+            elif "Child" in name and line.product_uom_qty:
+                line.product_uom_qty = len(children)
+
+        for member in self.member_ids.filtered(lambda m: not m.covered):
+            notes.append("%s (%s): %s" % (member.name, member.age, member.reason))
+        return list(dict.fromkeys(notes))
+
+    def action_build_from_members(self):
+        """Open the household builder for this comparison."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Quote a household"),
+            "res_model": "odin.quote.member.builder",
+            "views": [(False, "form")],
+            "target": "new",
+            "context": {
+                "default_comparison_id": self.id,
+                "default_partner_id": self.partner_id.id,
+                "default_template_ids": [(6, 0, self.template_ids.ids)],
+            },
+        }
+
     # -- optional benefits ------------------------------------------------
 
     def _addon_rows(self):

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_member_builder_form" model="ir.ui.view">
+        <field name="name">odin.quote.member.builder.form</field>
+        <field name="model">odin.quote.member.builder</field>
+        <field name="arch" type="xml">
+            <form string="Quote a household">
+                <field name="comparison_id" invisible="1"/>
+                <group>
+                    <field name="partner_id" options="{'no_create': True}"/>
+                    <field name="roster" placeholder="26 wife, 28 me, 38 mum, 40 dad, 13 brother, 10 brother, 4 brother"/>
+                    <field name="template_ids" widget="many2many_tags"
+                           options="{'no_create': True}"
+                           placeholder="e.g. APA Jamii Plus – Family Cover (KES 1,000,000)"/>
+                </group>
+                <!-- Shown as it is typed, so a wrong role is caught before pricing. -->
+                <field name="line_ids" nolabel="1" invisible="not line_ids">
+                    <list editable="bottom">
+                        <field name="sequence" widget="handle"/>
+                        <field name="name"/>
+                        <field name="age"/>
+                        <field name="role"/>
+                        <field name="note" string="Priced as" readonly="1"/>
+                    </list>
+                </field>
+                <div class="text-muted mt-2" invisible="not line_ids">
+                    <field name="summary" readonly="1" nolabel="1"/>.
+                    An adult who is neither the principal nor the spouse has no rate on
+                    these cards &#8212; they are listed so you can tell the client the
+                    insurer quotes them separately.
+                </div>
+                <footer>
+                    <button name="action_build" type="object" string="Price the plans"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quote_member_builder" model="ir.actions.act_window">
+        <field name="name">Quote a household</field>
+        <field name="res_model">odin.quote.member.builder</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_quote_member_builder" name="Quote a household"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_quote_member_builder" sequence="15"/>
+</odoo>
