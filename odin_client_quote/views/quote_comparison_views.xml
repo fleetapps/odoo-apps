@@ -28,6 +28,10 @@
                             string="Create quotations" class="btn-primary"
                             invisible="not template_ids"
                             help="Creates one quotation per selected plan for this customer."/>
+                    <button name="action_pick_addons" type="object"
+                            string="Optional benefits"
+                            invisible="not plan_ids"
+                            help="Add or remove optional cover on every plan at once."/>
                     <button name="action_share_whatsapp" type="object"
                             string="Share on WhatsApp" class="btn-primary"
                             invisible="not plan_ids"/>
@@ -70,9 +74,15 @@
                                 One quotation is created per plan for this customer and
                                 compared here &#8212; you do not need to prepare them first.
                             </div>
+                            <!-- Not editable inline: order_id is required, and a
+                                 half-filled row here made the comparison
+                                 impossible to leave. Adding one opens a dialog,
+                                 which can be cancelled without dirtying the
+                                 record; the rows normally come from Create
+                                 quotations anyway. Dragging to reorder still works. -->
                             <field name="plan_ids"
                                    context="{'default_comparison_id': id}">
-                                <list editable="bottom">
+                                <list>
                                     <field name="sequence" widget="handle"/>
                                     <field name="order_id"
                                            domain="[('partner_id', '=', parent.partner_id)]"

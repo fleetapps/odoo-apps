@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 #: Studio/optional fields the client reports will show in the "details" strip
 #: when the database happens to have them. Absent fields are skipped.
@@ -57,6 +57,15 @@ class SaleOrder(models.Model):
 
     # -- structure --------------------------------------------------------
 
+    #: headings that collect fees and terms rather than cover
+    NOT_A_BENEFIT = frozenset({"statutory_charges", "payment_options"})
+
+    @staticmethod
+    def _is_charge(line):
+        """A statutory fee or financing cost, which does belong under them."""
+        code = line.product_id.default_code or ""
+        return code.startswith("FEE") or line.product_id.odin_instalment_interest
+
     def _client_sections(self):
         """The quotation grouped the way a client reads it.
 
@@ -68,6 +77,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         sections = []
         current = None
+        other = None
 
         def start(label, title="", limit=0.0, key=""):
             section = {
@@ -104,6 +114,17 @@ class SaleOrder(models.Model):
             else:
                 if current is None:
                     current = start("Cover")
+                # A cover line added by hand goes to the end of the order, so it
+                # lands under whatever heading happens to precede it -- in
+                # practice Statutory charges or Payment options, where its
+                # premium silently inflates a section of fees and never gets a
+                # row of its own. Neither of those is a benefit, so a line that
+                # is not itself a charge belongs in its own row instead.
+                target = current
+                if current["key"] in self.NOT_A_BENEFIT and not self._is_charge(line):
+                    if other is None:
+                        other = start(_("Other benefits"), key="other_benefits")
+                    target = other
                 entry = {"line": line, "name": line.client_name}
                 # Quantity decides, not the section's is_optional flag. A
                 # section of add-ons stays flagged optional for the portal even
@@ -111,10 +132,10 @@ class SaleOrder(models.Model):
                 # is charged on the order -- so it belongs in the cover table,
                 # or the cover rows stop adding up to the total.
                 if line.product_uom_qty:
-                    current["included"].append(entry)
-                    current["amount"] += line.price_subtotal
+                    target["included"].append(entry)
+                    target["amount"] += line.price_subtotal
                 else:
-                    current["optional"].append(entry)
+                    target["optional"].append(entry)
 
         return [s for s in sections if s["included"] or s["optional"] or s["notes"]]
 

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_addon_form" model="ir.ui.view">
+        <field name="name">odin.quote.addon.form</field>
+        <field name="model">odin.quote.addon</field>
+        <field name="arch" type="xml">
+            <form string="Optional benefits">
+                <field name="comparison_id" invisible="1"/>
+                <div class="alert alert-info" role="status">
+                    Tick what the client wants on each plan. These options are already in
+                    the quotations at nil quantity, so this only sets quantities &#8212; the
+                    comparison, its totals and the PDF follow on their own.
+                </div>
+                <!-- Ordered benefit, then plan, then premium, so the options for one
+                     benefit sit together and the cheapest tier reads first. A one2many
+                     cannot be grouped inside a form, so the ordering does that job. -->
+                <field name="line_ids" nolabel="1">
+                    <list editable="bottom" create="0" delete="0"
+                          decoration-muted="not available">
+                        <field name="benefit_label"/>
+                        <field name="plan_name"/>
+                        <field name="option_name"/>
+                        <field name="cover_limit" optional="show" sum="  "/>
+                        <field name="price" sum="Premium selected"/>
+                        <field name="included" widget="boolean_toggle"/>
+                        <field name="available" column_invisible="True"/>
+                        <field name="currency_id" column_invisible="True"/>
+                        <field name="benefit_sequence" column_invisible="True"/>
+                        <field name="plan_sequence" column_invisible="True"/>
+                        <field name="order_line_id" column_invisible="True"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_apply" type="object" string="Apply"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"
+                            data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

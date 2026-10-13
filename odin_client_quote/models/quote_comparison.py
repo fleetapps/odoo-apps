@@ -186,12 +186,80 @@ class QuoteComparison(models.Model):
     def _detail_rows(self, columns=4):
         """The details strip, padded into rows of ``columns`` equal cells."""
         self.ensure_one()
-        details = list(self.detail_ids)
+        details = [d for d in self.detail_ids if (d.label or "").strip()]
         if not details:
             return []
         padding = (columns - len(details) % columns) % columns
         details += [None] * padding
         return [details[i:i + columns] for i in range(0, len(details), columns)]
+
+    # -- optional benefits ------------------------------------------------
+
+    def _addon_rows(self):
+        """Every optional option the plans offer, as the picker lists them.
+
+        A benefit counts as optional when some plan leaves it at zero quantity:
+        that is what an add-on looks like in these rate cards. A plan that has
+        no such section gets one unavailable row, so the agent can see the
+        benefit is not sold on it rather than wondering where it went.
+        """
+        self.ensure_one()
+        plans = self.plan_ids.sorted(lambda plan: (plan.sequence, plan.id))
+        by_plan = {}
+        benefits = {}
+        for index, plan in enumerate(plans):
+            sections = {}
+            for section in plan.order_id._client_sections():
+                lines = [entry["line"] for entry in section["included"] + section["optional"]
+                         if entry.get("line")]
+                if not lines:
+                    continue
+                sections[section["key"]] = (section, lines)
+                if any(not line.product_uom_qty for line in lines):
+                    benefits.setdefault(section["key"], (section["label"], len(benefits)))
+            by_plan[plan.id] = sections
+
+        rows = []
+        for key, (label, order) in benefits.items():
+            for index, plan in enumerate(plans):
+                section, lines = by_plan[plan.id].get(key, (None, []))
+                heading = plan.name or plan.subtitle or plan.order_id.name
+                if not lines:
+                    rows.append({
+                        "benefit_label": label, "benefit_sequence": order,
+                        "plan_name": heading, "plan_sequence": index,
+                        "option_name": _("Not offered on this plan"),
+                        "available": False, "included": False,
+                        "currency_id": self.currency_id.id,
+                    })
+                    continue
+                for line in lines:
+                    rows.append({
+                        "benefit_label": label, "benefit_sequence": order,
+                        "plan_name": heading, "plan_sequence": index,
+                        "order_line_id": line.id,
+                        "option_name": line.client_name,
+                        "cover_limit": section["limit"],
+                        "price": line.price_unit,
+                        "currency_id": line.currency_id.id or self.currency_id.id,
+                        "available": True,
+                        "included": bool(line.product_uom_qty),
+                    })
+        return rows
+
+    def action_pick_addons(self):
+        """Open the benefit picker for this comparison."""
+        self.ensure_one()
+        if not self.plan_ids:
+            raise UserError(_("Create the quotations first: there are no plans to add to."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Optional benefits"),
+            "res_model": "odin.quote.addon",
+            "views": [(False, "form")],
+            "target": "new",
+            "context": {"default_comparison_id": self.id},
+        }
 
     # -- actions ----------------------------------------------------------
 
@@ -531,5 +599,9 @@ class QuoteComparisonDetail(models.Model):
         "odin.quote.comparison", required=True, ondelete="cascade", index=True
     )
     sequence = fields.Integer(default=10)
-    label = fields.Char(required=True)
+    # Not required: it is typed inline, and a half-finished row with a
+    # required field makes the whole comparison impossible to leave -- the
+    # error even names a field on a tab the user is not looking at. Blank rows
+    # are simply not printed.
+    label = fields.Char()
     value = fields.Char()
