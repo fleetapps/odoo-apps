@@ -71,7 +71,7 @@
                             Never closed:
                             <t t-foreach="data.closing.missed" t-as="day" t-key="day.date">
                                 <button class="btn btn-link p-0 align-baseline o_bcd_missed_day"
-                                        t-on-click="() => this.open('count', { date_from: day.date, date_to: day.date, bar_id: false })"
+                                        t-on-click="() => this.openDesk(day.date)"
                                         t-esc="day.label"/><t t-if="!day_last">, </t>
                             </t>
                         </div>

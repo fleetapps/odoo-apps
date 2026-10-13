@@ -85,8 +85,10 @@ sheet**, in three steps that each show whether they are done:
 minutes without a touch the Desk locks itself.
 
 **The day sheet.** It opens on yesterday (*Closing Sun 27 Sep*); the day
-chips on top reach the three days before and today. A tick marks an approved
-day. **Stock levels** and **Supplier delivery** sit in the bar at the bottom.
+chips on top show four days at a time, the one being worked on second from
+the right. The arrows either side step a day back or forward, as far back as
+the club has traded -- a day missed at the time can still be closed -- and
+stop at today, which has not finished. A tick marks an approved day. **Stock levels** and **Supplier delivery** sit in the bar at the bottom.
 
 **1. Log a move** (from the paper sheet)
 1. **From** starts on Main Store; **To**: another location, or *Out of the
@@ -159,9 +161,10 @@ TOTALS and BULK AND REORDER sheets.
   (MS · BE · BB · MB), over the last 3, 7 or 30 trading days; the choice is
   remembered. Every figure opens the list behind it. Values are at cost.
   1. **Closing**: a grid of locations by days. ✓ approved, a number to
-     explain, counted, counting, not counted, ✗ never closed (older than the
-     Desk's three days and not approved), **P** POS sales missing. Above it,
-     what is left on the next day to close, with *Open in Bar Desk* on it.
+     explain, counted, counting, not counted, ✗ never closed (left more than
+     three days and not approved), **P** POS sales missing. Every day in the
+     grid opens in the Desk, the never-closed ones included. Above it, what
+     is left on the next day to close, with *Open in Bar Desk* on it.
   2. **Locations**: per location, what was short (and as a share of what it
      sold), the top reason, sales or deliveries received, moves in and out,
      stock value and its last count. Tap a card to see only that location.
@@ -171,7 +174,16 @@ TOTALS and BULK AND REORDER sheets.
      stock value per location.
   5. **Out of the club**: Roma, Event, Unpaid bill, and unpaid bills not
      billed to the member yet. Moves and sales run to today; closing and
-     variance stop at yesterday, the last day that can be closed.
+     variance stop at yesterday, the last day that has finished trading.
+
+A closing count started today for a day long past is worth one caution: the
+day's POS sales and the moves logged on the Desk are placed by trading day
+and so are always right, but movements that carry no trading day -- a
+supplier delivery received in the backoffice, a transfer booked in Odoo, a
+stock adjustment -- count up to the moment the count is submitted. Reopening
+a day whose counts were taken at the time is exact, since each count keeps
+the moment it was submitted. Counting a long-past day from scratch is not:
+expected is measured against the shelf as it stands now.
 - **Count approvals**: one count at a time, with counted, expected,
   difference, value and reason (editable while waiting). **Ask for a
   recount** marks it on the Desk.

@@ -52,9 +52,7 @@ export class HomeScreen extends Component {
 
     /** "Today", else the weekday: the top line of a day chip. */
     dayName(day) {
-        return day.date === this.home.days[this.home.days.length - 1].date
-            ? "Today"
-            : WEEKDAYS[this.date(day).getDay()];
+        return day.date === this.home.today ? "Today" : WEEKDAYS[this.date(day).getDay()];
     }
 
     /** "29 Sep": the bottom line of a day chip. */
@@ -66,6 +64,26 @@ export class HomeScreen extends Component {
     date(day) {
         const [year, month, date] = day.date.split("-").map(Number);
         return new Date(year, month - 1, date);
+    }
+
+    /** Today is as far forward as the sheet goes: tomorrow has not traded. */
+    get canGoForward() {
+        return this.home.day.date < this.home.today;
+    }
+
+    /** Step the day on screen, which slides the strip with it. */
+    stepDay(delta) {
+        const date = this.date(this.home.day);
+        date.setDate(date.getDate() + delta);
+        const iso = [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0"),
+        ].join("-");
+        if (iso > this.home.today) {
+            return;
+        }
+        return this.setDay(iso);
     }
 
     get home() {

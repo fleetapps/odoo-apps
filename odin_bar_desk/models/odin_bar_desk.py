@@ -39,8 +39,13 @@ TOKEN_SCOPE = "odin_bar_desk.staff"
 TOKEN_HOURS = 16
 PIN_MAX_FAILURES = 5
 PIN_LOCK_MINUTES = 5
-# Closing counts can be taken for today and this many trading days back.
-DAYS_BACK = 3
+# A trading day still unclosed this many days later is flagged overdue on the
+# Bar Control dashboard. A warning, not a limit: any past day can be worked on.
+DAYS_OVERDUE = 3
+# Trading days the day sheet shows side by side. The day being worked on sits
+# second from the right, so today stays one tap away and the arrows step one
+# day at a time without the window ever running past it.
+DAYS_SHOWN = 4
 MOST_USED_DAYS = 30
 MOST_USED_LIMIT = 12
 LIST_LIMIT = 50
@@ -407,12 +412,16 @@ class OdinBarDesk(models.AbstractModel):
     @api.model
     def _desk_day(self, bar, business_date=False):
         """The trading day to work on: ``business_date``, by default yesterday,
-        since the day is closed the next morning."""
+        since the day is closed the next morning.
+
+        Any past day may be opened -- a day missed at the time is still worth
+        closing, and the Desk is where that is done. Only the future is
+        refused: it has not traded yet, so there is nothing to count."""
         today = bar._business_date()
         day = fields.Date.to_date(business_date) if business_date else today - timedelta(days=1)
-        if not today - timedelta(days=DAYS_BACK) <= day <= today:
+        if day > today:
             raise UserError(
-                _("Only the last %(days)s trading days and today can be worked on.", days=DAYS_BACK)
+                _("%(day)s has not traded yet.", day=self._desk_day_label(day))
             )
         return day
 
@@ -554,9 +563,13 @@ class OdinBarDesk(models.AbstractModel):
         elif not self._desk_is_manager():
             blocked = _("A manager approves the day.")
         store = bars.filtered(lambda other: other.kind == "store")[:1]
+        # The strip of days around the one on screen, which sits second from
+        # the right: stepping forward reaches today, and the window stops there.
+        last = min(today, day + timedelta(days=1))
         days = []
-        for back in range(DAYS_BACK, -1, -1):
-            other_day = today - timedelta(days=back)
+        for offset in range(DAYS_SHOWN - 1, -1, -1):
+            other_day = last - timedelta(days=offset)
+            back = (today - other_day).days
             label = {0: _("Today"), 1: _("Yesterday")}.get(back) or self._desk_day_label(other_day)
             days.append(
                 {
@@ -576,6 +589,7 @@ class OdinBarDesk(models.AbstractModel):
                 "is_today": day == today,
             },
             "days": days,
+            "today": fields.Date.to_string(today),
             "locations": locations,
             "moves": self._desk_day_moves(bar, day),
             "counted": len(locations) - len(not_counted),

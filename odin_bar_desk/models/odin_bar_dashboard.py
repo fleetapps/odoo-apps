@@ -5,7 +5,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 from odoo.tools import SQL
 
-from .odin_bar_desk import DAYS_BACK
+from .odin_bar_desk import DAYS_OVERDUE
 
 PERIODS = (3, 7, 30)
 TOP_PRODUCTS = 5
@@ -267,7 +267,10 @@ class OdinBarDashboard(models.AbstractModel):
     @api.model
     def _closing(self, all_bars, bars, days, today):
         Desk = self.env["odin.bar.desk"]
-        reach = today - timedelta(days=DAYS_BACK)
+        # Overdue, not out of bounds: the Desk opens any finished day, so the
+        # grid stays clickable all the way back. This only marks the ones that
+        # have been left too long.
+        overdue_before = today - timedelta(days=DAYS_OVERDUE)
         counts = self._counts(all_bars, days[0], days[-1])
         activity = self._activity(all_bars, days)
         # POS sales for the day in progress are not late, so it is not asked
@@ -315,7 +318,7 @@ class OdinBarDashboard(models.AbstractModel):
                 state = "before"
             elif all(cells[(bar.id, day)]["state"] == "approved" for bar in all_bars):
                 state = "approved"
-            elif day < reach:
+            elif day < overdue_before:
                 state = "missed"
             else:
                 state = "open"
@@ -326,7 +329,8 @@ class OdinBarDashboard(models.AbstractModel):
                     "weekday": day.strftime("%a"),
                     "day": day.day,
                     "state": state,
-                    "in_reach": day >= reach,
+                    # Every finished day can be opened in the Desk.
+                    "in_reach": True,
                 }
             )
         rows = []
@@ -346,7 +350,7 @@ class OdinBarDashboard(models.AbstractModel):
                     # is still pending a count. Never "closed".
                 row_cells.append(cell)
             rows.append({"bar": self._bar_info(bar), "cells": row_cells})
-        # The day that needs the controller: the oldest open day the Desk still reaches.
+        # The day that needs the controller first: the oldest one still open.
         focus = False
         for day, day_row in zip(grid_days, day_rows, strict=True):
             if day_row["state"] == "open":

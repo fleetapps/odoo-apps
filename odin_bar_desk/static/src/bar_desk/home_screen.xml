@@ -17,18 +17,29 @@
     <t t-name="odin_bar_desk.HomeScreen">
         <div class="o_bar_desk_body">
             <t t-if="home">
-                <div class="o_bar_desk_days" role="tablist" aria-label="Trading day">
-                    <button t-foreach="home.days" t-as="day" t-key="day.date" role="tab"
-                            class="btn o_bar_desk_day"
-                            t-att-class="{'o_active': day.date === home.day.date}"
-                            t-att-aria-selected="day.date === home.day.date"
-                            t-on-click="() => this.setDay(day.date)">
-                        <span class="o_bar_desk_day_top">
-                            <t t-esc="dayName(day)"/>
-                            <i t-if="day.state === 'approved'" class="fa fa-check-circle text-success ms-1" aria-label="Approved"/>
-                            <i t-elif="day.state === 'open'" class="fa fa-circle-o text-warning ms-1" aria-label="Started"/>
-                        </span>
-                        <span class="o_bar_desk_day_date" t-esc="dayDate(day)"/>
+                <div class="o_bar_desk_days_bar">
+                    <button class="btn o_bar_desk_day_step" title="Earlier days"
+                            aria-label="Earlier days" t-on-click="() => this.stepDay(-1)">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <div class="o_bar_desk_days" role="tablist" aria-label="Trading day">
+                        <button t-foreach="home.days" t-as="day" t-key="day.date" role="tab"
+                                class="btn o_bar_desk_day"
+                                t-att-class="{'o_active': day.date === home.day.date}"
+                                t-att-aria-selected="day.date === home.day.date"
+                                t-on-click="() => this.setDay(day.date)">
+                            <span class="o_bar_desk_day_top">
+                                <t t-esc="dayName(day)"/>
+                                <i t-if="day.state === 'approved'" class="fa fa-check-circle text-success ms-1" aria-label="Approved"/>
+                                <i t-elif="day.state === 'open'" class="fa fa-circle-o text-warning ms-1" aria-label="Started"/>
+                            </span>
+                            <span class="o_bar_desk_day_date" t-esc="dayDate(day)"/>
+                        </button>
+                    </div>
+                    <button class="btn o_bar_desk_day_step" title="Later days"
+                            aria-label="Later days" t-att-disabled="!canGoForward"
+                            t-on-click="() => this.stepDay(1)">
+                        <i class="fa fa-chevron-right"/>
                     </button>
                 </div>
                 <div t-if="home.approved" class="alert alert-success py-2" role="status">

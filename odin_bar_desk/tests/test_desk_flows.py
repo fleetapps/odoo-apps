@@ -228,6 +228,32 @@ class TestDeskFlows(BarDeskCase):
         self.assertIn("Banda Bar", home["approve_blocked"])
         self.assertEqual(home["store_id"], self.store.id)
 
+    def test_day_sheet_walks_back_past_the_strip(self):
+        """The arrows reach any day the club has traded, and the strip follows
+        the day on screen instead of being pinned to this week."""
+        old_day = "2026-08-14"  # six weeks back, far outside the four chips
+        with freeze_time("2026-09-28 07:00:00"):
+            home = self.desk(self.controller).desk_home(self.store.id, self.token, business_date=old_day)
+        self.assertEqual(home["day"]["date"], old_day)
+        self.assertEqual(home["today"], "2026-09-28")
+        # The day worked on sits second from the right, so one step forward
+        # from the right-hand chip is always possible until today is reached.
+        self.assertEqual(
+            [day["date"] for day in home["days"]],
+            ["2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15"],
+        )
+        self.assertEqual([loc["code"] for loc in home["locations"]], ["MS", "BB", "BE"])
+
+    def test_day_sheet_stops_at_today(self):
+        """Today is the last day the strip shows, and tomorrow is refused."""
+        with freeze_time("2026-09-28 07:00:00"):
+            desk = self.desk(self.controller)
+            home = desk.desk_home(self.store.id, self.token, business_date="2026-09-28")
+            self.assertEqual(home["days"][-1]["date"], "2026-09-28")
+            self.assertEqual([day["label"] for day in home["days"]][-2:], ["Yesterday", "Today"])
+            with self.assertRaisesRegex(UserError, "has not traded yet"):
+                desk.desk_home(self.store.id, self.token, business_date="2026-09-29")
+
     def test_catalog(self):
         catalog = self.desk(self.controller).desk_catalog(self.store.id, self.token)
         products = {product["id"]: product for product in catalog["products"]}

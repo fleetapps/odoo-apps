@@ -571,12 +571,39 @@
 
 // Day sheet -----------------------------------------------------------------
 
+// An arrow either side of the strip walks the sheet one day at a time, as far
+// back as the club has traded. The arrows keep their width while the chips
+// share what is left, so the strip does not reflow as the dates change.
+.o_bar_desk_days_bar {
+    display: flex;
+    align-items: stretch;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.o_bar_desk_day_step {
+    flex: 0 0 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--#{$prefix}border-color);
+    border-radius: var(--bar-desk-radius);
+    background-color: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}secondary-color);
+
+    &:disabled {
+        opacity: 0.35;
+    }
+}
+
 // Four trading days fit a phone side by side: two short lines per chip.
 .o_bar_desk_days {
+    flex: 1 1 auto;
+    min-width: 0;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.4rem;
-    margin-bottom: 0.75rem;
 }
 
 .o_bar_desk_day {
