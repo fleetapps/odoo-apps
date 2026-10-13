@@ -162,16 +162,39 @@ class QuoteComparison(models.Model):
             "cells": cells(lambda _p, _s, amounts: amounts["total"]),
         })
         if self.instalment_plan_ids:
-            rows.append({"kind": "group", "label": _("Or pay monthly"), "cells": []})
+            # Paying monthly costs more, and the only way a client can weigh
+            # that is to see the deposit, the monthly figure and what it adds
+            # up to, against paying now. One number per option hides exactly
+            # the part they are deciding about.
+            rows.append({"kind": "group", "label": _("How you can pay"), "cells": []})
+            rows.append({
+                "kind": "total",
+                "label": _("Pay now, in full"),
+                "cells": cells(lambda _p, _s, amounts: amounts["total"]),
+            })
             for instalment in self.instalment_plan_ids:
+                rows.append({"kind": "group", "label": instalment.display_name, "cells": []})
+                if instalment.deposit_percent:
+                    rows.append({
+                        "kind": "instalment",
+                        "label": _("Deposit (%s%%)", round(instalment.deposit_percent)),
+                        "cells": cells(
+                            lambda _p, _s, amounts, plan=instalment: plan.schedule(
+                                amounts["total"])["deposit"]),
+                    })
                 rows.append({
                     "kind": "instalment",
-                    "label": instalment.display_name,
+                    "label": _("%s monthly payments of", instalment.months),
                     "cells": cells(
                         lambda _p, _s, amounts, plan=instalment: plan.schedule(
-                            amounts["total"]
-                        )["instalment"]
-                    ),
+                            amounts["total"])["instalment"]),
+                })
+                rows.append({
+                    "kind": "total",
+                    "label": _("Total paid this way"),
+                    "cells": cells(
+                        lambda _p, _s, amounts, plan=instalment: plan.schedule(
+                            amounts["total"])["payable"]),
                 })
 
         stripe = False

@@ -142,7 +142,11 @@
                         </page>
                         <page string="Payment &amp; terms" name="terms">
                             <group>
-                                <field name="instalment_plan_ids" widget="many2many_tags"/>
+                                <!-- Checkboxes, not tags: these are a short fixed list the agent
+                                     ticks on a call, and a tag field hides what is on
+                                     offer behind a dropdown. -->
+                                <field name="instalment_plan_ids"
+                                       widget="many2many_checkboxes"/>
                             </group>
                             <field name="note" placeholder="Terms printed under the comparison."/>
                         </page>
