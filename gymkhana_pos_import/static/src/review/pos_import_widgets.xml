@@ -48,6 +48,7 @@
                             <t t-if="bar.empty">No sales</t>
                             <t t-else=""><t t-esc="bar.lines"/> lines</t>
                         </div>
+                        <div t-if="bar.others" class="text-muted small">incl. <t t-esc="bar.others"/></div>
                     </div>
                 </div>
             </t>

@@ -43,11 +43,23 @@ With the Bar Desk, counts approved on that day's sales go back for approval
 Not a Group Sales Register (header row not found) · more than one day · another
 outlet · a future or accounting-locked date · any line or total that doesn't add
 up (0.05 tolerance on amount/discount/tax, none on net) · a group that isn't
-configured or an item whose suffix doesn't match its group · a bar of the
+configured or an item whose suffix doesn't match its group (or, in an other POS
+group, belongs to no bar) · a bar of the
 report without its POS suffix, POS sales type, delivery contact or analytic
 account · an unmatched item,
 or one mapped to an archived or other-company product · a date or file already
 imported.
+
+### Groups that aren't a bar (Extras)
+
+The report can carry a group that is not a bar of its own: the club prints the
+corkage fee under **Extras**, as `Cockage Fee  Each`, with no bar suffix. Give
+it to a bar with **Other POS groups** on the bar's POS tab (comma-separated,
+e.g. `Extras`). Its items are then posted on that bar's sale order, analytic
+account and card ("incl. Extras 1,000.00"); an item of the group that does
+carry a bar's suffix, e.g. `Cockage Fee(BB)`, still goes to that bar. A group
+belongs to one bar only. Map corkage to a **service** product: it is revenue
+and moves no stock.
 
 ### The date on the report
 

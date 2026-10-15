@@ -154,14 +154,13 @@ class PosImport(models.Model):
             raise UserError(self.env._("Drop the day's Group Sales Register first."))
         data = base64.b64decode(self.pdf_file)
         result, file_hash = self._pos_parse_and_check(data)
-        bars = self._pos_bars()
         mapping = {m.pos_key: m.product_id for m in self.env['pos.item.map'].search(
             [('company_id', '=', self.company_id.id)])}
         lines = []
         for ln in result['lines']:
             lines.append(Command.create({
                 'sequence': ln['sequence'],
-                'bar_id': bars[ln['group']].id,
+                'bar_id': ln['bar'].id,
                 'group_name': ln['group'],
                 'sub_group': ln['sub_group'],
                 'pos_key': ln['key'],
@@ -207,8 +206,41 @@ class PosImport(models.Model):
             ('kind', '=', 'bar'), ('pos_group_name', '!=', False)])
 
     def _pos_bars(self):
-        """Active bars of the company, by POS group name."""
-        return {bar.pos_group_name: bar for bar in self._pos_bar_records()}
+        """Active bars of the company, by POS group name: each bar's own group
+        and its other POS groups (e.g. Extras)."""
+        records = self._pos_bar_records()
+        bars = {group: bar for bar in records for group in bar._pos_other_group_names()}
+        bars.update({bar.pos_group_name: bar for bar in records})
+        return bars
+
+    def _pos_assign_bars(self, result, bars):
+        """Put the bar of every report line in ``line['bar']``, or raise.
+
+        A bar's own group holds only items with its suffix. In another group a
+        bar takes (e.g. Extras), an item without a suffix goes to that bar and
+        an item with a bar's suffix goes to the bar the suffix belongs to."""
+        by_suffix = {bar.pos_suffix: bar for bar in bars.values()}
+        for group in result['groups']:
+            bar = bars.get(group['name'])
+            if not bar:
+                raise UserError(self.env._(
+                    "The group \"%(group)s\" isn't configured: set it as the POS group name of a bar, "
+                    "or add it to a bar's Other POS groups, under Bar Control > Configuration > Bars.",
+                    group=group['name']))
+            own = group['name'] == bar.pos_group_name
+            for sub in group['subgroups']:
+                for ln in sub['lines']:
+                    suffix = ln['bar_suffix']
+                    if own and suffix != bar.pos_suffix:
+                        raise UserError(self.env._(
+                            "Page %(page)s: %(item)s is listed under %(group)s, whose items end in (%(suffix)s).",
+                            page=ln['page'], item=ln['raw_name'], group=group['name'], suffix=bar.pos_suffix))
+                    if suffix and suffix not in by_suffix:
+                        raise UserError(self.env._(
+                            "Page %(page)s: %(item)s ends in (%(suffix)s), the POS suffix of no bar.",
+                            page=ln['page'], item=ln['raw_name'], suffix=suffix))
+                    ln['bar'] = by_suffix[suffix] if suffix else bar
+        return result
 
     def _pos_parse_and_check(self, data):
         """Parse the report and apply every hard block that doesn't need the item
@@ -235,18 +267,7 @@ class PosImport(models.Model):
         self._pos_check_date(day, company)
         file_hash = hashlib.sha256(data).hexdigest()
         self._pos_check_duplicates(day, file_hash, company)
-        for group in result['groups']:
-            bar = bars.get(group['name'])
-            if not bar:
-                raise UserError(self.env._(
-                    "The group \"%(group)s\" isn't configured: set it as the POS group name of a bar "
-                    "under Bar Control > Configuration > Bars.", group=group['name']))
-            for sub in group['subgroups']:
-                for ln in sub['lines']:
-                    if ln['bar_suffix'] != bar.pos_suffix:
-                        raise UserError(self.env._(
-                            "Page %(page)s: %(item)s is listed under %(group)s, whose items end in (%(suffix)s).",
-                            page=ln['page'], item=ln['raw_name'], group=group['name'], suffix=bar.pos_suffix))
+        self._pos_assign_bars(result, bars)
         return result, file_hash
 
     def _pos_check_date(self, day, company):
@@ -398,9 +419,17 @@ class PosImport(models.Model):
         warnings = []
         day = format_date(self.env, self.business_date, date_format='EEEE d MMM y')
 
+        def others(bar, lines):
+            """What the bar takes from other POS groups, e.g. 'Extras 1,000.00'."""
+            totals = defaultdict(float)
+            for line in lines.filtered(lambda l: l.group_name != bar.pos_group_name):
+                totals[line.group_name] += line.net
+            return ", ".join(f"{group} {money(net)}" for group, net in totals.items()) or False
+
         cards = [{
             'id': bar.id, 'name': bar.name, 'code': bar.pos_suffix,
             'total': money(sum(lines.mapped('net'))), 'lines': len(lines),
+            'others': others(bar, lines),
         } for bar, lines in by_bar.items()]
         for bar in configured - self.line_ids.bar_id:
             cards.append({'id': bar.id, 'name': bar.name, 'code': bar.pos_suffix, 'total': money(0), 'lines': 0, 'empty': True})
@@ -561,8 +590,7 @@ class PosImport(models.Model):
         our_lines = [(l.pos_key, l.group_name, dec(l.qty), dec(l.net)) for l in self.line_ids.sorted('sequence')]
         if pdf_lines != our_lines:
             raise UserError(self.env._("The import lines no longer match the report; delete this import and drop the file again."))
-        if any(bar.pos_group_name != group for bar, group in
-               ((l.bar_id, l.group_name) for l in self.line_ids)):
+        if [ln['bar'] for ln in result['lines']] != [l.bar_id for l in self.line_ids.sorted('sequence')]:
             raise UserError(self.env._("The bar configuration changed since the report was read; delete this import and drop the file again."))
 
     def _pos_business_datetime(self):
