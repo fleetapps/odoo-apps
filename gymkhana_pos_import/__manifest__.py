@@ -1,6 +1,6 @@
 {
     'name': 'Gymkhana POS Day Import',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
     'category': 'Sales/Sales',
     'summary': "Post a day of Nairobi Gymkhana bar sales from the POS "
                "Group Sales Register: sale orders, bar deliveries and one invoice.",

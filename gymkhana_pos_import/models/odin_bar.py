@@ -1,4 +1,4 @@
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 
@@ -7,6 +7,28 @@ class OdinBar(models.Model):
     a POS group name. Its location, POS sales type (SAL-xx), delivery contact
     and analytic account are what the import posts with."""
     _inherit = 'odin.bar'
+
+    pos_other_groups = fields.Char(
+        "Other POS groups", copy=False,
+        help="Other groups of the POS report whose sales this bar takes, comma-separated, "
+             "e.g. Extras (the corkage fee). Their items may have no suffix; an item that "
+             "ends in another bar's suffix still goes to that bar.")
+
+    def _pos_other_group_names(self):
+        self.ensure_one()
+        return [name.strip() for name in (self.pos_other_groups or '').split(',') if name.strip()]
+
+    @api.constrains('pos_group_name', 'pos_other_groups', 'active', 'kind')
+    def _check_pos_other_groups(self):
+        for company in self.company_id:
+            owners = {}
+            for bar in self.search([('company_id', '=', company.id), ('kind', '=', 'bar')]):
+                for group in {bar.pos_group_name, *bar._pos_other_group_names()} - {False}:
+                    other = owners.setdefault(group, bar)
+                    if other != bar:
+                        raise ValidationError(self.env._(
+                            "The POS group %(group)s can't belong to both %(bar)s and %(other)s.",
+                            group=group, bar=bar.name, other=other.name))
 
     @api.constrains('pos_suffix')
     def _check_pos_suffix(self):
