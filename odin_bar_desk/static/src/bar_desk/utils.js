@@ -1,3 +1,55 @@
+import { getDataURLFromFile } from "@web/core/utils/urls";
+
+// A supplier delivery is queued in localStorage until it reaches the server,
+// photo and all, and the outbox is written with a try/catch that swallows a
+// quota error. A phone photo straight off the camera is several megabytes,
+// and base64 adds a third again -- enough to drop the whole outbox without a
+// word. So a photo is shrunk to something a person can still read an invoice
+// from, and anything still too big is refused out loud.
+const INVOICE_MAX_WIDTH = 1600;
+const INVOICE_MAX_BYTES = 2 * 1024 * 1024;
+
+function shrink(file, maxWidth) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        const url = URL.createObjectURL(file);
+        image.onload = () => {
+            URL.revokeObjectURL(url);
+            const scale = Math.min(1, maxWidth / image.width);
+            if (scale === 1) {
+                resolve(file);
+                return;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(image.width * scale);
+            canvas.height = Math.round(image.height * scale);
+            canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.8);
+        };
+        image.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("not an image"));
+        };
+        image.src = url;
+    });
+}
+
+/** The supplier's invoice as {name, mimetype, data, preview}, ready to post. */
+export async function readInvoice(file) {
+    const blob = file.type.startsWith("image/") ? await shrink(file, INVOICE_MAX_WIDTH) : file;
+    if (blob.size > INVOICE_MAX_BYTES) {
+        throw new Error("too big");
+    }
+    const url = await getDataURLFromFile(blob);
+    return {
+        name: file.name,
+        mimetype: blob.type || file.type || "application/octet-stream",
+        // ir.attachment.datas wants bare base64, without the data: prefix.
+        data: url.slice(url.indexOf(",") + 1),
+        preview: blob.type.startsWith("image/") ? url : null,
+    };
+}
+
 /** Numbers as staff read them: 3, 2.5, 0.33. */
 export function fmt(value) {
     const rounded = Math.round((Number(value) || 0) * 100) / 100;

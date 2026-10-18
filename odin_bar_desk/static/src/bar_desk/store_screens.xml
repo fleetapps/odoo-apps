@@ -55,7 +55,16 @@
                 </button>
                 <div class="fw-bold mt-2 mb-1">What's on the invoice</div>
                 <ItemsEditor model="model" items="state.items" defaultUnit="packUnit"
-                             pickerTitle="state.supplier.name" onlyIds="state.supplierProducts"/>
+                             pickerTitle="state.supplier.name" onlyIds="state.supplierProducts"
+                             withPrice="true" priceFor.bind="priceFor"/>
+                <div t-if="state.items.length" class="o_bar_desk_card d-flex align-items-center mt-2">
+                    <span class="flex-grow-1 fw-bold">Invoice total <span class="fw-normal text-muted">before VAT</span></span>
+                    <span class="fs-5 fw-bold" t-esc="invoiceTotalLabel"/>
+                </div>
+                <div t-if="missingPrices" class="small text-muted mt-1">
+                    <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s</t> with no price yet &#8212;
+                    tap to add what the supplier charged.
+                </div>
             </t>
 
             <t t-elif="state.step === 'check'">
@@ -121,12 +130,14 @@
                     <label class="fw-bold mb-1" for="o_bar_desk_supplier_ref">Invoice number (optional)</label>
                     <input id="o_bar_desk_supplier_ref" type="text" class="form-control form-control-lg mb-3"
                            t-model="state.supplierRef" autocomplete="off"/>
-                    <t t-if="!state.receipt">
-                        <label class="fw-bold mb-1" for="o_bar_desk_invoice_total">Invoice total</label>
-                        <input id="o_bar_desk_invoice_total" type="text" inputmode="decimal"
-                               class="form-control form-control-lg mb-3" placeholder="e.g. 24,500"
-                               t-model="state.total" autocomplete="off"/>
-                    </t>
+                    <div t-if="!state.receipt" class="o_bar_desk_card d-flex align-items-center mb-3">
+                        <span class="flex-grow-1 fw-bold">Invoice total <span class="fw-normal text-muted">before VAT</span></span>
+                        <span class="fs-4 fw-bold" t-esc="invoiceTotalLabel"/>
+                    </div>
+                    <div t-if="!state.receipt and missingPrices" class="alert alert-warning py-2" role="status">
+                        <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s</t> has no price, so the
+                        bill will be short. Go back and add what the supplier charged.
+                    </div>
                     <div class="fw-bold mb-2">Paid?</div>
                     <button class="btn btn-success o_bar_desk_big w-100 mb-2"
                             t-att-disabled="!canFinish or !paymentAccount or (!state.receipt and !invoiceTotal)"
@@ -136,7 +147,7 @@
                     <button class="btn btn-light o_bar_desk_big w-100" t-att-disabled="!canFinish"
                             t-on-click="() => this.finish('later')">Pay later</button>
                     <div t-if="!state.receipt and !invoiceTotal" class="small text-muted mt-2">
-                        Type the invoice total to pay now.
+                        Add a price to at least one item to pay now.
                     </div>
                     <div t-if="!paymentAccount" class="small text-muted mt-2">
                         Paid now needs the account suppliers are paid from: ask a manager to set it on the Main Store.

@@ -1,11 +1,10 @@
 import { Component, onWillStart, useRef, useState } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
-import { getDataURLFromFile } from "@web/core/utils/urls";
 import { errorMessage, feedback } from "./desk_model";
 import { ItemsEditor } from "./items_editor";
 import { Keypad } from "./keypad";
 import { LineList } from "./line_list";
-import { fmt, moveQty, qtyLabel } from "./utils";
+import { fmt, money, moveQty, qtyLabel, readInvoice } from "./utils";
 
 /** Beer and sodas go out by the crate, spirits by the bottle. */
 function packUnit(product) {
@@ -56,6 +55,7 @@ export class StoreReceiveScreen extends Component {
             searching: false,
             supplier: null,
             supplierProducts: new Set(),
+            supplierPrices: {},
             invoice: null,
             items: [],
             arrived: {},
@@ -65,7 +65,6 @@ export class StoreReceiveScreen extends Component {
             missing: null,
             rest: null,
             supplierRef: "",
-            total: "",
             busy: false,
             error: "",
         });
@@ -119,14 +118,25 @@ export class StoreReceiveScreen extends Component {
     }
 
     async pickSupplier(supplier) {
-        Object.assign(this.state, { supplier, items: [], supplierProducts: new Set() });
+        Object.assign(this.state, {
+            supplier, items: [], supplierProducts: new Set(), supplierPrices: {},
+        });
         this.go("items");
         try {
-            const ids = await this.model.fetch("desk_supplier_products", { bar_id: this.storeId, partner_id: supplier.id });
-            this.state.supplierProducts = new Set(ids);
+            const offered = await this.model.fetch("desk_supplier_products", {
+                bar_id: this.storeId,
+                partner_id: supplier.id,
+            });
+            this.state.supplierProducts = new Set(offered.ids);
+            this.state.supplierPrices = offered.prices || {};
         } catch {
-            // Offline: every product is offered.
+            // Offline: every product is offered, and prices are typed in full.
         }
+    }
+
+    /** What this supplier last charged for one of that unit. */
+    priceFor(product, uomId) {
+        return this.state.supplierPrices[`${product.id}:${uomId}`] || 0;
     }
 
     // ---- invoice photo --------------------------------------------------------
@@ -143,8 +153,11 @@ export class StoreReceiveScreen extends Component {
         }
         try {
             this.state.invoice = await readInvoice(file);
-        } catch {
-            this.state.error = "That file could not be read. Take a photo or pick a PDF.";
+        } catch (error) {
+            this.state.error =
+                error?.message === "too big"
+                    ? "That photo is too large. Take it again, a little further back."
+                    : "That file could not be read. Take a photo or pick a PDF.";
         }
     }
 
@@ -289,9 +302,18 @@ export class StoreReceiveScreen extends Component {
         this.go(this.state.receipt ? "receipt" : "check");
     }
 
+    /** The invoice adds up from the prices entered line by line, so there is
+     * nothing to type again and nothing that can disagree with the bill. */
     get invoiceTotal() {
-        const value = parseFloat(String(this.state.total).replace(/,/g, ""));
-        return Number.isFinite(value) && value > 0 ? value : 0;
+        return this.state.items.reduce((total, item) => total + item.qty * (item.price || 0), 0);
+    }
+
+    get invoiceTotalLabel() {
+        return money(this.invoiceTotal);
+    }
+
+    get missingPrices() {
+        return this.state.items.filter((item) => !item.price).length;
     }
 
     get canFinish() {
@@ -327,10 +349,17 @@ export class StoreReceiveScreen extends Component {
                         uom_id: item.uomId,
                         invoiced: item.qty,
                         received: arrived[item.key],
+                        price: item.price || 0,
                     })),
                     missing: missing === "credit" ? "credit" : "coming",
                     paid,
-                    amount: this.invoiceTotal || false,
+                    // No separate total to check against: the bill is built from
+                    // the very prices entered above, so a cross-check would only
+                    // compare a number with itself -- and, because the entered
+                    // prices are net while the bill total carries VAT, it would
+                    // "disagree" every time and leave every bill unposted.
+                    // The figure on screen is the check, made before tapping.
+                    amount: false,
                     supplier_ref: this.state.supplierRef.trim() || false,
                     invoice: this.state.invoice
                         ? { name: this.state.invoice.name, mimetype: this.state.invoice.mimetype, data: this.state.invoice.data }
@@ -345,11 +374,25 @@ export class StoreReceiveScreen extends Component {
             this.state.error = outcome.message;
             return;
         }
-        toast(
-            this.props.app,
-            outcome,
-            paid === "now" ? "In the store and paid." : "In the store. The bill waits for payment."
-        );
+        // Say what actually happened: the backend tells us whether the bill
+        // was posted and paid, and a cheerful "paid" on a bill still waiting
+        // for a manager is how nobody noticed that none of them were.
+        const bill = outcome.result?.bill;
+        if (outcome.status !== "queued" && bill && !bill.checked) {
+            feedback(false);
+            this.props.app.toast(
+                `In the store. ${bill.name || "The bill"} waits for a manager to check the prices.`,
+                "warning"
+            );
+        } else {
+            toast(
+                this.props.app,
+                outcome,
+                paid === "now" && bill?.paid
+                    ? "In the store and paid."
+                    : "In the store. The bill waits for payment."
+            );
+        }
         this.props.app.home();
     }
 }

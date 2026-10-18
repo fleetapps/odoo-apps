@@ -24,6 +24,9 @@
                         </span>
                     </button>
                 </div>
+                <div t-if="props.mode === 'price'" class="o_bar_desk_keypad_expected">
+                    Line total <t t-esc="lineTotal"/>
+                </div>
                 <div t-if="props.expected !== undefined" class="o_bar_desk_keypad_expected">
                     Expected <t t-esc="props.expected"/>
                     <button t-if="props.onSame" class="btn btn-sm btn-outline-success ms-2" t-on-click="props.onSame">

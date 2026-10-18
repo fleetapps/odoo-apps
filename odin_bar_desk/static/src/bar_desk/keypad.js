@@ -1,5 +1,5 @@
 import { Component, useState } from "@odoo/owl";
-import { fmt, shortUnit, unitsOf } from "./utils";
+import { fmt, money, shortUnit, unitOf, unitsOf } from "./utils";
 
 const MAX_LENGTH = 7;
 const MAX_SUM_LENGTH = 40;
@@ -16,6 +16,9 @@ export function addUp(text) {
  *
  * - "qty" mode: one number and the unit it is in (tots or a bottle size for
  *   spirits, units or a crate for beer).
+ * - "price" mode: the same, plus what the supplier charged for one of that
+ *   unit. The line total is shown as it is typed, so a mistyped price is
+ *   caught against the invoice on the counter rather than in the ledger.
  * - "count" mode: full bottles per size plus the open bottle in tots for
  *   spirits; full crates plus loose bottles for beer and sodas; a plain
  *   number for everything else.
@@ -77,6 +80,13 @@ export class Keypad extends Component {
             });
         } else {
             fields = [{ key: "qty", label: "Quantity", text: value.qty ? fmt(value.qty) : "" }];
+            if (mode === "price") {
+                fields.push({
+                    key: "price",
+                    label: `Price per ${shortUnit(unitOf(product, value.uomId || product.uom.id))}`,
+                    text: value.price ? fmt(value.price) : "",
+                });
+            }
         }
         this.state = useState({
             fields,
@@ -87,7 +97,13 @@ export class Keypad extends Component {
     }
 
     get units() {
-        return this.props.mode === "qty" && this.props.units ? unitsOf(this.props.product) : [];
+        const picksAUnit = this.props.mode === "qty" || this.props.mode === "price";
+        return picksAUnit && this.props.units ? unitsOf(this.props.product) : [];
+    }
+
+    /** What this line comes to, shown while the price is being typed. */
+    get lineTotal() {
+        return money(this.number("qty") * this.number("price"));
     }
 
     get keys() {
@@ -98,6 +114,11 @@ export class Keypad extends Component {
 
     setUnit(unit) {
         this.state.uomId = unit.id;
+        // The price is per unit, so its label has to follow the unit chosen.
+        const price = this.state.fields.find((field) => field.key === "price");
+        if (price) {
+            price.label = `Price per ${shortUnit(unit)}`;
+        }
     }
 
     focus(index) {
@@ -133,8 +154,12 @@ export class Keypad extends Component {
 
     confirm() {
         const { product, mode } = this.props;
-        if (mode === "qty") {
-            this.props.onConfirm({ qty: this.number("qty"), uomId: this.state.uomId });
+        if (mode === "qty" || mode === "price") {
+            this.props.onConfirm({
+                qty: this.number("qty"),
+                uomId: this.state.uomId,
+                ...(mode === "price" ? { price: this.number("price") } : {}),
+            });
         } else if (product.poured) {
             const detail = {};
             for (const bottle of product.bottles) {
