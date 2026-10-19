@@ -83,7 +83,7 @@
         <field name="capability_id" ref="cap_dashboards"/>
         <field name="handler">delete_dashboard</field>
         <field name="sequence">12</field>
-        <field name="description">Delete a dashboard permanently. Only its owner can. Confirm with the user first — the dashboard and its whole history go, and this cannot be undone.</field>
+        <field name="description">Delete a dashboard permanently. Only its owner, or an AI Dashboards administrator, can. Confirm with the user first — the dashboard and its whole history go, and this cannot be undone.</field>
         <field name="input_schema">{"type": "object", "properties": {"dashboard_id": {"type": "integer"}}, "required": ["dashboard_id"], "additionalProperties": false}</field>
     </record>
 

@@ -8,8 +8,9 @@ silently never appeared. Nothing failed; it just was not there, which is the
 hardest kind of absence to notice.
 """
 import json
+from unittest.mock import patch
 
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import TransactionCase, freeze_time, tagged
 
 from ..models import ai_dashboard_spec as spec_lib
 from .test_spec import minimal
@@ -161,6 +162,57 @@ class TestCompareRender(TransactionCase):
         out = self.Render._shift_window(domain, "previous_period")
         self.assertIn(["date", ">=", "2026-02-01"], out)
         self.assertIn(["date", "<", "2026-03-01"], out)
+
+    def test_the_period_before_a_quarter_is_the_quarter_before(self):
+        """By days, 1 Apr - 1 Jul (91 days) went back to 31 December."""
+        domain = [["date", ">=", "2026-04-01"], ["date", "<", "2026-07-01"]]
+        out = self.Render._shift_window(domain, "previous_period")
+        self.assertEqual(out, [["date", ">=", "2026-01-01"],
+                               ["date", "<", "2026-04-01"]])
+
+    def test_the_period_before_a_year_is_the_year_before(self):
+        """By days, 2025's 365 went back to 2 January 2024, a leap year."""
+        domain = [["date", ">=", "2025-01-01"], ["date", "<", "2026-01-01"]]
+        out = self.Render._shift_window(domain, "previous_period")
+        self.assertEqual(out, [["date", ">=", "2024-01-01"],
+                               ["date", "<", "2025-01-01"]])
+
+    def test_a_run_of_days_steps_back_by_its_length(self):
+        domain = [["date", ">=", "2026-03-10"], ["date", "<", "2026-03-17"]]
+        out = self.Render._shift_window(domain, "previous_period")
+        self.assertEqual(out, [["date", ">=", "2026-03-03"],
+                               ["date", "<", "2026-03-10"]])
+
+    def test_a_rolling_window_covering_a_month_still_steps_by_days(self):
+        domain = [["date", ">=", "2026-03-01"], ["date", "<", "2026-04-01"]]
+        out = self.Render._shift_window(domain, "previous_period", {"date"})
+        self.assertEqual(out, [["date", ">=", "2026-01-29"],
+                               ["date", "<", "2026-03-01"]])
+
+    def test_the_filter_decides_whether_a_window_is_rolling(self):
+        """On 31 March "last 30 days" and "this month" are the same window.
+        The period before one is the 31 days before it, before the other is
+        February - so the comparison has to follow the filter, not the dates."""
+        board = self._board(self._kpi_spec())
+        read = type(self.Render)._read
+        seen = []
+
+        def spy(render, model, query, domain):
+            seen.append(domain)
+            return read(render, model, query, domain)
+
+        expected = {"last_30_days": "2026-01-29", "this_month": "2026-02-01"}
+        with freeze_time("2026-03-31 12:00:00"), \
+                patch.object(type(self.Render), "_read", spy):
+            for period, start in expected.items():
+                seen.clear()
+                self.Render.render(board.id, {
+                    "period": period, "__compare": "previous_period"})
+                current, previous = seen
+                self.assertIn(["create_date", ">=", "2026-03-01"], current)
+                self.assertIn(["create_date", "<", "2026-04-01"], current)
+                self.assertIn(["create_date", ">=", start], previous, period)
+                self.assertIn(["create_date", "<", "2026-03-01"], previous)
 
     def test_the_shift_preserves_operator_arity(self):
         """Removing a condition from a domain with prefix operators would
