@@ -78,6 +78,8 @@ class TestDashboardTools(TransactionCase):
         self.assertTrue(tools["get_dashboard_schema"]["readOnlyHint"])
         self.assertFalse(tools["save_dashboard"]["readOnlyHint"])
         self.assertTrue(tools["delete_dashboard"]["destructiveHint"])
+        self.assertFalse(tools["preview_dashboard"]["destructiveHint"],
+                         "a preview only ever adds a draft")
 
     def test_no_tool_can_reach_a_server_action(self):
         """ir.actions.server runs safe_eval(code, mode='exec'). Write access
@@ -165,13 +167,49 @@ class TestDashboardTools(TransactionCase):
         self.assertEqual(payload["spec"]["schema"], minimal()["schema"])
         self.assertTrue(payload["explanation"])
 
-    def test_deleting_someone_elses_dashboard_is_refused(self):
-        board = self.env["ai.dashboard"].with_user(self.user).create({
+    def _theirs(self, **vals):
+        return self.env["ai.dashboard"].with_user(self.user).create(dict({
             "name": "Theirs", "spec_json": json.dumps(minimal()),
             "state": "published",
+        }, **vals))
+
+    def test_deleting_someone_elses_dashboard_is_refused(self):
+        """Called as a colleague it is shared with, so the refusal is the
+        ownership check and not the read check. The default caller here is the
+        superuser, an AI Dashboards administrator through Settings, and an
+        administrator may delete anyone's (doc/index.rst)."""
+        colleague = self.env["res.users"].create({
+            "name": "Tools Colleague", "login": "ai_dash_tools_colleague",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
         })
-        result = self._call("delete_dashboard", {"dashboard_id": board.id})
+        board = self._theirs(share_user_ids=[(6, 0, [colleague.id])])
+        result = self._call("delete_dashboard", {"dashboard_id": board.id},
+                            user=colleague)
         self.assertTrue(result["isError"])
+        payload = self._payload(result)
+        self.assertEqual(payload["error"], "AccessError")
+        self.assertIn("belongs to", payload["message"])
+        self.assertTrue(board.exists(), "a refused delete must delete nothing")
+
+    def test_the_owner_can_delete_their_dashboard(self):
+        board = self._theirs()
+        result = self._call("delete_dashboard", {"dashboard_id": board.id},
+                            user=self.user)
+        self.assertFalse(result["isError"])
+        self.assertFalse(board.exists())
+
+    def test_an_administrator_can_delete_anyones_dashboard(self):
+        admin = self.env["res.users"].create({
+            "name": "Tools Admin", "login": "ai_dash_tools_admin",
+            "group_ids": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref("ai_dashboards.group_dashboard_admin").id])],
+        })
+        board = self._theirs()
+        result = self._call("delete_dashboard", {"dashboard_id": board.id},
+                            user=admin)
+        self.assertFalse(result["isError"])
+        self.assertFalse(board.exists())
 
     def test_every_call_is_audited(self):
         before = self.env["mcp.audit.log"].search_count([])

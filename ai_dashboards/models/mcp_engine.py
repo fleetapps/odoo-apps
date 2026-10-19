@@ -32,6 +32,9 @@ _logger = logging.getLogger(__name__)
 DASHBOARD_WRITE_HANDLERS = {
     "preview_dashboard", "save_dashboard", "delete_dashboard",
 }
+# Of those, the ones that destroy rather than add. Advertised through the
+# destructiveHint annotation in MCPEngine._annotations below.
+DASHBOARD_DESTRUCTIVE_HANDLERS = {"delete_dashboard"}
 DASHBOARD_READ_HANDLERS = {
     "get_dashboard_schema", "list_dashboards", "get_dashboard",
     "seed_from_view",
@@ -45,6 +48,20 @@ class MCPEngine(models.AbstractModel):
     def _model_aware_handlers(self):
         """`seed_from_view` benefits from knowing which models are in scope."""
         return super()._model_aware_handlers() | {"seed_from_view"}
+
+    def _annotations(self, tool):
+        """Mark deleting a dashboard as destructive.
+
+        MCP defines ``destructiveHint: false`` as "performs only additive
+        updates", and clients read it to decide whether to ask the person
+        first. The base engine only knows its own verbs, so without this a
+        delete that takes the dashboard and its whole history with it was
+        advertised as additive.
+        """
+        annotations = super()._annotations(tool)
+        if tool.handler in DASHBOARD_DESTRUCTIVE_HANDLERS:
+            annotations["destructiveHint"] = True
+        return annotations
 
     # ----------------------------------------------------------- discovery
     def _handler_get_dashboard_schema(self, scope, args):
