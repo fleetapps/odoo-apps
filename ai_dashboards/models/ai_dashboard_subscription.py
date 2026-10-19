@@ -20,6 +20,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import formataddr
 
 _logger = logging.getLogger(__name__)
 
@@ -185,13 +186,28 @@ class AIDashboardSubscription(models.Model):
                 "subscription": self,
                 "fmt": self._format_value,
             })
-        self.env["mail.mail"].sudo().create({
+        # Sent as the recipient's company. Without an email_from Odoo would
+        # take the cron's user, and the email would come from OdooBot.
+        company = user.company_id or self.env.company
+        mail = self.env["mail.mail"].sudo().create({
             "subject": _("%s — your dashboard") % self.dashboard_id.name,
+            "email_from": company.email_formatted or formataddr(
+                (company.name, company.default_from_email or user.partner_id.email)),
             "email_to": user.partner_id.email,
-            "author_id": self.env.company.partner_id.id,
+            "author_id": company.partner_id.id,
             "body_html": body,
-            "auto_delete": True,
-        }).send()
+            "auto_delete": False,
+        })
+        # auto_delete is off while sending so the outcome can be read: a mail
+        # that went is then removed, as auto_delete would have; one the server
+        # refused stays for a retry from the mail queue and goes once sent.
+        mail.send(raise_exception=False)
+        if mail.state == "exception":
+            mail.auto_delete = True
+            raise UserError(_("The mail server did not take it: %s")
+                            % (mail.failure_reason or _("no reason given")))
+        if mail.state == "sent":
+            mail.unlink()
         _logger.info("AI Dashboards: sent '%s' to %s",
                      self.dashboard_id.name, user.login)
 

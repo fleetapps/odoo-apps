@@ -8,6 +8,7 @@ which on a product whose entire premise is per-user permissions is the one bug
 that would actually matter.
 """
 import json
+from unittest.mock import patch
 
 import pytz
 
@@ -92,6 +93,40 @@ class TestSubscriptions(TransactionCase):
         self.assertEqual(self.env["mail.mail"].sudo().search_count([]),
                          before + 1)
 
+    def test_the_email_comes_from_the_company_not_odoobot(self):
+        sub = self._sub(self.owner)
+        sub.sudo()._send()
+        mail = self.env["mail.mail"].sudo().search([("email_to", "=", "owner@example.com")])
+        company = self.owner.company_id
+        self.assertEqual(mail.author_id, company.partner_id)
+        self.assertIn(company.name, mail.email_from)
+        self.assertNotIn("OdooBot", mail.email_from)
+
+    def test_a_sent_email_leaves_no_mail_behind(self):
+        def sent(mails, **kwargs):
+            mails.write({"state": "sent"})
+        sub = self._sub(self.owner)
+        before = self.env["mail.mail"].sudo().search_count([])
+        with patch.object(type(self.env["mail.mail"]), "send", sent):
+            sub.sudo()._send()
+        self.assertEqual(self.env["mail.mail"].sudo().search_count([]), before)
+
+    def test_a_refused_email_is_an_error_not_a_send(self):
+        def refused(mails, **kwargs):
+            mails.write({"state": "exception", "failure_reason": "111 Connection refused"})
+        sub = self._sub(self.owner)
+        sub.sudo().next_send = "2020-01-01 00:00:00"
+        # As the scheduler runs it: cron_send commits after each send, which a
+        # test cursor allows only in registry test mode.
+        with patch.object(type(self.env["mail.mail"]), "send", refused), \
+                self.enter_registry_test_mode():
+            self.env.ref("ai_dashboards.cron_dashboard_subscriptions").method_direct_trigger()
+        self.env.invalidate_all()
+        self.assertIn("111 Connection refused", sub.last_error)
+        self.assertEqual(sub.send_count, 0)
+        mail = self.env["mail.mail"].sudo().search([("email_to", "=", "owner@example.com")])
+        self.assertEqual((mail.state, mail.auto_delete), ("exception", True))
+
     def test_a_recipient_with_no_email_fails_loudly(self):
         self.owner.partner_id.email = False
         sub = self._sub(self.owner)
@@ -105,7 +140,10 @@ class TestSubscriptions(TransactionCase):
         sub = self._sub(self.owner)
         self.owner.partner_id.email = False   # force _send to raise
         sub.sudo().next_send = "2020-01-01 00:00:00"
-        self.env["ai.dashboard.subscription"].sudo().cron_send()
+        # As the scheduler runs it: cron_send commits after each send.
+        with self.enter_registry_test_mode():
+            self.env.ref("ai_dashboards.cron_dashboard_subscriptions").method_direct_trigger()
+        self.env.invalidate_all()
         self.assertTrue(sub.last_error)
         self.assertTrue(sub.next_send > sub.create_date)
 

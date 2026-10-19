@@ -2,6 +2,7 @@
 and the scheduled email rendered as the owner."""
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from odoo import fields
 
@@ -84,8 +85,40 @@ class TestViews(PnlCase):
         self.assertIn("Here is the month.", mail.body_html)
         mimetypes = set(mail.attachment_ids.mapped("mimetype"))
         self.assertIn("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", mimetypes)
-        self.assertTrue(view.last_status.startswith("Sent"))
+        # Sending is off under tests, so the mail is still queued.
+        self.assertEqual(mail.state, "outgoing")
+        self.assertTrue(view.last_status.startswith("Queued"))
+        self.assertEqual(mail.author_id, self.accountant.partner_id, "the Reply-To is named after the owner")
         self.assertGreater(view.next_send, fields.Datetime.now())
+
+    def _schedule(self):
+        return self.env["odin.pnl.view"].with_user(self.accountant).create({
+            "name": "Monthly", "options": self.options(), "schedule": "daily",
+            "recipient_emails": "boss@example.com"})
+
+    def _mails(self):
+        return self.env["mail.mail"].search([("email_to", "ilike", "boss@example.com")])
+
+    def test_a_sent_email_says_so_and_leaves_no_mail_behind(self):
+        def sent(mails, **kwargs):
+            mails.write({"state": "sent"})
+        view = self._schedule()
+        with patch.object(type(self.env["mail.mail"]), "send", sent):
+            status = view.sudo()._send_and_record()
+        self.assertEqual(status, "Sent to 1 recipient(s)")
+        self.assertFalse(self._mails(), "removed once sent, as auto_delete would")
+
+    def test_a_refused_email_is_reported_and_kept_for_a_retry(self):
+        def refused(mails, **kwargs):
+            mails.write({"state": "exception", "failure_reason": "111 Connection refused"})
+        view = self._schedule()
+        with patch.object(type(self.env["mail.mail"]), "send", refused):
+            action = view.with_user(self.accountant).action_send_now()
+        self.assertEqual(view.last_status, "Not sent: 111 Connection refused")
+        self.assertEqual(action["params"]["type"], "warning")
+        mail = self._mails()
+        self.assertEqual((mail.state, mail.auto_delete), ("exception", True),
+                         "kept for the mail queue's retry, deleted once that sends it")
 
     def test_a_view_whose_owner_lost_access_is_not_sent(self):
         view = self.env["odin.pnl.view"].with_user(self.accountant).create({
