@@ -28,6 +28,11 @@ _logger = logging.getLogger(__name__)
 # the spec asks for. A chart with 5,000 categories is not a chart.
 WIDGET_ROW_CAP = 500
 
+# Periods that are a run of days ending today rather than a calendar unit. The
+# period before "the last 30 days" is the 30 days before that, never the month
+# before - even on 31 March, when the run is exactly 1-31 March.
+ROLLING_PERIODS = {"last_7_days", "last_30_days", "last_90_days"}
+
 
 class AIDashboardRender(models.AbstractModel):
     _name = "ai.dashboard.render"
@@ -252,7 +257,9 @@ class AIDashboardRender(models.AbstractModel):
             # showed a trend at all.
             previous = None
             if mode != "none":
-                shifted = self._shift_window(domain, mode)
+                shifted = self._shift_window(
+                    domain, mode,
+                    self._rolling_fields(query, spec, filter_values))
                 if shifted is not None:
                     previous = self._read(model, query, shifted)
         except (AccessError, UserError) as exc:
@@ -337,10 +344,11 @@ class AIDashboardRender(models.AbstractModel):
         if previous is not None and group_by:
             prior = previous["rows"]
             if ":" in group_by[0]:
-                # A date axis runs chronologically on both sides over windows
-                # of the same length, so position IS the correct pairing —
-                # "Aug 2025" under "Aug 2026". The labels legitimately differ,
-                # which is why the legend names the comparison.
+                # A date axis runs chronologically on both sides over matching
+                # windows, so position IS the correct pairing — "Aug 2025"
+                # under "Aug 2026", 1 February under 1 March. The labels
+                # legitimately differ, which is why the legend names the
+                # comparison.
                 out["compare_series"] = [
                     self._number(row[len(group_by)])
                     if len(row) > len(group_by) else 0
@@ -369,12 +377,17 @@ class AIDashboardRender(models.AbstractModel):
             ]
         return out
 
-    def _shift_window(self, domain, mode):
+    def _shift_window(self, domain, mode, rolling=()):
         """The same domain, moved back one period or one year.
 
         Returns None when there is no date window to shift - a real answer
         rather than a failure. "Compared to what?" has no answer for a tile
         with no date range, and saying so beats showing a silent zero.
+
+        One period back is one calendar unit back when the window is whole
+        months - March against February - and otherwise the same number of
+        days back. ``rolling`` names the fields whose window is a run of days
+        whatever it happens to cover; see `_rolling_fields`.
 
         Only the *trailing* plain conditions are rewritten, and only when the
         whole window sits inside them. A domain may contain prefix operators
@@ -409,6 +422,14 @@ class AIDashboardRender(models.AbstractModel):
         if mode == "previous_year":
             start -= relativedelta(years=1)
             end -= relativedelta(years=1)
+        elif start.day == 1 and end.day == 1 and field not in rolling:
+            # Whole calendar months - every month, quarter and year a period
+            # filter offers. Stepping these back by their length in days
+            # compared March with 29 Jan - 28 Feb rather than February, and
+            # left quarters and years a day or two out.
+            span = relativedelta(end, start)
+            start, end = start - relativedelta(
+                months=span.years * 12 + span.months), start
         else:
             span = end - start
             start, end = start - span, start
@@ -441,6 +462,22 @@ class AIDashboardRender(models.AbstractModel):
             elif flt.get("field"):
                 domain += [[flt["field"], "=", chosen]]
         return domain
+
+    def _rolling_fields(self, query, spec, filter_values):
+        """The date fields a rolling period ("last 30 days") is windowing.
+
+        Only the filter can tell: on 31 March "last 30 days" and "this month"
+        are both 1 March to 1 April, and the period before the first is the
+        31 days before it while the period before the second is February.
+        """
+        rolling = set()
+        for flt in spec.get("filters", []):
+            if flt.get("type") != "date_range":
+                continue
+            chosen = filter_values.get(flt.get("key"), flt.get("default"))
+            if chosen in ROLLING_PERIODS:
+                rolling.add(flt.get("field") or self._date_field(query["model"]))
+        return rolling
 
     @api.model
     def _period_bounds(self, period):
