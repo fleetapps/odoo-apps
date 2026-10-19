@@ -10,6 +10,8 @@ acceptance and never a traceback.
 The rule these all defend: a spec is *data*. Nothing in it may express "run
 this", only "read that".
 """
+import json
+
 from odoo.tests import TransactionCase, tagged
 
 from ..models import ai_dashboard_spec as spec_lib
@@ -231,6 +233,26 @@ class TestSpecAgainstDatabase(TransactionCase):
     def test_a_good_spec_passes_every_gate(self):
         out = spec_lib.validate(minimal(), self.env, self.scope)
         self.assertEqual(out["widgets"][0]["query"]["model"], "res.partner")
+
+    def test_the_superuser_creates_a_dashboard_ungated(self):
+        """Installs, data files and Odin's template build run as the superuser:
+        a dashboard made there is checked against the database, not a scope.
+        It used to fail with "Expected singleton: mcp.scope()"."""
+        Dashboard = self.env["ai.dashboard"].sudo()
+        self.assertIsNone(Dashboard._scope())
+        spec = minimal()
+        spec["widgets"][0]["query"]["model"] = "res.users"
+        spec["widgets"][0]["query"]["group_by"] = ["login"]
+        dashboard = Dashboard.create({"name": "TEST superuser", "spec_json": json.dumps(spec)})
+        self.assertEqual(json.loads(dashboard.spec_json)["widgets"][0]["query"]["model"], "res.users")
+        spec["widgets"][0]["query"]["group_by"] = ["definitely_not_a_field"]
+        with self.assertRaises(spec_lib.SpecError):
+            Dashboard.create({"name": "TEST superuser bad", "spec_json": json.dumps(spec)})
+
+    def test_no_scope_at_all_is_a_refusal_not_a_crash(self):
+        with self.assertRaises(spec_lib.SpecError) as caught:
+            spec_lib.validate(minimal(), self.env, self.env["mcp.scope"].browse())
+        self.assertIn("AI MCP", str(caught.exception))
 
     # -------------------------------------------------------------- describe
     def test_describe_says_what_it_reads(self):
