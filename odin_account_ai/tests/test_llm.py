@@ -1,6 +1,9 @@
 """The Claude client: the request it sends, what it logs, and when it
 refuses to call (no consent, budget spent, a retried request)."""
 
+import os
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
@@ -32,6 +35,21 @@ class TestLlm(AiCase):
         self.assertNotIn("tool_choice", params)
         run = self.env["odin.ai.run"].search([], limit=1)
         self.assertEqual((run.feature, run.status, run.total_tokens), ("explain", "ok", 120))
+
+    def test_the_key_in_settings_comes_before_the_servers(self):
+        """A client's own key wins; the server's (Odin's) is the fallback."""
+        llm = self.env["odin.ai.llm"]
+        params = self.env["ir.config_parameter"].sudo()
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": " sk-ant-server "}):
+            self.assertEqual(llm._api_key(), "sk-ant-test")
+            params.set_param("odin_account_ai.api_key", False)
+            self.assertEqual(llm._api_key(), "sk-ant-server")
+            params.set_param("odin_account_ai.api_key", "   ")
+            self.assertEqual(llm._api_key(), "sk-ant-server")
+        with patch.dict(os.environ):
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+            self.assertEqual(llm._api_key(), "")
+            self.assertEqual(llm._readiness()[0], "key")
 
     def test_haiku_gets_no_server_fallback(self):
         self.env["ir.config_parameter"].sudo().set_param("odin_account_ai.model", "claude-haiku-5-5")

@@ -14,7 +14,7 @@
                         <field name="odin_ai_consent"/>
                     </setting>
                     <setting id="odin_ai_key" string="Anthropic API key"
-                             help="From console.anthropic.com. The server variable ANTHROPIC_API_KEY takes precedence when set.">
+                             help="From console.anthropic.com. Leave it empty to use the key set on the server (ANTHROPIC_API_KEY), if there is one; a key entered here is used instead of it.">
                         <field name="odin_ai_api_key" password="True" placeholder="sk-ant-..."/>
                         <div class="mt-2">
                             <button name="action_odin_ai_test_connection" type="object" string="Test connection"
