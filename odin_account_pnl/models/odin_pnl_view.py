@@ -27,6 +27,24 @@ from odoo.tools import email_split
 
 _logger = logging.getLogger(__name__)
 
+
+def _deliver(mail):
+    """Send ``mail`` now and return ``(state, failure reason)``.
+
+    Sent at once, not left for the hourly mail queue. auto_delete is off while
+    sending so the outcome can be read: a mail that went is then removed, as
+    auto_delete would have; one the server refused stays (state 'exception')
+    for a retry from the mail queue, and goes once that sends it. 'outgoing'
+    means nothing was sent here (sending is off under tests); the queue sends it.
+    """
+    mail.send(raise_exception=False)
+    state, reason = mail.state, mail.failure_reason or ""
+    if state == "sent":
+        mail.unlink()
+    elif state == "exception":
+        mail.auto_delete = True
+    return state, reason
+
 SCHEDULES = [
     ("none", "Not emailed"),
     ("daily", "Every day"),
@@ -188,19 +206,34 @@ class OdinPnlView(models.Model):
             cron._commit_progress(1)
 
     def _send_and_record(self):
+        return self._send_and_record_result()[0]
+
+    def _send_and_record_result(self):
+        """Send now, write the outcome on the view: ``(status, failed)``."""
         self.ensure_one()
+        failed = False
         try:
             with self.env.cr.savepoint():
-                self._send()
-            status = _("Sent to %(count)s recipient(s)", count=len(self._recipient_emails()))
+                state, reason = self._send()
+            count = len(self._recipient_emails())
+            if state == "exception":
+                failed = True
+                _logger.warning("odin_account_pnl: view %s was refused by the mail server: %s", self.id, reason)
+                status = _("Not sent: %(error)s", error=(reason or _("the mail server refused it"))[:200])
+            elif state == "outgoing":
+                status = _("Queued for %(count)s recipient(s)", count=count)
+            else:
+                status = _("Sent to %(count)s recipient(s)", count=count)
         except Exception as error:  # noqa: BLE001 (record any failure on the view, keep going)
             _logger.warning("odin_account_pnl: view %s could not be sent: %s", self.id, error)
+            failed = True
             status = _("Not sent: %(error)s", error=str(error)[:200])
         self.sudo().write({"last_sent": fields.Datetime.now(), "last_status": status})
-        return status
+        return status, failed
 
     def _send(self):
-        """Render as the owner, in the view's company, and queue the email."""
+        """Render as the owner, in the view's company, and send the email:
+        ``(state, failure reason)`` of the mail, see ``_deliver``."""
         self.ensure_one()
         owner = self.user_id
         if not owner.active or not owner.has_group("account.group_account_readonly"):
@@ -224,14 +257,17 @@ class OdinPnlView(models.Model):
                 "res_model": self._name,
                 "res_id": self.id,
             })
-        self.env["mail.mail"].sudo().create({
+        mail = self.env["mail.mail"].sudo().create({
             "subject": f"{payload['title']} · {payload['period']}",
             "email_from": owner.email_formatted or self.company_id.email_formatted,
+            # The owner, not the cron's user: Odoo names the Reply-To after the author.
+            "author_id": owner.partner_id.id,
             "email_to": ", ".join(self._recipient_emails()),
             "body_html": self._email_body(payload),
             "attachment_ids": [(6, 0, attachments.ids)],
-            "auto_delete": True,
+            "auto_delete": False,
         })
+        return _deliver(mail)
 
     def _live_options(self):
         options = dict(self.options or {})
@@ -283,9 +319,9 @@ class OdinPnlView(models.Model):
         self._check_can_schedule()
         if not self._recipient_emails():
             raise UserError(_("Add at least one recipient with an email address."))
-        status = self._send_and_record()
+        status, failed = self._send_and_record_result()
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
-            "params": {"message": status, "type": "info", "sticky": False},
+            "params": {"message": status, "type": "warning" if failed else "info", "sticky": failed},
         }

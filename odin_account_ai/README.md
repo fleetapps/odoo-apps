@@ -87,9 +87,10 @@ the bill stays a draft. Every booking leaves a note in the document's chatter.
   deleted too.
 * **Conversations** are private to the user who asked, who can read and
   delete them; only the page's actions write them, never a direct edit.
-* **Key:** the API key is a system parameter only administrators can read;
-  the server variable `ANTHROPIC_API_KEY`, when set, takes precedence so the
-  key can stay out of the database.
+* **Key:** the API key is a system parameter only administrators can read.
+  When it is empty, the server variable `ANTHROPIC_API_KEY` is used instead,
+  which keeps that key out of the database: on Odin's instances it is Odin's
+  key, and a client that enters its own key uses that one.
 
 ## How it calls Claude
 
