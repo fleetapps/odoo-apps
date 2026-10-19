@@ -69,8 +69,11 @@ class OdinAiLlm(models.AbstractModel):
 
     @api.model
     def _api_key(self):
-        return os.environ.get("ANTHROPIC_API_KEY") or self.env["ir.config_parameter"].sudo().get_param(
-            "odin_account_ai.api_key")
+        """The key entered in Settings, else the server's ANTHROPIC_API_KEY.
+        On Odin's instances the server variable is Odin's key, kept out of the
+        database; a client that enters its own key uses that one instead."""
+        own = self.env["ir.config_parameter"].sudo().get_param("odin_account_ai.api_key") or ""
+        return own.strip() or os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
     @api.model
     def _model_for(self, feature):

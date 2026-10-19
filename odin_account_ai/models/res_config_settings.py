@@ -1,8 +1,9 @@
 """Accounting > Configuration > Settings > Accounting AI.
 
 The API key lives in a system parameter (only Settings administrators read
-those); the environment variable ANTHROPIC_API_KEY, when set on the server,
-takes precedence so the key can stay out of the database altogether.
+those). When it is empty, the environment variable ANTHROPIC_API_KEY set on
+the server is used instead: a key that stays out of the database, such as the
+one Odin provides on its instances.
 """
 
 from odoo import _, fields, models
