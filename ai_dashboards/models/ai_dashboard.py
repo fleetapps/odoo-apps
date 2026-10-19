@@ -252,15 +252,20 @@ class AIDashboard(models.Model):
 
     @api.model
     def _scope(self):
-        """The MCP governance scope that gates what may be built over.
+        """The MCP governance scope that gates what may be built over, or None
+        for no gate.
 
         Authorship is gated here; *viewing* is gated by the viewer's own access
         rights at render time. Keeping those separate is what lets one person
         build a dashboard that shows a colleague their own figures.
+
+        The superuser is not gated (installs, data files, a template build in
+        ``odoo shell``, any ``sudo()``): None, not an empty recordset, which the
+        validator would take for a scope and fail on.
         """
         user = self.env.user
         if not user or self.env.su:
-            return self.env["mcp.scope"].browse()
+            return None
         return user.sudo().mcp_effective_scope()
 
     def _snapshot(self, note):

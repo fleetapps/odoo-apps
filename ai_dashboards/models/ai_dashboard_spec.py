@@ -342,6 +342,13 @@ def _validate_against_database(query, widget_id, env, scope):
 
     blacklist = set()
     if scope is not None:
+        if not scope:
+            # None means "not gated"; an empty scope means none applies to this
+            # user (the default one archived and no other active): refused.
+            _fail(_(
+                "No AI MCP permission matrix applies to you, so a dashboard "
+                "cannot be built. An administrator can set one up under "
+                "AI MCP → Permissions."))
         line = scope.line_for_model(model_name)
         if not line or not line.can_read:
             _fail(_(
