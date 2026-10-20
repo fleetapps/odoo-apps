@@ -12,7 +12,8 @@ only ever *narrow* access, never widen it. This is defence-in-depth: even a
 misconfigured scope cannot hand an AI more than the underlying user already has.
 """
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
+from odoo.service.model import get_public_method
 
 # Permission presets, as label -> (read, create, write, unlink). They live here
 # rather than on the wizard because the install hook and the Connect screen add
@@ -75,6 +76,15 @@ class MCPScope(models.Model):
     description = fields.Text(
         translate=True,
         help="Shown to admins; not exposed to the AI client.")
+    full_access = fields.Boolean(
+        string="Full Access",
+        help="Every model, including any app installed later, with read, "
+             "create, update and delete, and any public method on it - "
+             "automations, scheduled actions and server actions included. The "
+             "Model Access matrix is ignored. Calls still run as the signed-in "
+             "user, so the AI can never do more than that person can, and Read "
+             "Only, Require Approval, the rate limit and the audit log still "
+             "apply.")
     read_only = fields.Boolean(
         default=True,
         help="Global kill-switch. When on, create/write/unlink tools are not "
@@ -126,8 +136,37 @@ class MCPScope(models.Model):
         administrator believed they had suspended.
         """
         self.ensure_one()
+        if self.full_access:
+            # An unsaved row granting everything, so every caller of this
+            # method reads Full Access exactly as it reads a matrix row.
+            model = self.env["ir.model"]._get(model_name) \
+                if model_name in self.env else None
+            if not model:
+                return self.env["mcp.scope.line"]
+            return self.env["mcp.scope.line"].new({
+                "scope_id": self.id, "model_id": model.id,
+                "can_read": True, "can_create": True, "can_write": True,
+                "can_unlink": True, "can_call_methods": True,
+            })
         return self.line_ids.filtered(
             lambda l: l.active and l.model_name == model_name)[:1]
+
+    def check_full_access_method(self, model, method):
+        """Refuse a method a Full Access scope still may not call.
+
+        Full Access allows exactly what Odoo's own external API would let
+        this user call: odoo.service.model.get_public_method, which refuses
+        private methods and everything marked ``@api.private`` - ``sudo``,
+        ``with_user``, ``with_context`` and the rest of the privilege verbs
+        among them. DENIED_METHODS is the allow-list's guard and is not
+        applied here, so running a server action (``run``) or applying
+        settings (``execute``) works as it does over XML-RPC.
+        """
+        try:
+            get_public_method(model, method)
+        except AttributeError:
+            raise UserError(_("Model %(model)s has no method '%(method)s'.",
+                              model=model._name, method=method))
 
     # ------------------------------------------------------------ bulk adding
     def existing_model_ids(self):
@@ -177,6 +216,10 @@ class MCPScope(models.Model):
         are spelled out in the read tools' descriptions.
         """
         self.ensure_one()
+        if self.full_access:
+            # Wizards are reachable too, but listing them is only noise.
+            return sorted(name for name, model in self.env.registry.items()
+                          if not model._abstract and not model._transient)
         return sorted(set(self.line_ids
                           .filtered(lambda l: l.active and l.can_read)
                           .mapped("model_name")))

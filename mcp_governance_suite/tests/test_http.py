@@ -90,18 +90,29 @@ class TestHttpEndpoints(HttpCase):
         self.assertEqual(data["issuer"].rstrip("/"), data["issuer"])
 
     # --------------------------------------------------------------- auth gates
-    def test_mcp_requires_auth_with_www_authenticate(self):
+    def _unauthenticated_challenge(self):
         r = self.url_open(
             "/mcp",
             data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}),
             headers={"Content-Type": "application/json"},
             allow_redirects=False)
         self.assertEqual(r.status_code, 401)
-        challenge = r.headers.get("WWW-Authenticate", "")
+        return r.headers.get("WWW-Authenticate", "")
+
+    def test_mcp_requires_auth_with_www_authenticate(self):
+        challenge = self._unauthenticated_challenge()
         # RFC 9728: point the client at the resource metadata to start OAuth.
         self.assertIn("resource_metadata", challenge)
-        # Tell it which scope to ask for, so it does not have to guess.
-        self.assertIn('scope="odoo:read"', challenge)
+        # Tell it which scope to ask for, so it does not have to guess. The
+        # shipped Full Access scope can write, so write is on offer.
+        self.assertIn('scope="odoo:read odoo:write"', challenge)
+
+    def test_a_read_only_deployment_challenges_for_read_only(self):
+        """Offering write where no scope can grant it sends clients through a
+        step-up that can never succeed."""
+        self.env["mcp.scope"].search(
+            [("read_only", "=", False)]).write({"active": False})
+        self.assertIn('scope="odoo:read"', self._unauthenticated_challenge())
 
     def test_get_stream_is_not_allowed(self):
         """2026-07-28 removed the standalone GET stream from this transport."""

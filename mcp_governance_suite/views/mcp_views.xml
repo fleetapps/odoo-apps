@@ -86,6 +86,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="name"/>
+                <field name="full_access" widget="boolean_toggle"/>
                 <field name="read_only" widget="boolean_toggle"/>
                 <field name="require_approval" widget="boolean_toggle"/>
                 <field name="rate_limit_per_hour"/>
@@ -107,6 +108,7 @@
                     </div>
                     <group>
                         <group string="Safety">
+                            <field name="full_access" widget="boolean_toggle"/>
                             <field name="read_only"/>
                             <field name="require_approval" invisible="read_only"/>
                         </group>
@@ -116,8 +118,17 @@
                         </group>
                     </group>
                     <field name="description" placeholder="What this scope is for…"/>
+                    <div class="alert alert-warning" role="alert" invisible="not full_access">
+                        <b>Full Access.</b> Every model, including apps installed
+                        later, with read, create, update and delete, and any public
+                        method — automations, scheduled actions and server actions
+                        included. The Model Access matrix is ignored. The AI still
+                        runs as the signed-in user and can never do more than they
+                        can, so give this scope only to people whose own rights you
+                        would hand to an assistant.
+                    </div>
                     <notebook>
-                        <page string="Model Access" name="lines">
+                        <page string="Model Access" name="lines" invisible="full_access">
                             <div class="alert alert-info" role="alert">
                                 These switches can only ever <b>take access away</b>.
                                 Every call runs as the signed-in Odoo user, so the
