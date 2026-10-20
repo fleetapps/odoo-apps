@@ -38,6 +38,22 @@
             <field name="can_read" eval="True"/>
         </record>
 
+        <!-- Ready to assign, never the default: an administrator picks it for
+             a user (or an API key) on purpose. -->
+        <record id="scope_full_access" model="mcp.scope">
+            <field name="name">Full Access</field>
+            <field name="full_access" eval="True"/>
+            <field name="read_only" eval="False"/>
+            <field name="require_approval" eval="False"/>
+            <field name="description">Everything the user can do in Odoo: every
+                model, including apps installed later, with read, create, update
+                and delete, and any public method - journals, inventory, users,
+                views, menus, custom models and fields, automations, scheduled
+                actions and server actions. Still bounded by the user's own Odoo
+                rights, rate-limited and audited. Turn on "Require Approval" to
+                have every change signed off first.</field>
+        </record>
+
         <!-- Make it the default scope for OAuth users out of the box. -->
         <record id="param_default_scope" model="ir.config_parameter">
             <field name="key">mcp_governance_suite.default_scope_id</field>

@@ -211,6 +211,14 @@ class TestSpecAgainstDatabase(TransactionCase):
         with self.assertRaises(spec_lib.SpecError):
             spec_lib.validate(spec, self.env, self.scope)
 
+    def test_a_full_access_scope_reaches_a_model_with_no_row(self):
+        spec = minimal()
+        spec["widgets"][0]["query"]["model"] = "res.users"
+        spec["widgets"][0]["query"]["group_by"] = ["login"]
+        full = self.env["mcp.scope"].create({
+            "name": "TEST dashboards full", "full_access": True})
+        spec_lib.validate(spec, self.env, full)  # must not raise
+
     def test_a_blacklisted_field_is_refused(self):
         spec = minimal()
         spec["widgets"][0]["query"]["measures"] = ["credit_limit:sum"]

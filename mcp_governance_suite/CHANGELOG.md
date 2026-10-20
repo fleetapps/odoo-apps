@@ -4,6 +4,22 @@ All notable changes to **Odoo MCP** are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/); versions use
 Odoo's `19.0.MAJOR.MINOR.PATCH` scheme.
 
+## [19.0.4.2.0] — 2026-10-20
+
+### Added
+- **Full Access scopes.** A new switch on a scope opens every model,
+  including apps installed later, with read, create, update and delete, and
+  any public method: journals, inventory, users and groups, views and menus,
+  custom models and fields, automations, scheduled actions and server
+  actions. "Public" is Odoo's own rule for its external API
+  (`odoo.service.model.get_public_method`), so Full Access can call exactly
+  what XML-RPC could - running a server action, applying settings,
+  installing a module - while `sudo`, `with_user`, `with_context` and the
+  other `@api.private` verbs stay refused by Odoo itself. Calls still run as the
+  signed-in user, and Read Only, Require Approval, the rate limit and the
+  audit log still apply. A **Full Access** scope ships ready to assign; it is
+  never the default.
+
 ## [19.0.3.8.0] — 2026-08-27
 
 ### Added
