@@ -58,15 +58,22 @@
                              pickerTitle="state.supplier.name" onlyIds="state.supplierProducts"
                              withPrice="true" priceFor.bind="priceFor" vatMode="state.vat" allowNew="true"/>
                 <t t-if="state.items.length">
-                    <div class="fw-bold mt-3 mb-1">VAT on this invoice</div>
-                    <div class="d-flex gap-2 mb-2" role="group" aria-label="VAT on this invoice">
+                    <div class="mt-3">
+                        <t t-call="odin_bar_desk.InvoiceTotal"/>
+                    </div>
+                    <div class="d-flex align-items-center small mt-1">
+                        <span class="flex-grow-1 text-muted">
+                            <t t-esc="vatSentence"/>. Check the total against the invoice.
+                        </span>
+                        <button t-if="!state.vatOpen" class="btn btn-link btn-sm p-0"
+                                t-on-click="() => this.state.vatOpen = true">Change</button>
+                    </div>
+                    <div t-if="state.vatOpen" class="d-flex flex-wrap gap-2 mt-2" role="group" aria-label="VAT on this invoice">
                         <button t-foreach="vatModes" t-as="mode" t-key="mode.key" class="btn flex-grow-1"
                                 t-att-class="state.vat === mode.key ? 'btn-primary' : 'btn-outline-secondary'"
                                 t-att-aria-pressed="state.vat === mode.key ? 'true' : 'false'"
                                 t-on-click="() => this.setVat(mode.key)" t-esc="mode.label"/>
                     </div>
-                    <t t-call="odin_bar_desk.InvoiceTotal"/>
-                    <div class="small text-muted mt-1">Check it against the total on the invoice.</div>
                 </t>
                 <div t-if="missingPrices" class="alert alert-warning py-2 mt-2" role="status">
                     <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s have</t><t t-else=""> has</t> no price
@@ -140,19 +147,19 @@
                     <div t-if="!state.receipt" class="mb-3">
                         <t t-call="odin_bar_desk.InvoiceTotal"/>
                     </div>
-                    <div class="fw-bold mb-2">Paid?</div>
+                    <div class="fw-bold mb-2">Payment</div>
                     <button class="btn btn-success o_bar_desk_big w-100 mb-2"
                             t-att-disabled="!canFinish or !paymentAccount or (!state.receipt and !invoiceTotal)"
                             t-on-click="() => this.finish('now')">
-                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Paid now<t t-if="paymentAccount"> · from <t t-esc="paymentAccount"/></t>
+                        <i t-if="state.busy" class="fa fa-circle-o-notch fa-spin me-2"/>Mark as paid<t t-if="paymentAccount"> · <t t-esc="paymentAccount"/></t>
                     </button>
                     <button class="btn btn-light o_bar_desk_big w-100" t-att-disabled="!canFinish"
-                            t-on-click="() => this.finish('later')">Pay later</button>
+                            t-on-click="() => this.finish('later')">Mark as credit purchase</button>
                     <div t-if="!state.receipt and !invoiceTotal" class="small text-muted mt-2">
-                        Add a price to at least one item to pay now.
+                        Add a price to at least one item to mark it paid.
                     </div>
                     <div t-if="!paymentAccount" class="small text-muted mt-2">
-                        Paid now needs the account suppliers are paid from: ask a manager to set it on the Main Store.
+                        Mark as paid needs the account suppliers are paid from: ask a manager to set it on the Main Store.
                     </div>
                 </t>
             </t>

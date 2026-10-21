@@ -36,7 +36,7 @@ class OdinBarDesk(models.AbstractModel):
             "id": partner.id,
             "name": partner.display_name,
             "supplies": partner.bar_supplies or ", ".join(partner.bar_supply_categ_ids.mapped("name")),
-            "vat": partner.bar_invoice_vat or "added",
+            "vat": partner.bar_invoice_vat or "included",
         }
 
     @api.model
@@ -322,7 +322,7 @@ class OdinBarDesk(models.AbstractModel):
     # ------------------------------------------------------------------
 
     @api.model
-    def _desk_purchase_order(self, store, partner, picking_type, entries, ref, vat="added"):
+    def _desk_purchase_order(self, store, partner, picking_type, entries, ref, vat="included"):
         """The supplier's invoice as a confirmed purchase order.
 
         The Desk books goods straight into the store, but it books them
@@ -502,8 +502,8 @@ class OdinBarDesk(models.AbstractModel):
 
         ``lines``: what the invoice lists and what arrived, per item, with the
         price per unit as printed. ``vat`` says how the invoice shows VAT
-        ("added", "included" or "none"; default: what this supplier used
-        last). What arrived goes into the store at once, valued at those
+        ("included", "added" or "none"; default: what this supplier used
+        last, else included). What arrived goes into the store at once, valued at those
         prices. The supplier bill follows the invoice and is posted. Items
         short on arrival are either still coming (``missing`` "coming": they
         stay expected, already billed) or to be credited ("credit": a draft
@@ -524,7 +524,7 @@ class OdinBarDesk(models.AbstractModel):
         partner = self.env["res.partner"].sudo().browse(int(partner_id or 0)).exists()
         if not partner or partner.company_id not in (store.company_id, self.env["res.company"]):
             raise UserError(_("Pick the supplier."))
-        vat = vat or partner.bar_invoice_vat or "added"
+        vat = vat or partner.bar_invoice_vat or "included"
         if vat not in VAT_MODES:
             raise UserError(_("Say how the invoice shows VAT."))
         company = store.company_id

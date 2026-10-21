@@ -72,8 +72,9 @@ sheet**, in three steps that each show whether they are done:
    Installing the module fills both for Dhostana's suppliers (Khetias, Soys,
    Mega Wines, Rosso Bianco, Siddham Wines, Sky City, Highridge, Benchmark,
    Muji, Geeta, Ishano, Outlook Index, Tony West, Rwathia). **VAT on
-   invoices** is how its invoices print VAT (added, included, none); the Desk
-   opens each delivery on it and remembers what staff last chose.
+   invoices** is how its invoices print VAT (included by default, added, or
+   none for a supplier not registered); the Desk opens each delivery on it
+   and remembers what staff last chose.
 8. **Paying suppliers**: on the Main Store's *Bar Desk* tab, set **Suppliers
    are paid from** to the cash or M-Pesa journal that pays deliveries.
 9. **Par levels**: reorder rules (*Inventory → Operations → Replenishment*,
@@ -157,14 +158,16 @@ It opens on the deliveries expected, or straight on the suppliers when none is:
    category already uses, e.g. *Tots · 750ml bottle*, *Units · Crate of 24*)
    and what it sells for. It is created with the delivery and marked
    *Added on the Desk* for a manager to check.
-5. **VAT on this invoice**: *+ VAT*, *VAT included* or *No VAT*, as printed.
-   The **Invoice total** then reads like the bottom line of the paper: check
-   one against the other.
+5. Prices are read as **including VAT**, as drinks and cigarettes are
+   invoiced in Kenya; **Change** gives *VAT added on top* or *No VAT* (a
+   supplier not registered for VAT) for the exceptions, and the supplier
+   keeps the choice. The **Invoice total** reads like the bottom line of the
+   paper: check one against the other.
 6. **What arrived?** Filled in from the invoice: change only what differs.
 7. If something is missing, **The supplier will**: *Bring them later* (it
    stays under *Expected from suppliers*) or *Send a credit note*.
-8. Invoice number (optional), then **Paid now** (from the store's payment
-   account) or **Pay later**.
+8. Invoice number (optional), then **Mark as paid** (from the store's
+   payment account) or **Mark as credit purchase** (owed to the supplier).
 
 **Stock levels.** Every product's club total in bottles or crates, where it
 sits, and its par; **Below par** lists what to reorder. This replaces the
@@ -261,7 +264,7 @@ expected is measured against the shelf as it stands now.
 | Move bar → store | The bar's `RET-xx` transfer, validated |
 | Move bar → bar | `IBT` transfer, validated |
 | Move out of the club | Transfer of the destination's type (`ROMA` / `EVT` / `DEBT`), validated |
-| Supplier delivery (store) | A purchase order at the prices typed, confirmed (and approved, whatever the approval rule: the goods are in); its receipt into the store validated for what arrived, valued at those prices, which moves the product's cost (average or FIFO); the supplier bill for what the invoice lists, taxed the way the invoice shows VAT, **posted**, and paid from the store's journal when *Paid now*; price changes against the supplier's last invoice noted on the bill; an expected receipt (bring later, already billed) or a draft credit note (credit) for what was missing; the invoice photo attached |
+| Supplier delivery (store) | A purchase order at the prices typed, confirmed (and approved, whatever the approval rule: the goods are in); its receipt into the store validated for what arrived, valued at those prices, which moves the product's cost (average or FIFO); the supplier bill for what the invoice lists, taxed the way the invoice shows VAT, **posted**, and paid from the store's journal when *Mark as paid*; price changes against the supplier's last invoice noted on the bill; an expected receipt (bring later, already billed) or a draft credit note (credit) for what was missing; the invoice photo attached |
 | New product (on a delivery) | A storable product in the category picked, kept like its neighbours (tots and a bottle size, or units and a crate), with its selling price and the company's taxes, on the Desk at once and marked *Added on the Desk* (filter *Added on the Desk, to check* under *Bar Control → Configuration → Desk products*): check it, link it to its POS item, then clear the mark |
 | Count approved | Inventory adjustment moves for the differences, linked to the count and its variance reason |
 

@@ -24,21 +24,24 @@ function toast(app, outcome, message) {
     }
 }
 
-/** How an invoice can print VAT, as staff read it on the paper. */
+/** How an invoice can print VAT, as staff read it on the paper. Drinks and
+ * cigarettes are invoiced in Kenya at prices including VAT, so that is where
+ * a supplier starts; the others are a tap away for the exceptions. */
 export const VAT_MODES = [
-    { key: "added", label: "+ VAT" },
-    { key: "included", label: "VAT included" },
-    { key: "none", label: "No VAT" },
+    { key: "included", label: "VAT included", sentence: "Prices include VAT" },
+    { key: "added", label: "VAT added on top", sentence: "VAT is added on top of the prices" },
+    { key: "none", label: "No VAT", sentence: "No VAT: the supplier is not registered" },
 ];
 
 /**
  * Store: a supplier delivery, checked against the supplier's invoice.
  *
  * New delivery: supplier → invoice photo (optional) and the items on the
- * invoice, each with its price as printed, and how the invoice shows VAT,
- * until the total matches the paper → what arrived (filled in from the
- * invoice: change what differs) → missing items, invoice number, Paid now or
- * Pay later. The bill is posted and paid there and then: nothing waits for a
+ * invoice, each with its price as printed (including VAT unless the invoice
+ * says otherwise), until the total matches the paper → what arrived (filled
+ * in from the invoice: change what differs) → missing items, invoice number,
+ * Mark as paid or Mark as credit purchase. The bill is posted, and paid when
+ * marked so, there and then: nothing waits for a
  * manager, so nothing moves on without a price. Expected deliveries (the rest
  * of an invoice, or an order made in Odoo) are opened from the list and
  * checked the same way.
@@ -68,7 +71,8 @@ export class StoreReceiveScreen extends Component {
             supplier: null,
             supplierProducts: new Set(),
             supplierPrices: {},
-            vat: "added",
+            vat: "included",
+            vatOpen: false,
             invoice: null,
             items: [],
             arrived: {},
@@ -132,7 +136,8 @@ export class StoreReceiveScreen extends Component {
 
     async pickSupplier(supplier) {
         Object.assign(this.state, {
-            supplier, items: [], supplierProducts: new Set(), supplierPrices: {}, vat: supplier.vat || "added",
+            supplier, items: [], supplierProducts: new Set(), supplierPrices: {},
+            vat: supplier.vat || "included", vatOpen: false,
         });
         this.go("items");
         try {
@@ -155,6 +160,11 @@ export class StoreReceiveScreen extends Component {
     /** Prices are typed as the invoice prints them; this is how it prints VAT. */
     setVat(mode) {
         this.state.vat = mode;
+        this.state.vatOpen = false;
+    }
+
+    get vatSentence() {
+        return VAT_MODES.find((mode) => mode.key === this.state.vat)?.sentence || "";
     }
 
     // ---- invoice photo --------------------------------------------------------
@@ -322,7 +332,7 @@ export class StoreReceiveScreen extends Component {
 
     /** The invoice adds up from the prices entered line by line, read the
      * way it prints VAT: the total is the figure at the bottom of the paper,
-     * and what Paid now takes from the account. */
+     * and what Mark as paid takes from the account. */
     get invoiceTotals() {
         let net = 0;
         let vat = 0;
@@ -427,7 +437,10 @@ export class StoreReceiveScreen extends Component {
                 "warning"
             );
         } else {
-            let message = paid === "now" && bill?.paid ? "In the store and paid." : "In the store. The bill waits for payment.";
+            let message =
+                paid === "now" && bill?.paid
+                    ? "In the store and marked paid."
+                    : "In the store, as a credit purchase.";
             const costs = outcome.result?.new_costs || [];
             if (costs.length) {
                 const names = costs.length > 2 ? `${costs.slice(0, 2).join(", ")} and ${costs.length - 2} more` : costs.join(" and ");

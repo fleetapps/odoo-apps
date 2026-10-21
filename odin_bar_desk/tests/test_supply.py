@@ -172,7 +172,7 @@ class TestSupplierDelivery(BarDeskCase):
             "company_id": self.company.id,
         })
         self.tusker.supplier_taxes_id = [(6, 0, vat.ids)]
-        self.deliver(1, 1, paid="later")
+        self.deliver(1, 1, paid="later", vat="added")
         order = self.env["purchase.order"].search([("partner_id", "=", self.supplier.id)])
         self.assertEqual(order.order_line.tax_ids, vat, "the purchase line is taxed")
         bill = self.bills()
@@ -302,10 +302,21 @@ class TestSupplierDelivery(BarDeskCase):
         suppliers = self.desk_store.desk_suppliers(self.store.id, self.token, "Tony")
         self.assertEqual(suppliers[0]["vat"], "none", "the next delivery opens on it")
 
-    def test_vat_added_is_the_default(self):
+    def test_vat_included_is_the_default(self):
+        """Drinks and cigarettes are invoiced in Kenya at prices including
+        VAT: 2,400 on the invoice is 2,400 to pay, of which VAT is 331.03."""
         self._vat()
+        self.assertEqual(self.supplier.bar_invoice_vat, "included")
         self.deliver_lines([self.line(1, price=2400.0)])
+        bill = self.bills()
+        self.assertEqual(bill.amount_total, 2400.0)
+        self.assertAlmostEqual(bill.amount_tax, 331.03, places=2)
+
+    def test_vat_added_on_top(self):
+        self._vat()
+        self.deliver_lines([self.line(1, price=2400.0)], vat="added")
         self.assertEqual(self.bills().amount_total, 2784.0)
+        self.assertEqual(self.supplier.bar_invoice_vat, "added", "remembered for next time")
 
     def test_the_cost_follows_what_was_paid_on_average_cost(self):
         beer = self.tusker.categ_id.with_company(self.company)
@@ -396,8 +407,12 @@ class TestSupplierDelivery(BarDeskCase):
         self.assertEqual(cider.list_price, 300.0)
         self.assertEqual(cider.company_id, self.company)
         self.assertEqual(self.qty(cider, self.loc_store), 48)
-        self.assertAlmostEqual(cider.with_company(self.company).standard_price, 200.0)
-        self.assertEqual(self.bills().amount_untaxed, 9600.0)
+        # It takes the company's purchase VAT, and the 4,800 a crate typed
+        # includes it: the cost is what is left once VAT is reclaimed.
+        self.assertEqual(cider.supplier_taxes_id, self.company.account_purchase_tax_id)
+        vat = 1 + cider.supplier_taxes_id.amount / 100
+        self.assertAlmostEqual(cider.with_company(self.company).standard_price, 200.0 / vat, places=2)
+        self.assertEqual(self.bills().amount_total, 9600.0)
         self.assertIn(cider, self.store._desk_products(), "on the Desk from now on")
         self.assertIn("Added on the Bar Desk by Sam", cider.product_tmpl_id.message_ids[:1].body)
 
@@ -414,7 +429,8 @@ class TestSupplierDelivery(BarDeskCase):
         self.assertEqual(caskmates.uom_id, self.uom_tot)
         self.assertEqual(caskmates.bar_bottle_uom_id, self.uom_750)
         self.assertEqual(self.qty(caskmates, self.loc_store), 150)
-        self.assertAlmostEqual(caskmates.with_company(self.company).standard_price, 100.0)
+        vat = 1 + caskmates.supplier_taxes_id.amount / 100
+        self.assertAlmostEqual(caskmates.with_company(self.company).standard_price, 100.0 / vat, places=2)
 
     def test_a_new_product_needs_its_selling_price(self):
         with self.assertRaisesRegex(UserError, "selling price"):
