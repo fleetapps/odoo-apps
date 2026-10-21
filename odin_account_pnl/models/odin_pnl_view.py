@@ -75,7 +75,18 @@ class OdinPnlView(models.Model):
     # so `default=dict` evaluates dict(recordset) -- a recordset iterates as
     # records, and dict() wants pairs, so opening the form raised "dictionary
     # update sequence element #0 has length 1; 2 is required".
-    options = fields.Json(required=True, default=lambda self: {})
+    #
+    # NOT `required=True`. fields.Json.convert_to_cache maps every falsy value
+    # to None, so an empty dict is stored as SQL NULL -- a required Json column
+    # can therefore never be satisfied by this field's own default, and the
+    # form (which has no options field, because options come from the report)
+    # could only ever create `{}`. Saving a view from the Saved P&L Views menu
+    # and pressing "Send now" raised "Missing required value for the field
+    # 'Options'", Odoo's wording for the NOT NULL violation. Nothing needs the
+    # constraint: convert_to_record turns NULL back into {}, every reader here
+    # goes through `self.options or {}`, and _normalize_options fills in each
+    # default, so a view with no stored options is simply the default P&L.
+    options = fields.Json(default=lambda self: {})
     period_rule = fields.Char(compute="_compute_period_rule")
 
     schedule = fields.Selection(SCHEDULES, required=True, default="none")
