@@ -130,10 +130,12 @@ export class PnlAction extends Component {
         useExternalListener(window, "click", this.onWindowClick.bind(this), { capture: true });
         onWillStart(async () => {
             if (!restored && !this.props.action.params?.options) {
-                // The user's default saved view, its period computed from today.
-                const options = await this.orm.call("odin.pnl.report", "get_view_options", [false]);
-                if (options) {
-                    this.state.options = options;
+                // The user's default saved view, its period computed from today,
+                // named on the Views button like a view picked from the menu.
+                const view = await this.orm.call("odin.pnl.report", "get_default_view", []);
+                if (view) {
+                    this.state.options = view.options;
+                    this.state.viewId = view.id;
                 }
             }
             const [journals] = await Promise.all([

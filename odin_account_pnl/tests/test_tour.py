@@ -52,3 +52,15 @@ class TestTour(PnlCase, HttpCase):
             "odin_account_pnl_ledger_tour",
             login="admin",
         )
+
+    def test_the_views_button_names_the_view_on_screen(self):
+        self._sign_in_admin()
+        admin = self.env.ref("base.user_admin")
+        Views = self.env["odin.pnl.view"].with_user(admin)
+        Views.create({"name": "Board pack", "options": {"date": {"filter": "previous_month"}}})
+        Views.create({"name": "Opening view", "options": {"date": {"filter": "previous_month"}}, "is_default": True})
+        self.start_tour(
+            "/odoo/action-odin_account_pnl.odin_pnl_report_action?debug=",
+            "odin_account_pnl_views_tour",
+            login="admin",
+        )

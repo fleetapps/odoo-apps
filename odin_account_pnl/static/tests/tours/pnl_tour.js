@@ -74,3 +74,25 @@ registry.category("web_tour.tours").add("odin_account_pnl_ledger_tour", {
         { trigger: ".o_odin_pnl_main:not(:has(.o_odin_pnl_tip))" },
     ],
 });
+
+/**
+ * The Views button names the view on screen: the default view the page opens
+ * on, then one picked from the menu. Schedule Send then opens that view.
+ */
+registry.category("web_tour.tours").add("odin_account_pnl_views_tour", {
+    steps: () => [
+        { trigger: ".o_odin_pnl_table" },
+        { trigger: ".o_control_panel button:has(.fa-star):contains(Opening view)", run: "click" },
+        { trigger: ".o_odin_pnl_views_menu .dropdown-item:contains(Board pack)", run: "click" },
+        { trigger: ".o_control_panel button:has(.fa-star):contains(Board pack)" },
+        { trigger: ".o_odin_pnl_schedule", run: "click" },
+        {
+            trigger: ".modal .o_form_view .o_field_widget[name=name] input",
+            run() {
+                if (this.anchor.value !== "Board pack") {
+                    throw new Error(`Schedule Send opened "${this.anchor.value}", not the view on screen`);
+                }
+            },
+        },
+    ],
+});

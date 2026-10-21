@@ -435,6 +435,18 @@ class OdinPnlReport(models.AbstractModel):
         return self.list_views()
 
     @api.model
+    def get_default_view(self):
+        """The user's default view as the report opens it: ``{"id",
+        "options"}``, or ``False`` when there is none. The id lets the page
+        name the view it shows."""
+        self._check_access()
+        view = self.env["odin.pnl.view"].search(
+            [("user_id", "=", self.env.uid), ("is_default", "=", True)], limit=1)
+        if not view:
+            return False
+        return {"id": view.id, "options": self.get_view_options(view.id)}
+
+    @api.model
     def get_view_options(self, view_id=False):
         """The options of a view, or of the user's default one, with the
         period computed again from today (``False`` when there is none)."""
