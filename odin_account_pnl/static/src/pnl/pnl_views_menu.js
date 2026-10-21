@@ -20,6 +20,11 @@ export class PnlViewsMenu extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.state = useState({ views: [], name: "", shared: false });
+        // The report's state, observed by this menu too. Read through the
+        // report's own proxy, a change of view re-rendered the report only:
+        // its `report` prop is the same object, so Owl left this menu alone
+        // and the button kept saying "Views".
+        this.reportState = useState(this.props.report.state);
         onWillStart(() => this.refresh());
     }
 
@@ -28,7 +33,7 @@ export class PnlViewsMenu extends Component {
     }
 
     get current() {
-        return this.state.views.find((view) => view.id === this.report.state.viewId);
+        return this.state.views.find((view) => view.id === this.reportState.viewId);
     }
 
     async refresh() {

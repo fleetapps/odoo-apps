@@ -54,6 +54,15 @@ class TestViews(PnlCase):
         self.assertTrue(defaults[0]["mine"])
         self.assertTrue(self.report_as(self.colleague).get_view_options(False))
 
+    def test_the_default_view_comes_with_its_id(self):
+        """So the page can name the view it opens on."""
+        self.assertFalse(self.report_as(self.accountant).get_default_view())
+        saved = self.report_as(self.accountant).save_view(self.options(), "Board")
+        self.report_as(self.accountant).set_default_view(saved["id"])
+        view = self.report_as(self.accountant).get_default_view()
+        self.assertEqual(view["id"], saved["id"])
+        self.assertEqual(view["options"]["date"]["date_from"], "2026-09-01")
+
     def test_only_accountants_schedule_emails(self):
         saved = self.report_as(self.colleague).save_view(self.options(), "Mine")
         view = self.env["odin.pnl.view"].with_user(self.colleague).browse(saved["id"])
