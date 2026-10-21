@@ -210,12 +210,14 @@
         <div t-if="state.menu and menuRow" class="o_odin_pnl_rowmenu o-dropdown--menu dropdown-menu show"
              t-attf-style="top: {{state.menu.top}}px; left: {{state.menu.left}}px;">
             <t t-if="state.menu.kind === 'by'">
-                <h6 class="dropdown-header">Show by</h6>
-                <button t-foreach="menuModes" t-as="mode" t-key="mode[0]" class="dropdown-item"
-                        t-att-class="{ active: menuRow.mode === mode[0] }"
-                        t-on-click="() => this.setMode(menuRow, mode[0])">
-                    <t t-esc="mode[1]"/>
-                </button>
+                <t t-foreach="menuSections" t-as="section" t-key="section.title">
+                    <h6 class="dropdown-header" t-esc="section.title"/>
+                    <button t-foreach="section.modes" t-as="mode" t-key="mode[0]" class="dropdown-item"
+                            t-att-class="{ active: menuRow.mode === mode[0] }"
+                            t-on-click="() => this.setMode(menuRow, mode[0])">
+                        <t t-esc="mode[1]"/>
+                    </button>
+                </t>
             </t>
             <t t-else="">
                 <button t-foreach="menuActions" t-as="item" t-key="item_index" class="dropdown-item"

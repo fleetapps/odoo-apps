@@ -3,7 +3,8 @@
 {
     "name": "Interactive Profit & Loss",
     "summary": "A one-page, drill-down Profit & Loss for Odoo Community: "
-    "comparisons, budgets, what's in every number, entry peek, saved and emailed views",
+    "comparisons, budgets, what's in every number (by document, order, period...), "
+    "every transaction on screen and in PDF/Excel, saved and emailed views",
     "description": """
 The Profit & Loss of Odoo 19 Enterprise, rebuilt for Community on one page:
 unfold a line into its accounts and journal items in place, split any figure
@@ -11,7 +12,7 @@ by partner, product, month, journal or analytic account, peek at the source
 document beside the report, compare periods, type a budget straight into the
 report, and save views that are emailed on a schedule. See README.md.
 """,
-    "version": "19.0.1.0.4",
+    "version": "19.0.1.1.0",
     "category": "Accounting/Accounting",
     "author": "Fleet Apps",
     "license": "GPL-3",

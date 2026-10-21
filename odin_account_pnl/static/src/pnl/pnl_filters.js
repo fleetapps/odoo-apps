@@ -94,6 +94,19 @@ export class PnlFilterBar extends Component {
         return this.options.include_draft ? _t("Posted and draft entries") : _t("Posted entries");
     }
 
+    /** [level, label, what it shows]: see DETAIL_LEVELS in odin_pnl_report.py. */
+    get detailLevels() {
+        return [
+            ["lines", _t("Lines"), _t("Revenue, costs and profit: the summary")],
+            ["accounts", _t("Accounts"), _t("Every account under its line")],
+            ["transactions", _t("Every transaction"), _t("Every journal item under its account, with totals")],
+        ];
+    }
+
+    get detailLabel() {
+        return this.detailLevels.find(([level]) => level === this.options.detail)?.[1] || _t("Lines");
+    }
+
     get budgetLabel() {
         const budget = this.props.data.budgets.find((b) => b.id === this.options.budget_id);
         return budget ? budget.name : _t("Budget");
