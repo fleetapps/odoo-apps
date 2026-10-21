@@ -52,9 +52,36 @@ MAX_UNFOLDED = 400
 TREND_MONTHS = 12
 UNALLOCATED = "_UNALLOCATED"
 
-DIMENSIONS = ("partner", "product", "product_category", "month", "journal", "analytic")
+# What a row can be split by ("By"), in the sections of its menu. Partner
+# stays first after the journal items: it is the split most often wanted.
+DIMENSION_SECTIONS = (
+    ("people", ("partner", "salesperson")),
+    ("documents", ("document", "purchase_order", "sale_order")),
+    ("products", ("product", "product_category")),
+    ("period", ("day", "week", "month", "quarter")),
+    ("journal", ("journal",)),
+)
+DIMENSIONS = tuple(dim for _section, dims in DIMENSION_SECTIONS for dim in dims) + ("analytic",)
+# Split by time, a row lists its periods in order: up to a year of days,
+# the later ones under "Others" (which still shows them all).
+TIME_DIMENSIONS = dict(DIMENSION_SECTIONS)["period"]
+MAX_PERIODS = 366
+# The journal-item field each order dimension needs; its app adds it.
+ORDER_FIELDS = {"purchase_order": "purchase_line_id", "sale_order": "sale_line_ids"}
 # What unfolding a row shows when the user has not picked anything.
 ENTRY_MODES = ("entries", "ledger")
+# How far the whole report unfolds, on screen and in its exports: the lines
+# alone (a board pack), every account under its line, or every journal item
+# under its account (a "P&L detail", as accountants ask of Xero and
+# QuickBooks). Rows unfolded by hand unfold whatever the level.
+DETAIL_LEVELS = ("lines", "accounts", "transactions")
+UNFOLDED_AT = {
+    "lines": (),
+    "accounts": ("line", "group"),
+    "transactions": ("line", "group", "account", "breakdown"),
+}
+# An export lists the journal items of a row up to this many, not by page.
+EXPORT_ITEMS = 20000
 
 
 class OdinPnlReport(models.AbstractModel):
@@ -74,12 +101,10 @@ class OdinPnlReport(models.AbstractModel):
         ctx = self._context(options)
         rows = self._top_rows(ctx)
         unfolded = set(ctx.options["unfolded"])
-        if ctx.options["unfold_all"]:
-            unfolded |= {row["key"] for row in rows if row["unfoldable"]}
         result = []
         for row in rows:
             result.append(row)
-            if row["key"] in unfolded and row["unfoldable"]:
+            if self._unfolds(ctx, row, unfolded):
                 row["unfolded"] = True
                 result.extend(self._unfold(ctx, row, unfolded))
         return {
@@ -103,10 +128,7 @@ class OdinPnlReport(models.AbstractModel):
             ],
             "can_edit_budget": self.env.user.has_group("account.group_account_user"),
             "can_configure": self.env.user.has_group("account.group_account_manager"),
-            "analytic_plans": [
-                {"id": plan.id, "name": plan.name}
-                for plan in self.env["account.analytic.plan"].search([("parent_id", "=", False)])
-            ],
+            "split_menu": self._split_menu(),
         }
 
     @api.model
@@ -558,6 +580,10 @@ class OdinPnlReport(models.AbstractModel):
             if isinstance(key, str) and isinstance(mode_value, str) and key in unfolded
         }
         scale = _int(options.get("scale")) if _int(options.get("scale")) in (1, 1000, 1000000) else 1
+        detail = options.get("detail")
+        if detail not in DETAIL_LEVELS:
+            # Views saved before the levels had "Unfold all": the accounts.
+            detail = "accounts" if options.get("unfold_all") else "lines"
 
         return {
             "layout_id": layout.id,
@@ -585,7 +611,7 @@ class OdinPnlReport(models.AbstractModel):
             # Off unless asked: with little history the sparkline says little,
             # and it costs a 12-month query on every load.
             "trend": bool(options.get("trend")),
-            "unfold_all": bool(options.get("unfold_all")),
+            "detail": detail,
             "budget_id": budget.id or False,
             "scale": scale,
             "decimals": options.get("decimals", True) is not False,
@@ -709,19 +735,28 @@ class OdinPnlReport(models.AbstractModel):
     # Unfolding
     # ------------------------------------------------------------------
 
+    def _unfolds(self, ctx, row, unfolded):
+        # .get: a "Load more" row is never unfoldable and says nothing of it.
+        return row.get("unfoldable") and (
+            row["key"] in unfolded or row["type"] in UNFOLDED_AT[ctx.options["detail"]])
+
     def _unfold(self, ctx, row, unfolded):
         """Children of an unfolded row, recursively for the ones that are
-        unfolded too (restoring a page or exporting it)."""
+        unfolded too (restoring a page, exporting it, or the detail level)."""
         result = []
         for child in self._children(ctx, row):
             result.append(child)
-            if child["key"] in unfolded and child["unfoldable"]:
+            if self._unfolds(ctx, child, unfolded):
                 child["unfolded"] = True
                 result.extend(self._unfold(ctx, child, unfolded))
         return result
 
     def _children(self, ctx, parent, offset=0, running=0.0):
         mode = parent["mode"] or self._default_mode(parent["key"])
+        if not self._known_mode(mode):
+            # A view saved with a split this database cannot make (its app
+            # was removed): the row shows its default, not an error.
+            mode = parent["mode"] = self._default_mode(parent["key"])
         if mode == "accounts":
             return self._account_children(ctx, parent)
         if mode in ENTRY_MODES or mode.startswith("audit:"):
@@ -750,6 +785,50 @@ class OdinPnlReport(models.AbstractModel):
         last_kind = self._parse_key(key)[-1][0]
         return "accounts" if last_kind in ("L", "G") else "entries"
 
+    def _split_menu(self):
+        """The "By" menu after the journal items: ``[{"title", "modes":
+        [[mode, label]]}]``. Purchase and sales orders only where their app
+        is installed; one entry per analytic plan."""
+        titles = {
+            "people": _("People"),
+            "documents": _("Documents"),
+            "products": _("Products"),
+            "period": _("Period"),
+            "journal": _("Journal"),
+        }
+        labels = {
+            "partner": _("Partner"),
+            "salesperson": _("Salesperson"),
+            "document": _("Invoice / bill"),
+            "purchase_order": _("Purchase order"),
+            "sale_order": _("Sales order"),
+            "product": _("Product"),
+            "product_category": _("Product category"),
+            "day": _("Day"),
+            "week": _("Week"),
+            "month": _("Month"),
+            "quarter": _("Quarter"),
+            "journal": _("Journal"),
+        }
+        sections = [
+            {"title": titles[section], "modes": [[dim, labels[dim]] for dim in dims if self._dimension_available(dim)]}
+            for section, dims in DIMENSION_SECTIONS
+        ]
+        plans = self.env["account.analytic.plan"].search([("parent_id", "=", False)])
+        if plans:
+            sections.append({
+                "title": _("Analytic"), "modes": [[f"analytic:{plan.id}", plan.name] for plan in plans]})
+        return [section for section in sections if section["modes"]]
+
+    def _known_mode(self, mode):
+        dim = mode.split(":", 1)[0]
+        return (mode in ("accounts",) + ENTRY_MODES or mode.startswith("audit:")
+                or dim in DIMENSIONS and self._dimension_available(dim))
+
+    def _dimension_available(self, dim):
+        field = ORDER_FIELDS.get(dim)
+        return not field or field in self.env["account.move.line"]._fields
+
     def _valid_mode(self, ctx, parent, mode):
         last_kind = self._parse_key(parent["key"])[-1][0]
         if mode == "accounts" and last_kind in ("L", "G"):
@@ -759,7 +838,7 @@ class OdinPnlReport(models.AbstractModel):
         if mode.startswith("audit:") and mode[6:] in ctx.columns_by_key:
             return mode
         dim = mode.split(":", 1)[0]
-        if dim in DIMENSIONS:
+        if dim in DIMENSIONS and self._dimension_available(dim):
             if dim == "analytic":
                 plan_id = _int(mode.split(":", 1)[1] if ":" in mode else 0)
                 if not self.env["account.analytic.plan"].browse(plan_id).exists():
@@ -833,18 +912,24 @@ class OdinPnlReport(models.AbstractModel):
             for column, amount in zip(ctx.balance_columns, amounts):
                 totals[value][column["key"]] += amount * (-1 if parent["sign"] == "credit" else 1)
         main_key = ctx.balance_columns[0]["key"]
-        ordered = sorted(
-            (value for value, amounts in totals.items() if any(abs(a) > 1e-9 for a in amounts.values())),
-            key=lambda value: (-abs(totals[value][main_key]), str(value)),
-        )
-        names = self._dimension_names(dim, ordered)
+        nonzero = [value for value, amounts in totals.items() if any(abs(a) > 1e-9 for a in amounts.values())]
+        # Every transaction means every contributor: none hides in "Others".
+        show_all = parent.get("show_all") or ctx.options["detail"] == "transactions"
+        if dim in TIME_DIMENSIONS:
+            # Periods read in order, all of them: a month split into days is
+            # the whole month, not its ten biggest days.
+            ordered = sorted(nonzero)
+            limit = MAX_PERIODS
+        else:
+            ordered = sorted(nonzero, key=lambda value: (-abs(totals[value][main_key]), str(value)))
+            limit = TOP_CONTRIBUTORS
         grand = sum(abs(totals[value][main_key]) for value in ordered) or 0.0
         level = parent["level"] + 1
-        show_all = parent.get("show_all")
-        visible = ordered if show_all else ordered[:TOP_CONTRIBUTORS]
+        visible = ordered if show_all else ordered[:limit]
+        names = self._dimension_names(dim, visible)
         rows = []
         for value in visible:
-            segment_value = _segment_value(value)
+            segment_value = _segment_value(value, dim)
             row = self._row(
                 ctx, f"{parent['key']}/B:{dim}{':' + arg if arg else ''}:{segment_value}",
                 parent["key"], level, "breakdown", names.get(value) or _("(none)"),
@@ -854,7 +939,7 @@ class OdinPnlReport(models.AbstractModel):
             row["unfoldable"] = True
             row["mode"] = ctx.options["modes"].get(row["key"], "entries")
             rows.append(row)
-        rest = ordered[TOP_CONTRIBUTORS:] if not show_all else []
+        rest = ordered[limit:] if not show_all else []
         if rest:
             values = defaultdict(float)
             for value in rest:
@@ -870,22 +955,58 @@ class OdinPnlReport(models.AbstractModel):
 
     def _dimension_names(self, dim, values):
         ids = [value for value in values if isinstance(value, int) and value]
-        if dim == "month":
-            return {
-                value: format_date(self.env, value, date_format="MMMM yyyy")
-                for value in values if isinstance(value, date)
-            }
+        if dim in TIME_DIMENSIONS:
+            days = [value for value in values if isinstance(value, date)]
+            if dim == "month":
+                return {day: format_date(self.env, day, date_format="MMMM yyyy") for day in days}
+            if dim == "quarter":
+                return {day: _("Q%(quarter)s %(year)s", quarter=date_utils.get_quarter_number(day), year=day.year)
+                        for day in days}
+            if dim == "week":
+                return {day: _("Week of %(day)s", day=format_date(self.env, day, date_format="d MMM yyyy"))
+                        for day in days}
+            return {day: format_date(self.env, day, date_format="EEE d MMM yyyy") for day in days}
         model = {
             "partner": "res.partner",
+            "salesperson": "res.users",
+            "document": "account.move",
+            "purchase_order": "purchase.order",
+            "sale_order": "sale.order",
             "product": "product.product",
             "product_category": "product.category",
             "journal": "account.journal",
             "analytic": "account.analytic.account",
         }[dim]
-        records = self.env[model].with_context(active_test=False).browse(ids).exists()
-        names = {record.id: record.display_name for record in records}
-        if dim == "analytic":
-            names[None] = _("Not assigned")
+        Model = self.env[model].with_context(active_test=False)
+        if dim in ORDER_FIELDS:
+            # Names only. An accountant may have no access to purchases or
+            # sales, yet the amounts are journal items they can read.
+            Model = Model.sudo()
+        records = Model.browse(ids).exists()
+        if dim in ("document", "purchase_order", "sale_order"):
+            # "INV/2026/00012 · Acme": the reference and who it was with, as
+            # on an accountant's drill-down. An entry posted by hand has its
+            # partner on its lines; one partner there names it too.
+            line_partners = defaultdict(lambda: self.env["res.partner"])
+            if dim == "document" and (entries := records.filtered(lambda move: not move.partner_id)):
+                for move, partner in self.env["account.move.line"]._read_group(
+                        [("move_id", "in", entries.ids), ("partner_id", "!=", False)], ["move_id", "partner_id"]):
+                    line_partners[move.id] |= partner
+            names = {}
+            for record in records:
+                partner = record.partner_id
+                if not partner and len(line_partners[record.id]) == 1:
+                    partner = line_partners[record.id]
+                reference = record.name if record.name and record.name != "/" else record.display_name
+                names[record.id] = " · ".join(filter(None, [reference, partner.display_name]))
+        else:
+            names = {record.id: record.display_name for record in records}
+        names[None] = {
+            "analytic": _("Not assigned"),
+            "salesperson": _("No salesperson"),
+            "purchase_order": _("No purchase order"),
+            "sale_order": _("No sales order"),
+        }.get(dim)
         return names
 
     # ------------------------------------------------------------------
@@ -912,6 +1033,8 @@ class OdinPnlReport(models.AbstractModel):
             & self._analytic_domain(filt["sets"], filt.get("plan"))
         )
         AML = self.env["account.move.line"]
+        # On screen by pages; in an export, all of them (up to a bound).
+        page = EXPORT_ITEMS if self.env.context.get("odin_pnl_export") else PAGE_SIZE
         if mode.startswith("audit:"):
             # Largest first: the item that explains a figure is usually a big one.
             query = AML._search(domain)
@@ -920,12 +1043,12 @@ class OdinPnlReport(models.AbstractModel):
                 AML._field_to_sql(query.table, "balance", query),
                 SQL.identifier(query.table, "id"))
             query.offset = offset
-            query.limit = PAGE_SIZE + 1
+            query.limit = page + 1
             lines = AML.browse([row[0] for row in self.env.execute_query(query.select())])
         else:
-            lines = AML.search(domain, order=order, offset=offset, limit=PAGE_SIZE + 1)
-        has_more = len(lines) > PAGE_SIZE
-        lines = lines[:PAGE_SIZE]
+            lines = AML.search(domain, order=order, offset=offset, limit=page + 1)
+        has_more = len(lines) > page
+        lines = lines[:page]
         factor = -1 if parent["sign"] == "credit" else 1
         plan_accounts = [int(i) for i in self._plan_account_ids(filt["plan"])] if filt.get("plan") else None
         level = parent["level"] + 1
@@ -949,6 +1072,7 @@ class OdinPnlReport(models.AbstractModel):
                 "partner": line.partner_id.display_name or "",
                 "label": line.name or "",
                 "journal": line.journal_id.code or "",
+                "amount": amount,
                 "running": running if mode == "ledger" else None,
                 "draft": line.parent_state == "draft",
                 "annotations": 0,
@@ -956,12 +1080,12 @@ class OdinPnlReport(models.AbstractModel):
             rows.append(row)
         if has_more:
             rows.append({
-                "key": f"{parent['key']}/more:{offset + PAGE_SIZE}",
+                "key": f"{parent['key']}/more:{offset + page}",
                 "parent": parent["key"],
                 "level": level,
                 "type": "more",
                 "name": _("Load more"),
-                "offset": offset + PAGE_SIZE,
+                "offset": offset + page,
                 "running": running if mode == "ledger" else None,
                 "values": {},
             })
@@ -1013,14 +1137,55 @@ class OdinPnlReport(models.AbstractModel):
         return {"account_ids": account_ids or [], "domain": domain, "sets": sets, "plan": plan}
 
     def _dimension_domain(self, dim, value):
-        if dim == "month":
-            start = _parse_date(f"{value}-01")
+        if dim in TIME_DIMENSIONS:
+            start = _parse_date(f"{value}-01" if dim == "month" else value)
             if not start:
                 return Domain.FALSE
-            return Domain("date", ">=", start) & Domain("date", "<=", date_utils.get_month(start)[1])
+            end = {
+                "day": start,
+                "week": start + relativedelta(days=6),
+                "month": date_utils.get_month(start)[1],
+                "quarter": date_utils.get_quarter(start)[1],
+            }[dim]
+            return Domain("date", ">=", start) & Domain("date", "<=", end)
+        if not self._dimension_available(dim):
+            return Domain.FALSE
         record_id = _int(value) or False
+        if dim in ORDER_FIELDS:
+            field = ORDER_FIELDS[dim]
+            if not record_id:
+                return Domain(field, "=", False)
+            # Ids, found without the user's purchase or sales rights: a path
+            # such as purchase_line_id.order_id would search the order lines
+            # as the user, which an accountant may not do. Plain ids also
+            # travel to the Journal Items list ("Open the items").
+            if dim == "purchase_order":
+                order_lines = self.env["purchase.order.line"].sudo().search([("order_id", "=", record_id)])
+                return Domain(field, "in", order_lines.ids)
+            # An item counts under its first order, as in the split.
+            AML = self.env["account.move.line"]
+            AML.flush_model([field])
+            self.env["sale.order.line"].flush_model(["order_id"])
+            relation = AML._fields[field]
+            item, order_line, table = (SQL.identifier(name) for name in (
+                relation.column1, relation.column2, relation.relation))
+            rows = self.env.execute_query(SQL(
+                """SELECT rel.%(item)s
+                     FROM %(table)s rel
+                     JOIN sale_order_line sol ON sol.id = rel.%(order_line)s
+                    WHERE rel.%(item)s IN (
+                          SELECT r.%(item)s FROM %(table)s r
+                            JOIN sale_order_line s ON s.id = r.%(order_line)s
+                           WHERE s.order_id = %(order)s)
+                    GROUP BY rel.%(item)s
+                   HAVING MIN(sol.order_id) = %(order)s""",
+                item=item, order_line=order_line, table=table, order=record_id,
+            ))
+            return Domain("id", "in", [row[0] for row in rows])
         field = {
             "partner": "partner_id",
+            "salesperson": "move_id.invoice_user_id",
+            "document": "move_id",
             "product": "product_id",
             "journal": "journal_id",
             "product_category": "product_id.categ_id",
@@ -1093,15 +1258,40 @@ class OdinPnlReport(models.AbstractModel):
         return {(row[0], None): [float(value or 0.0) for value in row[1:]] for row in rows}
 
     def _dimension_sql(self, AML, alias, query, dim):
-        if dim == "month":
-            return SQL("date_trunc('month', %s)::date", AML._field_to_sql(alias, "date", query))
+        if dim == "day":
+            return AML._field_to_sql(alias, "date", query)
+        if dim in TIME_DIMENSIONS:
+            # date_trunc('week') starts weeks on Monday (ISO).
+            return SQL("date_trunc(%s, %s)::date", dim, AML._field_to_sql(alias, "date", query))
+        if dim == "salesperson":
+            self.env["account.move"].flush_model(["invoice_user_id"])
+            move = query.left_join(alias, "move_id", "account_move", "id", "move_id")
+            return SQL.identifier(move, "invoice_user_id")
+        if dim == "purchase_order":
+            AML.flush_model(["purchase_line_id"])
+            self.env["purchase.order.line"].flush_model(["order_id"])
+            order_line = query.left_join(alias, "purchase_line_id", "purchase_order_line", "id", "purchase_line_id")
+            return SQL.identifier(order_line, "order_id")
+        if dim == "sale_order":
+            # An invoice line links to its order lines through a many2many;
+            # they are of one order in practice, and the first one counts.
+            AML.flush_model(["sale_line_ids"])
+            self.env["sale.order.line"].flush_model(["order_id"])
+            field = AML._fields["sale_line_ids"]
+            query.add_join("JOIN", "odin_so", SQL(
+                "LATERAL (SELECT MIN(sol.order_id) AS order_id FROM %s rel"
+                " JOIN sale_order_line sol ON sol.id = rel.%s WHERE rel.%s = %s)",
+                SQL.identifier(field.relation), SQL.identifier(field.column2),
+                SQL.identifier(field.column1), SQL.identifier(alias, "id"),
+            ), SQL("TRUE"))
+            return SQL.identifier("odin_so", "order_id")
         if dim == "product_category":
             self.env["product.product"].flush_model(["product_tmpl_id"])
             self.env["product.template"].flush_model(["categ_id"])
             product = query.left_join(alias, "product_id", "product_product", "id", "product_id")
             template = query.left_join(product, "product_tmpl_id", "product_template", "id", "product_tmpl_id")
             return SQL.identifier(template, "categ_id")
-        field = {"partner": "partner_id", "product": "product_id", "journal": "journal_id"}[dim]
+        field = {"partner": "partner_id", "product": "product_id", "journal": "journal_id", "document": "move_id"}[dim]
         return AML._field_to_sql(alias, field, query)
 
     def _share_sql(self, AML, alias, query, sets, plan=None):
@@ -1552,11 +1742,13 @@ def _all_zero(row):
     return all(not amount or abs(amount) < 0.005 for amount in amounts)
 
 
-def _segment_value(value):
+def _segment_value(value, dim=None):
     if value is None:
         return "none"
     if isinstance(value, date):
-        return value.strftime("%Y-%m")
+        # A month keeps its "2026-09" (in saved views' unfolded rows); the
+        # other periods are named by their first day.
+        return value.strftime("%Y-%m") if dim == "month" else value.isoformat()
     return str(value)
 
 

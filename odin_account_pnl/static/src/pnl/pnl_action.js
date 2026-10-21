@@ -51,25 +51,23 @@ function writePrefs(options) {
     }
 }
 
-/** What a row can be split by ("By ▾"), depending on what it is. */
-function modesFor(row, plans) {
+/**
+ * What a row can be split by ("By ▾"), in sections: its accounts and journal
+ * items, then what the server offers (``split_menu``: people, documents,
+ * products, periods, journal, analytic plans).
+ */
+function modeSections(row, splitMenu) {
     const modes = [];
     const kind = row.key.split("/").at(-1).split(":")[0];
     if (kind === "L" || kind === "G") {
         modes.push(["accounts", _t("Accounts")]);
     }
     modes.push(["entries", _t("Journal items")], ["ledger", _t("Ledger")]);
-    modes.push(
-        ["partner", _t("Partner")],
-        ["product", _t("Product")],
-        ["product_category", _t("Product category")],
-        ["month", _t("Month")],
-        ["journal", _t("Journal")],
-    );
-    for (const plan of plans) {
-        modes.push([`analytic:${plan.id}`, plan.name]);
-    }
-    return modes;
+    return [{ title: _t("Show by"), modes }, ...splitMenu];
+}
+
+function modesFor(row, splitMenu) {
+    return modeSections(row, splitMenu).flatMap((section) => section.modes);
 }
 
 /**
@@ -496,7 +494,7 @@ export class PnlAction extends Component {
         if (row.mode.startsWith("audit:")) {
             return _t("Items of one column");
         }
-        const found = modesFor(row, this.state.data.analytic_plans).find(([key]) => key === row.mode);
+        const found = modesFor(row, this.state.data.split_menu).find(([key]) => key === row.mode);
         return found ? found[1] : _t("By");
     }
 
@@ -538,9 +536,9 @@ export class PnlAction extends Component {
         return this.state.menu && this.rowByKey(this.state.menu.key);
     }
 
-    get menuModes() {
+    get menuSections() {
         const row = this.menuRow;
-        return row ? modesFor(row, this.state.data.analytic_plans) : [];
+        return row ? modeSections(row, this.state.data.split_menu) : [];
     }
 
     get menuActions() {
@@ -824,8 +822,9 @@ export class PnlAction extends Component {
 
     onSearch(value) {
         this.state.search = value;
-        if (value.trim() && !this.state.options.unfold_all) {
-            this.changeOptions({ unfold_all: true });
+        // Finding an account needs the accounts on the page.
+        if (value.trim() && this.state.options.detail === "lines") {
+            this.changeOptions({ detail: "accounts" });
         }
     }
 

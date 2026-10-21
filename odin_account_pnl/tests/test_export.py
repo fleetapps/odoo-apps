@@ -1,10 +1,13 @@
 """PDF and Excel: the figures of the screen, computed again server-side."""
 
 import io
+from unittest.mock import patch
+
 import openpyxl
 
 from odoo.tests import tagged
 
+from ..models import odin_pnl_report
 from .common import PnlCase
 
 
@@ -66,3 +69,78 @@ class TestExport(PnlCase):
             "odin_account_pnl.action_report_pnl", None,
             data={"payload": self.env["odin.pnl.export"]._payload(self.options())})[0]
         self.assertIn(b"Net Profit", html)
+
+
+@tagged("post_install", "-at_install")
+class TestDetailLevels(PnlCase):
+    """Lines, every account, every transaction: on screen and in exports,
+    the levels of detail accountants expect of a P&L."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        for day, amount in (("2026-09-03", -500.0), ("2026-09-12", -300.0), ("2026-09-25", -200.0)):
+            cls.post(day, [(cls.revenue, amount, {"partner": cls.partner_a, "label": f"Sale {day}"})])
+        cls.post("2026-09-15", [(cls.opex, 150.0, {"label": "Rent"})])
+        cls.account_key = f"L:REV/A:{cls.revenue.id}"
+
+    def rows(self, **values):
+        return self.report.get_report(self.options(**values))["rows"]
+
+    def test_each_level_shows_what_it_says(self):
+        types = {level: {row["type"] for row in self.rows(detail=level)} for level in ("lines", "accounts", "transactions")}
+        self.assertNotIn("account", types["lines"])
+        self.assertIn("account", types["accounts"])
+        self.assertNotIn("entry", types["accounts"])
+        self.assertIn("entry", types["transactions"])
+        entries = [row for row in self.rows(detail="transactions") if row["type"] == "entry"]
+        self.assertEqual(sorted(row["amount"] for row in entries), [150.0, 200.0, 300.0, 500.0])
+
+    def test_views_saved_with_unfold_all_open_on_the_accounts(self):
+        self.assertEqual(self.report.get_report(self.options(unfold_all=True))["options"]["detail"], "accounts")
+
+    def test_the_screen_pages_the_items_but_an_export_lists_them_all(self):
+        with patch.object(odin_pnl_report, "PAGE_SIZE", 2):
+            screen = self.rows(detail="transactions")
+            self.assertIn("more", {row["type"] for row in screen}, "two items, then Load more")
+            payload = self.env["odin.pnl.export"]._payload(self.options(detail="transactions"))
+        items = [row for row in payload["rows"] if row["type"] == "entry" and row["key"].startswith(self.account_key)]
+        self.assertEqual(len(items), 3)
+        self.assertFalse(payload["warnings"])
+
+    def test_an_export_cut_short_says_so(self):
+        with patch.object(odin_pnl_report, "EXPORT_ITEMS", 1):
+            payload = self.env["odin.pnl.export"]._payload(self.options(detail="transactions"))
+        self.assertTrue(any("Not every journal item" in warning for warning in payload["warnings"]))
+
+    def test_an_unfolded_row_prints_its_figures_on_a_total_row(self):
+        payload = self.env["odin.pnl.export"]._payload(self.options(detail="transactions"))
+        statement = payload["statement"]
+        header = next(index for index, row in enumerate(statement) if row["key"] == self.account_key)
+        total = next(index for index, row in enumerate(statement) if row["key"] == f"{self.account_key}#total")
+        self.assertTrue(all(cell["value"] is None for cell in statement[header]["cells"]), "a heading")
+        self.assertEqual(statement[total]["label"], f"Total {self.revenue.name}")
+        self.assertEqual(statement[total]["cells"][0]["value"], 1000.0)
+        self.assertEqual([row["type"] for row in statement[header + 1:total]], ["entry"] * 3, "its items between")
+        self.assertEqual(statement[total + 1]["label"], "Total Revenue", "then the line's own total")
+        # The email reads the rows, where the line keeps its figure.
+        revenue = next(row for row in payload["rows"] if row["key"] == "L:REV")
+        self.assertEqual(revenue["cells"][0]["value"], 1000.0)
+
+    def test_the_workbook_folds_and_lists_the_items_flat(self):
+        content = self.env["odin.pnl.export"].render(self.options(detail="transactions"), "xlsx")[0]
+        book = openpyxl.load_workbook(io.BytesIO(content))
+        statement, items = book.worksheets
+        header = [cell.value for cell in statement[5]]
+        self.assertEqual(header[1:4], ["Date", "Contact", "Description"])
+        rent = next(row for row in statement.iter_rows(min_row=6) if row[3].value == "Rent")
+        self.assertGreater(statement.row_dimensions[rent[0].row].outline_level, 1, "folds under its account")
+        self.assertEqual(rent[4].value, 150.0, "a number, not text")
+        self.assertEqual(items.title, "Transactions")
+        rows = [[cell.value for cell in row] for row in items.iter_rows(min_row=2)]
+        self.assertEqual(len(rows), 4)
+        sale = next(row for row in rows if row[7] == "Sale 2026-09-12")
+        self.assertEqual(sale[0], "Revenue")
+        self.assertEqual(sale[2], self.revenue.name)
+        self.assertEqual(sale[6], "partner_a")
+        self.assertEqual((sale[8], sale[9]), (300.0, -300.0), "as on the P&L, and debit minus credit")

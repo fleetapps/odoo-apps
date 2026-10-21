@@ -18,7 +18,8 @@ The top bar follows Enterprise's order:
 | 📅 Period | Last month by default, as Enterprise. This/last month, quarter, fiscal year (the company's fiscal year end), fiscal year to date or any dates. ◀ ▶ step to the previous or next period. *Divide into* months or quarters shows one column per period plus a total. |
 | % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). |
 | Journals, Analytic, Partners | Narrow the journal items. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
-| Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, unfold all, and a 12-month trend sparkline (off by default). |
+| Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, and a 12-month trend sparkline (off by default). |
+| Detail | How far the whole report unfolds, on screen and in the PDF, the Excel and the scheduled emails: *Lines* (the summary), *Accounts* (every account under its line) or *Every transaction* (every journal item under its account, with totals: the "P&L detail" accountants ask for). |
 | Budget | Adds Budget and % achieved columns; amounts are typed into the report. |
 | Scale | Units, thousands or millions. |
 
@@ -26,10 +27,20 @@ Unfolding happens in place: a line opens on its accounts, an account on its
 journal items, and every journal item opens its document (invoice, bill,
 payment or entry) in the side panel.
 
-**What's in this number.** Any line or account can be split by partner,
-product, product category, month, journal or analytic account (one plan at a
-time). The ten largest contributors show with their share, the rest under
-*Others*. With a comparison, the split shows who moved the number.
+**What's in this number.** Any line or account can be split, and a split row
+split again (a partner by day, an order by product):
+
+| By | |
+|---|---|
+| People | Partner, salesperson (of the invoice) |
+| Documents | Invoice / bill / entry (named by its reference and contact), purchase order and sales order (when Purchase and Sales are installed; an accountant needs no purchase or sales rights to use them) |
+| Products | Product, product category |
+| Period | Day, week (from Monday), month, quarter: in order, every period |
+| Journal, Analytic | Journal; an analytic plan's accounts, one plan at a time |
+
+The ten largest contributors show with their share, the rest under *Others*;
+periods all show, in order (up to a year of days). With a comparison, the
+split shows who moved the number.
 
 **Ledger.** An account can show its journal items oldest first, as the General
 Ledger does, with their running balance in a *Balance* column (in the exports
@@ -73,8 +84,16 @@ appear, and an accountant types an account's budget straight into its cell. A
 figure typed in a quarter or year column is spread evenly over its months.
 
 **Exports.** *PDF* (▾ *XLSX*) next to the title exports exactly what is
-unfolded. The workbook holds real numbers with a number format, so it adds
-up; thousands and millions are a format, not a rounding.
+unfolded, at the chosen *Detail*, laid out as accountants read a detailed P&L
+(Xero's and QuickBooks' detail reports): an unfolded account heads its
+journal items, each with its date, contact and description, and its figure
+moves to a *Total* row below them; journal items are all exported, not the
+page on screen. The workbook holds real numbers and dates with a number
+format, so it adds up (thousands and millions are a format, not a rounding);
+its rows are grouped by level, so it folds back to the lines or the accounts
+in Excel; and with journal items a second sheet, *Transactions*, lists them
+flat with their line, account, journal and reference, ready for a pivot
+table or a filter.
 
 **Saved views.** *★ Views* saves the page: layout, period rule ("last month",
 "financial year to date"), comparison, filters, display and unfolded rows.

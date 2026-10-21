@@ -131,9 +131,25 @@
                                       onSelected="() => this.toggleOption('trend')">12-month trend</CheckboxItem>
                         <CheckboxItem checked="options.negative_parentheses" closingMode="'none'"
                                       onSelected="() => this.toggleOption('negative_parentheses')">Negatives in (brackets)</CheckboxItem>
-                        <div class="dropdown-divider"/>
-                        <CheckboxItem checked="options.unfold_all" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('unfold_all')">Unfold all</CheckboxItem>
+                    </t>
+                </Dropdown>
+
+                <!-- How far the report unfolds, on screen and in the PDF and
+                     Excel: the lines, every account, or every journal item. -->
+                <Dropdown menuClass="'o_odin_pnl_menu'">
+                    <button class="btn btn-secondary o_odin_pnl_chip o_odin_pnl_detail"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.detail !== 'lines' }"
+                            data-tooltip="How much detail the report shows and exports">
+                        <i class="fa fa-list-ul me-1"/><t t-esc="detailLabel"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <h6 class="dropdown-header">Show and export</h6>
+                        <DropdownItem t-foreach="detailLevels" t-as="level" t-key="level[0]"
+                                      class="{ 'selected': options.detail === level[0] }"
+                                      onSelected="() => this.props.onChange({ detail: level[0] })">
+                            <div t-esc="level[1]"/>
+                            <div class="text-muted small" t-esc="level[2]"/>
+                        </DropdownItem>
                     </t>
                 </Dropdown>
 

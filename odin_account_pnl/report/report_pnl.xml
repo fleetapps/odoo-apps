@@ -43,7 +43,9 @@
                         .o_odin_pnl_pdf tr.formula td { border-top: 1px solid #222; }
                         .o_odin_pnl_pdf tr.result td { border-top: 1.5px solid #222; border-bottom: 3px double #222; }
                         .o_odin_pnl_pdf tr.heading td { font-weight: bold; text-transform: uppercase; color: #666; }
-                        .o_odin_pnl_pdf tr.entry td { color: #444; font-size: 9px; }
+                        .o_odin_pnl_pdf tr.entry td { color: #444; font-size: 9px; background: #fafafa; }
+                        .o_odin_pnl_pdf tr.total td.num { border-top: 1px solid #222; }
+                        .o_odin_pnl_pdf th.text, .o_odin_pnl_pdf td.text { text-align: left; }
                         .o_odin_pnl_pdf .muted { color: #6c757d; }
                         .o_odin_pnl_pdf sup { color: #6c757d; }
                     </style>
@@ -55,16 +57,31 @@
                         <thead>
                             <tr>
                                 <th><t t-esc="p['currency']"/></th>
+                                <t t-if="p.get('items')">
+                                    <th class="text">Date</th>
+                                    <th class="text">Contact</th>
+                                    <th class="text">Description</th>
+                                </t>
                                 <th t-foreach="p['columns']" t-as="column" t-esc="column['label']"/>
                             </tr>
                         </thead>
                         <tbody>
-                            <t t-foreach="p['rows']" t-as="row">
+                            <!-- The statement: an unfolded row heads its contents, its
+                                 figures on the "Total" row after them. -->
+                            <t t-foreach="p.get('statement') or p['rows']" t-as="row">
                                 <tr t-att-class="row['css']">
                                     <td t-attf-style="padding-left: {{6 + (row.get('level') or 0) * 12}}px;">
                                         <t t-esc="row['label']"/>
                                         <sup t-foreach="row.get('note_refs') or []" t-as="ref" t-esc="ref"/>
                                     </td>
+                                    <t t-if="p.get('items')">
+                                        <t t-if="row['type'] == 'entry'">
+                                            <td class="text" style="white-space: nowrap;" t-esc="row.get('date')"/>
+                                            <td class="text" t-esc="row.get('partner')"/>
+                                            <td class="text" t-esc="row.get('description')"/>
+                                        </t>
+                                        <t t-else=""><td/><td/><td/></t>
+                                    </t>
                                     <td t-foreach="row.get('cells') or []" t-as="cell" class="num" t-esc="cell['text']"/>
                                 </tr>
                             </t>
