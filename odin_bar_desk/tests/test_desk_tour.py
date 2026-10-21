@@ -45,3 +45,25 @@ class TestDeskTour(BarDeskCase, HttpCase):
         reasons = {line.product_id: line.variance_reason_id.code for line in count.line_ids}
         self.assertEqual(reasons, {self.jameson: "spillage", self.tusker: "unexplained", self.gordons: False})
         self.assertTrue(count.line_ids.filtered(lambda line: line.product_id == self.gordons).accepted_expected)
+
+    def test_supplier_delivery_tour(self):
+        beer = self.env["product.category"].create({"name": "Beer, RTD & Cider"})
+        self.tusker.write({"categ_id": beer.id})
+        supplier = self.env["res.partner"].create({"name": "Tony West", "is_company": True, "supplier_rank": 1})
+        self.env["product.supplierinfo"].create(
+            {"partner_id": supplier.id, "product_tmpl_id": self.tusker.product_tmpl_id.id, "price": 100.0}
+        )
+        self.store.supplier_payment_journal_id = self.env["account.journal"].search(
+            [("type", "in", ("cash", "bank")), ("company_id", "=", self.company.id)], limit=1
+        )
+        self.start_tour("/odoo", "odin_bar_desk_supplier_delivery", login="stock.tablet")
+        bill = self.env["account.move"].search([("partner_id", "=", supplier.id), ("move_type", "=", "in_invoice")])
+        self.assertEqual(bill.state, "posted")
+        self.assertIn(bill.payment_state, ("paid", "in_payment"))
+        self.assertEqual((bill.amount_tax, bill.amount_total), (0.0, 22100.0))
+        cider = self.env["product.product"].search([("name", "=", "Tusker Cider 500ml")])
+        self.assertTrue(cider.bar_desk_new)
+        self.assertEqual(cider.list_price, 300.0)
+        self.assertEqual(self.qty(cider, self.loc_store), 48)
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 480 + 120)
+        self.assertEqual(supplier.bar_invoice_vat, "none")

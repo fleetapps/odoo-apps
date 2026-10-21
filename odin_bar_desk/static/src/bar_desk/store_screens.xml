@@ -53,17 +53,24 @@
                 <button t-else="" class="btn btn-light o_bar_desk_big w-100 mb-2" t-on-click="chooseInvoice">
                     <i class="fa fa-camera me-2"/>Add a photo of the invoice (optional)
                 </button>
-                <div class="fw-bold mt-2 mb-1">What's on the invoice</div>
+                <div class="fw-bold mt-2 mb-1">What's on the invoice, at the prices printed</div>
                 <ItemsEditor model="model" items="state.items" defaultUnit="packUnit"
                              pickerTitle="state.supplier.name" onlyIds="state.supplierProducts"
-                             withPrice="true" priceFor.bind="priceFor"/>
-                <div t-if="state.items.length" class="o_bar_desk_card d-flex align-items-center mt-2">
-                    <span class="flex-grow-1 fw-bold">Invoice total <span class="fw-normal text-muted">before VAT</span></span>
-                    <span class="fs-5 fw-bold" t-esc="invoiceTotalLabel"/>
-                </div>
-                <div t-if="missingPrices" class="small text-muted mt-1">
-                    <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s</t> with no price yet &#8212;
-                    tap to add what the supplier charged.
+                             withPrice="true" priceFor.bind="priceFor" vatMode="state.vat" allowNew="true"/>
+                <t t-if="state.items.length">
+                    <div class="fw-bold mt-3 mb-1">VAT on this invoice</div>
+                    <div class="d-flex gap-2 mb-2" role="group" aria-label="VAT on this invoice">
+                        <button t-foreach="vatModes" t-as="mode" t-key="mode.key" class="btn flex-grow-1"
+                                t-att-class="state.vat === mode.key ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-att-aria-pressed="state.vat === mode.key ? 'true' : 'false'"
+                                t-on-click="() => this.setVat(mode.key)" t-esc="mode.label"/>
+                    </div>
+                    <t t-call="odin_bar_desk.InvoiceTotal"/>
+                    <div class="small text-muted mt-1">Check it against the total on the invoice.</div>
+                </t>
+                <div t-if="missingPrices" class="alert alert-warning py-2 mt-2" role="status">
+                    <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s have</t><t t-else=""> has</t> no price
+                    yet: tap <t t-if="missingPrices > 1">them</t><t t-else="">it</t> to add what the supplier charged.
                 </div>
             </t>
 
@@ -130,13 +137,8 @@
                     <label class="fw-bold mb-1" for="o_bar_desk_supplier_ref">Invoice number (optional)</label>
                     <input id="o_bar_desk_supplier_ref" type="text" class="form-control form-control-lg mb-3"
                            t-model="state.supplierRef" autocomplete="off"/>
-                    <div t-if="!state.receipt" class="o_bar_desk_card d-flex align-items-center mb-3">
-                        <span class="flex-grow-1 fw-bold">Invoice total <span class="fw-normal text-muted">before VAT</span></span>
-                        <span class="fs-4 fw-bold" t-esc="invoiceTotalLabel"/>
-                    </div>
-                    <div t-if="!state.receipt and missingPrices" class="alert alert-warning py-2" role="status">
-                        <t t-esc="missingPrices"/> item<t t-if="missingPrices > 1">s</t> has no price, so the
-                        bill will be short. Go back and add what the supplier charged.
+                    <div t-if="!state.receipt" class="mb-3">
+                        <t t-call="odin_bar_desk.InvoiceTotal"/>
                     </div>
                     <div class="fw-bold mb-2">Paid?</div>
                     <button class="btn btn-success o_bar_desk_big w-100 mb-2"
@@ -157,7 +159,8 @@
             <div t-if="state.error" class="alert alert-danger mt-3" role="alert" t-esc="state.error"/>
         </div>
         <div t-if="state.step === 'items'" class="o_bar_desk_footer">
-            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!state.items.length" t-on-click="toCheck">
+            <button class="btn btn-primary o_bar_desk_big w-100" t-att-disabled="!state.items.length or missingPrices"
+                    t-on-click="toCheck">
                 Next: check what arrived
             </button>
         </div>
@@ -167,5 +170,20 @@
         <Keypad t-if="state.keypad" t-key="state.keypad.key or state.keypad.line.move_id" product="state.keypad.product"
                 mode="'qty'" units="false" value="state.keypad.value" hint="state.keypad.hint"
                 onConfirm.bind="confirmKeypad" onClose="() => this.state.keypad = null"/>
+    </t>
+
+    <!-- The invoice's bottom line, the way the supplier printed it. -->
+    <t t-name="odin_bar_desk.InvoiceTotal">
+        <div class="o_bar_desk_card mb-0">
+            <div class="d-flex align-items-center">
+                <span class="flex-grow-1 fw-bold">Invoice total</span>
+                <span class="fs-4 fw-bold" t-esc="money(invoiceTotals.total)"/>
+            </div>
+            <div t-if="state.vat !== 'none'" class="d-flex small text-muted">
+                <span class="flex-grow-1">Before VAT <t t-esc="money(invoiceTotals.net)"/></span>
+                <span>VAT <t t-esc="money(invoiceTotals.vat)"/></span>
+            </div>
+            <div t-else="" class="small text-muted">No VAT on this invoice</div>
+        </div>
     </t>
 </templates>

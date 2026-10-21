@@ -203,3 +203,252 @@ class TestSupplierDelivery(BarDeskCase):
         with self.assertRaisesRegex(UserError, "account suppliers are paid from"):
             self.deliver(1, 1, paid="now", amount=2400)
         self.assertEqual(self.qty(self.tusker, self.loc_store), 0)
+
+    # ------------------------------------------------------------------
+    # What the Desk has to get right once it posts and pays by itself
+    # ------------------------------------------------------------------
+
+    def line(self, invoiced, received=None, price=2400.0, product=None, uom=None):
+        return {
+            "product_id": (product or self.tusker).id,
+            "uom_id": (uom or self.uom_crate).id,
+            "invoiced": invoiced,
+            "received": invoiced if received is None else received,
+            "price": price,
+        }
+
+    def deliver_lines(self, lines, **kwargs):
+        kwargs.setdefault("paid", "later")
+        return self.desk_store.desk_supplier_delivery(
+            self.store.id, self.token, self.uuid(), self.supplier.id, lines, **kwargs
+        )
+
+    def test_crates_are_booked_as_bottles(self):
+        """Odoo books a receipt in the product's own unit, not the crates
+        the invoice is in: five crates of 24 are 120 bottles, not five."""
+        self.deliver_lines([self.line(5)])
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 120)
+        self.assertFalse(self.desk_store.desk_receipts(self.store.id, self.token), "nothing left expected")
+
+    def test_two_step_approval_still_receives(self):
+        """Odoo 19's button_approve drops an order the user may not approve,
+        whatever force says. The goods are on the counter: they go in."""
+        self.company.write({"po_double_validation": "two_step", "po_double_validation_amount": 0})
+        self.deliver_lines([self.line(5)])
+        order = self.env["purchase.order"].search([("partner_id", "=", self.supplier.id)])
+        self.assertEqual(order.state, "purchase")
+        self.assertEqual(order.picking_ids.state, "done")
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 120)
+
+    def test_an_invoiced_line_needs_a_price(self):
+        with self.assertRaisesRegex(UserError, "Type what Tony West charged for Tusker"):
+            self.deliver_lines([self.line(5, price=0)])
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 0)
+        self.assertFalse(self.bills())
+
+    def test_the_last_price_paid_beats_a_stale_price_list(self):
+        """Confirming an order puts the supplier on the price list at that
+        first price and never updates it; what was paid last is the truth."""
+        self.deliver_lines([self.line(2, price=3000.0)])
+        offered = self.desk_store.desk_supplier_products(self.store.id, self.token, self.supplier.id)
+        self.assertEqual(offered["prices"][f"{self.tusker.id}:{self.uom_crate.id}"], 3000.0)
+        self.assertEqual(offered["prices"][f"{self.tusker.id}:{self.uom_unit.id}"], 125.0)
+
+    def test_every_product_gets_a_suggestion(self):
+        """"Other products" is one tap away; a blank there is how zeros got in."""
+        offered = self.desk_store.desk_supplier_products(self.store.id, self.token, self.supplier.id)
+        self.assertNotIn(self.jameson.id, offered["ids"])
+        self.assertEqual(offered["prices"][f"{self.jameson.id}:{self.uom_750.id}"], 2000.0, "25 tots at 80")
+        self.assertEqual(self.desk_store.desk_supplier_products(self.store.id, self.token, 0), {"ids": [], "prices": {}})
+
+    def _vat(self):
+        vat = self.env["account.tax"].create({
+            "name": "VAT 16% (purchase)",
+            "amount": 16.0,
+            "amount_type": "percent",
+            "type_tax_use": "purchase",
+            "price_include_override": "tax_excluded",
+            "company_id": self.company.id,
+        })
+        self.tusker.supplier_taxes_id = [(6, 0, vat.ids)]
+        return vat
+
+    def test_prices_that_include_vat_bill_exactly_the_invoice(self):
+        """Six crates at 1,000 including VAT is 6,000 -- not 6,000.01 from
+        rounding a net price, and not 6,960 from adding VAT again."""
+        vat = self._vat()
+        self.tusker.categ_id.with_company(self.company).property_cost_method = "average"
+        self.deliver_lines([self.line(6, price=1000.0)], vat="included", paid="now")
+        bill = self.bills()
+        self.assertEqual(bill.amount_total, 6000.0)
+        self.assertAlmostEqual(bill.amount_tax, 827.59, places=2)
+        line_tax = bill.invoice_line_ids.tax_ids
+        self.assertTrue(line_tax.price_include)
+        self.assertEqual((line_tax.amount, line_tax.tax_group_id), (vat.amount, vat.tax_group_id))
+        self.assertIn(bill.payment_state, ("paid", "in_payment"))
+        self.assertEqual(self.supplier.bar_invoice_vat, "included", "remembered for next time")
+        # The stock is valued before VAT, which is reclaimed.
+        self.assertAlmostEqual(self.tusker.with_company(self.company).standard_price, 5172.41 / 144, places=2)
+        # The twin tax is made once and reused.
+        self.deliver_lines([self.line(1, price=1000.0)])
+        self.assertEqual(self.bills().invoice_line_ids.tax_ids, line_tax)
+
+    def test_a_supplier_without_vat_is_billed_without_vat(self):
+        self._vat()
+        self.deliver_lines([self.line(2, price=2400.0)], vat="none")
+        bill = self.bills()
+        self.assertEqual((bill.amount_tax, bill.amount_total), (0.0, 4800.0))
+        self.assertEqual(self.supplier.bar_invoice_vat, "none")
+        suppliers = self.desk_store.desk_suppliers(self.store.id, self.token, "Tony")
+        self.assertEqual(suppliers[0]["vat"], "none", "the next delivery opens on it")
+
+    def test_vat_added_is_the_default(self):
+        self._vat()
+        self.deliver_lines([self.line(1, price=2400.0)])
+        self.assertEqual(self.bills().amount_total, 2784.0)
+
+    def test_the_cost_follows_what_was_paid_on_average_cost(self):
+        beer = self.tusker.categ_id.with_company(self.company)
+        beer.property_cost_method = "average"
+        tusker = self.tusker.with_company(self.company)
+        result = self.desk_store.desk_supplier_delivery(
+            self.store.id, self.token, self.uuid(), self.supplier.id, [self.line(5, price=3000.0)], paid="now"
+        )
+        self.assertAlmostEqual(tusker.standard_price, 125.0, msg="3,000 a crate of 24, not the old 150")
+        self.assertEqual(result["new_costs"], [tusker.display_name])
+        self.deliver_lines([self.line(5, price=3600.0)])
+        self.assertAlmostEqual(tusker.standard_price, 137.5, msg="120 at 125 and 120 at 150")
+
+    def test_the_cost_follows_what_was_paid_on_fifo(self):
+        """First in, first out: what goes out is valued at the price of the
+        oldest stock still on the shelf, not at a blend."""
+        beer = self.tusker.categ_id.with_company(self.company)
+        beer.property_cost_method = "fifo"
+        tusker = self.tusker.with_company(self.company)
+        self.deliver_lines([self.line(5, price=3000.0)])
+        self.deliver_lines([self.line(5, price=3600.0)])
+        self.assertAlmostEqual(tusker.standard_price, 137.5, msg="what is on the shelf, on average")
+        sold = self.post(self.type_sal_be, self.loc_store, self.loc_customers, [(self.tusker, 120, None)])
+        self.assertAlmostEqual(sold.move_ids.value, 120 * 125.0, msg="the first 120 cost 125 each")
+        self.assertAlmostEqual(tusker.standard_price, 150.0, msg="only the 150s are left")
+
+    def test_perpetual_valuation_books_the_bill_to_stock(self):
+        """With perpetual valuation the bill debits stock rather than an
+        expense, and the payment settles the bill it was made for."""
+        stock_account = self.env["account.account"].create({
+            "name": "Bar stock", "code": "100199", "account_type": "asset_current",
+        })
+        beer = self.tusker.categ_id.with_company(self.company)
+        beer.write({
+            "property_valuation": "real_time",
+            "property_cost_method": "fifo",
+            "property_stock_valuation_account_id": stock_account.id,
+        })
+        self.deliver_lines([self.line(5, price=3000.0)], paid="now")
+        bill = self.bills()
+        product_line = bill.invoice_line_ids
+        self.assertEqual(product_line.account_id, stock_account)
+        self.assertEqual(product_line.balance, 15000.0)
+        self.assertEqual(bill.payment_state if bill.payment_state != "in_payment" else "paid", "paid")
+        payment = self.env["account.payment"].search([("partner_id", "=", self.supplier.id)])
+        self.assertEqual(payment.amount, bill.amount_total)
+        self.assertIn(bill, payment.reconciled_bill_ids)
+
+    def test_a_price_jump_is_called_out_on_the_bill(self):
+        self.deliver_lines([self.line(1, price=2400.0)])
+        self.deliver_lines([self.line(1, price=24000.0)])
+        bill = self.bills()[:1]
+        notes = " ".join(bill.message_ids.mapped("body"))
+        self.assertIn("Check these prices", notes)
+        self.assertIn("was", notes)
+
+    # ------------------------------------------------------------------
+    # A product the store has never stocked
+    # ------------------------------------------------------------------
+
+    def new_line(self, name="Tusker Cider 500ml", sale_price=300.0, **extra):
+        return {
+            "product_id": False,
+            "new_product": dict(
+                {
+                    "name": name,
+                    "categ_id": self.tusker.categ_id.id,
+                    "uom_id": self.uom_unit.id,
+                    "pack_uom_id": self.uom_crate.id,
+                    "sale_price": sale_price,
+                },
+                **extra,
+            ),
+            "uom_id": self.uom_crate.id,
+            "invoiced": 2,
+            "received": 2,
+            "price": 4800.0,
+        }
+
+    def test_a_new_product_is_made_while_receiving(self):
+        self.deliver_lines([self.new_line()], paid="now")
+        cider = self.env["product.product"].search([("name", "=", "Tusker Cider 500ml")])
+        self.assertEqual(len(cider), 1)
+        self.assertTrue(cider.bar_desk_ok and cider.bar_desk_new and cider.is_storable)
+        self.assertEqual(cider.categ_id, self.tusker.categ_id)
+        self.assertEqual((cider.uom_id, cider.uom_ids), (self.uom_unit, self.uom_crate))
+        self.assertFalse(cider.bar_bottle_uom_id, "a crate is a pack, not a bottle to count in")
+        self.assertEqual(cider.list_price, 300.0)
+        self.assertEqual(cider.company_id, self.company)
+        self.assertEqual(self.qty(cider, self.loc_store), 48)
+        self.assertAlmostEqual(cider.with_company(self.company).standard_price, 200.0)
+        self.assertEqual(self.bills().amount_untaxed, 9600.0)
+        self.assertIn(cider, self.store._desk_products(), "on the Desk from now on")
+        self.assertIn("Added on the Bar Desk by Sam", cider.product_tmpl_id.message_ids[:1].body)
+
+    def test_a_new_spirit_is_kept_in_tots(self):
+        whiskey = self.env["product.category"].create({"name": "Irish, Tennessee & Bourbon"})
+        self.jameson.categ_id = whiskey
+        line = self.new_line(
+            "Jameson Caskmates", sale_price=350.0, categ_id=whiskey.id,
+            uom_id=self.uom_tot.id, pack_uom_id=self.uom_750.id,
+        )
+        line.update(uom_id=self.uom_750.id, invoiced=6, received=6, price=2500.0)
+        self.deliver_lines([line])
+        caskmates = self.env["product.product"].search([("name", "=", "Jameson Caskmates")])
+        self.assertEqual(caskmates.uom_id, self.uom_tot)
+        self.assertEqual(caskmates.bar_bottle_uom_id, self.uom_750)
+        self.assertEqual(self.qty(caskmates, self.loc_store), 150)
+        self.assertAlmostEqual(caskmates.with_company(self.company).standard_price, 100.0)
+
+    def test_a_new_product_needs_its_selling_price(self):
+        with self.assertRaisesRegex(UserError, "selling price"):
+            self.deliver_lines([self.new_line(sale_price=0)])
+        self.assertFalse(self.env["product.product"].search([("name", "=", "Tusker Cider 500ml")]))
+
+    def test_a_new_product_takes_a_shape_its_category_uses(self):
+        with self.assertRaisesRegex(UserError, "how Tusker Cider 500ml is counted"):
+            self.deliver_lines([self.new_line(uom_id=self.uom_tot.id, pack_uom_id=False)])
+        with self.assertRaisesRegex(UserError, "not a unit"):
+            self.deliver_lines([self.new_line(pack_uom_id=self.uom_750.id)])
+        with self.assertRaisesRegex(UserError, "category"):
+            self.deliver_lines([self.new_line(categ_id=self.env["product.category"].create({"name": "Cars"}).id)])
+
+    def test_a_name_already_on_the_desk_is_that_product(self):
+        """Typed again on another invoice before the Desk reloaded, the same
+        name must not become a second product."""
+        self.deliver_lines([self.new_line(name="tusker  LAGER 500ml")])
+        self.assertEqual(
+            self.env["product.product"].search_count([("name", "ilike", "tusker lager 500ml")]), 1
+        )
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 48)
+
+    def test_the_same_invoice_is_not_paid_twice(self):
+        """Odoo only flags a repeated vendor reference. With the bill posted
+        and paid in one tap, the Desk refuses it outright."""
+        self.deliver_lines([self.line(1)], paid="now", supplier_ref="TW-77")
+        with self.assertRaisesRegex(UserError, "Invoice tw-77 from Tony West is already in"):
+            self.deliver_lines([self.line(1)], paid="now", supplier_ref=" tw-77 ")
+        self.assertEqual(len(self.bills()), 1)
+        self.assertEqual(self.qty(self.tusker, self.loc_store), 24)
+        # A reference is matched as typed, not as a pattern.
+        self.deliver_lines([self.line(1)], supplier_ref="TW_7")
+        self.deliver_lines([self.line(1)], supplier_ref="TWX7")
+        self.deliver_lines([self.line(1)])
+        self.deliver_lines([self.line(1)])
+        self.assertEqual(len(self.bills()), 5)

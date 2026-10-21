@@ -26,7 +26,11 @@
                         t-on-click="toggleAll" t-esc="state.showAll ? 'Only this supplier' : 'Other products'"/>
             </div>
             <div class="o_bar_desk_body">
-                <div t-if="!products.length" class="text-muted text-center py-4">Nothing found.</div>
+                <button t-if="newName" class="o_bar_desk_pick text-primary fw-bold" t-on-click="create">
+                    <i class="fa fa-plus-circle"/>
+                    <span class="flex-grow-1 text-start">New product: "<t t-esc="newName"/>"</span>
+                </button>
+                <div t-if="!products.length and !newName" class="text-muted text-center py-4">Nothing found.</div>
                 <button t-foreach="products" t-as="product" t-key="product.id"
                         class="o_bar_desk_pick" t-on-click="() => props.onPick(product)">
                     <span class="flex-grow-1 text-start" t-esc="product.name"/>

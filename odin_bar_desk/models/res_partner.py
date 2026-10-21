@@ -41,6 +41,17 @@ class ResPartner(models.Model):
         string="Supplies product categories",
         help="On a supplier delivery, the Bar Desk lists products of these categories first.",
     )
+    bar_invoice_vat = fields.Selection(
+        [
+            ("added", "VAT added to the prices"),
+            ("included", "Prices include VAT"),
+            ("none", "No VAT"),
+        ],
+        string="VAT on invoices",
+        default="added",
+        help="How this supplier's invoices show VAT. The Bar Desk reads the prices typed "
+        "from the invoice this way, and remembers what was used last.",
+    )
 
     @api.model
     def _bar_seed_suppliers(self):
