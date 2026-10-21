@@ -66,6 +66,12 @@ export function shortUnit(unit) {
     return unit.name.replace(/^bottle\s+/i, "");
 }
 
+/** One of a unit, as in "2,400 a crate of 24" or "100 per unit". */
+export function oneUnit(unit) {
+    const name = shortUnit(unit);
+    return /^units$/i.test(name) ? "unit" : name;
+}
+
 function stockUnitLabel(product, qty) {
     const name = product.uom.name;
     if (name.toLowerCase() === "tot") {

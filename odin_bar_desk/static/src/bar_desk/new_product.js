@@ -1,5 +1,5 @@
 import { Component, useState } from "@odoo/owl";
-import { normalize, shortUnit } from "./utils";
+import { normalize, oneUnit, shortUnit } from "./utils";
 
 /**
  * A product the store has never stocked, named on the invoice in hand.
@@ -41,10 +41,12 @@ export class NewProductSheet extends Component {
     /** How the products of the chosen category are kept, most used first. */
     get shapes() {
         const shapes = new Map();
-        const add = (product, pack, label) => {
+        // ``weight`` 0 offers a shape without letting it outrank the ones
+        // in use: beer comes in crates even though a crate is optional.
+        const add = (product, pack, label, weight = 1) => {
             const key = `${product.uom.id}:${pack?.id || 0}`;
             const shape = shapes.get(key) || { key, uom: product.uom, pack, poured: product.poured, label, count: 0 };
-            shape.count += 1;
+            shape.count += weight;
             shapes.set(key, shape);
         };
         for (const product of this.catalog.products) {
@@ -56,7 +58,7 @@ export class NewProductSheet extends Component {
                 add(product, bottle, `Tots · ${shortUnit(bottle)} bottle`);
             } else if (product.packs.length) {
                 add(product, product.packs[0], `${product.uom.name} · ${product.packs[0].name}`);
-                add(product, null, `${product.uom.name}, no crate or pack`);
+                add(product, null, `${product.uom.name}, no crate or pack`, 0);
             } else {
                 add(product, null, product.uom.name);
             }
@@ -70,8 +72,7 @@ export class NewProductSheet extends Component {
 
     /** "per tot", "per unit": what the selling price is for. */
     get perUnit() {
-        const name = this.shape?.uom.name || "unit";
-        return name.toLowerCase() === "tot" ? "tot" : name.toLowerCase().replace(/s$/, "");
+        return this.shape ? oneUnit(this.shape.uom).toLowerCase() : "unit";
     }
 
     setCategory(categId) {

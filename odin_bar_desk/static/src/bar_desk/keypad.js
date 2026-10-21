@@ -1,5 +1,5 @@
 import { Component, useState } from "@odoo/owl";
-import { fmt, money, shortUnit, unitOf, unitsOf } from "./utils";
+import { fmt, money, oneUnit, shortUnit, unitOf, unitsOf } from "./utils";
 
 const MAX_LENGTH = 7;
 const MAX_SUM_LENGTH = 40;
@@ -86,7 +86,7 @@ export class Keypad extends Component {
             if (mode === "price") {
                 fields.push({
                     key: "price",
-                    label: `Price per ${shortUnit(unitOf(product, value.uomId || product.uom.id))}`,
+                    label: `Price per ${oneUnit(unitOf(product, value.uomId || product.uom.id))}`,
                     text: value.price ? fmt(value.price) : "",
                 });
             }
@@ -125,7 +125,7 @@ export class Keypad extends Component {
         // of 24 is 100 a bottle, not 2,400 a bottle.
         const price = this.state.fields.find((field) => field.key === "price");
         if (price) {
-            price.label = `Price per ${shortUnit(unit)}`;
+            price.label = `Price per ${oneUnit(unit)}`;
             const value = addUp(price.text);
             if (value && before.factor) {
                 price.text = fmt((value * unit.factor) / before.factor);
@@ -171,7 +171,7 @@ export class Keypad extends Component {
         if (!qty) {
             return true;
         }
-        const unit = shortUnit(unitOf(this.props.product, this.state.uomId));
+        const unit = oneUnit(unitOf(this.props.product, this.state.uomId));
         if (!price) {
             this.state.warning = `Type the price per ${unit}, as on the invoice.`;
             this.focus(this.state.fields.findIndex((field) => field.key === "price"));

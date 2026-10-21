@@ -4,7 +4,7 @@ import { Keypad } from "./keypad";
 import { LineList } from "./line_list";
 import { NewProductSheet } from "./new_product";
 import { ProductPicker } from "./product_picker";
-import { money, qtyLabel, shortUnit, unitOf } from "./utils";
+import { money, oneUnit, qtyLabel, unitOf } from "./utils";
 
 // A price this many times the last one, or under its inverse, is questioned
 // before the line is kept: most often a zero typed too many or too few.
@@ -53,7 +53,7 @@ export class ItemsEditor extends Component {
     get lines() {
         return this.items.map((item) => {
             const product = this.props.model.product(item.productId);
-            const unit = shortUnit(unitOf(product, item.uomId));
+            const unit = oneUnit(unitOf(product, item.uomId));
             const priced = !this.props.withPrice || item.price;
             let hint;
             if (this.props.withPrice) {
@@ -99,10 +99,10 @@ export class ItemsEditor extends Component {
             } else if (ratio > 1) {
                 how = `${Math.round((ratio - 1) * 100)}% more`;
             }
-            return `Last time it was ${money(last)} a ${shortUnit(unit)}, and ${money(price)} is ${how}. Is that what the invoice says?`;
+            return `Last time it was ${money(last)} a ${oneUnit(unit)}, and ${money(price)} is ${how}. Is that what the invoice says?`;
         }
         if (product.isNew && unit.factor && price / unit.factor > product.salePrice) {
-            return `That is more than it sells for (${money(product.salePrice)} a ${product.uom.name.toLowerCase()}). Is the price right?`;
+            return `That is more than it sells for (${money(product.salePrice)} a ${oneUnit(product.uom).toLowerCase()}). Is the price right?`;
         }
         return "";
     }

@@ -26,16 +26,20 @@
                         t-on-click="toggleAll" t-esc="state.showAll ? 'Only this supplier' : 'Other products'"/>
             </div>
             <div class="o_bar_desk_body">
-                <button t-if="newName" class="o_bar_desk_pick text-primary fw-bold" t-on-click="create">
-                    <i class="fa fa-plus-circle"/>
-                    <span class="flex-grow-1 text-start">New product: "<t t-esc="newName"/>"</span>
-                </button>
                 <div t-if="!products.length and !newName" class="text-muted text-center py-4">Nothing found.</div>
                 <button t-foreach="products" t-as="product" t-key="product.id"
                         class="o_bar_desk_pick" t-on-click="() => props.onPick(product)">
                     <span class="flex-grow-1 text-start" t-esc="product.name"/>
                     <span t-if="props.hint" class="small text-muted text-nowrap" t-esc="props.hint(product)"/>
                     <i t-if="isMarked(product)" class="fa fa-check text-success" aria-label="Already in the list"/>
+                </button>
+                <!-- After what matches, not before it: "Gordon" typed with
+                     Gordon's on the list is Gordon's, not a new product. -->
+                <button t-if="newName" class="o_bar_desk_pick text-primary fw-bold" t-on-click="create">
+                    <i class="fa fa-plus-circle"/>
+                    <span class="flex-grow-1 text-start">
+                        <t t-if="products.length">Not on the list? </t>New product: "<t t-esc="newName"/>"
+                    </span>
                 </button>
             </div>
         </div>
