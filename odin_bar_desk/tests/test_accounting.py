@@ -24,13 +24,14 @@ class TestProfitAndLoss(BarDeskCase):
         cls.stock_variation = Account.create(
             {"name": "Stock Variation", "code": "590105", "account_type": "expense_direct_cost"}
         )
+        # As tools/dhostana_pnl.py leaves it: a variation account, and no
+        # stock expense account to set off Odoo's "continental" step.
         cls.stock_account = Account.create(
             {
                 "name": "Stock",
                 "code": "190100",
                 "account_type": "asset_current",
                 "account_stock_variation_id": cls.stock_variation.id,
-                "account_stock_expense_id": cls.cost_of_sales.id,
             }
         )
         cls.opening_equity = Account.create({"name": "Opening balance", "code": "390100", "account_type": "equity"})
@@ -112,6 +113,9 @@ class TestProfitAndLoss(BarDeskCase):
             msg="purchases less the stock still on the shelf: what was sold and what went missing",
         )
         self.assertAlmostEqual(self.balance(self.stock_account), tusker.total_value, places=2)
+        # Read line by line: purchases, then what the stock fell by.
+        self.assertAlmostEqual(self.balance(self.cost_of_sales), 6000.0, places=2)
+        self.assertAlmostEqual(self.balance(self.stock_variation), 10000.0 - tusker.total_value, places=2)
         self.assertAlmostEqual(tusker.total_value, 86 * 16000 / 148, places=2)
         with self.assertRaisesRegex(UserError, "Everything is correctly closed"):
             self.company.action_close_stock_valuation(auto_post=True)
