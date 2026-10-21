@@ -6,8 +6,9 @@ import { useService } from "@web/core/utils/hooks";
 /**
  * ★ Views: saved P&L views, the user's own and the ones shared with the
  * team. A view keeps its period as a rule ("last month"), so applying it
- * always shows the right month. Scheduling the email is done on the view's
- * form ("Schedule & manage").
+ * always shows the right month. "Schedule Send", the button beside the menu,
+ * opens the current view's form, where the email is scheduled, or the list of
+ * saved views when the page is not one of the user's own.
  */
 export class PnlViewsMenu extends Component {
     static template = "odin_account_pnl.PnlViewsMenu";
@@ -97,6 +98,7 @@ export class PnlViewsMenu extends Component {
             view && view.mine
                 ? {
                       type: "ir.actions.act_window",
+                      name: "Schedule Send",
                       res_model: "odin.pnl.view",
                       res_id: view.id,
                       views: [[false, "form"]],

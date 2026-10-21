@@ -14,13 +14,14 @@ every subscriber - which on a per-user-permissions product is the one bug that
 would matter.
 """
 import logging
+from urllib.parse import urlsplit
 
 import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools import formataddr
+from odoo.tools import email_normalize, formataddr
 
 _logger = logging.getLogger(__name__)
 
@@ -189,10 +190,22 @@ class AIDashboardSubscription(models.Model):
         # Sent as the recipient's company. Without an email_from Odoo would
         # take the cron's user, and the email would come from OdooBot.
         company = user.company_id or self.env.company
+        sender = self._sender(company)
+        headers = {}
+        if not company.bounce_email and email_normalize(sender):
+            # The envelope sender follows the From. Without a bounce address
+            # Odoo falls back to the server's email_from, which on an Odin box
+            # is the instance's own host -- the domain the relay refuses.
+            headers["Return-Path"] = email_normalize(sender)
+        # The server Odoo would pick, named on the mail. Left to choose, Odoo
+        # also puts its own identity back in the From whenever the relay's
+        # from_filter does not name this address.
+        relay = self.env["ir.mail_server"].sudo()._find_mail_server(sender)[0]
         mail = self.env["mail.mail"].sudo().create({
             "subject": _("%s — your dashboard") % self.dashboard_id.name,
-            "email_from": company.email_formatted or formataddr(
-                (company.name, company.default_from_email or user.partner_id.email)),
+            "email_from": sender,
+            "headers": repr(headers) if headers else False,
+            "mail_server_id": relay.id if relay else False,
             "email_to": user.partner_id.email,
             "author_id": company.partner_id.id,
             "body_html": body,
@@ -204,12 +217,59 @@ class AIDashboardSubscription(models.Model):
         mail.send(raise_exception=False)
         if mail.state == "exception":
             mail.auto_delete = True
-            raise UserError(_("The mail server did not take it: %s")
-                            % (mail.failure_reason or _("no reason given")))
+            # The last line is the relay's own reply; Odoo's two lines before
+            # it ("Mail Delivery Failed", "...via SMTP server 'Resend'.") used
+            # up last_error before the part that says why.
+            lines = [line.strip() for line in (mail.failure_reason or "").splitlines() if line.strip()]
+            raise UserError(_("The mail server did not take it from %(sender)s: %(reason)s",
+                              sender=email_normalize(sender) or _("no address"),
+                              reason=lines[-1] if lines else _("no reason given")))
         if mail.state == "sent":
             mail.unlink()
         _logger.info("AI Dashboards: sent '%s' to %s",
                      self.dashboard_id.name, user.login)
+
+    def _sender(self, company):
+        """``"Company" <noreply@odin.ist>``: who the email is from.
+
+        A company with an alias domain sends as its default sender, as every
+        other app does (noreply@odin.ist on BizSure). Without one, the identity
+        is the server's own: its ``email_from``, else what the relay's
+        ``from_filter`` names -- one address, or a domain to send from as
+        noreply@. Only with no identity at all does the company's own address,
+        or the recipient's, stand in: a relay serving one domain refuses those.
+
+        The server's identity sits on the instance's own host name,
+        noreply@elora.odin.ist, and Resend refuses it with 403 "not authorized
+        to send emails from elora.odin.ist": the relay's key is for odin.ist,
+        the domain Helpdesk and the other apps send from. So an address on
+        this instance's host name moves to the parent domain.
+        """
+        from odoo.addons.mcp_governance_suite.models.mcp_url import (
+            public_base_url,
+        )
+        address = company.default_from_email
+        if not address:
+            Server = self.env["ir.mail_server"].sudo().with_company(company)
+            relay = Server.search([], order="sequence, id", limit=1).from_filter \
+                or Server._get_default_from_filter()
+            parts = Server._parse_from_filter(relay)
+            named = [part for part in parts if "@" in part]
+            domains = [part for part in parts if "@" not in part]
+            address = email_normalize(
+                Server._get_default_from_address()
+                or (named[0] if len(named) == 1 else ""))
+            if address:
+                local, domain = address.rsplit("@", 1)
+                host = urlsplit(public_base_url(self.env)).hostname or ""
+                if domain == host and host.count(".") >= 2:
+                    address = "%s@%s" % (local, host.split(".", 1)[1])
+            elif domains:
+                address = "noreply@%s" % domains[0]
+        if not address:
+            return company.email_formatted or formataddr(
+                (company.name, self.user_id.partner_id.email))
+        return formataddr((company.name, address))
 
     def _format_value(self, value, widget, currency):
         """Numbers in an email have to be readable without any JavaScript."""

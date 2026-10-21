@@ -102,6 +102,26 @@ class TestSubscriptions(TransactionCase):
         self.assertIn(company.name, mail.email_from)
         self.assertNotIn("OdooBot", mail.email_from)
 
+    def test_the_email_is_sent_from_the_platform_domain_not_the_instance(self):
+        """An Odin box as Elora is: served at elora.odin.ist, no alias domain,
+        the server's own identity on its host name. Resend refused that, and
+        the company's own address (andrew@fleet.ke), with 403: its key is for
+        odin.ist."""
+        self.env["ir.config_parameter"].set_param("web.base.url", "https://elora.odin.ist")
+        company = self.owner.company_id
+        company.write({"alias_domain_id": False, "email": "andrew@fleet.ke"})
+        self.env["ir.mail_server"].search([]).unlink()
+        relay = self.env["ir.mail_server"].create({
+            "name": "Resend", "smtp_host": "smtp.resend.com", "from_filter": "noreply@elora.odin.ist"})
+        sub = self._sub(self.owner)
+        with patch.object(type(self.env["ir.mail_server"]), "_get_default_from_address",
+                          lambda server: server.env.company.default_from_email or "noreply@elora.odin.ist"):
+            sub.sudo()._send()
+        mail = self.env["mail.mail"].sudo().search([("email_to", "=", "owner@example.com")])
+        self.assertEqual(mail.email_from, '"%s" <noreply@odin.ist>' % company.name)
+        self.assertIn("'Return-Path': 'noreply@odin.ist'", mail.headers)
+        self.assertEqual(mail.mail_server_id, relay)
+
     def test_a_sent_email_leaves_no_mail_behind(self):
         def sent(mails, **kwargs):
             mails.write({"state": "sent"})
@@ -113,7 +133,9 @@ class TestSubscriptions(TransactionCase):
 
     def test_a_refused_email_is_an_error_not_a_send(self):
         def refused(mails, **kwargs):
-            mails.write({"state": "exception", "failure_reason": "111 Connection refused"})
+            mails.write({"state": "exception", "failure_reason": (
+                "Mail Delivery Failed\nMail delivery failed via SMTP server 'Resend'.\n"
+                "111 Connection refused")})
         sub = self._sub(self.owner)
         sub.sudo().next_send = "2020-01-01 00:00:00"
         # As the scheduler runs it: cron_send commits after each send, which a
@@ -122,7 +144,7 @@ class TestSubscriptions(TransactionCase):
                 self.enter_registry_test_mode():
             self.env.ref("ai_dashboards.cron_dashboard_subscriptions").method_direct_trigger()
         self.env.invalidate_all()
-        self.assertIn("111 Connection refused", sub.last_error)
+        self.assertIn("111 Connection refused", sub.last_error, "the relay's reply, not Odoo's preamble")
         self.assertEqual(sub.send_count, 0)
         mail = self.env["mail.mail"].sudo().search([("email_to", "=", "owner@example.com")])
         self.assertEqual((mail.state, mail.auto_delete), ("exception", True))
