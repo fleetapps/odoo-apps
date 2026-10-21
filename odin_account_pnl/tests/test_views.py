@@ -91,6 +91,24 @@ class TestViews(PnlCase):
         self.assertEqual(mail.author_id, self.accountant.partner_id, "the Reply-To is named after the owner")
         self.assertGreater(view.next_send, fields.Datetime.now())
 
+    def test_a_view_made_from_the_menu_saves_and_sends(self):
+        """The form carries no options field -- they come from the report -- so
+        pressing New there creates a view with nothing in `options`. That used
+        to hit the NOT NULL behind `required=True` (fields.Json stores an empty
+        dict as NULL) and "Send now" died on "Missing required value for the
+        field 'Options'". Such a view is simply the default P&L."""
+        view = self.env["odin.pnl.view"].with_user(self.accountant).create({
+            "name": "From the menu", "schedule": "daily",
+            "recipient_emails": "boss@example.com"})
+        self.assertFalse(view.options, "stored as NULL, which every reader takes as {}")
+        self.assertTrue(view.period_rule, "the period still has a label")
+        sent = []
+        with patch.object(type(self.env["mail.mail"]), "send",
+                          lambda mails, **kwargs: sent.append(mails) or mails.write({"state": "sent"})):
+            action = view.with_user(self.accountant).action_send_now()
+        self.assertEqual(action["params"]["type"], "info", view.last_status)
+        self.assertEqual(len(sent), 1, "the default P&L was rendered and sent")
+
     def _schedule(self):
         return self.env["odin.pnl.view"].with_user(self.accountant).create({
             "name": "Monthly", "options": self.options(), "schedule": "daily",
