@@ -25,6 +25,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import email_split
 
+from . import odin_pnl_periods as periods
+
 _logger = logging.getLogger(__name__)
 
 
@@ -115,7 +117,10 @@ class OdinPnlView(models.Model):
         }
         for view in self:
             date_opt = (view.options or {}).get("date") or {}
-            preset = date_opt.get("filter")
+            # No stored options at all (a view made from the menu) means the
+            # default P&L, which is what _normalize_options will render --
+            # without this the label read "None to None".
+            preset = date_opt.get("filter") or (periods.DEFAULT_PRESET if not date_opt else None)
             view.period_rule = labels.get(preset) or _(
                 "%(start)s to %(end)s", start=date_opt.get("date_from"), end=date_opt.get("date_to"))
 
@@ -270,7 +275,15 @@ class OdinPnlView(models.Model):
             })
         mail = self.env["mail.mail"].sudo().create({
             "subject": f"{payload['title']} · {payload['period']}",
-            "email_from": owner.email_formatted or self.company_id.email_formatted,
+            # NOT the owner's own address. An ODIN instance sends through one
+            # verified identity (ir.mail_server.from_filter), so a personal
+            # address is refused outright -- Resend answered 550 "This API key
+            # is not authorized to send emails from gmail.com", and an owner
+            # with no email at all produced mail_from_missing. Odoo's own
+            # default identity is the address the relay accepts; the owner
+            # belongs in Reply-To, which is what a recipient actually needs.
+            "email_from": self._sender(owner),
+            "reply_to": owner.email_formatted or self.company_id.email_formatted,
             # The owner, not the cron's user: Odoo names the Reply-To after the author.
             "author_id": owner.partner_id.id,
             "email_to": ", ".join(self._recipient_emails()),
@@ -279,6 +292,22 @@ class OdinPnlView(models.Model):
             "auto_delete": False,
         })
         return _deliver(mail)
+
+    def _sender(self, owner):
+        """The address this instance is allowed to send from.
+
+        ``ir.mail_server._get_default_from_address`` only answers when the
+        server was started with ``email_from``, which an Odin box is not, so
+        fall back to the relay's own ``from_filter`` when that names a single
+        address -- it is by definition the identity the relay accepts.
+        """
+        Server = self.env["ir.mail_server"].sudo()
+        candidates = [Server._get_default_from_address()]
+        relay = Server.search([], order="sequence, id", limit=1).from_filter or ""
+        if "@" in relay and "," not in relay:
+            candidates.append(relay.strip())
+        candidates += [self.company_id.email_formatted, owner.email_formatted]
+        return next((address for address in candidates if address), False)
 
     def _live_options(self):
         options = dict(self.options or {})
