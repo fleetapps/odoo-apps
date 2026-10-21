@@ -128,11 +128,18 @@ class TestViews(PnlCase):
 
     def test_a_refused_email_is_reported_and_kept_for_a_retry(self):
         def refused(mails, **kwargs):
-            mails.write({"state": "exception", "failure_reason": "111 Connection refused"})
+            # Odoo's own wording around the relay's reply, as mail.mail stores it.
+            mails.write({"state": "exception", "failure_reason": (
+                "Mail Delivery Failed\nMail delivery failed via SMTP server 'Resend'.\n"
+                "SMTPDataError: (550, b'not authorized to send emails from gmail.com')")})
+        self._as_odin_instance()
         view = self._schedule()
         with patch.object(type(self.env["mail.mail"]), "send", refused):
             action = view.with_user(self.accountant).action_send_now()
-        self.assertEqual(view.last_status, "Not sent: 111 Connection refused")
+        self.assertEqual(
+            view.last_status,
+            "Not sent from noreply@odin.ist: SMTPDataError: (550, b'not authorized to send emails from gmail.com')",
+            "which sender was refused, and the relay's own reason")
         self.assertEqual(action["params"]["type"], "warning")
         mail = self._mails()
         self.assertEqual((mail.state, mail.auto_delete), ("exception", True),
@@ -147,3 +154,54 @@ class TestViews(PnlCase):
         status = view.sudo()._send_and_record()
         self.assertTrue(status.startswith("Not sent"))
         self.assertFalse(self.env["mail.mail"].search([("email_to", "ilike", "boss@example.com")]))
+
+    def _as_odin_instance(self):
+        """An Odin box as Elora is: served at elora.odin.ist, a company with
+        no alias domain, and the server's own identity on its host name."""
+        self.env["ir.config_parameter"].set_param("web.base.url", "https://elora.odin.ist")
+        self.env.company.alias_domain_id = False
+        self.env["ir.mail_server"].search([]).unlink()
+        patcher = patch.object(type(self.env["ir.mail_server"]), "_get_default_from_address",
+                               lambda server: server.env.company.default_from_email or "noreply@elora.odin.ist")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_the_email_is_sent_from_the_platform_domain_not_the_instance(self):
+        """Resend refused noreply@elora.odin.ist with 403 "not authorized to
+        send emails from elora.odin.ist"; its key is for odin.ist."""
+        self._as_odin_instance()
+        relay = self.env["ir.mail_server"].create({
+            "name": "Resend", "smtp_host": "smtp.resend.com", "from_filter": "noreply@elora.odin.ist"})
+        self._schedule().sudo()._send_and_record()
+        mail = self._mails()
+        self.assertEqual(mail.email_from, f'"{self.env.company.name}" <noreply@odin.ist>')
+        self.assertIn("'Return-Path': 'noreply@odin.ist'", mail.headers, "the envelope sender too")
+        self.assertEqual(mail.mail_server_id, relay,
+                         "named on the mail, so Odoo does not put the host-name address back in the From")
+
+    def test_a_relay_filtering_on_a_domain_sends_from_noreply_there(self):
+        self._as_odin_instance()
+        self.env["ir.mail_server"].create({"name": "Resend", "smtp_host": "smtp.resend.com", "from_filter": "odin.ist"})
+        self.accountant.email = "accountant@gmail.com"
+        with patch.object(type(self.env["ir.mail_server"]), "_get_default_from_address", lambda server: None):
+            self._schedule().sudo()._send_and_record()
+        self.assertEqual(self._mails().email_from, f'"{self.env.company.name}" <noreply@odin.ist>',
+                         "not the owner's gmail address, which the relay refuses")
+
+    def test_an_alias_domain_is_sent_from_as_it_is(self):
+        """The company's alias domain is a deliberate choice: BizSure sends as
+        noreply@odin.ist from it, as every other app there does."""
+        self._as_odin_instance()
+        self.env.company.alias_domain_id = self.env["mail.alias.domain"].create(
+            {"name": "acme.example", "default_from": "noreply"})
+        self._schedule().sudo()._send_and_record()
+        self.assertEqual(self._mails().email_from, f'"{self.env.company.name}" <noreply@acme.example>')
+
+    def test_a_recipient_listed_twice_gets_one_email(self):
+        boss = self.env["res.partner"].create({"name": "Boss", "email": "boss@example.com"})
+        view = self.env["odin.pnl.view"].with_user(self.accountant).create({
+            "name": "Monthly", "options": self.options(), "schedule": "daily",
+            "recipient_ids": [(6, 0, boss.ids)], "recipient_emails": "BOSS@example.com, cfo@example.com"})
+        status = view.sudo()._send_and_record()
+        self.assertEqual(self._mails().email_to, '"Boss" <boss@example.com>, cfo@example.com')
+        self.assertEqual(status, "Queued for 2 recipient(s)")

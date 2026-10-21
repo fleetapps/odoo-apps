@@ -78,9 +78,13 @@ up; thousands and millions are a format, not a rounding.
 
 **Saved views.** *★ Views* saves the page: layout, period rule ("last month",
 "financial year to date"), comparison, filters, display and unfolded rows.
-A view can be shared with the team and made one's default. From *Schedule &
-manage* an accountant has it emailed daily, weekly or monthly at an hour of
-their time zone, as PDF and/or Excel, with the key lines in the email body.
+A view can be shared with the team and made one's default. From *Schedule
+Send*, beside *★ Views*, an accountant has it emailed daily, weekly or monthly
+at an hour of their time zone, as PDF and/or Excel, with the key lines in the
+email body. It is sent from the instance's own sending address, named after
+the company, with the view's owner as Reply-To; an address on the instance's
+host name (noreply@elora.odin.ist) is sent from the parent domain instead
+(noreply@odin.ist), the one the mail relay accepts.
 The period is worked out at sending time, and the report is computed as the
 view's owner: recipients never get more than the owner can see.
 

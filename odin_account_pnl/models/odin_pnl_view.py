@@ -16,6 +16,7 @@ https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html
 import base64
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 
 import pytz
 from dateutil.relativedelta import relativedelta
@@ -23,7 +24,7 @@ from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools import email_split
+from odoo.tools import email_normalize, email_split, formataddr
 
 from . import odin_pnl_periods as periods
 
@@ -40,12 +41,21 @@ def _deliver(mail):
     means nothing was sent here (sending is off under tests); the queue sends it.
     """
     mail.send(raise_exception=False)
-    state, reason = mail.state, mail.failure_reason or ""
+    state, reason = mail.state, _server_reply(mail.failure_reason or "")
     if state == "sent":
         mail.unlink()
     elif state == "exception":
         mail.auto_delete = True
     return state, reason
+
+
+def _server_reply(reason):
+    """The last line of a failure: the relay's own words. Odoo puts two lines
+    of its own first ("Mail Delivery Failed", "Mail delivery failed via SMTP
+    server 'Resend'."), and those used up the status before the part that
+    says why."""
+    lines = [line.strip() for line in reason.splitlines() if line.strip()]
+    return lines[-1] if lines else ""
 
 SCHEDULES = [
     ("none", "Not emailed"),
@@ -202,9 +212,17 @@ class OdinPnlView(models.Model):
         return candidate.astimezone(pytz.utc).replace(tzinfo=None)
 
     def _recipient_emails(self):
+        """Each address once. A recipient picked as a contact and also typed
+        under "Other emails" was listed twice, and counted twice in "Sent to"."""
         emails = [partner.email_formatted for partner in self.recipient_ids if partner.email]
         emails += email_split(self.recipient_emails or "")
-        return emails
+        unique, seen = [], set()
+        for email in emails:
+            key = email_normalize(email) or email
+            if key not in seen:
+                seen.add(key)
+                unique.append(email)
+        return unique
 
     @api.model
     def _cron_send_due(self):
@@ -234,8 +252,13 @@ class OdinPnlView(models.Model):
             count = len(self._recipient_emails())
             if state == "exception":
                 failed = True
-                _logger.warning("odin_account_pnl: view %s was refused by the mail server: %s", self.id, reason)
-                status = _("Not sent: %(error)s", error=(reason or _("the mail server refused it"))[:200])
+                # The address goes in the status: which sender a relay refused
+                # is most of the diagnosis.
+                sender = email_normalize(self._sender(self.user_id)) or _("no address")
+                _logger.warning("odin_account_pnl: view %s, from %s, was refused by the mail server: %s",
+                                self.id, sender, reason)
+                status = _("Not sent from %(sender)s: %(error)s", sender=sender,
+                           error=(reason or _("the mail server refused it"))[:300])
             elif state == "outgoing":
                 status = _("Queued for %(count)s recipient(s)", count=count)
             else:
@@ -273,6 +296,18 @@ class OdinPnlView(models.Model):
                 "res_model": self._name,
                 "res_id": self.id,
             })
+        sender = self._sender(owner)
+        headers = {}
+        if not self.company_id.bounce_email and email_normalize(sender):
+            # The envelope sender follows the From. Without a bounce address
+            # Odoo falls back to the server's email_from, which on an Odin box
+            # is the instance's own host -- the domain the relay refuses.
+            headers["Return-Path"] = email_normalize(sender)
+        # The server Odoo would pick, named on the mail. Left to choose, Odoo
+        # also puts its own identity back in the From whenever the relay's
+        # from_filter does not name this address -- the host-name address the
+        # relay refuses.
+        relay = self.env["ir.mail_server"].sudo()._find_mail_server(sender)[0]
         mail = self.env["mail.mail"].sudo().create({
             "subject": f"{payload['title']} · {payload['period']}",
             # NOT the owner's own address. An ODIN instance sends through one
@@ -282,7 +317,9 @@ class OdinPnlView(models.Model):
             # with no email at all produced mail_from_missing. Odoo's own
             # default identity is the address the relay accepts; the owner
             # belongs in Reply-To, which is what a recipient actually needs.
-            "email_from": self._sender(owner),
+            "email_from": sender,
+            "headers": repr(headers) if headers else False,
+            "mail_server_id": relay.id if relay else False,
             "reply_to": owner.email_formatted or self.company_id.email_formatted,
             # The owner, not the cron's user: Odoo names the Reply-To after the author.
             "author_id": owner.partner_id.id,
@@ -294,20 +331,40 @@ class OdinPnlView(models.Model):
         return _deliver(mail)
 
     def _sender(self, owner):
-        """The address this instance is allowed to send from.
+        """``"Company" <noreply@odin.ist>``: who the email is from.
 
-        ``ir.mail_server._get_default_from_address`` only answers when the
-        server was started with ``email_from``, which an Odin box is not, so
-        fall back to the relay's own ``from_filter`` when that names a single
-        address -- it is by definition the identity the relay accepts.
+        A company with an alias domain sends as its default sender, as every
+        other app does (noreply@odin.ist on BizSure). Without one, the identity
+        is the server's own: its ``email_from``, else what the relay's
+        ``from_filter`` names -- one address, or a domain to send from as
+        noreply@. Only with no identity at all does the company's or the
+        owner's own address stand in.
+
+        The server's identity sits on the instance's own host name,
+        noreply@elora.odin.ist, and Resend refuses it with 403 "not authorized
+        to send emails from elora.odin.ist": the relay's key is for odin.ist,
+        the domain Helpdesk and the other apps send from. So an address on
+        this instance's host name moves to the parent domain.
         """
-        Server = self.env["ir.mail_server"].sudo()
-        candidates = [Server._get_default_from_address()]
-        relay = Server.search([], order="sequence, id", limit=1).from_filter or ""
-        if "@" in relay and "," not in relay:
-            candidates.append(relay.strip())
-        candidates += [self.company_id.email_formatted, owner.email_formatted]
-        return next((address for address in candidates if address), False)
+        company = self.company_id
+        address = company.default_from_email
+        if not address:
+            Server = self.env["ir.mail_server"].sudo().with_company(company)
+            relay = Server.search([], order="sequence, id", limit=1).from_filter or Server._get_default_from_filter()
+            parts = Server._parse_from_filter(relay)
+            named = [part for part in parts if "@" in part]
+            domains = [part for part in parts if "@" not in part]
+            address = email_normalize(Server._get_default_from_address() or (named[0] if len(named) == 1 else ""))
+            if address:
+                local, domain = address.rsplit("@", 1)
+                host = urlsplit(self.get_base_url()).hostname or ""
+                if domain == host and host.count(".") >= 2:
+                    address = f"{local}@{host.split('.', 1)[1]}"
+            elif domains:
+                address = f"noreply@{domains[0]}"
+        if not address:
+            return company.email_formatted or owner.email_formatted
+        return formataddr((company.name, address))
 
     def _live_options(self):
         options = dict(self.options or {})
