@@ -27,6 +27,7 @@
                 <div t-if="props.mode === 'price'" class="o_bar_desk_keypad_expected">
                     Line total <t t-esc="lineTotal"/>
                 </div>
+                <div t-if="state.warning" class="alert alert-warning py-2 mb-2" role="alert" t-esc="state.warning"/>
                 <div t-if="props.expected !== undefined" class="o_bar_desk_keypad_expected">
                     Expected <t t-esc="props.expected"/>
                     <button t-if="props.onSame" class="btn btn-sm btn-outline-success ms-2" t-on-click="props.onSame">
@@ -52,7 +53,9 @@
                             t-on-click="props.onRemove" aria-label="Remove">
                         <i class="fa fa-trash"/>
                     </button>
-                    <button class="btn btn-primary o_bar_desk_big flex-grow-1" t-on-click="confirm">OK</button>
+                    <button class="btn btn-primary o_bar_desk_big flex-grow-1" t-on-click="confirm">
+                        <t t-if="state.questioned !== null">Yes, that is right</t><t t-else="">OK</t>
+                    </button>
                 </div>
             </div>
         </div>

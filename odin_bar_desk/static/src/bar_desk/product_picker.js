@@ -14,6 +14,9 @@ export class ProductPicker extends Component {
         onlyIds: { type: Object, optional: true },
         markedIds: { type: Object, optional: true },
         hint: { type: Function, optional: true },
+        // Offered when nothing has the name searched for: a product the store
+        // has never stocked, called with that name and the category on screen.
+        onCreate: { type: Function, optional: true },
     };
 
     setup() {
@@ -47,7 +50,10 @@ export class ProductPicker extends Component {
     get products() {
         const query = normalize(this.state.query.trim());
         if (query) {
-            return this.allProducts
+            // A name typed is looked for everywhere: the supplier's own list is
+            // for browsing, and "Nothing found" for a product the Desk has
+            // invites a duplicate.
+            return (this.props.model.state.catalog?.products || [])
                 .filter((product) => normalize(product.name).includes(query))
                 .slice(0, SEARCH_LIMIT);
         }
@@ -69,5 +75,23 @@ export class ProductPicker extends Component {
 
     isMarked(product) {
         return this.props.markedIds?.has(product.id);
+    }
+
+    /** The name typed, when no product on the Desk has it: one to add. */
+    get newName() {
+        const name = this.state.query.trim();
+        if (!this.props.onCreate || name.length < 3) {
+            return "";
+        }
+        const wanted = normalize(name);
+        const known = (this.props.model.state.catalog?.products || []).some(
+            (product) => normalize(product.name) === wanted
+        );
+        return known ? "" : name;
+    }
+
+    create() {
+        const categId = typeof this.state.categId === "number" ? this.state.categId : false;
+        this.props.onCreate(this.newName, categId);
     }
 }

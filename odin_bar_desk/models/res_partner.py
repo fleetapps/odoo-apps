@@ -41,6 +41,20 @@ class ResPartner(models.Model):
         string="Supplies product categories",
         help="On a supplier delivery, the Bar Desk lists products of these categories first.",
     )
+    bar_invoice_vat = fields.Selection(
+        [
+            ("included", "Prices include VAT"),
+            ("added", "VAT added to the prices"),
+            ("none", "No VAT"),
+        ],
+        string="VAT on invoices",
+        # Drinks and cigarettes are sold in Kenya at prices including VAT
+        # (and excise), on the shelf and on the supplier's invoice alike.
+        default="included",
+        help="How this supplier's invoices show VAT. The Bar Desk reads the prices typed "
+        "from the invoice this way, and remembers what was used last. No VAT is for a "
+        "supplier not registered for VAT: its invoice gives no VAT to claim back.",
+    )
 
     @api.model
     def _bar_seed_suppliers(self):

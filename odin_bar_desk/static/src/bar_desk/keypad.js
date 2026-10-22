@@ -1,5 +1,5 @@
 import { Component, useState } from "@odoo/owl";
-import { fmt, money, shortUnit, unitOf, unitsOf } from "./utils";
+import { fmt, money, oneUnit, shortUnit, unitOf, unitsOf } from "./utils";
 
 const MAX_LENGTH = 7;
 const MAX_SUM_LENGTH = 40;
@@ -18,7 +18,9 @@ export function addUp(text) {
  *   spirits, units or a crate for beer).
  * - "price" mode: the same, plus what the supplier charged for one of that
  *   unit. The line total is shown as it is typed, so a mistyped price is
- *   caught against the invoice on the counter rather than in the ledger.
+ *   caught against the invoice on the counter rather than in the ledger. A
+ *   line with no price is refused, and ``checkPrice`` may question one (a
+ *   zero too many): a second OK on the same price confirms it.
  * - "count" mode: full bottles per size plus the open bottle in tots for
  *   spirits; full crates plus loose bottles for beer and sodas; a plain
  *   number for everything else.
@@ -34,6 +36,7 @@ export class Keypad extends Component {
         allowRemove: { type: Boolean, optional: true },
         expected: { type: String, optional: true },
         onSame: { type: Function, optional: true },
+        checkPrice: { type: Function, optional: true },
         onConfirm: Function,
         onRemove: { type: Function, optional: true },
         onClose: Function,
@@ -83,7 +86,7 @@ export class Keypad extends Component {
             if (mode === "price") {
                 fields.push({
                     key: "price",
-                    label: `Price per ${shortUnit(unitOf(product, value.uomId || product.uom.id))}`,
+                    label: `Price per ${oneUnit(unitOf(product, value.uomId || product.uom.id))}`,
                     text: value.price ? fmt(value.price) : "",
                 });
             }
@@ -93,6 +96,9 @@ export class Keypad extends Component {
             active: 0,
             fresh: true,
             uomId: value.uomId || product.uom.id,
+            warning: "",
+            // The price a warning was shown for: OK again on it confirms.
+            questioned: null,
         });
     }
 
@@ -113,12 +119,24 @@ export class Keypad extends Component {
     }
 
     setUnit(unit) {
+        const before = unitOf(this.props.product, this.state.uomId);
         this.state.uomId = unit.id;
-        // The price is per unit, so its label has to follow the unit chosen.
+        // The price is per unit, so it follows the unit chosen: 2,400 a crate
+        // of 24 is 100 a bottle, not 2,400 a bottle.
         const price = this.state.fields.find((field) => field.key === "price");
         if (price) {
-            price.label = `Price per ${shortUnit(unit)}`;
+            price.label = `Price per ${oneUnit(unit)}`;
+            const value = addUp(price.text);
+            if (value && before.factor) {
+                price.text = fmt((value * unit.factor) / before.factor);
+            }
+            this.clearWarning();
         }
+    }
+
+    clearWarning() {
+        this.state.warning = "";
+        this.state.questioned = null;
     }
 
     focus(index) {
@@ -141,6 +159,31 @@ export class Keypad extends Component {
         }
         field.text = text.slice(0, text.includes("+") ? MAX_SUM_LENGTH : MAX_LENGTH);
         this.state.fresh = false;
+        if (field.key === "price") {
+            this.clearWarning();
+        }
+    }
+
+    /** False when the price needs another look before the line is kept. */
+    priceChecked() {
+        const qty = this.number("qty");
+        const price = this.number("price");
+        if (!qty) {
+            return true;
+        }
+        const unit = oneUnit(unitOf(this.props.product, this.state.uomId));
+        if (!price) {
+            this.state.warning = `Type the price per ${unit}, as on the invoice.`;
+            this.focus(this.state.fields.findIndex((field) => field.key === "price"));
+            return false;
+        }
+        const warning = this.props.checkPrice?.(price, this.state.uomId) || "";
+        if (warning && this.state.questioned !== price) {
+            this.state.warning = warning;
+            this.state.questioned = price;
+            return false;
+        }
+        return true;
     }
 
     number(key) {
@@ -154,6 +197,9 @@ export class Keypad extends Component {
 
     confirm() {
         const { product, mode } = this.props;
+        if (mode === "price" && !this.priceChecked()) {
+            return;
+        }
         if (mode === "qty" || mode === "price") {
             this.props.onConfirm({
                 qty: this.number("qty"),

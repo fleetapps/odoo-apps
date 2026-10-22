@@ -22,6 +22,10 @@ where they can tell.
 
 Why this is a script and not a module migration: it moves money, it is
 specific to one company, and it must never fire again on a routine upgrade.
+
+The other route, staying periodic and letting Odoo's stock closing post the
+change in stock value every night, is tools/dhostana_pnl.py. Use one or the
+other, not both.
 """
 
 import os

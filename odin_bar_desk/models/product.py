@@ -13,6 +13,12 @@ class ProductTemplate(models.Model):
     _inherit = "product.template"
 
     bar_desk_ok = fields.Boolean("Show in Bar Desk", help="Staff can pick this product in the Bar Desk.")
+    bar_desk_new = fields.Boolean(
+        "Added on the Desk",
+        copy=False,
+        help="Created by staff while receiving a supplier delivery. Check its name, category "
+        "and units, link it to its POS item, then clear this.",
+    )
     bar_count_sequence = fields.Integer(
         "Count sheet order", default=100, help="Order within its category on the count sheet."
     )
@@ -102,6 +108,7 @@ class ProductProduct(models.Model):
                 "factor": uom._compute_quantity(1, product.uom_id, round=False),
             }
 
+        company = self.env.company
         result = []
         for product in self:
             template = product.product_tmpl_id
@@ -117,6 +124,17 @@ class ProductProduct(models.Model):
                     "poured": bool(bottle),
                     "bottles": [unit_info(uom, product) for uom in bottles],
                     "packs": [] if bottle else [unit_info(uom, product) for uom in packs],
+                    "vat": product.supplier_taxes_id._filter_taxes_by_company(company)._bar_vat_rate(),
                 }
             )
         return result
+
+
+class AccountTax(models.Model):
+    _inherit = "account.tax"
+
+    def _bar_vat_rate(self):
+        """What these taxes add to a price, as a fraction (0.16), so the Desk
+        can show an invoice's total the way the supplier printed it. Only
+        plain percentages count; anything fancier is left to the bill."""
+        return sum(tax.amount for tax in self if tax.amount_type == "percent") / 100
