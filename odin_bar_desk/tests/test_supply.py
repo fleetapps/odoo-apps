@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
@@ -363,6 +365,23 @@ class TestSupplierDelivery(BarDeskCase):
         self.assertEqual(bill.payment_state if bill.payment_state != "in_payment" else "paid", "paid")
         payment = self.env["account.payment"].search([("partner_id", "=", self.supplier.id)])
         self.assertEqual(payment.amount, bill.amount_total)
+        self.assertIn(bill, payment.reconciled_bill_ids)
+
+    def test_paid_now_is_booked_without_an_outstanding_account(self):
+        """A payment journal set up by hand has no outstanding account on its
+        payment method, and with the Accountant app Odoo then leaves a payment
+        out of the books until a bank statement matches it. Paying must still
+        book the payment and settle the bill, or the books keep owing a
+        supplier who was paid."""
+        self.journal.outbound_payment_method_line_ids.payment_account_id = False
+        with patch.object(
+            self.env.registry["account.move"], "_get_invoice_in_payment_state", lambda self: "in_payment"
+        ):
+            self.deliver_lines([self.line(5, price=3000.0)], paid="now")
+        bill = self.bills()
+        payment = self.env["account.payment"].search([("partner_id", "=", self.supplier.id)])
+        self.assertEqual(payment.move_id.state, "posted", "the payment is in the books")
+        self.assertTrue(bill.currency_id.is_zero(bill.amount_residual), "and the bill no longer owed")
         self.assertIn(bill, payment.reconciled_bill_ids)
 
     def test_a_price_jump_is_called_out_on_the_bill(self):

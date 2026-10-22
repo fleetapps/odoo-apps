@@ -76,7 +76,11 @@ sheet**, in three steps that each show whether they are done:
    none for a supplier not registered); the Desk opens each delivery on it
    and remembers what staff last chose.
 8. **Paying suppliers**: on the Main Store's *Bar Desk* tab, set **Suppliers
-   are paid from** to the cash or M-Pesa journal that pays deliveries.
+   are paid from** to the cash or M-Pesa journal that pays deliveries. A
+   payment from a journal whose payment method has no outstanding account is
+   booked to Outstanding Payments, so the bill reads paid without a bank
+   statement. Payments made before this release that never reached the books:
+   `tools/odin_book_payments.py`.
 9. **Par levels**: reorder rules (*Inventory → Operations → Replenishment*,
    trigger *Manual*) on `MS/Stock`. The Desk's **Stock levels** compares the
    club's total to them.

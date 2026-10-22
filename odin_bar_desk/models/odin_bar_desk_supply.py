@@ -758,9 +758,21 @@ class OdinBarDesk(models.AbstractModel):
         else:
             bill.action_post()
         if paid == "now" and bill.state == "posted":
-            self.env["account.payment.register"].sudo().with_company(company).with_context(
-                active_model="account.move", active_ids=bill.ids
-            ).create({"journal_id": store.supplier_payment_journal_id.id, "payment_date": today})._create_payments()
+            wizard = (
+                self.env["account.payment.register"]
+                .sudo()
+                .with_company(company)
+                .with_context(active_model="account.move", active_ids=bill.ids)
+                .create({"journal_id": store.supplier_payment_journal_id.id, "payment_date": today})
+            )
+            # Odoo 19 books a payment only when its method has an outstanding
+            # account; without one the payment waits for a bank statement to
+            # match it, and a bar paying by M-Pesa never imports one -- so the
+            # books keep owing a supplier who was paid. Book it to Outstanding
+            # Payments instead, which also settles the bill.
+            if not wizard.payment_method_line_id.payment_account_id:
+                wizard = wizard.with_context(force_payment_move=True)
+            wizard._create_payments()
         elif paid == "now":
             bill.message_post(
                 body=_(
