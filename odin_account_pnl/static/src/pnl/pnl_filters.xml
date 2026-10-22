@@ -48,8 +48,8 @@
                 </div>
 
                 <Dropdown menuClass="'o_odin_pnl_menu p-2'">
-                    <button class="btn btn-secondary o_odin_pnl_chip"
-                            t-att-class="{ 'o_odin_pnl_chip_active': options.comparison.mode !== 'none' }">
+                    <button class="btn btn-secondary o_odin_pnl_chip o_odin_pnl_comparison"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.comparison.mode !== 'none' or options.ytd or options.by_company }">
                         <i class="fa fa-percent me-1"/><t t-esc="comparisonLabel"/>
                     </button>
                     <t t-set-slot="content">
@@ -73,6 +73,12 @@
                             <DateTimeInput type="'date'" value="comparisonTo"
                                            onChange="(value) => this.setComparisonDate('date_to', value)"/>
                         </div>
+                        <div class="dropdown-divider"/>
+                        <h6 class="dropdown-header">Columns</h6>
+                        <CheckboxItem t-if="!options.by_company" checked="options.ytd" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('ytd')">Year to date</CheckboxItem>
+                        <CheckboxItem t-if="props.data.companies.length > 1" checked="options.by_company" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('by_company')">Companies side by side</CheckboxItem>
                     </t>
                 </Dropdown>
 

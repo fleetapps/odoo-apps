@@ -56,15 +56,19 @@ export class PnlFilterBar extends Component {
 
     get periodLabel() {
         const columns = this.props.data.columns || [];
-        const current = columns.filter((column) => column.group !== "comparison" && column.group !== "total");
-        if (current.length === 1) {
-            return current[0].label;
+        const current = columns.filter((column) => column.group === "current");
+        if (current.length > 1) {
+            // Divided into months or quarters.
+            const preset = PRESETS.find(([key]) => key === this.options.date.filter);
+            return preset ? preset[1] : `${current[0].label} – ${current.at(-1).label}`;
         }
-        const preset = PRESETS.find(([key]) => key === this.options.date.filter);
-        return preset ? preset[1] : `${current[0]?.label} – ${current.at(-1)?.label}`;
+        return this.props.data.period_label;
     }
 
     get comparisonLabel() {
+        if (this.options.by_company) {
+            return _t("Companies side by side");
+        }
         const comparison = this.options.comparison;
         const labels = {
             none: _t("Comparison"),
@@ -73,9 +77,10 @@ export class PnlFilterBar extends Component {
             custom: _t("Custom comparison"),
         };
         const label = labels[comparison.mode];
-        return comparison.mode !== "none" && comparison.mode !== "custom" && comparison.periods > 1
+        const text = comparison.mode !== "none" && comparison.mode !== "custom" && comparison.periods > 1
             ? `${label} ×${comparison.periods}`
             : label;
+        return this.options.ytd ? `${comparison.mode === "none" ? _t("Year to date") : text + " + " + _t("YTD")}` : text;
     }
 
     get journalLabel() {
@@ -158,7 +163,7 @@ export class PnlFilterBar extends Component {
     }
 
     setDivide(divide) {
-        this.props.onChange({ divide });
+        this.props.onChange({ divide, by_company: divide === "none" && this.options.by_company });
     }
 
     // ---- comparison ----------------------------------------------------
@@ -169,7 +174,12 @@ export class PnlFilterBar extends Component {
             comparison.date_from = this.options.date.date_from;
             comparison.date_to = this.options.date.date_to;
         }
-        this.props.onChange({ comparison, divide: mode === "none" ? this.options.divide : "none" });
+        // Companies side by side are columns too: a comparison replaces them.
+        this.props.onChange({
+            comparison,
+            divide: mode === "none" ? this.options.divide : "none",
+            by_company: mode === "none" && this.options.by_company,
+        });
     }
 
     setComparisonCount(event) {

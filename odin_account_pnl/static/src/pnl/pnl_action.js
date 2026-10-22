@@ -9,7 +9,7 @@ import { standardActionServiceProps } from "@web/webclient/actions/action_servic
 import { PnlFilterBar } from "./pnl_filters";
 import { PnlShortcutsDialog } from "./pnl_shortcuts_dialog";
 import { PnlSidePanel } from "./pnl_side_panel";
-import { PnlViewsMenu } from "./pnl_views_menu";
+import { PnlViewsMenu, viewSignature } from "./pnl_views_menu";
 import { download } from "@web/core/network/download";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -106,6 +106,9 @@ export class PnlAction extends Component {
             sort: restored?.sort || null,
             editing: null,
             viewId: restored?.viewId || false,
+            // viewSignature() of the view as saved: the Views button marks
+            // the page as changed when it no longer matches.
+            viewSnapshot: restored?.viewSnapshot || null,
             exporting: false,
             tipDismissed: readTipDismissed(),
         });
@@ -121,6 +124,7 @@ export class PnlAction extends Component {
                     focusKey: this.state.focusKey,
                     sort: this.state.sort,
                     viewId: this.state.viewId,
+                    viewSnapshot: this.state.viewSnapshot,
                     scrollTop: this.scrollerRef.el?.scrollTop || 0,
                 },
             }),
@@ -141,6 +145,9 @@ export class PnlAction extends Component {
                 this.load(),
             ]);
             this.journals = journals;
+            if (this.state.viewId && !this.state.viewSnapshot) {
+                this.markViewSaved();
+            }
         });
         onMounted(() => {
             if (this.scrollerRef.el && this.restoredScroll) {
@@ -208,6 +215,19 @@ export class PnlAction extends Component {
         this.state.editing = null;
         this.state.panel = null;
         await this.load();
+    }
+
+    /** The page is the view as saved (just applied, saved or updated). */
+    markViewSaved() {
+        this.state.viewSnapshot = viewSignature(this.state.options);
+    }
+
+    /** Leave the saved view for the P&L as it opens with no view. */
+    async resetView() {
+        const options = await this.orm.call("odin.pnl.report", "get_default_options", [readPrefs()]);
+        this.state.viewId = false;
+        this.state.viewSnapshot = null;
+        await this.replaceOptions(options);
     }
 
     async export(fmt) {
@@ -471,6 +491,21 @@ export class PnlAction extends Component {
         return good ? "o_odin_pnl_good" : "o_odin_pnl_bad";
     }
 
+    budgetVarClass(row, column) {
+        const variance = row.budget_var?.[column.key];
+        if (!variance || Math.abs(variance) < 0.005) {
+            return "text-muted";
+        }
+        // Over budget is good for income, bad for costs.
+        return (variance > 0) === Boolean(row.green_on_positive) ? "o_odin_pnl_good" : "o_odin_pnl_bad";
+    }
+
+    /** The draft journal items the figures leave out, to post or fix. */
+    async openDrafts() {
+        const action = await this.orm.call("odin.pnl.report", "action_open_drafts", [this.state.options]);
+        this.action.doAction(action);
+    }
+
     shareStyle(row) {
         return `width: ${Math.min(Math.max(row.share || 0, 0), 100)}%`;
     }
@@ -637,12 +672,14 @@ export class PnlAction extends Component {
     // Budget cells
     // ------------------------------------------------------------------
 
-    canEditBudget(row) {
-        return this.state.data?.can_edit_budget && row.type === "account" && row.editable_budget;
+    canEditBudget(row, column) {
+        // A year-to-date budget is the sum of its months, not typed.
+        return this.state.data?.can_edit_budget && row.type === "account" && row.editable_budget
+            && column?.group !== "ytd";
     }
 
     editBudget(row, column) {
-        if (this.canEditBudget(row)) {
+        if (this.canEditBudget(row, column)) {
             this.state.editing = { key: row.key, column: column.key };
         }
     }
