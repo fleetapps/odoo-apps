@@ -1,14 +1,29 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { useService } from "@web/core/utils/hooks";
 
 /**
+ * What a saved view stands for, to tell whether the page still shows it:
+ * everything but the rows unfolded by hand, which come and go as one reads.
+ * The server returns options in one key order, so their JSON compares.
+ */
+export function viewSignature(options) {
+    const { unfolded, modes, ...rest } = options || {};
+    return JSON.stringify(rest);
+}
+
+/**
  * ★ Views: saved P&L views, the user's own and the ones shared with the
  * team. A view keeps its period as a rule ("last month"), so applying it
- * always shows the right month. "Schedule Send", the button beside the menu,
- * opens the current view's form, where the email is scheduled, or the list of
- * saved views when the page is not one of the user's own.
+ * always shows the right month. The button names the view on the page and
+ * marks it once the page has changed since the view was saved; the menu then
+ * offers to save the change or go back to the view as saved.
+ *
+ * "Schedule Send", the button beside the menu, opens the current view's
+ * schedule; on a page that is not one of the user's own views it opens a new
+ * scheduled view made of the page as it is.
  */
 export class PnlViewsMenu extends Component {
     static template = "odin_account_pnl.PnlViewsMenu";
@@ -36,6 +51,24 @@ export class PnlViewsMenu extends Component {
         return this.state.views.find((view) => view.id === this.reportState.viewId);
     }
 
+    /** The page no longer shows the view as saved. */
+    get changed() {
+        const state = this.reportState;
+        return Boolean(state.viewId && state.viewSnapshot) && viewSignature(state.options) !== state.viewSnapshot;
+    }
+
+    /** The user's own views, then the ones shared with them. */
+    get viewSections() {
+        return [
+            { title: _t("My views"), views: this.state.views.filter((view) => view.mine) },
+            { title: _t("Shared with me"), views: this.state.views.filter((view) => !view.mine) },
+        ].filter((section) => section.views.length);
+    }
+
+    get canSchedule() {
+        return Boolean(this.reportState.data?.can_schedule);
+    }
+
     async refresh() {
         this.state.views = await this.orm.call("odin.pnl.report", "list_views", []);
     }
@@ -45,6 +78,7 @@ export class PnlViewsMenu extends Component {
         if (options) {
             this.report.state.viewId = view.id;
             await this.report.replaceOptions(options);
+            this.report.markViewSaved();
         }
     }
 
@@ -61,7 +95,8 @@ export class PnlViewsMenu extends Component {
         this.state.views = result.views;
         this.state.name = "";
         this.report.state.viewId = result.id;
-        this.notification.add(`“${name}” saved.`, { type: "success" });
+        this.report.markViewSaved();
+        this.notification.add(_t("“%s” saved.", name), { type: "success" });
     }
 
     async update() {
@@ -73,7 +108,19 @@ export class PnlViewsMenu extends Component {
             view.id,
         ]);
         this.state.views = result.views;
-        this.notification.add(`“${view.name}” updated.`, { type: "success" });
+        this.report.markViewSaved();
+        this.notification.add(_t("“%s” updated.", view.name), { type: "success" });
+    }
+
+    /** Back to the view as saved, dropping the changes made since. */
+    async revert() {
+        if (this.current) {
+            await this.apply(this.current);
+        }
+    }
+
+    async resetView() {
+        await this.report.resetView();
     }
 
     async toggleDefault(view, ev) {
@@ -88,6 +135,7 @@ export class PnlViewsMenu extends Component {
         this.state.views = await this.orm.call("odin.pnl.report", "delete_view", [view.id]);
         if (this.report.state.viewId === view.id) {
             this.report.state.viewId = false;
+            this.report.state.viewSnapshot = null;
         }
     }
 
@@ -97,19 +145,50 @@ export class PnlViewsMenu extends Component {
         }
     }
 
-    manage() {
+    scheduleSend() {
         const view = this.current;
+        if (view && view.mine) {
+            if (this.changed) {
+                this.notification.add(
+                    _t("The email sends “%s” as saved. Update the view to send the page as it is now.", view.name),
+                    { type: "warning" }
+                );
+            }
+            this.action.doAction(
+                {
+                    type: "ir.actions.act_window",
+                    name: _t("Schedule Send"),
+                    res_model: "odin.pnl.view",
+                    res_id: view.id,
+                    views: [[false, "form"]],
+                    target: "new",
+                },
+                { onClose: () => this.refresh() }
+            );
+            return;
+        }
+        // Not one of the user's views: schedule the page as it is, as a new
+        // view of their own (a shared view is copied, never changed).
+        if (this.reportState.options.date.filter === "custom") {
+            this.notification.add(
+                _t("This page shows fixed dates, so every email would send these same dates. " +
+                    "Pick a period that moves with the calendar (Last month, This quarter…) first."),
+                { type: "warning", sticky: true }
+            );
+        }
         this.action.doAction(
-            view && view.mine
-                ? {
-                      type: "ir.actions.act_window",
-                      name: "Schedule Send",
-                      res_model: "odin.pnl.view",
-                      res_id: view.id,
-                      views: [[false, "form"]],
-                      target: "new",
-                  }
-                : "odin_account_pnl.odin_pnl_view_action",
+            {
+                type: "ir.actions.act_window",
+                name: _t("Schedule Send"),
+                res_model: "odin.pnl.view",
+                views: [[false, "form"]],
+                target: "new",
+                context: {
+                    default_name: view ? view.name : _t("Profit & Loss"),
+                    default_options: JSON.parse(JSON.stringify(this.reportState.options)),
+                    default_schedule: "monthly",
+                },
+            },
             { onClose: () => this.refresh() }
         );
     }

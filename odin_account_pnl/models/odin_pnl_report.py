@@ -44,7 +44,7 @@ from odoo.fields import Domain
 from odoo.tools import SQL, date_utils, format_date, html2plaintext
 
 from . import odin_pnl_formula, odin_pnl_periods as periods
-from .odin_pnl_layout import PL_ACCOUNT_TYPES
+from .odin_pnl_layout import APPROPRIATION_TYPES, PL_ACCOUNT_TYPES
 
 PAGE_SIZE = 80
 TOP_CONTRIBUTORS = 10
@@ -128,7 +128,14 @@ class OdinPnlReport(models.AbstractModel):
             ],
             "can_edit_budget": self.env.user.has_group("account.group_account_user"),
             "can_configure": self.env.user.has_group("account.group_account_manager"),
+            # Emailing the P&L on a schedule is an accountant's decision
+            # (odin.pnl.view._check_can_schedule).
+            "can_schedule": self.env.user.has_group("account.group_account_user"),
             "split_menu": self._split_menu(),
+            "companies": [{"id": company.id, "name": company.name} for company in ctx.companies],
+            "period_label": ctx.period_label,
+            # Year-end checklist: draft entries in the period are not counted.
+            "draft_count": ctx.draft_count(),
         }
 
     @api.model
@@ -160,9 +167,11 @@ class OdinPnlReport(models.AbstractModel):
         ctx = self._context(options)
         filt = self._path_filter(ctx, self._parse_key(row_key))
         date_from, date_to = ctx.date_min, ctx.date_max
+        company_id = None
         if column_key:
             column = ctx.column(column_key)
             date_from, date_to = column["date_from"], column["date_to"]
+            company_id = column.get("company_id")
         domain = (
             ctx.base_domain
             & Domain("account_id", "in", filt["account_ids"])
@@ -171,10 +180,27 @@ class OdinPnlReport(models.AbstractModel):
             & filt["domain"]
             & self._analytic_domain(filt["sets"])
         )
+        if company_id:
+            domain &= Domain("company_id", "=", company_id)
         action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_moves_all_a")
         action.update({
             "name": _("Journal Items"),
             "domain": list(domain),
+            "context": {"create": False, "search_default_group_by_account": 0},
+            "target": "current",
+        })
+        return action
+
+    @api.model
+    def action_open_drafts(self, options):
+        """The draft journal items the figures leave out ("N draft journal
+        items in this period are not counted")."""
+        self._check_access()
+        ctx = self._context(options)
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_moves_all_a")
+        action.update({
+            "name": _("Draft journal items"),
+            "domain": list(ctx.draft_domain()),
             "context": {"create": False, "search_default_group_by_account": 0},
             "target": "current",
         })
@@ -367,6 +393,9 @@ class OdinPnlReport(models.AbstractModel):
         column = ctx.column(column_key)
         if column not in ctx.budget_columns:
             raise UserError(_("Budgets are typed in the columns of the period on screen."))
+        if column["group"] == "ytd":
+            # Spread over the year so far, it would overwrite every month's budget.
+            raise UserError(_("A year-to-date budget is the sum of its months: type it in the month's column."))
         balance = float(amount or 0.0) * (-1 if ctx.sign_for_key(row_key) == "credit" else 1)
         months = []
         cursor = column["date_from"].replace(day=1)
@@ -417,7 +446,11 @@ class OdinPnlReport(models.AbstractModel):
         """Save the page as a view (or overwrite one of the user's own)."""
         self._check_access()
         ctx = self._context(options)
-        values = {"options": ctx.options, "shared": bool(shared)}
+        values = {
+            "options": ctx.options,
+            "shared": bool(shared),
+            "company_ids": [(6, 0, ctx.companies.ids)] if ctx.options["by_company"] else [(5, 0, 0)],
+        }
         if view_id:
             view = self.env["odin.pnl.view"].browse(int(view_id)).exists()
             if not view or view.user_id != self.env.user:
@@ -455,6 +488,14 @@ class OdinPnlReport(models.AbstractModel):
                               "recipient_ids": [(5, 0, 0)], "name": view.name})
         view.is_default = True
         return self.list_views()
+
+    @api.model
+    def get_default_options(self, prefs=None):
+        """The options of the P&L as it opens with no view, with the display
+        choices the browser remembers (``prefs``): complete, so the page
+        never renders from half of them."""
+        self._check_access()
+        return self._normalize_options(prefs)
 
     @api.model
     def get_default_view(self):
@@ -554,9 +595,14 @@ class OdinPnlReport(models.AbstractModel):
                 custom = (min(c_from, c_to), max(c_from, c_to))
             else:
                 mode = "none"
-        if divide != "none":
+        # Companies side by side: one column per selected company and their
+        # total, for the period (Odoo's "horizontal groups" of a group's P&L).
+        by_company = bool(options.get("by_company")) and len(self.env.companies) > 1
+        if divide != "none" or by_company:
             # A divided period already shows its months side by side.
             mode = "none"
+        if by_company:
+            divide = "none"
 
         layouts = self._layouts()
         layout = layouts.filtered(lambda layout: layout.id == _int(options.get("layout_id")))
@@ -611,6 +657,10 @@ class OdinPnlReport(models.AbstractModel):
             # Off unless asked: with little history the sparkline says little,
             # and it costs a 12-month query on every load.
             "trend": bool(options.get("trend")),
+            # A Year to date column beside the period, as management accounts
+            # print "Month | YTD".
+            "ytd": bool(options.get("ytd")) and not by_company and divide == "none",
+            "by_company": by_company,
             "detail": detail,
             "budget_id": budget.id or False,
             "scale": scale,
@@ -686,6 +736,7 @@ class OdinPnlReport(models.AbstractModel):
             "code": line.code if line else "",
             "values": dict(values or {}),
             "budget": {},
+            "budget_var": {},
             "budget_pct": {},
             "pct": {},
             "growth": None,
@@ -714,6 +765,9 @@ class OdinPnlReport(models.AbstractModel):
                 planned = budget.get(column["key"])
                 row["budget"][column["key"]] = planned
                 actual = values.get(column["key"])
+                # Actual minus budget: over (or under) by how much, as the %
+                # alone does not say.
+                row["budget_var"][column["key"]] = (actual or 0.0) - (planned or 0.0)
                 # A percentage only reads when both figures point the same
                 # way: a profit line budgeted for its costs alone (budget
                 # negative, actual positive) gives nothing meaningful.
@@ -1032,6 +1086,8 @@ class OdinPnlReport(models.AbstractModel):
             & filt["domain"]
             & self._analytic_domain(filt["sets"], filt.get("plan"))
         )
+        if mode.startswith("audit:") and columns[0].get("company_id"):
+            domain &= Domain("company_id", "=", columns[0]["company_id"])
         AML = self.env["account.move.line"]
         # On screen by pages; in an export, all of them (up to a bound).
         page = EXPORT_ITEMS if self.env.context.get("odin_pnl_export") else PAGE_SIZE
@@ -1059,6 +1115,7 @@ class OdinPnlReport(models.AbstractModel):
                 column["key"]: amount
                 for column in columns
                 if column["date_from"] <= line.date <= column["date_to"]
+                and column.get("company_id") in (None, line.company_id.id)
             }
             if mode == "ledger":
                 running += amount
@@ -1242,10 +1299,13 @@ class OdinPnlReport(models.AbstractModel):
         else:
             amount = SQL("%s * %s", balance, self._share_sql(AML, alias, query, sets))
             dim_sql = self._dimension_sql(AML, alias, query, dim) if dim else None
+        company = AML._field_to_sql(alias, "company_id", query)
         sums = [
             SQL(
-                "SUM(CASE WHEN %s BETWEEN %s AND %s THEN %s ELSE 0 END)",
-                line_date, column["date_from"], column["date_to"], amount,
+                "SUM(CASE WHEN %s BETWEEN %s AND %s%s THEN %s ELSE 0 END)",
+                line_date, column["date_from"], column["date_to"],
+                SQL(" AND %s = %s", company, column["company_id"]) if column.get("company_id") else SQL(),
+                amount,
             )
             for column in columns
         ]
@@ -1403,14 +1463,25 @@ class _ReportContext:
         self.fiscal = fiscal
         date_from = fields.Date.to_date(options["date"]["date_from"])
         date_to = fields.Date.to_date(options["date"]["date_to"])
+        self.period_label = self._label(date_from, date_to)
         columns = []
-        if options["divide"] != "none":
+        if options["by_company"]:
+            for company in self.companies.sorted(lambda company: (company.sequence, company.name)):
+                column = self._column(date_from, date_to, "company", label=company.name)
+                column["company_id"] = company.id
+                columns.append(column)
+            columns.append(self._column(date_from, date_to, "total", label=_("Total")))
+        elif options["divide"] != "none":
             for start, end in periods.divide(date_from, date_to, options["divide"]):
                 columns.append(self._column(start, end, "current"))
             if len(columns) > 1:
                 columns.append(self._column(date_from, date_to, "total", label=_("Total")))
         else:
             columns.append(self._column(date_from, date_to, "current"))
+            fiscal_start = fiscal(date_to)[0]
+            if options["ytd"] and fiscal_start < date_from:
+                # A period that starts the fiscal year is its own year to date.
+                columns.append(self._column(fiscal_start, date_to, "ytd", label=_("Year to date")))
             comparison = options["comparison"]
             custom = None
             if comparison["mode"] == "custom":
@@ -1427,8 +1498,16 @@ class _ReportContext:
         self.columns_by_key = {column["key"]: column for column in columns}
         self.date_min = min(column["date_from"] for column in columns)
         self.date_max = max(column["date_to"] for column in columns)
-        self.budget_columns = [column for column in columns if column["group"] in ("current", "total")] \
-            if options["budget_id"] else []
+        # A budget belongs to one company: with companies side by side it
+        # shows in that company's column only, never against the group total.
+        if options["by_company"]:
+            self.budget_columns = [
+                column for column in columns
+                if column["group"] == "company" and column["company_id"] == self.budget.company_id.id]
+        elif options["budget_id"]:
+            self.budget_columns = [column for column in columns if column["group"] in ("current", "total", "ytd")]
+        else:
+            self.budget_columns = []
         comparisons = [column for column in columns if column["group"] == "comparison"]
         self.growth_pair = (columns[0]["key"], comparisons[0]["key"]) if comparisons else None
 
@@ -1470,14 +1549,16 @@ class _ReportContext:
                 "date_from": fields.Date.to_string(column["date_from"]),
                 "date_to": fields.Date.to_string(column["date_to"]),
                 "budget": column in self.budget_columns,
+                "company_id": column.get("company_id") or False,
             })
         return result
 
     # ---- domain --------------------------------------------------------
 
-    def _base_domain(self):
+    def _base_domain(self, states=None):
         options = self.options
-        states = ["posted", "draft"] if options["include_draft"] else ["posted"]
+        if states is None:
+            states = ["posted", "draft"] if options["include_draft"] else ["posted"]
         domain = Domain("company_id", "in", self.companies.ids) & Domain("parent_state", "in", states)
         # Line sections and notes carry no amount; keep them out of counts.
         domain &= Domain("display_type", "not in", ("line_section", "line_subsection", "line_note"))
@@ -1487,6 +1568,26 @@ class _ReportContext:
             domain &= Domain("partner_id", "in", options["partner_ids"])
         return domain
 
+    def draft_count(self):
+        """Draft journal items of the P&L in the period on screen, when only
+        posted entries are counted: what a year-end review asks to post
+        first. Not counted for an export, which never shows it."""
+        if self.options["include_draft"] or self.env.context.get("odin_pnl_export"):
+            return 0
+        return self.env["account.move.line"].search_count(self.draft_domain())
+
+    def draft_domain(self):
+        """The filters of the figures, drafts instead of posted entries, over
+        the period and its year to date (not the comparisons)."""
+        shown = [column for column in self.balance_columns if column["group"] != "comparison"]
+        return (
+            self._base_domain(states=["draft"])
+            & Domain("account_id", "in", self.pl_accounts.ids)
+            & Domain("date", ">=", min(column["date_from"] for column in shown))
+            & Domain("date", "<=", max(column["date_to"] for column in shown))
+            & self.report._analytic_domain(self.analytic_sets)
+        )
+
     # ---- accounts and lines --------------------------------------------
 
     def _load_accounts(self):
@@ -1495,7 +1596,15 @@ class _ReportContext:
             ("account_type", "in", PL_ACCOUNT_TYPES),
             ("company_ids", "in", self.companies.ids),
         ])
+        # Appropriation (current year earnings) accounts: shown below the net
+        # profit by a line that selects them, never part of it, and never
+        # "unallocated" when a layout leaves them out.
+        self.appropriation_accounts = Account.search([
+            ("account_type", "in", APPROPRIATION_TYPES),
+            ("company_ids", "in", self.companies.ids),
+        ])
         pl_ids = set(self.pl_accounts.ids)
+        appropriation_ids = set(self.appropriation_accounts.ids)
         self.parsed_lines = self.layout._parsed_lines()
         self.line_accounts = {}
         self.line_signs = {}
@@ -1511,8 +1620,12 @@ class _ReportContext:
                 self.warnings.append({"type": "layout", "message": entry["error"]})
             if line.kind != "accounts" or entry["domain"] is None:
                 continue
+            # An appropriation line reports appropriation accounts and only
+            # them; every other line, P&L accounts (a catch-all line of an
+            # existing layout must not start counting them in its profit).
+            scope = appropriation_ids if line.appropriation else pl_ids
             try:
-                ids = Account.search(entry["domain"] & Domain("id", "in", list(pl_ids))).ids
+                ids = Account.search(entry["domain"] & Domain("id", "in", list(scope))).ids
             except (ValueError, KeyError) as error:
                 self.warnings.append({"type": "layout", "message": _(
                     "The accounts of %(line)s cannot be found: %(error)s", line=line.name, error=error)})
@@ -1521,6 +1634,7 @@ class _ReportContext:
             for account_id in ids:
                 seen[account_id].append(line.name)
         self.unallocated = [account_id for account_id in self.pl_accounts.ids if account_id not in seen]
+        self.reported_accounts = self.pl_accounts | self.appropriation_accounts
         overlaps = {account_id: names for account_id, names in seen.items() if len(names) > 1}
         if overlaps:
             accounts = Account.browse(list(overlaps))
@@ -1547,7 +1661,8 @@ class _ReportContext:
 
     def _load_values(self):
         report = self.report
-        aggregated = report._aggregate(self, self.pl_accounts.ids, self.balance_columns, sets=self.analytic_sets)
+        aggregated = report._aggregate(
+            self, self.reported_accounts.ids, self.balance_columns, sets=self.analytic_sets)
         self.account_values = {
             account_id: dict(zip((c["key"] for c in self.balance_columns), amounts))
             for (account_id, _dim), amounts in aggregated.items()
@@ -1558,7 +1673,8 @@ class _ReportContext:
             months = [date_utils.get_month(
                 end - relativedelta(months=back)) for back in range(TREND_MONTHS - 1, -1, -1)]
             trend_columns = [{"date_from": start, "date_to": stop} for start, stop in months]
-            aggregated = report._aggregate(self, self.pl_accounts.ids, trend_columns, sets=self.analytic_sets)
+            aggregated = report._aggregate(
+                self, self.reported_accounts.ids, trend_columns, sets=self.analytic_sets)
             self.account_trends = {account_id: amounts for (account_id, _dim), amounts in aggregated.items()}
         else:
             self.account_trends = {}
@@ -1601,7 +1717,10 @@ class _ReportContext:
         if not result:
             return
         ledger = {key: 0.0 for key in keys}
-        for values in self.account_values.values():
+        profit_and_loss = set(self.pl_accounts.ids)
+        for account_id, values in self.account_values.items():
+            if account_id not in profit_and_loss:
+                continue
             for key in keys:
                 ledger[key] -= values.get(key, 0.0)
         shown = self.line_values.get(result.code) or {}

@@ -96,7 +96,8 @@ class OdinPnlExport(models.AbstractModel):
         return {
             "title": layout.name or _("Profit & Loss"),
             "company": ", ".join(self.env.companies.mapped("name")),
-            "period": " · ".join(
+            # Companies side by side: one period, its columns named after them.
+            "period": report["period_label"] if options["by_company"] else " · ".join(
                 column["label"] for column in report["columns"] if column["group"] in ("current", "total")),
             "filters": self._filters_text(options),
             "generated": format_datetime(self.env, fields.Datetime.now()),
@@ -147,6 +148,7 @@ class OdinPnlExport(models.AbstractModel):
                 columns.append({"key": column["key"], "kind": "pct", "label": _("% of revenue")})
             if column["budget"]:
                 columns.append({"key": column["key"], "kind": "budget", "label": _("Budget")})
+                columns.append({"key": column["key"], "kind": "budget_var", "label": _("Variance")})
                 columns.append({"key": column["key"], "kind": "budget_pct", "label": _("% of budget")})
         if running:
             columns.append({"key": "running", "kind": "running", "label": _("Balance")})
@@ -162,6 +164,8 @@ class OdinPnlExport(models.AbstractModel):
             value = row.get("pct", {}).get(column["key"])
         elif kind == "budget":
             value = row.get("budget", {}).get(column["key"])
+        elif kind == "budget_var":
+            value = row.get("budget_var", {}).get(column["key"])
         elif kind == "budget_pct":
             value = row.get("budget_pct", {}).get(column["key"])
         elif kind == "running":

@@ -16,11 +16,11 @@ The top bar follows Enterprise's order:
 | Chip | What it does |
 |---|---|
 | 📅 Period | Last month by default, as Enterprise. This/last month, quarter, fiscal year (the company's fiscal year end), fiscal year to date or any dates. ◀ ▶ step to the previous or next period. *Divide into* months or quarters shows one column per period plus a total. |
-| % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). |
+| % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). *Columns*: a **Year to date** column beside the period (from the fiscal year start, with its own budget), and, with several companies selected, **Companies side by side**: one column per company and their total, as Odoo's horizontal groups for a group's P&L. |
 | Journals, Analytic, Partners | Narrow the journal items. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
 | Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, and a 12-month trend sparkline (off by default). |
 | Detail | How far the whole report unfolds, on screen and in the PDF, the Excel and the scheduled emails: *Lines* (the summary), *Accounts* (every account under its line) or *Every transaction* (every journal item under its account, with totals: the "P&L detail" accountants ask for). |
-| Budget | Adds Budget and % achieved columns; amounts are typed into the report. |
+| Budget | Adds Budget, Variance (actual minus budget, green when it helps the profit) and % achieved columns; amounts are typed into the report. |
 | Scale | Units, thousands or millions. |
 
 Unfolding happens in place: a line opens on its accounts, an account on its
@@ -97,8 +97,14 @@ table or a filter.
 
 **Saved views.** *★ Views* saves the page: layout, period rule ("last month",
 "financial year to date"), comparison, filters, display and unfolded rows.
+The button names the view on the page (the default view included) and marks it
+● once the page changes; the menu then offers to save the changes, revert to
+the view as saved, or go back to the default P&L. Views are listed as *My
+views* and *Shared with me*.
 A view can be shared with the team and made one's default. From *Schedule
 Send*, beside *★ Views*, an accountant has it emailed daily, weekly or monthly
+(on a page that is not one of their views, it schedules the page as it is, as
+a new view)
 at an hour of their time zone, as PDF and/or Excel, with the key lines in the
 email body. It is sent from the instance's own sending address, named after
 the company, with the view's owner as Reply-To; an address on the instance's
@@ -106,6 +112,12 @@ host name (noreply@elora.odin.ist) is sent from the parent domain instead
 (noreply@odin.ist), the one the mail relay accepts.
 The period is worked out at sending time, and the report is computed as the
 view's owner: recipients never get more than the owner can see.
+
+**Year-end review.** When only posted entries are counted, the report says how
+many draft journal items of the period it leaves out, with *Include drafts* and
+*Review them*. Appropriation of the profit (current year earnings accounts:
+reserves, dividends) shows below Net Profit, as Odoo 19 presents it, without
+changing it; only a layout line that names that account type reports them.
 
 ## How the figures are computed
 

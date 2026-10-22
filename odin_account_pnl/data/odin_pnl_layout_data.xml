@@ -3,6 +3,7 @@
      our own, built only on the Odoo 19 account types
      (addons/account/models/account_account.py, account_type): every P&L type
      is in exactly one line, so Net Profit always equals income minus expenses.
+     Appropriation (current year earnings) comes after it and stays out of it.
      noupdate: a layout an administrator has edited is never overwritten. -->
 <odoo noupdate="1">
     <record id="layout_default" model="odin.pnl.layout">
@@ -97,5 +98,19 @@
         <field name="formula">OP + OIN - OEX</field>
         <field name="bold" eval="True"/>
         <field name="is_result" eval="True"/>
+    </record>
+    <!-- Below the result, as Odoo 19 shows it: the profit appropriated to
+         reserves or dividends (current year earnings accounts). Not part of
+         the net profit; hidden until an appropriation entry is posted. -->
+    <record id="layout_default_app" model="odin.pnl.layout.line">
+        <field name="layout_id" ref="layout_default"/>
+        <field name="sequence">100</field>
+        <field name="code">APP</field>
+        <field name="name">Appropriation of profit</field>
+        <field name="kind">accounts</field>
+        <field name="account_domain">[("account_type", "=", "equity_unaffected")]</field>
+        <field name="appropriation" eval="True"/>
+        <field name="sign">debit</field>
+        <field name="hide_if_zero" eval="True"/>
     </record>
 </odoo>

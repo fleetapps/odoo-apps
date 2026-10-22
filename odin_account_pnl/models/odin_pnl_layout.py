@@ -29,6 +29,9 @@ PL_ACCOUNT_TYPES = (
     "expense_depreciation",
     "expense_direct_cost",
 )
+# Current year earnings: the appropriation of the profit (reserves,
+# dividends), shown at the bottom of the P&L without changing it.
+APPROPRIATION_TYPES = ("equity_unaffected",)
 
 
 class OdinPnlLayout(models.Model):
@@ -124,6 +127,9 @@ class OdinPnlLayoutLine(models.Model):
         help="Colour an increase green. Untick for costs, where an increase is unfavourable.")
     bold = fields.Boolean()
     hide_if_zero = fields.Boolean(help="Hide this line when all its figures are zero.")
+    appropriation = fields.Boolean(
+        help="Reports current year earnings accounts (the appropriation of the profit to reserves "
+             "or dividends) instead of P&L accounts. Shown below the result, never part of it.")
     is_base = fields.Boolean(
         string="Base for %",
         help="The line other lines are shown as a percentage of, usually Revenue.")

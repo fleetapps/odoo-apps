@@ -343,6 +343,20 @@
 }
 
 // The one-time tip above the report.
+// "N draft journal items in this period are not counted": a note, not an alarm.
+.o_odin_pnl_drafts {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 1rem 0;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--pnl-line);
+    border-left: 3px solid var(--#{$prefix}warning);
+    border-radius: var(--#{$prefix}border-radius);
+    background: var(--#{$prefix}body-bg);
+    font-size: 0.875rem;
+}
+
 .o_odin_pnl_tip {
     display: flex;
     align-items: center;
@@ -501,4 +515,11 @@
     .o_odin_pnl_table .o_odin_pnl_name {
         min-width: 12rem;
     }
+}
+
+// The Views button's mark: the page has changed since the view was saved.
+.o_odin_pnl_view_changed {
+    color: var(--#{$prefix}warning);
+    font-size: 0.75rem;
+    vertical-align: middle;
 }

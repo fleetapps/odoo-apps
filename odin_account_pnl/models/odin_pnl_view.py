@@ -81,6 +81,11 @@ class OdinPnlView(models.Model):
         "res.users", string="Owner", required=True, default=lambda self: self.env.user, index=True,
         ondelete="cascade")
     company_id = fields.Many2one("res.company", required=True, default=lambda self: self.env.company, index=True)
+    # A view of companies side by side keeps them: it is emailed with all of
+    # them, not with its own company alone.
+    company_ids = fields.Many2many(
+        "res.company", string="Companies",
+        help="The companies a view of companies side by side shows. Empty: the view's company.")
     shared = fields.Boolean(help="Everyone who can see the P&L finds this view in their list.")
     is_default = fields.Boolean(string="My default", help="Opened when the owner opens the P&L.")
     # lambda, not `dict`: Odoo calls a callable default as field.default(self),
@@ -157,6 +162,9 @@ class OdinPnlView(models.Model):
         for vals in vals_list:
             if vals.get("schedule", "none") != "none":
                 self._check_can_schedule()
+            if (vals.get("options") or {}).get("by_company") and "company_ids" not in vals:
+                # Scheduled from a page of companies side by side.
+                vals["company_ids"] = [(6, 0, self.env.companies.ids)]
         views = super().create(vals_list)
         views.filtered("is_default")._unset_other_defaults()
         return views
@@ -277,8 +285,9 @@ class OdinPnlView(models.Model):
         owner = self.user_id
         if not owner.active or not owner.has_group("account.group_account_readonly"):
             raise UserError(_("%(owner)s can no longer see the P&L.", owner=owner.name))
+        companies = [self.company_id.id] + [cid for cid in self.company_ids.ids if cid != self.company_id.id]
         env = self.with_user(owner).with_context(
-            allowed_company_ids=[self.company_id.id], lang=owner.lang, tz=owner.tz).env
+            allowed_company_ids=companies, lang=owner.lang, tz=owner.tz).env
         options = self._live_options()
         Export = env["odin.pnl.export"]
         payload = Export._payload(options)

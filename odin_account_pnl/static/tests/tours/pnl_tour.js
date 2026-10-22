@@ -77,7 +77,9 @@ registry.category("web_tour.tours").add("odin_account_pnl_ledger_tour", {
 
 /**
  * The Views button names the view on screen: the default view the page opens
- * on, then one picked from the menu. Schedule Send then opens that view.
+ * on, then one picked from the menu. Schedule Send then opens that view. A
+ * change marks the view; Revert takes it back; with no view, Schedule Send
+ * opens a new schedule of the page as it is.
  */
 registry.category("web_tour.tours").add("odin_account_pnl_views_tour", {
     steps: () => [
@@ -91,6 +93,31 @@ registry.category("web_tour.tours").add("odin_account_pnl_views_tour", {
             run() {
                 if (this.anchor.value !== "Board pack") {
                     throw new Error(`Schedule Send opened "${this.anchor.value}", not the view on screen`);
+                }
+            },
+        },
+        { trigger: ".modal .btn-close", run: "click" },
+        { trigger: "body:not(:has(.modal))" },
+        // A change to the page marks the view, and Revert takes it back.
+        { trigger: ".o_odin_pnl_views_button:not(:has(.o_odin_pnl_view_changed))" },
+        { trigger: ".o_odin_pnl_detail", run: "click" },
+        { trigger: ".o_odin_pnl_menu .dropdown-item:contains(Every transaction)", run: "click" },
+        { trigger: ".o_odin_pnl_views_button .o_odin_pnl_view_changed" },
+        { trigger: ".o_odin_pnl_views_button", run: "click" },
+        { trigger: ".o_odin_pnl_views_menu .dropdown-item:contains(Revert to the view as saved)", run: "click" },
+        { trigger: ".o_odin_pnl_views_button:contains(Board pack):not(:has(.o_odin_pnl_view_changed))" },
+        // Back to the P&L with no view, then schedule the page as it is.
+        { trigger: ".o_odin_pnl_views_button", run: "click" },
+        { trigger: ".o_odin_pnl_views_menu .dropdown-item:contains(Back to the default)", run: "click" },
+        { trigger: ".o_odin_pnl_views_button:contains(Views)" },
+        { trigger: ".o_odin_pnl_schedule", run: "click" },
+        // Scheduled monthly from the start: the day of the month is asked for.
+        { trigger: ".modal .o_form_view .o_field_widget[name=send_day]" },
+        {
+            trigger: ".modal .o_form_view .o_field_widget[name=name] input",
+            run() {
+                if (this.anchor.value !== "Profit & Loss") {
+                    throw new Error(`A new schedule was named "${this.anchor.value}"`);
                 }
             },
         },

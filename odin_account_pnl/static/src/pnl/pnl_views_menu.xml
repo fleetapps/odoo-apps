@@ -4,23 +4,27 @@
     <t t-name="odin_account_pnl.PnlViewsMenu">
         <div class="d-flex gap-1">
             <Dropdown menuClass="'o_odin_pnl_menu o_odin_pnl_views_menu'" onOpened.bind="refresh">
-                <button class="btn btn-secondary">
+                <button class="btn btn-secondary o_odin_pnl_views_button">
                     <i class="fa fa-star me-1"/>
                     <t t-if="current" t-esc="current.name"/>
                     <t t-else="">Views</t>
+                    <span t-if="changed" class="o_odin_pnl_view_changed ms-1" aria-label="Changed since saved"
+                          data-tooltip="Changed since it was saved">●</span>
                 </button>
                 <t t-set-slot="content">
-                    <t t-if="state.views.length">
-                        <h6 class="dropdown-header">Saved views</h6>
-                        <DropdownItem t-foreach="state.views" t-as="view" t-key="view.id"
+                    <t t-foreach="viewSections" t-as="section" t-key="section.title">
+                        <h6 class="dropdown-header" t-esc="section.title"/>
+                        <!-- Inline, not a t-call: the item's slot would keep the
+                             loop's last view for every row. -->
+                        <DropdownItem t-foreach="section.views" t-as="view" t-key="view.id"
                                       class="{ 'selected': current and current.id === view.id }"
                                       onSelected="() => this.apply(view)">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="flex-grow-1">
                                     <t t-esc="view.name"/>
                                     <span class="text-muted small ms-1" t-esc="view.period"/>
-                                    <i t-if="view.shared" class="fa fa-users text-muted ms-1"
-                                       t-att-data-tooltip="'Shared by ' + view.owner"/>
+                                    <span t-if="!view.mine" class="text-muted small ms-1">· <t t-esc="view.owner"/></span>
+                                    <i t-if="view.shared and view.mine" class="fa fa-users text-muted ms-1" data-tooltip="Shared with the team"/>
                                     <i t-if="view.schedule" class="fa fa-envelope-o text-muted ms-1"
                                        t-att-data-tooltip="view.schedule"/>
                                 </span>
@@ -35,13 +39,24 @@
                                 </button>
                             </div>
                         </DropdownItem>
-                        <div class="dropdown-divider"/>
                     </t>
+                    <div t-if="state.views.length" class="dropdown-divider"/>
                     <DropdownItem t-if="current and current.mine" onSelected="() => this.update()">
-                        <i class="fa fa-floppy-o me-1"/>Update “<t t-esc="current.name"/>”
+                        <i class="fa fa-floppy-o me-1"/>
+                        <t t-if="changed">Save the changes to “<t t-esc="current.name"/>”</t>
+                        <t t-else="">Update “<t t-esc="current.name"/>”</t>
+                    </DropdownItem>
+                    <DropdownItem t-if="changed" onSelected="() => this.revert()">
+                        <i class="fa fa-undo me-1"/>Revert to the view as saved
+                    </DropdownItem>
+                    <DropdownItem t-if="current" onSelected="() => this.resetView()">
+                        <i class="fa fa-times me-1"/>Back to the default P&amp;L
                     </DropdownItem>
                     <div class="px-3 py-2">
-                        <div class="text-muted small mb-1">Save the page as a view</div>
+                        <div class="text-muted small mb-1">
+                            <t t-if="current">Save the page as a new view</t>
+                            <t t-else="">Save the page as a view</t>
+                        </div>
                         <div class="d-flex gap-1">
                             <input class="form-control form-control-sm" placeholder="Monthly board P&amp;L"
                                    t-model="state.name" t-on-keydown="onNameKey"/>
@@ -54,8 +69,8 @@
                     </div>
                 </t>
             </Dropdown>
-            <button class="btn btn-secondary o_odin_pnl_schedule" t-on-click="() => this.manage()"
-                    t-att-data-tooltip="current and current.mine ? 'Email “' + current.name + '” on a schedule' : 'Email a saved view on a schedule'">
+            <button t-if="canSchedule" class="btn btn-secondary o_odin_pnl_schedule" t-on-click="() => this.scheduleSend()"
+                    t-att-data-tooltip="current and current.mine ? 'Email “' + current.name + '” on a schedule' : 'Email this page on a schedule'">
                 <i class="fa fa-envelope-o me-1"/>Schedule Send
             </button>
         </div>

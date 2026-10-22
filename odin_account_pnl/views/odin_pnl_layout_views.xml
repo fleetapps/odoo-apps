@@ -24,6 +24,7 @@
                             <field name="hide_if_zero"/>
                             <field name="is_base"/>
                             <field name="is_result"/>
+                            <field name="appropriation" invisible="kind != 'accounts'"/>
                         </group>
                     </group>
                     <field name="account_domain" widget="domain" options="{'model': 'account.account'}"
@@ -67,6 +68,7 @@
                             <field name="bold"/>
                             <field name="is_base"/>
                             <field name="is_result"/>
+                            <field name="appropriation" optional="hide"/>
                         </list>
                     </field>
                 </sheet>

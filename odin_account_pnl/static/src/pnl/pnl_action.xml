@@ -38,6 +38,17 @@
                     <div t-if="state.error" class="alert alert-danger m-3" role="alert" t-esc="state.error"/>
                     <div t-if="state.data" class="o_odin_pnl_body" t-att-class="{ o_odin_pnl_with_panel: state.panel }">
                         <div class="o_odin_pnl_main" t-ref="scroller" t-att-class="{ o_odin_pnl_busy: state.busy }">
+                            <!-- Year-end checklist: drafts in the period are not in the figures. -->
+                            <div t-if="state.data.draft_count" class="o_odin_pnl_drafts" role="note">
+                                <i class="fa fa-pencil-square-o" aria-hidden="true"/>
+                                <span>
+                                    <t t-esc="state.data.draft_count"/> draft journal item(s) in this period are not counted.
+                                </span>
+                                <button class="btn btn-link btn-sm p-0" t-on-click="() => this.changeOptions({ include_draft: true })">
+                                    Include drafts
+                                </button>
+                                <button class="btn btn-link btn-sm p-0" t-on-click="openDrafts">Review them</button>
+                            </div>
                             <div t-if="state.data.warnings.length" class="o_odin_pnl_warnings">
                                 <div t-foreach="state.data.warnings" t-as="warning" t-key="warning_index"
                                      class="alert py-2 mb-2" role="alert"
@@ -87,6 +98,7 @@
                         </th>
                         <t t-if="column.budget">
                             <th class="o_odin_pnl_num o_odin_pnl_budget_col">Budget</th>
+                            <th class="o_odin_pnl_num o_odin_pnl_budget_col" data-tooltip="Actual minus budget">Variance</th>
                             <th class="o_odin_pnl_num o_odin_pnl_budget_col" data-tooltip="Actual as a % of budget">%</th>
                         </t>
                     </t>
@@ -127,15 +139,18 @@
                             </td>
                             <t t-if="column.budget">
                                 <td class="o_odin_pnl_num o_odin_pnl_budget_col"
-                                    t-att-class="{ o_odin_pnl_editable: canEditBudget(row) }"
-                                    t-att-data-tooltip="canEditBudget(row) ? 'Click to type a budget' : false"
+                                    t-att-class="{ o_odin_pnl_editable: canEditBudget(row, column) }"
+                                    t-att-data-tooltip="canEditBudget(row, column) ? 'Click to type a budget' : false"
                                     t-on-click.stop="() => this.editBudget(row, column)">
                                     <input t-if="isEditing(row, column)" class="o_odin_pnl_budget_input form-control form-control-sm text-end"
                                            t-att-value="row.budget[column.key] ? (row.budget[column.key] / (options.scale || 1)) : ''"
                                            t-on-keydown="(ev) => this.onBudgetKey(ev, row, column)"
                                            t-on-blur="(ev) => this.saveBudget(ev.target.value, row, column)"/>
                                     <t t-elif="row.budget and row.budget[column.key]" t-esc="fmt(row.budget[column.key])"/>
-                                    <i t-elif="canEditBudget(row)" class="fa fa-pencil o_odin_pnl_budget_hint"/>
+                                    <i t-elif="canEditBudget(row, column)" class="fa fa-pencil o_odin_pnl_budget_hint"/>
+                                </td>
+                                <td class="o_odin_pnl_num o_odin_pnl_budget_col" t-att-class="budgetVarClass(row, column)">
+                                    <t t-if="row.budget_var and row.budget_var[column.key]" t-esc="fmt(row.budget_var[column.key])"/>
                                 </td>
                                 <td class="o_odin_pnl_num o_odin_pnl_budget_col" t-att-class="budgetPctClass(row, column)">
                                     <t t-esc="formatPercent(row.budget_pct and row.budget_pct[column.key])"/>

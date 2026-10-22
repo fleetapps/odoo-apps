@@ -46,11 +46,19 @@ class OdinAiExplain(models.AbstractModel):
                   "date_to": fields.Date.to_string(column["date_to"])},
             divide="none",
             comparison={"mode": mode, "periods": 1},
+            # The period and its comparison, c0 and c1, and nothing between:
+            # no year to date, no company columns, no journal items.
+            ytd=False,
+            by_company=False,
+            detail="lines",
             trend=False,
             hide_zero=False,
             unfolded=[],
             modes={},
         )
+        if column.get("company_id"):
+            # A company's column of a group P&L: that company's change.
+            Report = Report.with_context(allowed_company_ids=[column["company_id"]])
         report = Report.get_report(dict(explain_options, unfolded=[segments[0]]))
         rows = {row["key"]: row for row in report["rows"]}
         row = rows.get(row_key)
