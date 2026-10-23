@@ -275,6 +275,14 @@ class TestOnlineShare(OnlineCase):
         values = self.Online.quote_values(comparison, comparison.odin_access_token)
         self.assertEqual(values["advisor"], self.agent, "their agent, by name")
 
+        # What a WhatsApp template fills its variables and button with.
+        order = comparison.plan_ids.order_id
+        self.assertEqual(comparison.odin_online_path, "medical-quote/q/%s?token=%s" % (
+            comparison.id, comparison.odin_access_token))
+        self.assertIn("{:,.2f}".format(order.amount_total), comparison.odin_share_total)
+        self.assertNotIn("options", comparison.odin_share_total)
+        self.assertRegex(comparison.odin_share_valid_until, r"^\d{1,2} \w{3} \d{4}$")
+
     def test_campaign_link(self):
         """For an ad: nobody's name on it, the source and campaign in it."""
         source = self.env["utm.source"].create({"name": "Facebook"})

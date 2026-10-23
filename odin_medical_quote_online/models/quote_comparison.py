@@ -1,8 +1,10 @@
 import secrets
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import consteq
+from odoo.tools import consteq, format_amount
 
 CONTACT_BY = [("whatsapp", "WhatsApp"), ("call", "Phone call"), ("email", "Email")]
 CONTACT_WHEN = [("any", "Any time"), ("morning", "Morning"),
@@ -37,6 +39,40 @@ class QuoteComparison(models.Model):
         string="Client's link", compute="_compute_odin_online_url",
         help="The client's own page for this quote: the plans in plain words, "
         "the PDF, Talk to an advisor.")
+
+    # For WhatsApp templates, whose variables are fields of the quote and
+    # whose link buttons can only add to the end of a fixed address.
+    odin_online_path = fields.Char(
+        string="Client's page path", compute="_compute_odin_share",
+        help="The client's page without the site address (medical-quote/q/12?token=...), "
+        "for a template button whose address is https://your-site/{{1}}.")
+    odin_share_total = fields.Char(
+        string="Price (for messages)", compute="_compute_odin_share",
+        help="'56,543.13 KSh', or '3 options from 36,432.03 KSh'.")
+    odin_share_valid_until = fields.Char(
+        string="Valid until (for messages)", compute="_compute_odin_share",
+        help="'22 Nov 2026'.")
+
+    @api.depends("plan_ids.order_id.amount_total", "plan_ids.order_id.state", "validity_date", "date")
+    def _compute_odin_share(self):
+        for comparison in self:
+            orders = comparison._odin_export_plans().order_id if comparison.id else False
+            if not orders:
+                comparison.update({"odin_online_path": False, "odin_share_total": False,
+                                   "odin_share_valid_until": False})
+                continue
+            cheapest = min(orders.mapped("amount_total"))
+            total = format_amount(self.env, cheapest, comparison.currency_id)
+            comparison.update({
+                "odin_online_path": comparison._odin_online_url().split("/", 3)[3],
+                "odin_share_total": total if len(orders) == 1 else _(
+                    "%(count)s options from %(total)s", count=len(orders), total=total),
+                # A template cannot say "valid until ." when a quote has no
+                # date of its own: the company's usual validity, then.
+                "odin_share_valid_until": comparison._odin_export_date(
+                    comparison.validity_date or comparison.date + relativedelta(
+                        days=comparison.company_id.quotation_validity_days or 30)),
+            })
 
     @api.depends("odin_access_token")
     def _compute_odin_online_url(self):
