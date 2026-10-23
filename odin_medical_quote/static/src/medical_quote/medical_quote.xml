@@ -193,6 +193,12 @@
                 </div>
 
                 <h3>People covered</h3>
+                <div t-if="state.cover.ages_only" class="o_mq_dirty mb-3" role="status">
+                    <i class="fa fa-info-circle me-1"/>
+                    The client gave ages on the online form, not dates of birth: confirm them
+                    before the quote is final.
+                    <button class="btn btn-sm btn-secondary ms-2" t-on-click="confirmDates">Dates confirmed</button>
+                </div>
                 <div class="o_mq_grid" t-on-change="onCoverChange">
                     <t t-if="!state.cover.children_only">
                         <div class="o_mq_field">
@@ -219,7 +225,7 @@
                         <input id="mq_children" type="number" min="0" max="20" class="form-control"
                                t-model.number="state.cover.children"/>
                     </div>
-                    <div class="o_mq_field">
+                    <div class="o_mq_field" t-if="state.cover.children or state.cover.children_only">
                         <label class="o_mq_check o_mq_check_plain" for="mq_children_only">
                             <input id="mq_children_only" type="checkbox" class="form-check-input"
                                    t-model="state.cover.children_only"/>
@@ -229,7 +235,7 @@
                 </div>
 
                 <h3>Inpatient limit range</h3>
-                <p class="o_mq_help">Enter the minimum and maximum cover limits to retrieve matching plans.</p>
+                <p class="o_mq_help">Plans whose inpatient limit is in this range.</p>
                 <div class="o_mq_grid" t-on-change="onCoverChange">
                     <div class="o_mq_field">
                         <label for="mq_min">Minimum limit</label>
@@ -252,9 +258,9 @@
                         </select>
                     </div>
                     <div class="o_mq_field">
-                        <label for="mq_plan">Plan</label>
+                        <label for="mq_plan">Specific plan</label>
                         <select id="mq_plan" class="form-select" t-model="state.cover.template_id">
-                            <option value="">Use limit range</option>
+                            <option value="">Any plan in the range</option>
                             <option t-foreach="planChoices" t-as="choice" t-key="choice.id"
                                     t-att-value="choice.id" t-esc="choice.name"/>
                         </select>
@@ -288,11 +294,6 @@
                     <p>Every premium is for this family. Select the inpatient cover of each plan to compare, and the options to add.</p>
                 </div>
             </div>
-            <div class="o_mq_legend">
-                <span><span class="o_mq_dot"/> Select an option</span>
-                <span><span class="o_mq_dot o_on"><i class="fa fa-check"/></span> Already selected</span>
-                <span class="o_mq_legend_hint">Scroll sideways to view all columns on smaller screens.</span>
-            </div>
             <div t-if="!state.results.plans.length" class="o_mq_empty">
                 No plan in this range covers this family. Widen the limit range, or choose another insurer.
             </div>
@@ -300,7 +301,6 @@
                 <table class="o_mq_table">
                     <thead>
                         <tr>
-                            <th class="o_mq_col_insurer">Insurer</th>
                             <th class="o_mq_col_plan">Plan</th>
                             <th>Cover options and premiums</th>
                         </tr>
@@ -308,13 +308,10 @@
                     <tbody>
                         <tr t-foreach="state.results.plans" t-as="plan" t-key="plan.id"
                             t-att-class="{'o_mq_row_on': isPlanSelected(plan)}">
-                            <td class="o_mq_col_insurer">
-                                <b t-esc="plan.insurer"/>
-                                <div class="text-muted small" t-if="plan.product !== plan.insurer" t-esc="plan.product"/>
-                            </td>
                             <td class="o_mq_col_plan">
+                                <div class="o_mq_kicker" t-esc="plan.insurer"/>
                                 <b t-esc="plan.name"/>
-                                <div class="text-muted small">Limit <t t-esc="amount(plan.limit)"/></div>
+                                <div class="text-muted small" t-if="plan.product !== plan.insurer" t-esc="plan.product"/>
                             </td>
                             <td class="o_mq_options">
                                 <div class="o_mq_option o_mq_core" t-att-class="{'o_on': isPlanSelected(plan)}">
@@ -335,7 +332,13 @@
                                     </button>
                                     <span class="o_mq_amount" t-esc="amount(plan.core.amount)"/>
                                 </div>
-                                <t t-foreach="plan.groups" t-as="group" t-key="group.key">
+                                <div t-if="plan.groups.length and !isExpanded(plan)" class="o_mq_folded">
+                                    <span class="text-muted" t-esc="foldedSummary(plan)"/>
+                                    <button class="btn btn-link btn-sm o_mq_unfold" t-on-click="() => this.toggleExpanded(plan)">
+                                        Show options
+                                    </button>
+                                </div>
+                                <t t-foreach="isExpanded(plan) ? plan.groups : []" t-as="group" t-key="group.key">
                                     <div class="o_mq_group_label">
                                         <t t-esc="group.label"/>
                                         <span t-if="basisLabel(group.basis)" class="text-muted fw-normal"> · <t t-esc="basisLabel(group.basis)"/></span>
@@ -364,6 +367,10 @@
                                         <span class="o_mq_amount" t-esc="option.available ? amount(option.amount) : '–'"/>
                                     </div>
                                 </t>
+                                <button t-if="state.expanded[plan.id] and !isPlanSelected(plan)"
+                                        class="btn btn-link btn-sm p-0 mt-1" t-on-click="() => this.toggleExpanded(plan)">
+                                    Hide options
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -497,6 +504,7 @@
                         <t t-if="saved.lead">and <b t-esc="saved.lead.name"/> is in the CRM pipeline</t>
                         with <t t-esc="saved.orders.length"/>
                         <t t-if="saved.orders.length === 1"> quotation.</t><t t-else=""> quotations.</t>
+                        <t t-if="saved.comparison.handler"> Handed over to <b t-esc="saved.comparison.handler"/> to place the cover.</t>
                     </p>
                 </div>
             </div>

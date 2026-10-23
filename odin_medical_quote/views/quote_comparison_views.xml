@@ -37,6 +37,43 @@
             <xpath expr="//header/button[@name='action_share_whatsapp']" position="attributes">
                 <attribute name="class">btn-secondary</attribute>
             </xpath>
+            <!-- On a medical quote: the quotations are a smart button, and
+                 sending by email or WhatsApp marks it sent by itself. -->
+            <xpath expr="//header/button[@name='action_open_plan_orders']" position="attributes">
+                <attribute name="invisible">not plan_ids or odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_mark_sent']" position="attributes">
+                <attribute name="invisible">state != 'draft' or not plan_ids or odin_from_builder</attribute>
+            </xpath>
+            <!-- These feed the cover comparison report; the medical quotation
+                 reads the quotations themselves, so on a medical quote they
+                 would only be something to edit that never reaches the client. -->
+            <xpath expr="//field[@name='template_ids']/.." position="attributes">
+                <attribute name="invisible">odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//page[@name='details']" position="attributes">
+                <attribute name="invisible">odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//field[@name='plan_ids']" position="attributes">
+                <attribute name="readonly">odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//field[@name='plan_ids']/list/field[@name='name']" position="attributes">
+                <attribute name="column_invisible">parent.odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//field[@name='plan_ids']/list/field[@name='subtitle']" position="attributes">
+                <attribute name="column_invisible">parent.odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//field[@name='plan_ids']/list/field[@name='order_id']" position="after">
+                <field name="odin_template_id" column_invisible="not parent.odin_from_builder"/>
+                <field name="odin_order_state" widget="badge" column_invisible="not parent.odin_from_builder"
+                       decoration-success="odin_order_state == 'sale'"
+                       decoration-muted="odin_order_state == 'cancel'"/>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="odin_handler_id" widget="many2one_avatar_user"
+                       options="{'no_create': True}"
+                       invisible="state != 'accepted' and not odin_handler_id"/>
+            </xpath>
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="statusbar_visible">draft,sent,accepted</attribute>
             </xpath>
@@ -48,6 +85,11 @@
                         <div class="o_stat_info">
                             <span class="o_stat_text">Opportunity</span>
                         </div>
+                    </button>
+                    <button name="action_open_plan_orders" type="object"
+                            class="oe_stat_button" icon="fa-file-text-o"
+                            invisible="not odin_from_builder or not odin_order_count">
+                        <field name="odin_order_count" widget="statinfo" string="Quotations"/>
                     </button>
                     <button name="action_odin_view_invoices" type="object"
                             class="oe_stat_button" icon="fa-pencil-square-o"
@@ -90,8 +132,46 @@
                             string="New medical quote" class="btn-primary" display="always"/>
                 </header>
             </xpath>
+            <!-- Select quotes and change who handles them in place: the only
+                 column that edits, everything else is changed on the quote. -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="string">Quotes</attribute>
+                <attribute name="multi_edit">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
-                <field name="opportunity_id" optional="show"/>
+                <field name="partner_phone" optional="show"/>
+                <field name="odin_cover_summary" optional="show"/>
+                <field name="odin_plan_summary" string="Plans" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="odin_amount_total" optional="show"/>
+                <field name="opportunity_id" optional="hide" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='title']" position="attributes">
+                <attribute name="optional">hide</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='validity_date']" position="attributes">
+                <attribute name="optional">show</attribute>
+                <attribute name="readonly">1</attribute>
+                <attribute name="decoration-danger">validity_date and validity_date &lt; current_date and state in ('draft', 'sent')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="string">Salesperson</attribute>
+                <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="odin_handler_id" widget="many2one_avatar_user" optional="show"
+                       options="{'no_create': True}"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='company_id']" position="attributes">
+                <attribute name="readonly">1</attribute>
             </xpath>
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="decoration-info">state == 'accepted'</attribute>
@@ -105,15 +185,76 @@
         <field name="model">odin.quote.comparison</field>
         <field name="inherit_id" ref="odin_client_quote.view_quote_comparison_search"/>
         <field name="arch" type="xml">
-            <xpath expr="//filter[@name='filter_sent']" position="after">
-                <filter name="filter_accepted" string="Accepted"
-                        domain="[('state', '=', 'accepted')]"/>
-                <filter name="filter_declined" string="Declined"
-                        domain="[('state', '=', 'declined')]"/>
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="odin_customer_search" string="Customer, phone or email"/>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="opportunity_id"/>
+                <field name="odin_plan_summary" string="Plan or insurer"
+                       filter_domain="['|', ('odin_plan_summary', 'ilike', self), ('template_ids.odin_insurer_id.name', 'ilike', self)]"/>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="string">Salesperson</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="odin_handler_id"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_mine']" position="attributes">
+                <attribute name="string">My quotes</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='filter_mine']" position="after">
+                <filter name="filter_handled_by_me" string="Handled by me"
+                        domain="[('odin_handler_id', '=', uid)]"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_draft']" position="before">
+                <filter name="filter_open" string="Open"
+                        domain="[('state', 'in', ('draft', 'sent'))]"/>
+            </xpath>
+            <xpath expr="//filter[@name='filter_sent']" position="after">
+                <filter name="filter_accepted" string="Accepted"
+                        domain="[('state', '=', 'accepted')]"/>
+                <filter name="filter_placement" string="Waiting to be placed"
+                        domain="[('state', '=', 'accepted'), ('odin_placement_pending', '=', True)]"/>
+                <filter name="filter_declined" string="Declined"
+                        domain="[('state', '=', 'declined')]"/>
+                <separator/>
+                <filter name="filter_expired" string="Expired"
+                        domain="[('state', 'in', ('draft', 'sent')), ('validity_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_expiring" string="Expiring in 7 days"
+                        domain="[('state', 'in', ('draft', 'sent')), ('validity_date', '&gt;=', context_today().strftime('%Y-%m-%d')), ('validity_date', '&lt;=', (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_follow_up" string="Follow-up due"
+                        domain="[('activity_date_deadline', '&lt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="filter_date" string="Quote date" date="date"/>
+            </xpath>
+            <xpath expr="//filter[@name='group_partner']" position="before">
+                <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+            </xpath>
+            <xpath expr="//filter[@name='group_user']" position="attributes">
+                <attribute name="string">Salesperson</attribute>
+            </xpath>
+            <xpath expr="//filter[@name='group_user']" position="after">
+                <filter name="group_handler" string="Handled by" context="{'group_by': 'odin_handler_id'}"/>
             </xpath>
         </field>
+    </record>
+
+    <record id="view_quote_comparison_pivot" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.pivot</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="arch" type="xml">
+            <pivot string="Quotes" sample="1">
+                <field name="user_id" type="row"/>
+                <field name="state" type="col"/>
+                <field name="odin_amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- One register of every quote: find it by customer, phone, plan or
+         date, open it, print or send it again. -->
+    <record id="odin_client_quote.action_quote_comparison" model="ir.actions.act_window">
+        <field name="name">Quotes</field>
+        <field name="view_mode">list,form,pivot</field>
     </record>
 </odoo>

@@ -23,11 +23,15 @@
                     </div>
                     <field name="post_invoice"
                            invisible="not can_post or invoice_mode == 'later'"/>
+                    <field name="handler_id" widget="many2one_avatar_user"
+                           options="{'no_create': True}"/>
                 </group>
                 <div class="alert alert-info mb-0" role="status">
                     The quotation is confirmed and the opportunity marked won.
                     <span invisible="not other_order_ids">&#160;The other plans on this quote are
                     cancelled.</span>
+                    <span invisible="not handler_id">&#160;The person it is handed over to gets
+                    a to-do to place the cover with the insurer.</span>
                     <span invisible="invoice_mode == 'later'">&#160;The invoice opens next, in draft
                     unless you post it here.</span>
                 </div>

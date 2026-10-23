@@ -69,6 +69,8 @@ function emptyQuote() {
         coverOpen: true,
         results: null,
         showUnavailable: false,
+        // Plans whose options are unfolded without being on the quote.
+        expanded: {},
         searching: false,
         selection: {},
         order: [],
@@ -420,6 +422,43 @@ export class MedicalQuote extends Component {
 
     isPlanSelected(plan) {
         return Boolean(this.state.selection[plan.id]);
+    }
+
+    /** A plan's options show once it is on the quote, or when asked for:
+     * sixteen plans with every tier of every option is a long scroll. */
+    isExpanded(plan) {
+        return this.isPlanSelected(plan) || Boolean(this.state.expanded[plan.id]);
+    }
+
+    toggleExpanded(plan) {
+        this.state.expanded[plan.id] = !this.state.expanded[plan.id];
+    }
+
+    /** The folded options in one short line: the first few with their
+     * lowest price, then how many more. */
+    foldedSummary(plan) {
+        const shown = plan.groups.slice(0, 3).map((group) => this.groupFrom(group) || group.label);
+        const more = plan.groups.length - shown.length;
+        if (more > 0) {
+            shown.push(_t("%s more", more));
+        }
+        return shown.join(" · ");
+    }
+
+    /** "Outpatient from 87,974": what a folded group costs at least. */
+    groupFrom(group) {
+        const amounts = group.options.filter((o) => o.available).map((o) => o.amount);
+        if (!amounts.length) {
+            return "";
+        }
+        const least = Math.min(...amounts);
+        return amounts.length > 1
+            ? _t("%(label)s from %(amount)s", { label: group.label, amount: this.amount(least) })
+            : _t("%(label)s %(amount)s", { label: group.label, amount: this.amount(least) });
+    }
+
+    confirmDates() {
+        this.state.cover.ages_only = false;
     }
 
     isOptionSelected(plan, option) {

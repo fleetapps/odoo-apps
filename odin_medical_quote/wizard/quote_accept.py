@@ -52,6 +52,20 @@ class MedicalQuoteAccept(models.TransientModel):
     )
     can_post = fields.Boolean(compute="_compute_can_post")
     other_order_ids = fields.Many2many("sale.order", compute="_compute_other_order_ids")
+    handler_id = fields.Many2one(
+        "res.users", string="Hand over to", domain=[("share", "=", False)],
+        default=lambda self: self._default_handler_id(),
+        help="Who places the cover with the insurer: they get a Place cover "
+        "to-do with the checklist.",
+    )
+
+    @api.model
+    def _default_handler_id(self):
+        comparison = self.env["odin.quote.comparison"].browse(
+            self.env.context.get("default_comparison_id") or []).exists()
+        if not comparison:
+            return False
+        return comparison.odin_handler_id or comparison._odin_default_handler()
 
     @api.model
     def _default_deposit_percent(self):
@@ -95,7 +109,7 @@ class MedicalQuoteAccept(models.TransientModel):
         if order.state in ("draft", "sent"):
             # Confirming closes out the quote (see sale.order._action_confirm):
             # the other plans cancelled, the opportunity won.
-            result = order.action_confirm()
+            result = order.with_context(odin_handler_id=self.handler_id.id).action_confirm()
             if order.state != "sale":
                 # Something on the order stopped it -- an exception rule or a
                 # credit limit asking for approval. Its own dialog says what;
@@ -104,7 +118,11 @@ class MedicalQuoteAccept(models.TransientModel):
                     return result
                 raise UserError(_("%s could not be confirmed.", order.name))
         # Confirmed already, from the order itself: close the quote out now.
-        comparison._odin_accept(order)
+        comparison.with_context(odin_handler_id=self.handler_id.id)._odin_accept(order)
+        if self.handler_id and comparison.odin_handler_id != self.handler_id:
+            # Accepted before (on the portal, say): the to-do moves to who
+            # was picked here.
+            comparison.odin_handler_id = self.handler_id
 
         if self.invoice_mode == "later":
             return {

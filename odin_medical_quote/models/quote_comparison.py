@@ -38,6 +38,30 @@ class QuoteComparison(models.Model):
     )
     odin_invoice_count = fields.Integer(compute="_compute_odin_invoice_count")
 
+    # -- the register: what the list shows, searches and groups on ----------
+    partner_phone = fields.Char(related="partner_id.phone", string="Phone")
+    odin_customer_search = fields.Char(
+        string="Customer, phone or email", compute="_compute_odin_customer_search",
+        search="_search_odin_customer")
+    odin_cover_summary = fields.Char(
+        string="Who's covered", compute="_compute_odin_cover_summary", store=True)
+    odin_plan_summary = fields.Char(
+        string="Plans quoted", compute="_compute_odin_summary", store=True,
+        help="The plans still on offer, or the one the client accepted.")
+    odin_amount_total = fields.Monetary(
+        string="Premium", compute="_compute_odin_summary", store=True,
+        help="The accepted plan's total premium; before that the recommended "
+        "plan's, or the lowest on the quote.")
+    odin_handler_id = fields.Many2one(
+        "res.users", string="Handled by", tracking=True, copy=False, index=True,
+        domain=[("share", "=", False)],
+        help="Who places the cover with the insurer once the client has "
+        "accepted. They get the Place cover to-do; changing this moves it.")
+    odin_order_count = fields.Integer(compute="_compute_odin_order_count")
+    odin_placement_pending = fields.Boolean(
+        string="Waiting to be placed", compute="_compute_odin_placement_pending",
+        search="_search_odin_placement_pending")
+
     @api.depends("odin_builder_params")
     def _compute_odin_from_builder(self):
         for comparison in self:
@@ -47,6 +71,114 @@ class QuoteComparison(models.Model):
     def _compute_odin_invoice_count(self):
         for comparison in self:
             comparison.odin_invoice_count = len(comparison.odin_accepted_order_id.invoice_ids)
+
+    @api.depends("plan_ids.order_id")
+    def _compute_odin_order_count(self):
+        for comparison in self:
+            comparison.odin_order_count = len(comparison.plan_ids.order_id)
+
+    def _compute_odin_customer_search(self):
+        self.odin_customer_search = False
+
+    @api.model
+    def _search_odin_customer(self, operator, value):
+        """Customer by name, email or phone -- a number typed 07... finds the
+        +2547... stored on the contact."""
+        if operator != "ilike" or not isinstance(value, str):
+            return [("partner_id", operator, value)]
+        domain = [("name", "ilike", value), ("email", "ilike", value), ("ref", "ilike", value)]
+        domain += self.env["odin.medical.quote"]._odin_phone_domain(value)
+        return [("partner_id", "any", ["|"] * (len(domain) - 1) + domain)]
+
+    @api.depends("member_ids.role")
+    def _compute_odin_cover_summary(self):
+        for comparison in self:
+            roles = comparison.member_ids.mapped("role")
+            adults = sum(role in ("principal", "spouse") for role in roles)
+            children = roles.count("child")
+            parts = []
+            if adults:
+                parts.append(_("1 adult") if adults == 1 else _("%s adults", adults))
+            if children:
+                parts.append(_("1 child") if children == 1 else _("%s children", children))
+            comparison.odin_cover_summary = ", ".join(parts)
+
+    @api.depends("plan_ids.sequence", "plan_ids.highlight", "plan_ids.order_id.state",
+                 "plan_ids.order_id.amount_total", "plan_ids.order_id.sale_order_template_id",
+                 "odin_accepted_order_id")
+    def _compute_odin_summary(self):
+        for comparison in self:
+            # A declined quote still says what was offered.
+            plans = comparison._odin_export_plans() or comparison.plan_ids.sorted(
+                lambda p: (p.sequence, p.id))
+            comparison.odin_plan_summary = " · ".join(
+                plan.order_id.sale_order_template_id.name or plan.name or plan.order_id.name
+                for plan in plans)
+            basis = plans.filtered("highlight")[:1] or plans
+            amounts = basis.order_id.mapped("amount_total")
+            comparison.odin_amount_total = min(amounts) if amounts else 0.0
+
+    def _odin_place_cover_type(self):
+        return self.env.ref("odin_medical_quote.mail_activity_type_place_cover",
+                            raise_if_not_found=False)
+
+    def _compute_odin_placement_pending(self):
+        activity_type = self._odin_place_cover_type()
+        for comparison in self:
+            comparison.odin_placement_pending = bool(activity_type) and (
+                activity_type in comparison.activity_ids.activity_type_id)
+
+    @api.model
+    def _search_odin_placement_pending(self, operator, value):
+        if operator != "in":
+            return NotImplemented
+        activity_type = self._odin_place_cover_type()
+        domain = [("activity_ids.activity_type_id", "=", activity_type.id if activity_type else 0)]
+        if True in value and False in value:
+            return []
+        return domain if True in value else ["!", *domain]
+
+    def write(self, vals):
+        if "odin_handler_id" not in vals:
+            return super().write(vals)
+        handler = self.env["res.users"].browse(vals["odin_handler_id"] or [])
+        moved = self.filtered(lambda c: c.odin_handler_id != handler)
+        result = super().write(vals)
+        if handler and moved:
+            # The Place cover to-do follows the person handling it, who is
+            # told (Odoo notifies a reassigned activity).
+            activity_type = moved._odin_place_cover_type()
+            moved.activity_ids.filtered(
+                lambda a: a.activity_type_id == activity_type and a.user_id != handler
+            ).write({"user_id": handler.id})
+            moved.message_subscribe(partner_ids=handler.partner_id.ids)
+        return result
+
+    def _odin_default_handler(self):
+        """Who places the cover when nobody was picked: the company's person
+        for it, else the salesperson."""
+        self.ensure_one()
+        return (self.company_id.odin_quote_handler_id or self.user_id
+                or self.opportunity_id.user_id or self.env.user)
+
+    def _odin_hand_over(self, handler=None):
+        """Give the accepted quote to the person placing the cover, with a
+        Place cover to-do (its checklist is the activity type's note)."""
+        activity_type = self._odin_place_cover_type()
+        for comparison in self:
+            person = handler or comparison.odin_handler_id or comparison._odin_default_handler()
+            if comparison.odin_handler_id != person:
+                comparison.odin_handler_id = person
+            comparison.message_subscribe(partner_ids=person.partner_id.ids)
+            if activity_type and activity_type not in comparison.activity_ids.activity_type_id:
+                order = comparison.odin_accepted_order_id
+                comparison.activity_schedule(
+                    activity_type_id=activity_type.id,
+                    summary=_("Place cover: %(plan)s for %(client)s",
+                              plan=order.sale_order_template_id.name or order.name,
+                              client=comparison.partner_id.name),
+                    user_id=person.id,
+                )
 
     def _odin_builder_action(self, **params):
         return {
@@ -111,6 +243,10 @@ class QuoteComparison(models.Model):
                 others=_("Other plans cancelled: %s.", ", ".join(others.mapped("name")))
                 if others else "",
             ))
+            # Picked in Client accepted, passed down through the confirmation.
+            handler = self.env["res.users"].browse(
+                self.env.context.get("odin_handler_id") or []).exists()
+            comparison._odin_hand_over(handler or None)
 
     def action_odin_decline(self):
         """The client said no: mark the opportunity lost, with CRM's own lost
@@ -249,9 +385,15 @@ class QuoteComparison(models.Model):
 
         pairs = []
         if not cover.get("children_only"):
-            pairs.append((_("Principal DOB"), date(cover.get("principal_dob"))))
-            if cover.get("include_spouse"):
-                pairs.append((_("Spouse DOB"), date(cover.get("spouse_dob"))))
+            if cover.get("ages_only"):
+                # Given as ages (the online form), not yet confirmed as dates.
+                pairs.append((_("Principal age"), str(cover.get("principal_age") or "")))
+                if cover.get("include_spouse"):
+                    pairs.append((_("Spouse age"), str(cover.get("spouse_age") or "")))
+            else:
+                pairs.append((_("Principal DOB"), date(cover.get("principal_dob"))))
+                if cover.get("include_spouse"):
+                    pairs.append((_("Spouse DOB"), date(cover.get("spouse_dob"))))
         pairs.append((_("Children"), str(int(cover.get("children") or 0))))
         if cover.get("template_id"):
             template = self.env["sale.order.template"].browse(int(cover["template_id"])).exists()
@@ -398,11 +540,24 @@ class QuoteComparison(models.Model):
     def _odin_export_printed(self):
         """'Caroline Chege on 21 Oct 2026 10:20' for the footer, in the
         user's time zone."""
+        user = self.env.user
+        if user.share:
+            # Printed for the client from their own link: the salesperson's
+            # quote, not "Public user"'s.
+            user = self.user_id or self.company_id.partner_id
         return _("%(user)s on %(when)s",
-                 user=self.env.user.name,
+                 user=user.name,
                  when=format_datetime(self.env, fields.Datetime.now(), dt_format="d MMM y HH:mm"))
 
     def _odin_export_benefit_width(self, count):
         """Width of the benefit column, in %, for ``count`` plan columns: one
         plan gets as much room as the benefits, four still fit across A4."""
         return {1: 55, 2: 40, 3: 34}.get(count, 28)
+
+
+class QuoteComparisonPlan(models.Model):
+    _inherit = "odin.quote.comparison.plan"
+
+    odin_order_state = fields.Selection(related="order_id.state", string="Status")
+    odin_template_id = fields.Many2one(
+        related="order_id.sale_order_template_id", string="Plan")
