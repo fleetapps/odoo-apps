@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_comparison_form_online" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.form.online</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_form_medical"/>
+        <field name="arch" type="xml">
+            <xpath expr="//widget[@name='web_ribbon'][1]" position="before">
+                <widget name="web_ribbon" title="Online" bg_color="text-bg-info"
+                        invisible="odin_channel != 'online' or state in ('accepted', 'declined')"/>
+            </xpath>
+            <xpath expr="//field[@name='opportunity_id']" position="after">
+                <field name="odin_channel" invisible="odin_channel != 'online'"/>
+                <field name="odin_callback_requested" invisible="not odin_callback_requested"
+                       decoration-danger="state in ('draft', 'sent')"/>
+                <field name="odin_contact_by" invisible="not odin_contact_by"/>
+                <field name="odin_contact_when" invisible="not odin_callback_requested"/>
+                <field name="odin_online_url" widget="CopyClipboardChar"
+                       invisible="not odin_online_url"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_odin_online_link" type="object" string="Client's link"
+                        invisible="odin_online_url or not odin_from_builder or not plan_ids"
+                        help="A private page for the client: their plans in plain words, the PDF and Talk to an advisor. Copy it to send it however you like."/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_list_online" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.list.online</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_list_medical"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="odin_channel" optional="show" readonly="1" widget="badge"
+                       decoration-info="odin_channel == 'online'"/>
+                <field name="odin_callback_requested" optional="hide" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_search_online" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.search.online</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_search_medical"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_open']" position="before">
+                <filter name="filter_online" string="Online" domain="[('odin_channel', '=', 'online')]"/>
+                <filter name="filter_callback" string="Asked for a call"
+                        domain="[('odin_callback_requested', '!=', False), ('state', 'in', ('draft', 'sent'))]"/>
+                <separator/>
+            </xpath>
+            <xpath expr="//filter[@name='group_state']" position="after">
+                <filter name="group_channel" string="Channel" context="{'group_by': 'odin_channel'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

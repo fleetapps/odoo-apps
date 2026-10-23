@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_template_form_online_quote" model="ir.ui.view">
+        <field name="name">sale.order.template.form.online.quote</field>
+        <field name="model">sale.order.template</field>
+        <field name="inherit_id" ref="odin_medical_quote.sale_order_template_form_medical_quote"/>
+        <field name="arch" type="xml">
+            <field name="odin_inpatient_limit" position="after">
+                <field name="odin_online" invisible="not odin_medical"/>
+            </field>
+        </field>
+    </record>
+</odoo>

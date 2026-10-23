@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="crm_lead_view_form_online_quote" model="ir.ui.view">
+        <field name="name">crm.lead.form.online.quote</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="odin_medical_quote.crm_lead_view_form_medical_quote"/>
+        <field name="arch" type="xml">
+            <button name="action_odin_medical_quote" position="after">
+                <button string="Send online quote link" name="action_odin_online_share" type="object"
+                        class="btn-secondary"
+                        title="Let the client price cover themselves: a link, filled in for them, that brings the quote back to this opportunity"
+                        invisible="not active or probability == 100"/>
+            </button>
+        </field>
+    </record>
+</odoo>

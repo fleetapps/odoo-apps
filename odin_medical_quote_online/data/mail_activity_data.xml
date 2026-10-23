@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- The to-do an agent gets when a client quotes themselves online,
+             and again, due today, when they ask to talk to an advisor. -->
+        <record id="mail_activity_type_online_quote" model="mail.activity.type">
+            <field name="name">Online quote</field>
+            <field name="summary">Contact the client about their online quote</field>
+            <field name="icon">fa-globe</field>
+            <field name="delay_count">0</field>
+            <field name="delay_unit">days</field>
+            <field name="res_model">crm.lead</field>
+        </record>
+    </data>
+</odoo>
