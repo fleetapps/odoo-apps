@@ -26,6 +26,13 @@ FOOTER = "</odoo>\n"
 #: first "KES 1,234,567" in a section title is the cover limit
 KES = re.compile(r"KES\s*([\d,]+)")
 
+#: who underwrites each product line, by the start of the template name. The
+#: medical quote builder groups and filters plans by insurer.
+INSURERS = (
+    ("APA Jamii Plus", "insurer_apa", "APA Insurance"),
+    ("Birdview Bizsure Afya", "insurer_birdview", "Birdview Microinsurance"),
+)
+
 
 def slug(value):
     out = re.sub(r"[^a-z0-9]+", "_", (value or "").lower()).strip("_")
@@ -187,6 +194,27 @@ def write_products(products, cat_xmlids):
     return {p["default_code"]: "prod_%s" % slug(p["default_code"]) for p in products}
 
 
+# ------------------------------------------------------------------ insurers
+
+def write_insurers():
+    """The insurers as contacts. noupdate: their address and phone are the
+    team's to keep, and an upgrade must not put back what they changed."""
+    body = HEADER.replace("<odoo>", '<odoo noupdate="1">')
+    for _prefix, xmlid, name in INSURERS:
+        body += '    <record id="%s" model="res.partner">\n' % xmlid
+        body += field("name", name)
+        body += field("is_company", eval_="True")
+        body += field("country_id", ref="base.ke")
+        body += "    </record>\n\n"
+    body += FOOTER
+    open(os.path.join(OUT, "insurer.xml"), "w", encoding="utf-8").write(body)
+
+
+def insurer_of(template_name):
+    return next((xmlid for prefix, xmlid, _name in INSURERS
+                 if template_name.startswith(prefix)), None)
+
+
 # ----------------------------------------------------------------- templates
 
 def write_templates(templates, lines, prod_xmlids):
@@ -205,11 +233,18 @@ def write_templates(templates, lines, prod_xmlids):
         body += field("require_payment", eval_="True" if tmpl["require_payment"] else "False")
         if tmpl.get("note"):
             body += field("note", as_xml_html(tmpl["note"]), type_="html")
+        body += field("odin_medical", eval_="True")
+        insurer = insurer_of(tmpl["name"])
+        if insurer:
+            body += field("odin_insurer_id", ref=insurer)
         body += "    </record>\n\n"
 
-        for index, line in enumerate(sorted(by_template.get(tmpl["id"], []),
-                                            key=lambda l: (l["sequence"], l["id"]))):
-            line_id = "%s_l%03d" % (xmlid, index)
+        for line in sorted(by_template.get(tmpl["id"], []),
+                           key=lambda l: (l["sequence"], l["id"])):
+            # Named after the rate card's own line id, not its position: a
+            # position shifts when a line is inserted, and an upgrade would
+            # then rewrite a note into a product line, which Odoo refuses.
+            line_id = "%s_line_%d" % (xmlid, line["id"])
             body += '    <record id="%s" model="sale.order.template.line">\n' % line_id
             body += field("sale_order_template_id", ref=xmlid)
             body += field("sequence", line["sequence"])
@@ -243,6 +278,7 @@ def main():
 
     cat_xmlids = write_categories(categories)
     write_taxes()
+    write_insurers()
     prod_xmlids = write_products(products, cat_xmlids)
     write_templates(templates, lines, prod_xmlids)
     print("categories %d | products %d | templates %d | template lines %d"

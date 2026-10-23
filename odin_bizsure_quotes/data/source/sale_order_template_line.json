@@ -3315,6 +3315,166 @@
   "product_code": "JP-OP100K-00"
  },
  {
+  "id": 873,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 874,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 875,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 876,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 877,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 878,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 879,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 880,
+  "sale_order_template_id": [
+   21,
+   "APA Jamii Plus – Family Cover (KES 500,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
+ },
+ {
   "id": 430,
   "sale_order_template_id": [
    21,
@@ -4428,6 +4588,166 @@
    "Units"
   ],
   "product_code": "JP-OP100K-00"
+ },
+ {
+  "id": 881,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 882,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 883,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 884,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 885,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 886,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 887,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 888,
+  "sale_order_template_id": [
+   22,
+   "APA Jamii Plus – Family Cover (KES 1,000,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
  },
  {
   "id": 491,
@@ -5545,6 +5865,166 @@
   "product_code": "JP-OP100K-00"
  },
  {
+  "id": 889,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 890,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 891,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 892,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 893,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 894,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 895,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 896,
+  "sale_order_template_id": [
+   23,
+   "APA Jamii Plus – Family Cover (KES 2,000,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
+ },
+ {
   "id": 552,
   "sale_order_template_id": [
    23,
@@ -6658,6 +7138,166 @@
    "Units"
   ],
   "product_code": "JP-OP100K-00"
+ },
+ {
+  "id": 897,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 898,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 899,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 900,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 901,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 902,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 903,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 904,
+  "sale_order_template_id": [
+   24,
+   "APA Jamii Plus – Family Cover (KES 3,000,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
  },
  {
   "id": 613,
@@ -7775,6 +8415,166 @@
   "product_code": "JP-OP100K-00"
  },
  {
+  "id": 905,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 906,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 907,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 908,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 909,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 910,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 911,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 912,
+  "sale_order_template_id": [
+   25,
+   "APA Jamii Plus – Family Cover (KES 5,000,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
+ },
+ {
   "id": 674,
   "sale_order_template_id": [
    25,
@@ -8890,6 +9690,166 @@
   "product_code": "JP-OP100K-00"
  },
  {
+  "id": 913,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 914,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 915,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 916,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 917,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 918,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 919,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 920,
+  "sale_order_template_id": [
+   26,
+   "APA Jamii Plus – Family Cover (KES 7,500,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
+ },
+ {
   "id": 735,
   "sale_order_template_id": [
    26,
@@ -10003,6 +10963,166 @@
    "Units"
   ],
   "product_code": "JP-OP100K-00"
+ },
+ {
+  "id": 921,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 62,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-21] Jamii Plus Outpatient – KES 50,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-21"
+ },
+ {
+  "id": 922,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 63,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP50K-00] Jamii Plus Outpatient – KES 50,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP50K-00"
+ },
+ {
+  "id": 923,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 65,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-21] Jamii Plus Outpatient – KES 75,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-21"
+ },
+ {
+  "id": 924,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 66,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP75K-00] Jamii Plus Outpatient – KES 75,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP75K-00"
+ },
+ {
+  "id": 925,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 82,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-21] Jamii Plus Outpatient – KES 150,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-21"
+ },
+ {
+  "id": 926,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 83,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP150K-00] Jamii Plus Outpatient – KES 150,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP150K-00"
+ },
+ {
+  "id": 927,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 85,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-21] Jamii Plus Outpatient – KES 200,000 per Person (21–40 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-21"
+ },
+ {
+  "id": 928,
+  "sale_order_template_id": [
+   27,
+   "APA Jamii Plus – Family Cover (KES 10,000,000)"
+  ],
+  "sequence": 86,
+  "display_type": false,
+  "name": false,
+  "product_id": [
+   0,
+   "[JP-OP200K-00] Jamii Plus Outpatient – KES 200,000 per Person (Day 1 to 20 Years)"
+  ],
+  "product_uom_qty": 0,
+  "product_uom_id": [
+   1,
+   "Units"
+  ],
+  "product_code": "JP-OP200K-00"
  },
  {
   "id": 796,

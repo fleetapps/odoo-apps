@@ -23,6 +23,9 @@ What it installs
   between them: the cover being quoted, the add-ons at zero quantity, the
   benefit notes and the terms.
 * Three instalment plans matching the terms the templates quote.
+* The two insurers, APA Insurance and Birdview Microinsurance, set on their
+  plans so Add Medical Quote can filter and group by insurer. The APA family
+  plans offer every outpatient limit on the rate card, 50,000 to 200,000.
 
 Every section line carries ``benefit_label``, ``benefit_key`` and
 ``cover_limit``, so a cover comparison lines up Inpatient against Inpatient
@@ -36,15 +39,16 @@ into the XML. A rate change is an edit to the JSON and one run of the script.
 Do not edit the generated XML, and see README.md before editing prices in
 Odoo itself.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
-    "depends": ["account", "odin_client_quote"],
+    "depends": ["account", "odin_client_quote", "odin_medical_quote"],
     "data": [
         "data/product_category.xml",
         "data/account_tax.xml",
         "data/product_template.xml",
+        "data/insurer.xml",
         "data/quote_instalment_plan.xml",
         "data/sale_order_template.xml",
     ],
