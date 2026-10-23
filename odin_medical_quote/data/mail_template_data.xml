@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: the wording is the broker's to adapt in Settings ▸ Technical
+         ▸ Email Templates, and an upgrade must not put ours back. -->
+    <data noupdate="1">
+        <record id="mail_template_medical_quote" model="mail.template">
+            <field name="name">Medical quote: send to the client</field>
+            <field name="model_id" ref="odin_client_quote.model_odin_quote_comparison"/>
+            <field name="subject">{{ object.company_id.name }} – your medical insurance quotation {{ object.name }}</field>
+            <field name="email_from">{{ (object.user_id.email_formatted or object.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="partner_to">{{ object.partner_id.id }}</field>
+            <field name="lang">{{ object.partner_id.lang }}</field>
+            <field name="report_template_ids" eval="[(4, ref('odin_medical_quote.action_report_medical_quotation'))]"/>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent from a medical quote with the quotation attached</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-size: 13px;">
+    <p>Dear <t t-out="object.partner_id.name or ''">Client</t>,</p>
+    <p>
+        Thank you for your interest in medical cover. Attached is quotation
+        <strong t-out="object.name or ''">QC00001</strong>, with the plans we discussed
+        side by side:
+    </p>
+    <ul>
+        <t t-foreach="object.plan_ids.filtered(lambda p: p.order_id.state != 'cancel')" t-as="plan">
+            <li>
+                <t t-out="plan.order_id.sale_order_template_id.name or plan.order_id.name or ''">Plan</t>:
+                <strong t-out="format_amount(plan.order_id.amount_total, plan.order_id.currency_id) or ''">KES 50,317.23</strong>
+                <t t-if="plan.highlight"> (recommended)</t>
+            </li>
+        </t>
+    </ul>
+    <p t-if="object.validity_date">
+        The quotation is valid until <t t-out="format_date(object.validity_date, date_format='d MMM y') or ''">22 Nov 2026</t>.
+    </p>
+    <p>Reply to this email or call us to go ahead, or with any question.</p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

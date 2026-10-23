@@ -28,7 +28,9 @@ quotes. Four steps on one page:
    phone, email, lead source), an existing customer, or a lead or
    opportunity in CRM, each found by name, phone or email. A new prospect
    whose number or email is already in Contacts is pointed out, so the agent
-   uses the contact instead of making a second one. Then the principal's date
+   uses the contact instead of making a second one; an existing customer who
+   already has an open opportunity is pointed to it, so the quote joins that
+   opportunity rather than opening a second one. Then the principal's date
    of birth, spouse, number of children (or children only), the inpatient
    limit range, an insurer and a plan.
 2. **Cover options and premiums.** Every plan in range that covers this
@@ -42,8 +44,9 @@ quotes. Four steps on one page:
    with *Remove*, a **discount** (`10%` or `2,500`), **taxes and levies**
    (levies plus stamp duty), a **policy charge**, the **total premium** and
    what paying monthly looks like. One plan can be marked recommended.
-4. **Save.** See below. The page then offers Print comparison, Share on
-   WhatsApp, Open quote, Open opportunity, and **Client accepted** per plan.
+4. **Save.** See below. The page then offers **Print quotation**, **Send by
+   email**, Share on WhatsApp, Open quote, Open opportunity, **Client
+   accepted** per plan, and a link to record that the client declined.
 
 Every figure on the page comes from the server, priced the same way the
 quotation is built, so what the agent reads out is what the quotation says.
@@ -62,7 +65,11 @@ it.
 * **CRM.** A new opportunity, *Medical cover – Henry (5 people)*, in the
   agent's pipeline with the lead source. A lead picked from CRM is converted
   to an opportunity for its contact, the way *Convert to opportunity* would.
-  Expected revenue is the recommended plan's premium, or the cheapest.
+  Expected revenue is the recommended plan's premium, or the cheapest. A new
+  quote sets the opportunity's expected closing to the day the quote lapses
+  (unless one is set) and, unless the opportunity already has a next step,
+  schedules a *Follow up on medical quote QC00012* to-do for its salesperson
+  two days out. A lead nobody was assigned to goes to the agent who quoted it.
 * **Quotations.** One per plan, against the opportunity (sale_crm's
   *Quotations* button counts them), carrying the opportunity's team,
   campaign, medium, source and tags. Only what was chosen is on it: the
@@ -74,7 +81,43 @@ it.
   quotations, with who is covered and a details strip, so Print and Share on
   WhatsApp work as they always have. It keeps what was entered: **Edit quote**
   reopens the screen as it was left, and saving again rebuilds the draft
-  quotations in place and cancels those of plans taken off.
+  quotations in place and cancels those of plans taken off. A quotation
+  someone added to the quote by hand is left alone. Options are remembered
+  by benefit and rate (`outpatient/limit 50,000:…`), not by template line, so
+  a saved quote reopens on the same options after its template is edited.
+
+## The quotation the client gets
+
+**Print quotation**, **Send by email** and **Share on WhatsApp** all send the
+same PDF, *Medical quotation - David Muthuri Muriuki - QC00012.pdf*, laid
+out like the broker's own quotations:
+
+* the letterhead -- the company's logo, name, address, phone and email;
+* *Prepared for* the client, beside the quote number, date, validity and
+  subject;
+* **Member details**: the dates of birth, children and limit range exactly
+  as entered (dates written `21 Jan 1984`, never `01/21/1984`);
+* **Cover and premium comparison**: one column per plan (only the accepted
+  one once a plan is accepted), insurer and plan at the top, the recommended
+  plan marked; the limit of each benefit, then each premium, the discount,
+  *Taxes and levies* (levies and stamp duty together, as the client pays
+  them), the policy charge, the **total premium** and each instalment plan's
+  deposit and monthly amount;
+* the plans' **terms**, once each even when several plans share them;
+* the validity, *Quotation by* the salesperson and their phone, and the
+  **payment options** box;
+* *By: <user> on <date>* and *For and on behalf of <company>* on every page.
+
+The payment options are set once in **Sales ▸ Configuration ▸ Settings ▸
+Quotations ▸ Payment details on medical quotations** (bank account, branch,
+SWIFT, M-Pesa paybill...). Left empty, the company's bank accounts are listed
+instead.
+
+**Send by email** opens the email composer on the template *Medical quote:
+send to the client* (Settings ▸ Technical ▸ Email Templates, yours to
+reword: an upgrade does not overwrite it) with the PDF attached, and marks a
+draft quote sent. A quote built the old way, in the comparison form, still
+prints the old comparison.
 
 ## Client accepted
 
@@ -91,6 +134,21 @@ draft stays and says why.
 
 If the order cannot be confirmed -- a sale exception rule, a credit limit --
 its own dialog is shown and nothing else happens until it goes through.
+
+A quotation confirmed some other way -- *Confirm* on the quotation, or the
+client signing and paying on the portal -- accepts the quote all the same:
+the other plans are cancelled and the opportunity won. Client accepted then
+only invoices it.
+
+## Client declined
+
+**Client declined** on the quote (or *record that they declined* on the
+saved screen) opens CRM's own *Mark Lost* dialog with its lost reasons.
+Marking the opportunity lost -- there or anywhere in CRM -- cancels the
+quote's open quotations and marks it *Declined*, so nothing is left in
+Quotations for a client who said no. If the client comes back, **Edit quote**
+and save: the quote is a draft again, the opportunity is restored and the
+plans get fresh quotations.
 
 ## How a premium is priced
 
@@ -165,9 +223,13 @@ upgrade installs `odin_medical_quote` with it.
 `tests/` builds a small rate card in the shape of the real ones and covers
 the name parser, pricing by family size, role and band, refusals, the limit
 range and insurer filter, totals with discounts, saving to Contacts and CRM,
-reopening and saving again, Client accepted as a salesperson without
-accounting rights (full, deposit, confirm only, a blocked confirmation) and
-a browser tour of the screen.
+reopening and saving again (hand-added quotations, edited templates),
+the follow-up activity, Client accepted as a salesperson without accounting
+rights (full, deposit, confirm only, a blocked confirmation, a quotation
+confirmed directly), Client declined and quoting again, the quotation PDF,
+email and WhatsApp attachment, and a browser tour of the screen.
+`odin_bizsure_quotes/tests` checks the brief's example and quotation #1323
+(Birdview Plan 4: 90,614 premium, 91,061.76 total) on the real rate cards.
 
 ```bash
 odoo -d <db> -i odin_medical_quote --test-enable --test-tags /odin_medical_quote --stop-after-init

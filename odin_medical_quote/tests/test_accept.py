@@ -95,3 +95,50 @@ class TestAccept(MedicalQuoteCase):
         setup = self.Quote.get_setup(lead_id=self.lead.id)
         self.assertEqual(setup["lead"]["id"], self.lead.id)
         self.assertEqual(sorted(setup["insurers"]), ["Test Afya Insurer", "Test Jamii Insurer"])
+
+    def test_confirmed_elsewhere(self):
+        """Confirmed from the quotation itself, or by the client signing on
+        the portal: the quote is accepted all the same."""
+        self.jamii_order.action_confirm()
+        self.assertEqual(self.comparison.state, "accepted")
+        self.assertEqual(self.comparison.odin_accepted_order_id, self.jamii_order)
+        self.assertEqual(self.afya_order.state, "cancel")
+        self.assertEqual(self.lead.won_status, "won")
+        # Client accepted still invoices it afterwards.
+        action = self.comparison.action_odin_accept()
+        wizard = self.env["odin.medical.quote.accept"].with_user(self.agent).with_context(
+            **action["context"]).create({"order_id": self.jamii_order.id})
+        invoice = self.env["account.move"].browse(wizard.action_accept()["res_id"])
+        self.assertAlmostEqual(invoice.amount_total, self.jamii_order.amount_total)
+
+    def test_declined(self):
+        action = self.comparison.action_odin_decline()
+        self.assertEqual(action["res_model"], "crm.lead.lost")
+        wizard = self.env["crm.lead.lost"].with_user(self.agent).with_context(
+            **action["context"]).create({})
+        wizard.action_lost_reason_apply()
+        self.assertFalse(self.lead.active)
+        self.assertEqual(self.comparison.state, "declined")
+        self.assertEqual(self.orders.mapped("state"), ["cancel", "cancel"])
+
+        # Quoting them again brings the opportunity back.
+        params = dict(self.comparison.odin_builder_params, comparison_id=self.comparison.id)
+        self.Quote.save_quote(params)
+        self.assertTrue(self.lead.active)
+        self.assertEqual(self.comparison.state, "draft")
+        self.assertEqual(set(self.comparison.plan_ids.order_id.mapped("state")), {"draft"})
+
+    def test_declined_then_confirmed(self):
+        self.lead.action_set_lost()
+        self.assertEqual(self.comparison.state, "declined")
+        self.jamii_order.action_draft()
+        self.jamii_order.action_confirm()
+        self.assertEqual(self.comparison.state, "accepted")
+        self.assertTrue(self.lead.active)
+        self.assertEqual(self.lead.won_status, "won", "the sale counts in the pipeline")
+
+    def test_declined_without_opportunity(self):
+        self.comparison.sudo().opportunity_id = False
+        self.comparison.action_odin_decline()
+        self.assertEqual(self.comparison.state, "declined")
+        self.assertEqual(set(self.orders.mapped("state")), {"cancel"})

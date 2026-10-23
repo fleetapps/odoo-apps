@@ -14,7 +14,7 @@ is offered only to users who may post invoices anyway.
 import logging
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import RedirectWarning, UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -93,6 +93,8 @@ class MedicalQuoteAccept(models.TransientModel):
             raise UserError(_("The deposit must be between 0% and 100% of the premium."))
 
         if order.state in ("draft", "sent"):
+            # Confirming closes out the quote (see sale.order._action_confirm):
+            # the other plans cancelled, the opportunity won.
             result = order.action_confirm()
             if order.state != "sale":
                 # Something on the order stopped it -- an exception rule or a
@@ -101,22 +103,8 @@ class MedicalQuoteAccept(models.TransientModel):
                 if isinstance(result, dict):
                     return result
                 raise UserError(_("%s could not be confirmed.", order.name))
-
-        others = self.other_order_ids
-        if others:
-            others._action_cancel()
-        lead = comparison.opportunity_id or order.opportunity_id
-        if lead and lead.active and lead.won_status != "won":
-            lead.expected_revenue = order.amount_untaxed
-            lead.action_set_won()
-        comparison.write({"state": "accepted", "odin_accepted_order_id": order.id})
-        comparison.message_post(body=_(
-            "Client accepted %(plan)s (%(order)s). %(others)s",
-            plan=order.sale_order_template_id.name or order.name,
-            order=order.name,
-            others=_("Other plans cancelled: %s.", ", ".join(others.mapped("name")))
-            if others else "",
-        ))
+        # Confirmed already, from the order itself: close the quote out now.
+        comparison._odin_accept(order)
 
         if self.invoice_mode == "later":
             return {
@@ -151,7 +139,7 @@ class MedicalQuoteAccept(models.TransientModel):
             try:
                 with self.env.cr.savepoint():
                     invoice.action_post()
-            except UserError as error:
+            except (UserError, RedirectWarning) as error:
                 _logger.info("Invoice %s left in draft: %s", invoice.id, error)
                 invoice.message_post(body=_(
                     "Left in draft when the quote was accepted: %s", error.args[0]))

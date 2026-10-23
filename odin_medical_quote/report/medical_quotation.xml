@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_medical_quotation" model="report.paperformat">
+        <field name="name">A4 — medical quotation</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="page_height">0</field>
+        <field name="page_width">0</field>
+        <field name="orientation">Portrait</field>
+        <!-- The letterhead flows in the body rather than being a running
+             header (see odin_client_quote's paperformat for why); only the
+             footer repeats, so only the bottom margin makes room for one. -->
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">22</field>
+        <field name="margin_left">11</field>
+        <field name="margin_right">11</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_medical_quotation" model="ir.actions.report">
+        <field name="name">Medical quotation</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_medical_quote.report_medical_quotation</field>
+        <field name="report_file">odin_medical_quote.report_medical_quotation</field>
+        <field name="print_report_name">object._odin_export_filename()</field>
+        <field name="binding_model_id" ref="odin_client_quote.model_odin_quote_comparison"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_medical_quotation"/>
+    </record>
+
+<!--
+    wkhtmltopdf runs an old WebKit: no CSS variables, no grid, flexbox only half
+    there. Everything is laid out with tables and sized in points.
+-->
+<template id="medical_quotation_styles">
+    <t t-set="brand" t-value="company.primary_color or '#003478'"/>
+    <style type="text/css" t-translation="off">
+        .mq { font-family: 'DejaVu Sans', 'Lato', Arial, sans-serif; color: #1f2d3a;
+              font-size: 8pt; line-height: 1.35; }
+        .mq table { border-collapse: collapse; width: 100%; }
+        .mq .mq-num { text-align: right; white-space: nowrap; }
+        .mq .mq-muted { color: #6b7a88; }
+        .mq-letter, .mq-letter tr, .mq-letter td { border: 0 none !important; }
+        .mq-letter { border-bottom: 1.6pt solid <t t-out="brand"/> !important; }
+        .mq-letter td { vertical-align: top; padding-bottom: 7pt; }
+        .mq-logo { max-height: 42pt; max-width: 170pt; }
+        .mq-company { text-align: right; font-size: 8.6pt; line-height: 1.45; }
+        .mq-company .mq-name { font-size: 13pt; font-weight: bold; color: #111111; }
+        .mq-hero { margin: 13pt 0 14pt 0; }
+        .mq-hero td { vertical-align: top; padding: 10pt 13pt; }
+        .mq-hero .mq-for { background: #f6f9fb; border: 0.6pt solid #dfe7ee; }
+        .mq-hero .mq-doc { background: <t t-out="brand"/>; color: #ffffff; width: 37%; }
+        .mq-kicker { font-size: 7pt; color: #6b7a88; }
+        .mq-doc .mq-kicker { color: #dbe6f3; }
+        .mq-party { font-size: 11.5pt; font-weight: bold; margin: 1pt 0 3pt 0; }
+        .mq-ref { font-size: 16pt; font-weight: bold; margin: 1pt 0 3pt 0; }
+        .mq-h { font-size: 10pt; font-weight: bold; color: #1f3b57;
+                border-left: 3pt solid <t t-out="brand"/>; padding-left: 7pt;
+                margin: 14pt 0 7pt 0; page-break-after: avoid; }
+        .mq-members th { background: <t t-out="brand"/>; color: #ffffff; text-align: left;
+                         font-size: 6.8pt; letter-spacing: 0.05em; text-transform: uppercase;
+                         padding: 6pt 8pt; }
+        .mq-members td { border: 0.6pt solid #dfe7ee; padding: 6pt 8pt; }
+        .mq-members td.mq-k { font-weight: bold; width: 22%; }
+        .mq-members td.mq-v { width: 28%; }
+        .mq-grid { table-layout: fixed; }
+        .mq-grid th { background: <t t-out="brand"/>; color: #ffffff; font-size: 6.8pt;
+                      letter-spacing: 0.05em; text-transform: uppercase; padding: 7pt 8pt;
+                      text-align: center; vertical-align: bottom; word-wrap: break-word;
+                      border: 0.6pt solid <t t-out="brand"/>; }
+        .mq-grid th.mq-first { text-align: left; }
+        .mq-grid th .mq-plan { display: block; font-size: 6.5pt; letter-spacing: 0;
+                               text-transform: none; font-weight: normal; color: #dbe6f3;
+                               padding-top: 1.5pt; }
+        .mq-grid th .mq-flag { display: block; background: #ffffff; color: <t t-out="brand"/>;
+                               font-size: 5.6pt; padding: 1pt 0; margin-bottom: 3pt; }
+        .mq-grid td { border: 0.6pt solid #dfe7ee; padding: 6pt 8pt; text-align: right;
+                      vertical-align: top; }
+        .mq-grid td.mq-first { text-align: left; font-weight: bold; }
+        .mq-grid tr.mq-limit td, .mq-grid tr.mq-levies td { background: #fafcfd; }
+        .mq-grid tr.mq-discount td { color: #1e7b43; }
+        .mq-grid tr.mq-total td { font-weight: bold; font-size: 8.8pt; background: #eef3f8;
+                                  border-top: 1pt solid #9fb3c8; }
+        .mq-grid tr.mq-instalment td { font-weight: normal; color: #33475b; }
+        .mq-grid tr.mq-instalment td.mq-first { font-weight: normal; }
+        .mq-grid td.mq-pick { border-left: 1.4pt solid <t t-out="brand"/>;
+                              border-right: 1.4pt solid <t t-out="brand"/>; }
+        .mq-sub-h { font-weight: bold; color: #1f3b57; margin: 8pt 0 3pt 0; font-size: 8.6pt; }
+        .mq-terms { font-size: 7.8pt; }
+        .mq-terms h2, .mq-terms h3, .mq-terms h4 { font-size: 8.4pt; font-weight: bold;
+                                                    margin: 8pt 0 3pt 0; }
+        .mq-terms p { margin: 0 0 4pt 0; }
+        .mq-terms ol, .mq-terms ul { margin: 0 0 6pt 14pt; padding: 0; }
+        .mq-terms li { margin: 0 0 2pt 0; }
+        .mq-terms table { margin: 4pt 0 6pt 0; }
+        .mq-terms table td, .mq-terms table th { border: 0.6pt solid #dfe7ee; padding: 2.5pt 4pt;
+                                                 font-size: 7pt; }
+        .mq-closing, .mq-keep { page-break-inside: avoid; }
+        .mq-closing { margin-top: 12pt; }
+        .mq-by { font-weight: bold; text-decoration: underline; margin-top: 4pt; }
+        .mq-callout { background: #f6f9fb; border: 0.6pt solid #dfe7ee;
+                      border-left: 3.5pt solid <t t-out="brand"/>; padding: 9pt 12pt;
+                      margin-top: 12pt; }
+        .mq-callout-h { font-weight: bold; margin-bottom: 3pt; }
+        .mq-callout p { margin: 0 0 2pt 0; }
+        .mq-foot { border-bottom: 1.2pt solid <t t-out="brand"/>; padding-bottom: 3pt;
+                   font-size: 8pt; color: #1f2d3a; }
+        .mq-foot td { vertical-align: bottom; }
+        .mq-pages { text-align: center; font-size: 6.8pt; color: #6b7a88; padding-top: 3pt; }
+    </style>
+</template>
+
+<template id="report_medical_quotation_document">
+    <t t-set="company" t-value="doc.company_id"/>
+    <t t-set="matrix" t-value="doc._odin_export_matrix()"/>
+    <t t-set="columns" t-value="matrix['columns']"/>
+    <t t-set="number" t-value="{'widget': 'float', 'precision': 2}"/>
+    <!-- Limits are round sums: 750,000, not 750,000.00. -->
+    <t t-set="whole" t-value="{'widget': 'float', 'precision': 0}"/>
+    <t t-set="author" t-value="doc.user_id"/>
+
+    <div class="article mq"
+         t-att-data-oe-model="doc._name"
+         t-att-data-oe-id="doc.id"
+         t-att-data-oe-lang="doc.env.context.get('lang')">
+        <t t-call="odin_medical_quote.medical_quotation_styles"/>
+
+        <table class="mq-letter o_ignore_layout_styling">
+            <tr>
+                <td style="width: 42%;">
+                    <img t-if="company.logo" class="mq-logo"
+                         t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                </td>
+                <td class="mq-company">
+                    <div class="mq-name" t-out="company.name">Company</div>
+                    <div t-if="company.street" t-out="company.street"/>
+                    <div t-if="company.street2" t-out="company.street2"/>
+                    <t t-set="place" t-value="' '.join(p for p in [company.zip, company.city] if p)"/>
+                    <div t-if="place" t-out="place"/>
+                    <div t-if="company.phone"><b>Tel:</b> <span t-out="company.phone"/></div>
+                    <div t-if="company.email"><b>Email:</b> <span t-out="company.email"/></div>
+                    <div t-if="company.website" t-out="company.website"/>
+                </td>
+            </tr>
+        </table>
+
+        <table class="mq-hero o_ignore_layout_styling">
+            <tr>
+                <td class="mq-for">
+                    <div class="mq-kicker">Prepared for</div>
+                    <div class="mq-party" t-out="doc.partner_id.name">Client</div>
+                    <div t-if="doc.partner_id.phone"><b>Phone:</b> <span t-out="doc.partner_id.phone"/></div>
+                    <div t-if="doc.partner_id.email"><b>Email:</b> <span t-out="doc.partner_id.email"/></div>
+                    <div t-if="doc.intro" style="margin-top: 3pt;" t-out="doc.intro"/>
+                </td>
+                <td class="mq-doc">
+                    <div class="mq-kicker">Insurance quotation</div>
+                    <div class="mq-ref">#<t t-out="doc.name"/></div>
+                    <div><b>Quote date:</b> <t t-out="doc._odin_export_date(doc.date)"/></div>
+                    <div t-if="doc.validity_date"><b>Valid until:</b>
+                        <t t-out="doc._odin_export_date(doc.validity_date)"/></div>
+                    <div t-if="doc.title" t-out="doc.title">Medical Insurance</div>
+                </td>
+            </tr>
+        </table>
+
+        <t t-set="member_rows" t-value="doc._odin_export_member_rows()"/>
+        <t t-if="member_rows">
+            <div class="mq-h">Member details</div>
+            <table class="mq-members o_ignore_layout_styling">
+                <thead>
+                    <tr><th colspan="4">People included in this quotation</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="member_rows" t-as="member_row">
+                        <t t-foreach="member_row" t-as="pair">
+                            <td class="mq-k"><t t-if="pair" t-out="pair[0]"/></td>
+                            <td class="mq-v"><t t-if="pair" t-out="pair[1]"/></td>
+                        </t>
+                    </tr>
+                </tbody>
+            </table>
+        </t>
+
+        <div class="mq-h">Cover and premium comparison</div>
+        <!-- The benefit column takes what the plan columns leave, so one plan
+             does not stretch across the page and four still fit. -->
+        <t t-set="benefit_width" t-value="doc._odin_export_benefit_width(len(columns))"/>
+        <table class="mq-grid o_ignore_layout_styling">
+            <thead>
+                <tr>
+                    <th class="mq-first" t-attf-style="width: #{benefit_width}%;">Benefit</th>
+                    <th t-foreach="columns" t-as="column">
+                        <span t-if="column['highlight']" class="mq-flag">Recommended</span>
+                        <t t-out="column['insurer']">Insurer</t>
+                        <span class="mq-plan" t-out="column['name']">Plan</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="matrix['rows']" t-as="row" t-attf-class="mq-#{row['kind']}">
+                    <td class="mq-first" t-out="row['label']">Benefit</td>
+                    <t t-foreach="row['cells']" t-as="cell">
+                        <td t-att-class="'mq-pick' if columns[cell_index]['highlight'] else None">
+                            <t t-if="row['kind'] == 'instalment'">
+                                <div><t t-out="cell['deposit']" t-options="number"/> <span class="mq-muted">deposit</span></div>
+                                <div><t t-out="cell['months']"/> × <t t-out="cell['instalment']" t-options="number"/></div>
+                            </t>
+                            <t t-elif="cell is None">—</t>
+                            <t t-elif="row['kind'] == 'limit'" t-out="cell" t-options="whole"/>
+                            <t t-else="" t-out="cell" t-options="number"/>
+                        </td>
+                    </t>
+                </tr>
+            </tbody>
+        </table>
+        <div class="mq-muted" style="margin-top: 4pt;">
+            Annual premiums in <t t-out="doc.currency_id.name"/>. Taxes and levies are the
+            training levy and policyholders' compensation fund levy on the premium, with
+            stamp duty. Cover starts once the insurer has received the premium.
+        </div>
+
+        <!-- A heading never ends a page on its own: it travels with its terms.
+             Short terms are kept whole; long ones (pages of them) flow, since
+             holding them together would only leave a blank half page. -->
+        <t t-foreach="doc._odin_export_terms()" t-as="term">
+            <div t-att-class="'mq-keep' if term['short'] else None">
+                <div t-if="term_first" class="mq-h">Terms</div>
+                <div t-if="term['title']" class="mq-sub-h" t-out="term['title']"/>
+                <div class="mq-terms" t-out="term['note']"/>
+            </div>
+        </t>
+
+        <div class="mq-closing">
+            <div t-if="doc.validity_date">
+                Valid for <t t-out="(doc.validity_date - doc.date).days"/> days from
+                <t t-out="doc._odin_export_date(doc.date)"/>, until
+                <t t-out="doc._odin_export_date(doc.validity_date)"/>.
+            </div>
+            <div t-if="author" class="mq-by">
+                Quotation by <t t-out="author.name"/><t t-if="author.partner_id.phone"> - <t t-out="author.partner_id.phone"/></t>
+            </div>
+            <t t-set="payment" t-value="doc._odin_export_payment()"/>
+            <div t-if="payment" class="mq-callout">
+                <div class="mq-callout-h">Payment options</div>
+                <div t-out="payment"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer mq">
+        <t t-call="odin_medical_quote.medical_quotation_styles"/>
+        <table class="mq-foot">
+            <tr>
+                <td><b>By:</b> <t t-out="doc._odin_export_printed()"/></td>
+                <td class="mq-num">For and on behalf of <b t-out="company.name"/></td>
+            </tr>
+        </table>
+        <div class="mq-pages" t-if="report_type == 'pdf'">
+            Page <span class="page"/> of <span class="topage"/>
+        </div>
+    </div>
+</template>
+
+<template id="report_medical_quotation">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="doc">
+            <t t-call="odin_medical_quote.report_medical_quotation_document"
+               t-lang="doc.partner_id.lang"/>
+        </t>
+    </t>
+</template>
+</odoo>

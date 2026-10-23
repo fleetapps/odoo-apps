@@ -19,3 +19,20 @@ class SaleOrder(models.Model):
                 formatLang(self.env, order.amount_total, currency_obj=order.currency_id),
                 order.name,
             ]))
+
+    def _action_confirm(self):
+        """A plan of a medical quote confirmed is the client's choice, however
+        it was confirmed -- Client accepted, Confirm here, or signed on the
+        portal -- so the quote, its other plans and the opportunity follow.
+
+        In sudo: the portal confirms as the public user, and a salesperson who
+        may confirm the order may also close out the quote it came from."""
+        result = super()._action_confirm()
+        comparisons = self.env["odin.quote.comparison"].sudo().search([
+            ("plan_ids.order_id", "in", self.ids),
+            ("state", "!=", "accepted"),
+        ])
+        for comparison in comparisons.filtered("odin_from_builder"):
+            order = (comparison.plan_ids.order_id & self)[:1]
+            comparison._odin_accept(order.sudo())
+        return result
