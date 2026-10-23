@@ -527,17 +527,14 @@ class QuoteComparison(models.Model):
             raise UserError(_("There is nothing to share until the comparison has plans."))
 
         attachment = self._comparison_pdf_attachment()
+        page = self._whatsapp_page_url()
         channel = self._wa_conversation()
         if channel:
             channel.message_post(
                 # message_post escapes a plain str, which would send the
-                # customer literal <p> tags.
-                body=Markup("<p>%s</p>") % _(
-                    "Here is the cover comparison from %(company)s. It sets the "
-                    "plans side by side so you can see what each one covers and "
-                    "what it costs.",
-                    company=self.company_id.name,
-                ),
+                # customer literal <p> tags; line breaks become <br/>.
+                body=Markup("<p>%s</p>") % Markup("<br/>").join(
+                    self._whatsapp_message(page).split("\n")),
                 message_type="comment",
                 attachment_ids=attachment.ids,
             )
@@ -559,24 +556,36 @@ class QuoteComparison(models.Model):
                 name=self.partner_id.name or _("This customer"),
             ))
 
-        token = attachment.generate_access_token()[0]
-        link = "%s/web/content/%s?access_token=%s&download=true" % (
-            self.get_base_url(), attachment.id, token,
-        )
-        message = _(
-            "Hello %(name)s, here is the cover comparison we discussed from "
-            "%(company)s. It sets the plans side by side so you can see what "
-            "each one covers and what it costs.\n\n%(link)s",
-            name=self.partner_id.name or "",
-            company=self.company_id.name,
-            link=link,
-        )
+        link = page
+        if not link:
+            token = attachment.generate_access_token()[0]
+            link = "%s/web/content/%s?access_token=%s&download=true" % (
+                self.get_base_url(), attachment.id, token,
+            )
+        message = self._whatsapp_message(link)
         self.action_mark_sent()
         return {
             "type": "ir.actions.act_url",
             "url": "https://wa.me/%s?text=%s" % (number, quote(message)),
             "target": "new",
         }
+
+    def _whatsapp_page_url(self):
+        """A page for the client to open instead of the bare PDF, if a module
+        provides one (odin_medical_quote_online: their own quote page)."""
+        return False
+
+    def _whatsapp_message(self, link=False):
+        """What Share on WhatsApp says, with ``link`` to the quote, if any."""
+        self.ensure_one()
+        message = _(
+            "Hello %(name)s, here is the cover comparison we discussed from "
+            "%(company)s. It sets the plans side by side so you can see what "
+            "each one covers and what it costs.",
+            name=self.partner_id.name or "",
+            company=self.company_id.name,
+        )
+        return "%s\n\n%s" % (message, link) if link else message
 
     def action_mark_sent(self):
         self.filtered(lambda c: c.state == "draft").state = "sent"

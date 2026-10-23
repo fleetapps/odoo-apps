@@ -796,9 +796,10 @@ class MedicalQuoteOnline(models.AbstractModel):
             "contact_by": list(CONTACT_BY),
             "contact_when": list(CONTACT_WHEN),
             "reply": company.odin_online_reply_time or "",
-            # Named only to a client who came by their agent's link: anyone
+            # Named to a client their agent quoted or sent the link to: anyone
             # else is told "an advisor", whoever ends up with it.
-            "advisor": comparison.user_id if comparison.odin_online_via in ("agent", "client")
+            "advisor": comparison.user_id if (
+                comparison.odin_channel == "agent" or comparison.odin_online_via in ("agent", "client"))
             else comparison.user_id.browse(),
         })
 

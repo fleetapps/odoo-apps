@@ -2,7 +2,9 @@ import base64
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import format_date, format_datetime, formatLang, html2plaintext, is_html_empty
+from odoo.tools import (
+    format_amount, format_date, format_datetime, formatLang, html2plaintext, is_html_empty,
+)
 
 #: sections that are money in or out, not a benefit with a row of its own
 NOT_A_BENEFIT = frozenset({"statutory_charges", "payment_options", "discount", "policy_charge"})
@@ -316,6 +318,32 @@ class QuoteComparison(models.Model):
                  line=dict(self._fields["odin_quote_type"]._description_selection(self.env)).get(
                      self.odin_quote_type, ""),
                  client=self.partner_id.name or "", ref=self.name)
+
+    def _whatsapp_message(self, link=False):
+        """A quote made on the quote screen, in the client's words: what it
+        is for, each insurer's price, until when, and where to open it."""
+        self.ensure_one()
+        if not self.odin_from_builder:
+            return super()._whatsapp_message(link)
+        first = (self.partner_id.name or "").split(" ")[0]
+        what = (self.title or _("insurance")).lower()
+        lines = [
+            _("Hello %s,", first) if first else _("Hello,"),
+            _("here is your %(what)s quote %(quote)s from %(company)s:",
+              what=what, quote=self.name, company=self.company_id.name),
+        ]
+        for plan in self._odin_export_plans():
+            order = plan.order_id
+            lines.append("• %s: %s%s" % (
+                order._odin_plan_label() or plan.name,
+                format_amount(self.env, order.amount_total, order.currency_id),
+                _(" (our recommendation)") if plan.highlight else ""))
+        if self.validity_date:
+            lines.append(_("Valid until %s.", self._odin_export_date(self.validity_date)))
+        if link:
+            lines += ["", _("See it, download it or ask us a question here:"), link]
+        lines += ["", _("Reply here when you're ready to go ahead.")]
+        return "\n".join(lines)
 
     def _comparison_pdf_attachment(self):
         """What Share on WhatsApp sends: the medical quotation, for a quote

@@ -59,6 +59,22 @@ export class MotorQuote extends MedicalQuote {
             : _t("%s insurers cannot quote this vehicle", n);
     }
 
+    countText(n) {
+        return n === 1 ? _t("1 insurer") : _t("%s insurers", n);
+    }
+
+    get planColumn() {
+        return _t("Insurer");
+    }
+
+    get compareTitle() {
+        return _t("Compare insurers");
+    }
+
+    get compareHelp() {
+        return _t("Adjust each insurer's price: take off extras, give a discount, add a policy charge. Totals include taxes, levies and stamp duty.");
+    }
+
     get steps() {
         return [
             { n: 1, label: _t("Client and vehicle") },

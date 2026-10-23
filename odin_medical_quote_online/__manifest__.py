@@ -13,10 +13,12 @@ with their price, then where to send the quote. Their quote has its own
 private page with the PDF, *Talk to an advisor* and *Chat with us on
 WhatsApp*.
 
-The office sees each one as an opportunity tagged *Online quote*, assigned
-to the agent whose link was used (or the online-quotes user), with a to-do
-due today and the quote in the Quotes register. Agents share the page on
-WhatsApp from any lead -- prefilled for that client -- or as their own link.
+The office sees each one as an opportunity tagged *Online quote*: for the
+agent whose link was used, the client's own agent, or the person in
+Settings, with a to-do due today; from an ad or the website, in the team's
+pool until someone presses Assign to me. Cover Quotes ▸ Online quotes lists
+them. Share quote link gives an agent's own link, a client's, or a campaign
+link for an ad.
 
 No Website app needed. See README.md.
 """,

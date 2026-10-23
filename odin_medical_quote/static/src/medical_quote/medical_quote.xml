@@ -33,7 +33,7 @@
                 <div class="o_mq_footer_text">
                     <t t-if="selectedPlans.length">
                         <b t-esc="customerSummary"/>:
-                        <t t-esc="selectedPlans.length"/> <t t-if="selectedPlans.length === 1">plan</t><t t-else="">plans</t>
+                        <t t-esc="countText(selectedPlans.length)"/>
                         <span t-if="state.totalsLoading" class="text-muted ms-2"><i class="fa fa-circle-o-notch fa-spin"/></span>
                     </t>
                     <t t-else="" t-esc="pickHint"/>
@@ -283,7 +283,7 @@
                 <table class="o_mq_table">
                     <thead>
                         <tr>
-                            <th class="o_mq_col_plan">Plan</th>
+                            <th class="o_mq_col_plan" t-esc="planColumn"/>
                             <th>Cover options and premiums</th>
                         </tr>
                     </thead>
@@ -378,8 +378,8 @@
             <div class="o_mq_card_head">
                 <span class="o_mq_badge">3</span>
                 <div class="flex-grow-1">
-                    <h2>Compare plans</h2>
-                    <p>Adjust each plan: take off options, give a discount, add a policy charge. Totals include taxes and levies.</p>
+                    <h2 t-esc="compareTitle"/>
+                    <p t-esc="compareHelp"/>
                 </div>
             </div>
             <div class="o_mq_plans">
@@ -507,7 +507,7 @@
                         <i class="fa fa-star me-1"/>Open opportunity
                     </button>
                 </div>
-                <h3>When the client chooses a plan</h3>
+                <h3>When the client decides</h3>
                 <table class="o_mq_saved_orders">
                     <tbody>
                         <tr t-foreach="saved.orders" t-as="order" t-key="order.id">
