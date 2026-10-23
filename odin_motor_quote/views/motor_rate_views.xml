@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_motor_rate_list" model="ir.ui.view">
+        <field name="name">odin.motor.rate.list</field>
+        <field name="model">odin.motor.rate</field>
+        <field name="arch" type="xml">
+            <list string="Motor rates">
+                <field name="insurer_id"/>
+                <field name="class_id"/>
+                <field name="cover"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="value_min" optional="show"/>
+                <field name="value_max" optional="show"/>
+                <field name="tonnage_min" optional="hide"/>
+                <field name="tonnage_max" optional="hide"/>
+                <field name="seats_min" optional="hide"/>
+                <field name="seats_max" optional="hide"/>
+                <field name="period_months" optional="hide"/>
+                <field name="rate"/>
+                <field name="min_premium"/>
+                <field name="flat_premium"/>
+                <field name="pvt" optional="show"/>
+                <field name="excess" optional="show"/>
+                <field name="max_age" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_motor_rate_form" model="ir.ui.view">
+        <field name="name">odin.motor.rate.form</field>
+        <field name="model">odin.motor.rate</field>
+        <field name="arch" type="xml">
+            <form string="Motor rate">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <group>
+                        <group string="Applies to">
+                            <field name="insurer_id" context="{'default_is_company': True}"/>
+                            <field name="class_id"/>
+                            <field name="cover" widget="radio" options="{'horizontal': true}"/>
+                            <label for="value_min" string="Value" invisible="cover != 'comprehensive'"/>
+                            <div class="o_row" invisible="cover != 'comprehensive'">
+                                <field name="value_min" nolabel="1"/> <span>to</span>
+                                <field name="value_max" nolabel="1"/>
+                            </div>
+                            <label for="tonnage_min" string="Tonnage"/>
+                            <div class="o_row">
+                                <field name="tonnage_min" nolabel="1"/> <span>to</span>
+                                <field name="tonnage_max" nolabel="1"/>
+                            </div>
+                            <label for="seats_min" string="Passengers"/>
+                            <div class="o_row">
+                                <field name="seats_min" nolabel="1"/> <span>to</span>
+                                <field name="seats_max" nolabel="1"/>
+                            </div>
+                            <field name="max_age"/>
+                            <field name="period_months"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Basic premium">
+                            <field name="rate"/>
+                            <field name="min_premium" invisible="not rate"/>
+                            <field name="flat_premium" invisible="rate"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Extras">
+                            <field name="pvt"/>
+                            <field name="pvt_rate" invisible="pvt != 'optional'"/>
+                            <field name="pvt_min" invisible="pvt != 'optional' or not pvt_rate"/>
+                            <field name="pvt_amount" invisible="pvt != 'optional' or pvt_rate"/>
+                            <field name="excess"/>
+                            <field name="excess_rate" invisible="excess != 'optional'"/>
+                            <field name="excess_min" invisible="excess != 'optional' or not excess_rate"/>
+                            <field name="excess_amount" invisible="excess != 'optional' or excess_rate"/>
+                        </group>
+                        <group string="Passengers and more">
+                            <field name="pll_amount"/>
+                            <field name="pll_required" invisible="not pll_amount"/>
+                            <field name="courtesy_10"/>
+                            <field name="courtesy_20"/>
+                            <field name="extra_label"/>
+                            <field name="extra_amount" invisible="not extra_label"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Conditions printed with the quote: excess, what is included..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_motor_rate_search" model="ir.ui.view">
+        <field name="name">odin.motor.rate.search</field>
+        <field name="model">odin.motor.rate</field>
+        <field name="arch" type="xml">
+            <search string="Motor rates">
+                <field name="insurer_id"/>
+                <field name="class_id"/>
+                <filter name="filter_comprehensive" string="Comprehensive" domain="[('cover', '=', 'comprehensive')]"/>
+                <filter name="filter_tpo" string="Third party only" domain="[('cover', '=', 'tpo')]"/>
+                <separator/>
+                <filter name="filter_archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_insurer" string="Insurer" context="{'group_by': 'insurer_id'}"/>
+                    <filter name="group_class" string="Vehicle type" context="{'group_by': 'class_id'}"/>
+                    <filter name="group_cover" string="Cover" context="{'group_by': 'cover'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_motor_rate" model="ir.actions.act_window">
+        <field name="name">Motor rates</field>
+        <field name="res_model">odin.motor.rate</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_insurer': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add an insurer's motor rates</p>
+            <p>One line per vehicle type, cover and band: a rate on the value with a minimum, or a
+               fixed third-party premium, and the extras the insurer offers.</p>
+        </field>
+    </record>
+
+    <record id="view_motor_class_list" model="ir.ui.view">
+        <field name="name">odin.motor.class.list</field>
+        <field name="model">odin.motor.class</field>
+        <field name="arch" type="xml">
+            <list string="Vehicle types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="ask_seats"/>
+                <field name="ask_tonnage"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_motor_class" model="ir.actions.act_window">
+        <field name="name">Vehicle types</field>
+        <field name="res_model">odin.motor.class</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

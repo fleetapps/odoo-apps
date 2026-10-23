@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Motor premiums carry the same levies as medical ones: training levy
+         0.2% and PHCF 0.25%. Stamp duty does not. A write rather than records:
+         the products are odin_motor_quote's, made noupdate there. -->
+    <function model="product.product" name="write">
+        <value model="product.product" eval="[
+            ref('odin_motor_quote.product_motor_premium'),
+            ref('odin_motor_quote.product_motor_pvt'),
+            ref('odin_motor_quote.product_motor_excess'),
+            ref('odin_motor_quote.product_motor_pll'),
+            ref('odin_motor_quote.product_motor_courtesy'),
+            ref('odin_motor_quote.product_motor_extra'),
+        ]"/>
+        <value eval="{'taxes_id': [(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]}"/>
+    </function>
+</odoo>

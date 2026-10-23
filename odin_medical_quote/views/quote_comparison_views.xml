@@ -28,9 +28,6 @@
             <xpath expr="//header/button[@name='action_build_plans']" position="attributes">
                 <attribute name="invisible">not template_ids or odin_from_builder or state == 'accepted'</attribute>
             </xpath>
-            <xpath expr="//header/button[@name='action_build_from_members']" position="attributes">
-                <attribute name="invisible">not plan_ids or odin_from_builder or state == 'accepted'</attribute>
-            </xpath>
             <xpath expr="//header/button[@name='action_pick_addons']" position="attributes">
                 <attribute name="invisible">not plan_ids or odin_from_builder or state == 'accepted'</attribute>
             </xpath>
@@ -126,20 +123,18 @@
         <field name="model">odin.quote.comparison</field>
         <field name="inherit_id" ref="odin_client_quote.view_quote_comparison_list"/>
         <field name="arch" type="xml">
-            <xpath expr="//list" position="inside">
-                <header>
-                    <button name="%(action_medical_quote)d" type="action"
-                            string="New medical quote" class="btn-primary" display="always"/>
-                </header>
-            </xpath>
             <!-- Select quotes and change who handles them in place: the only
                  column that edits, everything else is changed on the quote. -->
             <xpath expr="//list" position="attributes">
                 <attribute name="string">Quotes</attribute>
                 <attribute name="multi_edit">1</attribute>
+                <attribute name="js_class">odin_quote_list</attribute>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="readonly">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="odin_quote_type" readonly="1" optional="show"/>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="partner_phone" optional="show"/>
@@ -187,6 +182,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='partner_id']" position="before">
                 <field name="odin_customer_search" string="Customer, phone or email"/>
+                <field name="odin_quote_type"/>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="opportunity_id"/>
@@ -229,6 +225,7 @@
             </xpath>
             <xpath expr="//filter[@name='group_partner']" position="before">
                 <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                <filter name="group_type" string="Type" context="{'group_by': 'odin_quote_type'}"/>
             </xpath>
             <xpath expr="//filter[@name='group_user']" position="attributes">
                 <attribute name="string">Salesperson</attribute>

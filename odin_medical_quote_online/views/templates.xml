@@ -94,9 +94,9 @@
                             <span class="o_oq_per">a year</span>
                         </div>
                         <div t-if="plan['monthly']" class="o_oq_monthly">
-                            or <t t-out="plan['monthly']['deposit']" t-options="money"/> now, then
-                            <t t-out="plan['monthly']['months']"/> payments of
-                            <t t-out="plan['monthly']['instalment']" t-options="money"/>
+                            or <t t-out="plan['monthly']['months']"/> monthly payments of
+                            <t t-out="plan['monthly']['instalment']" t-options="money"/>, the first
+                            when cover starts
                         </div>
                         <div class="o_oq_small">
                             Includes <t t-out="plan['levies']" t-options="money"/> government levies and stamp duty.

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_comparison_search_motor" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.search.motor</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_search_medical"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_open']" position="before">
+                <filter name="filter_medical" string="Medical" domain="[('odin_quote_type', '=', 'medical')]"/>
+                <filter name="filter_motor" string="Motor" domain="[('odin_quote_type', '=', 'motor')]"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

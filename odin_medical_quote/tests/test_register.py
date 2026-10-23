@@ -37,7 +37,7 @@ class TestRegister(MedicalQuoteCase):
     def accept(self, order, **values):
         action = self.comparison.action_odin_accept()
         wizard = self.env["odin.medical.quote.accept"].with_user(self.agent).with_context(
-            **action["context"]).create(dict({"order_id": order.id, "invoice_mode": "later"}, **values))
+            **action["context"]).create(dict({"order_id": order.id, "payment": "later"}, **values))
         wizard.action_accept()
         return wizard
 

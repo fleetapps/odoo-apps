@@ -28,4 +28,20 @@
         <field name="purchase_ok" eval="False"/>
         <field name="taxes_id" eval="[(5, 0, 0)]"/>
     </record>
+
+    <!--
+        The cost of paying by instalments, added to the order when the client
+        accepts an instalment plan: interest and fees on the whole premium.
+        No levies: they are charged on premium, not on financing.
+    -->
+    <record id="product_financing" model="product.product">
+        <field name="name">Premium financing</field>
+        <field name="default_code">FEE-FINANCING</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="odin_instalment_interest" eval="True"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
 </odoo>

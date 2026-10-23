@@ -109,22 +109,22 @@
                 <thead>
                     <tr>
                         <th class="oq-first">Instalment option</th>
-                        <th style="width: 22%;">Deposit</th>
                         <th style="width: 22%;">Per month</th>
+                        <th style="width: 22%;">Total paid</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr t-foreach="instalments" t-as="schedule"
                         t-attf-class="oq-instalment #{'oq-alt' if schedule_index % 2 else ''}">
                         <td class="oq-first" t-out="schedule['plan'].display_name">4 monthly instalments</td>
-                        <td t-if="schedule['deposit']" t-out="schedule['deposit']" t-options="money">0.00</td>
-                        <td t-else="" class="oq-muted">None</td>
                         <td t-out="schedule['instalment']" t-options="money">0.00</td>
+                        <td t-out="schedule['payable']" t-options="money">0.00</td>
                     </tr>
                 </tbody>
             </table>
             <div class="oq-muted" style="margin-top: 4pt;">
-                Monthly figures include the cost of paying by instalment. Paying the
+                Equal monthly payments, the first one when cover starts; they include
+                the cost of paying by instalment. Paying the
                 annual premium in full costs
                 <span t-out="amounts['total']" t-options="money">0.00</span>.
             </div>

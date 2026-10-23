@@ -20,7 +20,7 @@
     </record>
 
     <record id="action_report_medical_quotation" model="ir.actions.report">
-        <field name="name">Medical quotation</field>
+        <field name="name">Insurance quotation</field>
         <field name="model">odin.quote.comparison</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">odin_medical_quote.report_medical_quotation</field>
@@ -169,10 +169,11 @@
 
         <t t-set="member_rows" t-value="doc._odin_export_member_rows()"/>
         <t t-if="member_rows">
-            <div class="mq-h">Member details</div>
+            <t t-set="headings" t-value="doc._odin_export_member_headings()"/>
+            <div class="mq-h" t-out="headings[0]">Member details</div>
             <table class="mq-members o_ignore_layout_styling">
                 <thead>
-                    <tr><th colspan="4">People included in this quotation</th></tr>
+                    <tr><th colspan="4" t-out="headings[1]">People included in this quotation</th></tr>
                 </thead>
                 <tbody>
                     <tr t-foreach="member_rows" t-as="member_row">
@@ -206,10 +207,11 @@
                     <t t-foreach="row['cells']" t-as="cell">
                         <td t-att-class="'mq-pick' if columns[cell_index]['highlight'] else None">
                             <t t-if="row['kind'] == 'instalment'">
-                                <div><t t-out="cell['deposit']" t-options="number"/> <span class="mq-muted">deposit</span></div>
                                 <div><t t-out="cell['months']"/> × <t t-out="cell['instalment']" t-options="number"/></div>
+                                <div class="mq-muted">first now · total <t t-out="cell['payable']" t-options="number"/></div>
                             </t>
                             <t t-elif="cell is None">—</t>
+                            <t t-elif="row['kind'] == 'premium' and not cell">Included</t>
                             <t t-elif="row['kind'] == 'limit'" t-out="cell" t-options="whole"/>
                             <t t-else="" t-out="cell" t-options="number"/>
                         </td>

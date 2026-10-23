@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- 1. Client and vehicle ============================================= -->
+    <t t-name="odin_motor_quote.MotorQuote.Details">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">1</span>
+                <div class="flex-grow-1">
+                    <h2>Client and vehicle</h2>
+                    <p t-if="state.coverOpen">Who the quote is for, and the vehicle to cover.</p>
+                    <p t-else="" class="o_mq_summary" role="button" t-on-click="editDetails">
+                        <b t-esc="customerSummary"/> · <t t-esc="coverSummary"/>
+                    </p>
+                </div>
+                <button t-if="!state.coverOpen" class="btn btn-secondary o_mq_edit_details"
+                        t-on-click="editDetails">
+                    <i class="fa fa-pencil me-1"/>Edit details
+                </button>
+            </div>
+
+            <div t-if="state.coverOpen" class="o_mq_card_body">
+                <t t-call="odin_medical_quote.QuoteClient"/>
+
+                <h3>Vehicle</h3>
+                <div class="o_mq_grid" t-on-change="onCoverChange">
+                    <div class="o_mq_field o_mq_wide">
+                        <label for="mq_class">Type of vehicle <span class="o_mq_req">*</span></label>
+                        <select id="mq_class" class="form-select" t-on-change="pickClass">
+                            <option value="">Choose…</option>
+                            <option t-foreach="state.setup.classes" t-as="vehicleType" t-key="vehicleType.id"
+                                    t-att-value="vehicleType.id"
+                                    t-att-selected="vehicleClass and vehicleClass.id === vehicleType.id"
+                                    t-esc="vehicleType.name"/>
+                        </select>
+                    </div>
+                    <div class="o_mq_field">
+                        <label>Cover <span class="o_mq_req">*</span></label>
+                        <div class="btn-group o_mq_cover_choice" role="radiogroup">
+                            <button t-foreach="coverChoices" t-as="choice" t-key="choice.key" type="button"
+                                    class="btn" role="radio"
+                                    t-att-class="state.cover.cover === choice.key ? 'btn-primary' : 'btn-outline-secondary'"
+                                    t-att-aria-checked="state.cover.cover === choice.key ? 'true' : 'false'"
+                                    t-on-click="() => this.setCover(choice.key)" t-esc="choice.label"/>
+                        </div>
+                    </div>
+                    <div class="o_mq_field" t-if="state.cover.cover === 'comprehensive'">
+                        <label for="mq_value">Vehicle value <span class="o_mq_req">*</span></label>
+                        <input id="mq_value" type="number" min="0" step="50000" class="form-control"
+                               placeholder="e.g. 1500000" t-model="state.cover.value"/>
+                    </div>
+                    <div class="o_mq_field" t-if="state.cover.cover === 'tpo' and periodChoices.length > 1">
+                        <label for="mq_period">Period</label>
+                        <select id="mq_period" class="form-select" t-model.number="state.cover.period">
+                            <option t-foreach="periodChoices" t-as="choice" t-key="choice.months"
+                                    t-att-value="choice.months" t-esc="choice.label"/>
+                        </select>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_year">Year of manufacture</label>
+                        <input id="mq_year" type="number" min="1950" class="form-control"
+                               placeholder="e.g. 2018" t-model="state.cover.year"/>
+                    </div>
+                    <div class="o_mq_field" t-if="vehicleClass and vehicleClass.ask_seats">
+                        <label for="mq_seats">Passengers <span class="o_mq_req">*</span></label>
+                        <input id="mq_seats" type="number" min="1" class="form-control"
+                               t-model="state.cover.seats"/>
+                    </div>
+                    <div class="o_mq_field" t-if="vehicleClass and vehicleClass.ask_tonnage and state.cover.cover === 'tpo'">
+                        <label for="mq_tonnage">Tonnage <span class="o_mq_req">*</span></label>
+                        <input id="mq_tonnage" type="number" min="0" step="0.5" class="form-control"
+                               t-model="state.cover.tonnage"/>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_registration">Registration</label>
+                        <input id="mq_registration" class="form-control" placeholder="e.g. KDA 123A"
+                               t-model="state.cover.registration"/>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_make">Make and model</label>
+                        <input id="mq_make" class="form-control" placeholder="e.g. Toyota Fielder"
+                               t-model="state.cover.make_model"/>
+                    </div>
+                </div>
+
+                <div class="o_mq_actions">
+                    <button class="btn btn-primary o_mq_find" t-on-click="search" t-att-disabled="state.searching">
+                        <i t-if="state.searching" class="fa fa-circle-o-notch fa-spin me-1"/>
+                        <i t-else="" class="fa fa-search me-1"/>
+                        <t t-if="state.results">Update prices</t><t t-else="">Find insurers</t>
+                    </button>
+                    <button t-if="state.results and !state.coverDirty" class="btn btn-link"
+                            t-on-click="() => state.coverOpen = false">Done</button>
+                </div>
+            </div>
+            <div t-if="state.coverDirty and !state.coverOpen" class="o_mq_dirty" role="alert">
+                The vehicle details changed.
+                <button class="btn btn-sm btn-primary ms-2" t-on-click="search">Update prices</button>
+            </div>
+        </section>
+    </t>
+</templates>

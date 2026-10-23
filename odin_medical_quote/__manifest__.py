@@ -43,6 +43,7 @@ corrected on the product. See README.md.
         "security/ir.model.access.csv",
         "data/product_data.xml",
         "report/medical_quotation.xml",
+        "report/insurance_invoice.xml",
         "data/mail_template_data.xml",
         "data/mail_activity_data.xml",
         "views/product_template_views.xml",
@@ -56,7 +57,7 @@ corrected on the product. See README.md.
     ],
     "assets": {
         "web.assets_backend": [
-            "odin_medical_quote/static/src/medical_quote/**/*",
+            "odin_medical_quote/static/src/**/*",
         ],
         "web.assets_tests": [
             "odin_medical_quote/static/tests/tours/**/*",

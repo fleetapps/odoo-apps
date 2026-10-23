@@ -53,6 +53,21 @@ class MedicalQuote(models.AbstractModel):
         return age
 
     @api.model
+    def _odin_given_age(self, cover, key, who):
+        """The age typed in for ``key`` (principal, spouse); a quote saved
+        when dates of birth were asked for still has those."""
+        value = cover.get("%s_age" % key)
+        if value in (None, "", False):
+            return self._odin_age(cover.get("%s_dob" % key), who)
+        try:
+            age = int(value)
+        except (TypeError, ValueError):
+            raise UserError(_("The %s's age must be a whole number.", who)) from None
+        if not 0 <= age <= 120:
+            raise UserError(_("Check the %s's age.", who))
+        return age
+
+    @api.model
     def _odin_household(self, cover):
         """Who is being covered, from the cover details step."""
         children = cover.get("children") or 0
@@ -66,15 +81,14 @@ class MedicalQuote(models.AbstractModel):
             if not children:
                 raise UserError(_("Enter how many children to cover."))
             return Household(children=children)
-        principal = self._odin_age(cover.get("principal_dob"), _("principal"))
+        principal = self._odin_given_age(cover, "principal", _("principal"))
         if principal is None:
-            raise UserError(_("Enter the principal's date of birth."))
+            raise UserError(_("Enter the principal's age."))
         spouse = None
         if cover.get("include_spouse"):
-            spouse = self._odin_age(cover.get("spouse_dob"), _("spouse"))
+            spouse = self._odin_given_age(cover, "spouse", _("spouse"))
             if spouse is None:
-                raise UserError(_(
-                    "Enter the spouse's date of birth, or untick Include spouse."))
+                raise UserError(_("Enter the spouse's age, or untick Include spouse."))
         return Household(principal, spouse, children)
 
     @api.model
@@ -653,13 +667,16 @@ class MedicalQuote(models.AbstractModel):
         return lead
 
     @api.model
-    def _odin_opportunity(self, customer, partner, household):
+    def _odin_opportunity(self, customer, partner, context):
         """The CRM opportunity the quotations belong to.
 
         A lead picked from CRM is converted to an opportunity for this
         customer, the way Convert to opportunity would. Otherwise a new
-        opportunity is opened in the agent's pipeline.
+        opportunity is opened in the agent's pipeline. Either way it carries
+        the insurance line's tag (Medical, Motor), as online quotes carry
+        theirs, so the pipeline can be filtered by line.
         """
+        tag = self._odin_line_tag()
         if (customer.get("source") or "new") == "lead":
             lead = self._odin_lead(customer)
             if lead.type == "lead":
@@ -669,17 +686,95 @@ class MedicalQuote(models.AbstractModel):
             if not lead.user_id:
                 # Unassigned until now: it is the quoting agent's to follow up.
                 lead.user_id = self.env.user
+            lead.tag_ids = [Command.link(tag.id)]
             return lead
-        people = household.headcount
         return self.env["crm.lead"].create({
-            "name": _("Medical cover – %(name)s (%(count)s)",
-                      name=partner.name,
-                      count=_("1 person") if people == 1 else _("%s people", people)),
+            "name": self._odin_lead_name(partner, context),
             "type": "opportunity",
             "partner_id": partner.id,
             "user_id": self.env.uid,
-            "source_id": int(customer.get("source_id") or 0) or False,
+            "tag_ids": [Command.link(tag.id)],
         })
+
+    @api.model
+    def _odin_line_tag(self):
+        Tag = self.env["crm.tag"].sudo()
+        name = self._odin_line_name()
+        return Tag.search([("name", "=", name)], limit=1) or Tag.create({"name": name})
+
+    # -- what differs between insurance lines ------------------------------
+    # Medical here; motor overrides these. Everything else -- the contact,
+    # the opportunity, the quotations, the quote, the follow-up -- is shared.
+
+    @api.model
+    def _odin_quote_type(self):
+        return "medical"
+
+    @api.model
+    def _odin_line_name(self):
+        return _("Medical")
+
+    @api.model
+    def _odin_quote_title(self):
+        return _("Medical Insurance")
+
+    @api.model
+    def _odin_people(self, context):
+        people = context["household"].headcount
+        return _("1 person") if people == 1 else _("%s people", people)
+
+    @api.model
+    def _odin_lead_name(self, partner, context):
+        return _("Medical cover – %(name)s (%(count)s)",
+                 name=partner.name, count=self._odin_people(context))
+
+    @api.model
+    def _odin_selection_key(self, selection):
+        return int(selection.get("template_id") or 0)
+
+    @api.model
+    def _odin_order_key(self, order):
+        return order.sale_order_template_id.id
+
+    @api.model
+    def _odin_price(self, params):
+        """Check and price what was picked, before anything is saved.
+        Returns the context the other hooks are given, and one entry per
+        plan: its key, the values its quotation is created with, how long
+        the quote holds, and a function making its lines once the
+        customer's fiscal position is known."""
+        cover = params.get("cover") or {}
+        household = self._odin_household(cover)
+        book = RateBook(self.env, self.env.company)
+        priced = []
+        for selection in params.get("plans") or []:
+            template = self.env["sale.order.template"].browse(
+                int(selection.get("template_id") or 0)).exists()
+            if not template:
+                raise UserError(_("A plan on this quote no longer exists. Search again."))
+            offer = template._odin_offer(household, book)
+            if not offer["available"]:
+                raise UserError(_("%(plan)s cannot be quoted for this family: %(reason)s",
+                                  plan=template.name, reason=offer["reason"]))
+            self._odin_selected(offer, selection)
+            priced.append({
+                "key": template.id,
+                "recommended": bool(selection.get("recommended")),
+                "days": template.number_of_days,
+                "order_values": {"sale_order_template_id": template.id},
+                "lines": lambda fiscal_position, offer=offer, selection=selection:
+                    self._odin_order_lines(offer, selection, fiscal_position),
+            })
+        return {"household": household}, priced
+
+    @api.model
+    def _odin_comparison_values(self, params, context, orders):
+        household = context["household"]
+        return {
+            "member_ids": self._odin_members(household),
+            "detail_ids": self._odin_details(household),
+            "template_ids": [Command.set(orders.sale_order_template_id.ids)],
+        }
 
     # -- saving -----------------------------------------------------------
 
@@ -734,31 +829,16 @@ class MedicalQuote(models.AbstractModel):
                 "%(order)s on this quote is already confirmed, so the quote can no "
                 "longer change. Use Client accepted to finish it, or start a new quote.",
                 order=confirmed[0].name))
-        selections = params.get("plans") or []
-        if not selections:
+        if not params.get("plans"):
             raise UserError(_("Select at least one plan to quote."))
-        cover = params.get("cover") or {}
         customer = params.get("customer") or {}
-        household = self._odin_household(cover)
-        book = RateBook(self.env, self.env.company)
-        priced = []
-        for selection in selections:
-            template = self.env["sale.order.template"].browse(
-                int(selection.get("template_id") or 0)).exists()
-            if not template:
-                raise UserError(_("A plan on this quote no longer exists. Search again."))
-            offer = template._odin_offer(household, book)
-            if not offer["available"]:
-                raise UserError(_("%(plan)s cannot be quoted for this family: %(reason)s",
-                                  plan=template.name, reason=offer["reason"]))
-            self._odin_selected(offer, selection)
-            priced.append((template, offer, selection))
+        context, priced = self._odin_price(params)
 
         if comparison:
             partner, lead = comparison.partner_id, comparison.opportunity_id
         else:
             partner = self._odin_partner(customer)
-            lead = self._odin_opportunity(customer, partner, household)
+            lead = self._odin_opportunity(customer, partner, context)
         fiscal_position = self.env["account.fiscal.position"].with_company(
             self.env.company)._get_fiscal_position(partner)
 
@@ -779,19 +859,18 @@ class MedicalQuote(models.AbstractModel):
         # Only the plans this screen put on the quote are rebuilt or taken
         # off. A quotation someone added to the comparison by hand is not the
         # screen's to cancel, and stays as it is.
-        managed = {int(p.get("template_id") or 0)
+        managed = {self._odin_selection_key(p)
                    for p in (comparison.odin_builder_params or {}).get("plans", [])}
-        existing = {plan.order_id.sale_order_template_id.id: plan
+        existing = {self._odin_order_key(plan.order_id): plan
                     for plan in comparison.plan_ids
-                    if plan.order_id.sale_order_template_id.id in managed}
+                    if self._odin_order_key(plan.order_id) in managed}
         SaleOrder = self.env["sale.order"]
         Plan = self.env["odin.quote.comparison.plan"]
         plans = []
         replaced = Plan
-        for index, (template, offer, selection) in enumerate(priced):
-            lines = [Command.create(values) for values in
-                     self._odin_order_lines(offer, selection, fiscal_position)]
-            plan = existing.pop(template.id, None)
+        for index, item in enumerate(priced):
+            lines = [Command.create(values) for values in item["lines"](fiscal_position)]
+            plan = existing.pop(item["key"], None)
             if plan and plan.order_id.state in EDITABLE_ORDER_STATES:
                 order = plan.order_id
                 order.order_line = [Command.clear()] + lines
@@ -800,10 +879,10 @@ class MedicalQuote(models.AbstractModel):
                 # quotation rather than being brought back.
                 replaced |= plan or Plan
                 order = SaleOrder.create(dict(
-                    header, sale_order_template_id=template.id, order_line=lines,
+                    header, **item["order_values"], order_line=lines,
                     origin=comparison.name if comparison else False))
                 plan = False
-            plans.append((plan, order, index, bool(selection.get("recommended"))))
+            plans.append((plan, order, index, item["recommended"]))
 
         removed = Plan.concat(*existing.values())
         if removed:
@@ -818,13 +897,11 @@ class MedicalQuote(models.AbstractModel):
             else:
                 plan_commands.append(Command.create(dict(values, order_id=order.id)))
         orders = SaleOrder.concat(*[order for _plan, order, _i, _r in plans])
-        values = {
-            "plan_ids": plan_commands,
-            "member_ids": self._odin_members(household),
-            "detail_ids": self._odin_details(household),
-            "odin_builder_params": self._odin_clean_params(params),
-            "template_ids": [Command.set(orders.sale_order_template_id.ids)],
-        }
+        values = dict(
+            self._odin_comparison_values(params, context, orders),
+            plan_ids=plan_commands,
+            odin_builder_params=self._odin_clean_params(params),
+        )
         if comparison:
             if comparison.state == "declined":
                 # Quoting again after a no: the client is back in play.
@@ -833,12 +910,13 @@ class MedicalQuote(models.AbstractModel):
                     lead.action_restore()
             comparison.write(values)
         else:
-            days = [t.number_of_days for t, _o, _s in priced if t.number_of_days]
+            days = [item["days"] for item in priced if item["days"]]
             comparison = Comparison.create(dict(
                 values,
                 partner_id=partner.id,
                 opportunity_id=lead.id if lead else False,
-                title=_("Medical Insurance"),
+                odin_quote_type=self._odin_quote_type(),
+                title=self._odin_quote_title(),
                 note=orders[:1].note,
                 validity_date=fields.Date.context_today(self) + relativedelta(days=min(days))
                 if days else False,
@@ -862,25 +940,30 @@ class MedicalQuote(models.AbstractModel):
                     "mail.mail_activity_data_todo",
                     date_deadline=fields.Date.context_today(self) + relativedelta(
                         days=FOLLOW_UP_DAYS),
-                    summary=_("Follow up on medical quote %s", comparison.name),
+                    summary=_("Follow up on quote %s", comparison.name),
                     user_id=(lead.user_id or self.env.user).id,
                 )
-        self._odin_log(comparison, lead, orders, household, created=created)
+        self._odin_log(comparison, lead, orders, self._odin_people(context), created=created)
         return self.load_quote(comparison.id)
 
     @api.model
-    def _odin_log(self, comparison, lead, orders, household, created):
+    def _odin_order_label(self, order):
+        """How a quotation is named on the screen and in the chatter."""
+        return order._odin_plan_label() or order.name
+
+    @api.model
+    def _odin_log(self, comparison, lead, orders, people, created):
         currency = self.env.company.currency_id
         rows = Markup("").join(
             Markup("<li>%s: %s</li>") % (
-                order.sale_order_template_id.name or order.name,
+                self._odin_order_label(order),
                 currency.format(order.amount_total),
             ) for order in orders)
         body = Markup("<p>%s</p><ul>%s</ul>") % (
-            _("Medical quote %(state)s for %(people)s, %(plans)s:",
+            _("%(line)s quote %(state)s for %(people)s, %(plans)s:",
+              line=self._odin_line_name(),
               state=_("saved") if created else _("updated"),
-              people=_("1 person") if household.headcount == 1
-              else _("%s people", household.headcount),
+              people=people,
               plans=_("1 plan") if len(orders) == 1 else _("%s plans", len(orders))),
             rows)
         comparison.message_post(body=body)
@@ -890,6 +973,20 @@ class MedicalQuote(models.AbstractModel):
             lead.message_post(body=body + Markup("<p>%s %s</p>") % (_("Quote:"), link))
 
     # -- reopening --------------------------------------------------------
+
+    @api.model
+    def _odin_current_params(self, params):
+        """A saved quote as today's screen reopens it: ages rather than the
+        dates of birth asked for before, and no single-plan choice."""
+        if not params:
+            return False
+        params = copy.deepcopy(params)
+        cover = params.get("cover") or {}
+        for key, who in (("principal", _("principal")), ("spouse", _("spouse"))):
+            if not cover.get("%s_age" % key) and cover.get("%s_dob" % key):
+                cover["%s_age" % key] = self._odin_age(cover["%s_dob" % key], who)
+        cover.pop("template_id", None)
+        return params
 
     @api.model
     def load_quote(self, comparison_id):
@@ -911,7 +1008,7 @@ class MedicalQuote(models.AbstractModel):
                 "accepted_order_id": comparison.odin_accepted_order_id.id,
                 "handler": comparison.odin_handler_id.name or "",
             },
-            "params": comparison.odin_builder_params or False,
+            "params": self._odin_current_params(comparison.odin_builder_params),
             "partner": self._odin_partner_json(comparison.partner_id),
             "lead": self._odin_lead_json(comparison.opportunity_id)
             if comparison.opportunity_id else False,
@@ -919,7 +1016,8 @@ class MedicalQuote(models.AbstractModel):
                 "id": plan.order_id.id,
                 "name": plan.order_id.name,
                 "template_id": plan.order_id.sale_order_template_id.id,
-                "plan": plan.order_id.sale_order_template_id.name or plan.name,
+                "key": self._odin_order_key(plan.order_id),
+                "plan": self._odin_order_label(plan.order_id) or plan.name,
                 "state": plan.order_id.state,
                 "total": plan.order_id.amount_total,
                 "recommended": plan.highlight,

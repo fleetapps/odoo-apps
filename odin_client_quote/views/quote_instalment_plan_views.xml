@@ -8,7 +8,6 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="months"/>
-                <field name="deposit_percent"/>
                 <field name="monthly_rate"/>
                 <field name="monthly_fee"/>
                 <field name="currency_id" column_invisible="True"/>
@@ -30,8 +29,7 @@
                     <group>
                         <group string="Schedule">
                             <field name="months"/>
-                            <field name="deposit_percent"/>
-                        </group>
+                                    </group>
                         <group string="Cost of paying monthly">
                             <field name="monthly_rate"/>
                             <field name="monthly_fee"/>

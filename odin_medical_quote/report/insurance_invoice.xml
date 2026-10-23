@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- An invoice in the quotation's look: same letterhead, same navy box,
+         same payment options. is_invoice_report puts it in Send & Print and
+         lets a customer (or the journal) use it by default; Client accepted
+         sets it on the clients it invoices. -->
+    <record id="action_report_insurance_invoice" model="ir.actions.report">
+        <field name="name">Insurance invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_medical_quote.report_insurance_invoice</field>
+        <field name="report_file">odin_medical_quote.report_insurance_invoice</field>
+        <field name="print_report_name">(object._get_report_base_filename())</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_medical_quotation"/>
+        <field name="is_invoice_report" eval="True"/>
+    </record>
+
+<template id="report_insurance_invoice_document">
+    <t t-set="company" t-value="o.company_id"/>
+    <t t-set="quote" t-value="o.odin_quote_comparison_id.sudo()"/>
+    <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+
+    <div class="article mq" t-att-data-oe-model="o._name" t-att-data-oe-id="o.id"
+         t-att-data-oe-lang="o.env.context.get('lang')">
+        <t t-call="odin_medical_quote.medical_quotation_styles"/>
+
+        <table class="mq-letter o_ignore_layout_styling">
+            <tr>
+                <td style="width: 42%;">
+                    <img t-if="company.logo" class="mq-logo"
+                         t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                </td>
+                <td class="mq-company">
+                    <div class="mq-name" t-out="company.name">Company</div>
+                    <div t-if="company.street" t-out="company.street"/>
+                    <div t-if="company.street2" t-out="company.street2"/>
+                    <t t-set="place" t-value="' '.join(p for p in [company.zip, company.city] if p)"/>
+                    <div t-if="place" t-out="place"/>
+                    <div t-if="company.phone"><b>Tel:</b> <span t-out="company.phone"/></div>
+                    <div t-if="company.email"><b>Email:</b> <span t-out="company.email"/></div>
+                    <div t-if="company.vat"><b>PIN:</b> <span t-out="company.vat"/></div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="mq-hero o_ignore_layout_styling">
+            <tr>
+                <td class="mq-for">
+                    <div class="mq-kicker">Billed to</div>
+                    <div class="mq-party" t-out="o.partner_id.name">Client</div>
+                    <div t-if="o.partner_id.phone"><b>Phone:</b> <span t-out="o.partner_id.phone"/></div>
+                    <div t-if="o.partner_id.email"><b>Email:</b> <span t-out="o.partner_id.email"/></div>
+                    <div t-if="o.partner_id.vat"><b>PIN:</b> <span t-out="o.partner_id.vat"/></div>
+                </td>
+                <td class="mq-doc">
+                    <div class="mq-kicker" t-out="o._odin_invoice_kicker()">Invoice</div>
+                    <div class="mq-ref" t-if="o.name and o.name != '/'">#<t t-out="o.name"/></div>
+                    <div t-if="o.invoice_date"><b>Date:</b> <t t-out="o._odin_invoice_date(o.invoice_date)"/></div>
+                    <t t-set="instalments" t-value="o._odin_invoice_instalments()"/>
+                    <div t-if="instalments"><b>Paid in:</b> <t t-out="len(instalments)"/> monthly instalments</div>
+                    <div t-elif="o.invoice_date_due"><b>Due:</b> <t t-out="o._odin_invoice_date(o.invoice_date_due)"/></div>
+                    <div t-if="quote"><b>Quote:</b> <t t-out="quote.name"/></div>
+                    <div t-if="quote and quote.title" t-out="quote.title">Medical Insurance</div>
+                </td>
+            </tr>
+        </table>
+
+        <t t-set="member_rows" t-value="quote._odin_export_member_rows() if quote else []"/>
+        <t t-if="member_rows">
+            <t t-set="headings" t-value="quote._odin_export_member_headings()"/>
+            <div class="mq-h" t-out="headings[0]">Member details</div>
+            <table class="mq-members o_ignore_layout_styling">
+                <thead>
+                    <tr><th colspan="4" t-out="headings[1]">People covered</th></tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="member_rows" t-as="member_row">
+                        <t t-foreach="member_row" t-as="pair">
+                            <td class="mq-k"><t t-if="pair" t-out="pair[0]"/></td>
+                            <td class="mq-v"><t t-if="pair" t-out="pair[1]"/></td>
+                        </t>
+                    </tr>
+                </tbody>
+            </table>
+        </t>
+
+        <div class="mq-h">Details</div>
+        <table class="mq-grid o_ignore_layout_styling">
+            <thead>
+                <tr>
+                    <th class="mq-first">Description</th>
+                    <th style="width: 28%;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="o._odin_invoice_rows()" t-as="row">
+                    <tr t-if="row['kind'] == 'section'" class="mq-limit">
+                        <td class="mq-first" colspan="2" t-out="row['label']"/>
+                    </tr>
+                    <tr t-else="">
+                        <td class="mq-first" style="font-weight: normal;">
+                            <t t-out="row['label']"/>
+                            <div t-if="row['detail']" class="mq-muted" style="font-size: 7.4pt;" t-out="row['detail']"/>
+                        </td>
+                        <td t-out="row['amount']" t-options="money"/>
+                    </tr>
+                </t>
+                <tr class="mq-levies">
+                    <td class="mq-first">Subtotal</td>
+                    <td t-out="o.amount_untaxed" t-options="money"/>
+                </tr>
+                <tr class="mq-levies">
+                    <td class="mq-first">Taxes and levies</td>
+                    <td t-out="o.amount_tax" t-options="money"/>
+                </tr>
+                <tr class="mq-total">
+                    <td class="mq-first">Total</td>
+                    <td t-out="o.amount_total" t-options="money"/>
+                </tr>
+                <tr t-if="o.state == 'posted' and o.amount_residual != o.amount_total" class="mq-instalment">
+                    <td class="mq-first">Paid</td>
+                    <td t-out="o.amount_total - o.amount_residual" t-options="money"/>
+                </tr>
+                <tr t-if="o.state == 'posted' and o.amount_residual != o.amount_total" class="mq-total">
+                    <td class="mq-first">Amount due</td>
+                    <td t-out="o.amount_residual" t-options="money"/>
+                </tr>
+            </tbody>
+        </table>
+
+        <div t-if="instalments" class="mq-keep">
+            <div class="mq-h">Instalments</div>
+            <table class="mq-grid o_ignore_layout_styling">
+                <thead>
+                    <tr>
+                        <th class="mq-first">Instalment</th>
+                        <th>Due</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="instalments" t-as="instalment" class="mq-instalment">
+                        <td class="mq-first">
+                            <t t-out="instalment['number']"/> of <t t-out="len(instalments)"/>
+                            <t t-if="instalment_first"> (paid now)</t>
+                        </td>
+                        <td t-out="instalment['date']"/>
+                        <td t-out="instalment['amount']" t-options="money"/>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div t-if="not is_html_empty(o.narration)" class="mq-keep">
+            <div class="mq-h">Terms</div>
+            <div class="mq-terms" t-out="o.narration"/>
+        </div>
+
+        <div class="mq-closing">
+            <div t-if="o.payment_reference" class="mq-by">
+                Please quote <t t-out="o.payment_reference"/> when you pay.
+            </div>
+            <t t-set="payment" t-value="company._odin_payment_html()"/>
+            <div t-if="payment" class="mq-callout">
+                <div class="mq-callout-h">Payment options</div>
+                <div t-out="payment"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer mq">
+        <t t-call="odin_medical_quote.medical_quotation_styles"/>
+        <table class="mq-foot">
+            <tr>
+                <td t-if="o.invoice_user_id"><b>By:</b> <t t-out="o.invoice_user_id.name"/></td>
+                <td class="mq-num">For and on behalf of <b t-out="company.name"/></td>
+            </tr>
+        </table>
+        <div class="mq-pages" t-if="report_type == 'pdf'">
+            Page <span class="page"/> of <span class="topage"/>
+        </div>
+    </div>
+</template>
+
+<template id="report_insurance_invoice">
+    <t t-call="web.html_container">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="odin_medical_quote.report_insurance_invoice_document"
+               t-lang="o.partner_id.lang"/>
+        </t>
+    </t>
+</template>
+</odoo>

@@ -617,3 +617,21 @@
         }
     }
 }
+
+// Back to step 1 from below: the summary, the step and the button all do it.
+.o_mq_step_link {
+    cursor: pointer;
+
+    &:hover .o_mq_step_label {
+        text-decoration: underline;
+    }
+}
+
+.o_mq_summary[role="button"] {
+    cursor: pointer;
+}
+
+.o_mq_edit_details {
+    flex: none;
+    align-self: center;
+}

@@ -10,38 +10,49 @@
                 <field name="other_order_ids" invisible="1"/>
                 <field name="can_post" invisible="1"/>
                 <field name="currency_id" invisible="1"/>
+                <field name="available_instalment_plan_ids" invisible="1"/>
                 <group>
                     <field name="order_id"
                            context="{'odin_plan_label': True}"
                            options="{'no_create': True, 'no_open': True}"/>
-                    <field name="invoice_mode" widget="radio"/>
-                    <label for="deposit_percent" invisible="invoice_mode != 'deposit'"/>
-                    <div class="o_row" invisible="invoice_mode != 'deposit'">
-                        <field name="deposit_percent" class="oe_inline"/>
-                        <span>% of the premium:</span>
-                        <field name="deposit_amount" class="oe_inline fw-bold"/>
-                    </div>
+                    <field name="amount_total"/>
+                    <field name="payment" widget="radio"/>
+                    <field name="instalment_plan_id" invisible="payment != 'instalments'"
+                           required="payment == 'instalments'"
+                           options="{'no_create': True, 'no_open': True}"/>
                     <field name="post_invoice"
-                           invisible="not can_post or invoice_mode == 'later'"/>
+                           invisible="not can_post or payment == 'later'"/>
                     <field name="handler_id" widget="many2one_avatar_user"
                            options="{'no_create': True}"/>
                 </group>
+                <div class="alert alert-light border mb-3" role="status"
+                     invisible="payment != 'instalments' or not instalment_plan_id">
+                    <div>
+                        <field name="instalment_months" class="d-inline fw-bold"/> equal monthly payments of
+                        <field name="instalment_amount" class="d-inline fw-bold"/>, the first one now.
+                    </div>
+                    <div class="text-muted">
+                        Total payable <field name="instalment_payable" class="d-inline"/>, of which
+                        <field name="instalment_financing" class="d-inline"/> is financing. The invoice
+                        falls due in the same monthly parts.
+                    </div>
+                </div>
                 <div class="alert alert-info mb-0" role="status">
                     The quotation is confirmed and the opportunity marked won.
                     <span invisible="not other_order_ids">&#160;The other plans on this quote are
                     cancelled.</span>
                     <span invisible="not handler_id">&#160;The person it is handed over to gets
                     a to-do to place the cover with the insurer.</span>
-                    <span invisible="invoice_mode == 'later'">&#160;The invoice opens next, in draft
+                    <span invisible="payment == 'later'">&#160;The invoice opens next, in draft
                     unless you post it here.</span>
                 </div>
                 <footer>
                     <button name="action_accept" type="object" class="btn-primary"
                             string="Confirm and invoice" data-hotkey="q"
-                            invisible="invoice_mode == 'later'"/>
+                            invisible="payment == 'later'"/>
                     <button name="action_accept" type="object" class="btn-primary"
                             string="Confirm" data-hotkey="q"
-                            invisible="invoice_mode != 'later'"/>
+                            invisible="payment != 'later'"/>
                     <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
                 </footer>
             </form>

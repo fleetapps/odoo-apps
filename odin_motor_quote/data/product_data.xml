@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- What a motor quotation is made of. No taxes here: set the
+         insurance levies on them (training levy, PHCF) for your company;
+         odin_bizsure_quotes does for Bizsure. Stamp duty is FEE- so the
+         quotation files it with the statutory charges. -->
+    <record id="product_motor_premium" model="product.product">
+        <field name="name">Motor premium</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_pvt" model="product.product">
+        <field name="name">Political violence &amp; terrorism (PVT)</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_excess" model="product.product">
+        <field name="name">Excess protector</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_pll" model="product.product">
+        <field name="name">Passenger legal liability (PLL)</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_courtesy" model="product.product">
+        <field name="name">Courtesy car</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_extra" model="product.product">
+        <field name="name">Motor cover charge</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="product_motor_stamp_duty" model="product.product">
+        <field name="name">Stamp duty</field>
+        <field name="default_code">FEE-STAMP-MOTOR</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">40</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+</odoo>

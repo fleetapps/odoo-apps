@@ -20,19 +20,25 @@ on the rate cards already in Odoo.
 
 ## The screen
 
-**Cover Quotes ▸ New medical quote** (the app opens on it), **Medical Quote**
-on any CRM lead or opportunity, or **New medical quote** above the list of
-quotes. Four steps on one page:
+Cover Quotes opens on **Quotes**. To start a quote:
+* **New quote** asks what is being quoted (Medical, Motor...) and opens its
+  form;
+* the Quotes list's **New ▾** has one entry per type;
+* **Medical Quote** on any CRM lead or opportunity opens the medical form.
+
+Each insurance line adds itself to both choices; `odin_motor_quote` adds
+Motor. Four steps on one page:
 
 1. **Client and cover details.** *Customer source*: a new prospect (name,
-   phone, email, lead source), an existing customer, or a lead or
+   phone, email), an existing customer, or a lead or
    opportunity in CRM, each found by name, phone or email. A new prospect
    whose number or email is already in Contacts is pointed out, so the agent
    uses the contact instead of making a second one; an existing customer who
    already has an open opportunity is pointed to it, so the quote joins that
-   opportunity rather than opening a second one. Then the principal's date
-   of birth, spouse, number of children (or children only), the inpatient
-   limit range, an insurer and a plan.
+   opportunity rather than opening a second one. Then the **ages** of the
+   principal and spouse, the number of children (or children only), the
+   inpatient limit range and an insurer. Once the plans are showing, **Edit
+   details** (or a click on the summary or on step 1) opens this again.
 2. **Cover options and premiums.** Every plan in range that covers this
    family, one row each: inpatient, then each optional benefit -- outpatient,
    maternity, dental, optical, riders -- with every tier priced for these
@@ -63,7 +69,8 @@ it.
 * **Contacts.** A new prospect becomes a contact, the phone number stored in
   international form (`0798 726 720` → `+254798726720`) like the rest.
 * **CRM.** A new opportunity, *Medical cover – Henry (5 people)*, in the
-  agent's pipeline with the lead source. A lead picked from CRM is converted
+  agent's pipeline, tagged **Medical** (motor quotes: **Motor**; online
+  quotes also *Online quote*). A lead picked from CRM is converted
   to an opportunity for its contact, the way *Convert to opportunity* would.
   Expected revenue is the recommended plan's premium, or the cheapest. A new
   quote sets the opportunity's expected closing to the day the quote lapses
@@ -102,7 +109,7 @@ out like the broker's own quotations:
   plan marked; the limit of each benefit, then each premium, the discount,
   *Taxes and levies* (levies and stamp duty together, as the client pays
   them), the policy charge, the **total premium** and each instalment plan's
-  deposit and monthly amount;
+  equal monthly payment (the first one now) and total;
 * the plans' **terms**, once each even when several plans share them;
 * the validity, *Quotation by* the salesperson and their phone, and the
   **payment options** box;
@@ -121,10 +128,45 @@ prints the old comparison.
 
 ## Client accepted
 
-On the saved screen or on the quote: pick the plan, then *invoice the full
-premium*, *invoice a deposit* (the instalment plans' deposit %, 25% on
-Bizsure) or *confirm only*. It confirms that quotation, cancels the others,
+On the saved screen or on the quote: pick the plan, then how the client pays.
+
+* **Pays in full**: the quotation is invoiced.
+* **Pays in instalments**: pick the instalment plan.
+  * The dialog shows the schedule, e.g. "10 equal monthly payments of
+    10,106.18, the first one now", with the total payable and the
+    financing in it.
+  * The financing goes on the order under *Paying by instalments*, with
+    no levies.
+  * The invoice falls due in the same equal monthly parts, through
+    payment terms of N instalments a month apart.
+* **Confirm only, invoice later**.
+
+Then **Hand over to**. It confirms that quotation, cancels the others,
 marks the opportunity won and opens the draft invoice.
+
+**Instalment plans work like a loan** (Cover Quotes ▸ Configuration ▸
+Instalment plans):
+* N equal monthly payments, the first paid when cover starts; it is the
+  deposit;
+* *Interest (% per month)* is charged on the whole premium for every month
+  of the plan, from the first instalment;
+* a *Fee per month* is added for every month.
+
+A premium of 91,061.76 over 10 months with a fee of 1,000 a month is
+10 × 10,106.18.
+
+**The invoice looks like the quote**, the *Insurance invoice* report:
+* the letterhead, *Billed to* and the navy box (invoice number, date, quote
+  and type);
+* the member or vehicle details;
+* the lines under their headings, subtotal, taxes and levies and total;
+* the instalment schedule with due dates;
+* the payment options and the signed-for footer.
+
+Client accepted makes it the client's default invoice PDF, so Send & Print
+uses it from then on. Any invoice can be printed with it from Print ▸
+Insurance invoice. To make it the default for all invoices, set it on the
+sales journal: Accounting ▸ Configuration ▸ Journals ▸ Invoice report.
 
 A salesperson needs no accounting rights for this: Odoo creates an invoice
 from a sales order on their behalf, as Create Invoice on the order does, and
@@ -151,6 +193,10 @@ and save: the quote is a draft again, the opportunity is restored and the
 plans get fresh quotations.
 
 ## Quotes register
+
+Managers reviewing their agents' work also get a **Salesperson** panel, with
+counts, beside the CRM pipeline and the lead lists. Search by Salesperson and
+group by Salesperson are there for everyone.
 
 **Cover Quotes ▸ Quotes** lists every quote:
 * the phone, who's covered, the plans, the premium, valid until (red once
@@ -248,7 +294,8 @@ the name parser, pricing by family size, role and band, refusals, the limit
 range and insurer filter, totals with discounts, saving to Contacts and CRM,
 reopening and saving again (hand-added quotations, edited templates),
 the follow-up activity, Client accepted as a salesperson without accounting
-rights (full, deposit, confirm only, a blocked confirmation, a quotation
+rights (full, instalments with financing and payment terms, the insurance
+invoice, confirm only, a blocked confirmation, a quotation
 confirmed directly), Client declined and quoting again, the quotation PDF,
 email and WhatsApp attachment, and a browser tour of the screen.
 `odin_bizsure_quotes/tests` checks the brief's example and quotation #1323

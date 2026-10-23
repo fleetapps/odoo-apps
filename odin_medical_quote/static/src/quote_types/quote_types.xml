@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_medical_quote.QuoteNew">
+        <div class="o_action o_quote_new">
+            <div class="o_quote_new_inner">
+                <h1>New quote</h1>
+                <p class="text-muted">What are you quoting?</p>
+                <div class="o_quote_new_types">
+                    <button t-foreach="types" t-as="type" t-key="type.key" type="button"
+                            class="o_quote_new_type" t-on-click="() => this.open(type)">
+                        <i class="fa" t-att-class="type.icon"/>
+                        <span>
+                            <b t-esc="type.name"/>
+                            <small t-esc="type.description"/>
+                        </span>
+                        <i class="fa fa-angle-right ms-auto"/>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <t t-name="odin_medical_quote.QuoteListView" t-inherit="web.ListView" t-inherit-mode="primary">
+        <xpath expr="//t[@t-set-slot='control-panel-create-button']/button" position="replace">
+            <Dropdown t-if="!editedRecord and props.showButtons">
+                <button type="button" class="btn btn-primary o_quote_new_button" data-hotkey="c">
+                    New <i class="fa fa-caret-down ms-1"/>
+                </button>
+                <t t-set-slot="content">
+                    <DropdownItem t-foreach="quoteTypes" t-as="type" t-key="type.key"
+                                  onSelected="() => this.newQuote(type)">
+                        <i class="fa fa-fw me-2" t-att-class="type.icon"/><t t-esc="type.name"/> quote
+                    </DropdownItem>
+                </t>
+            </Dropdown>
+        </xpath>
+    </t>
+</templates>
