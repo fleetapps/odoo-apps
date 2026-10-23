@@ -7,7 +7,6 @@ import { useDebounced } from "@web/core/utils/timing";
 import { useSetupAction } from "@web/search/action_hook";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
-const MODEL = "odin.medical.quote";
 
 /** 15822 → "15,822", 265.23 → "265.23": whole shillings without ".00". */
 export function amount(value) {
@@ -18,6 +17,9 @@ export function amount(value) {
 
 /** "Children: 3 × 9,033", "Family of 5: 15,822", "5 × 1,210". */
 export function partText(part) {
+    if (part.included) {
+        return part.who; // "PVT included": nothing to price
+    }
     const price = part.qty === 1 ? amount(part.price) : `${part.qty} × ${amount(part.price)}`;
     return part.who ? `${part.who}: ${price}` : price;
 }
@@ -34,7 +36,6 @@ function emptyCustomer() {
         name: "",
         phone: "",
         email: "",
-        source_id: false,
         partner_id: false,
         partner: null,
         lead_id: false,
@@ -44,15 +45,14 @@ function emptyCustomer() {
 
 function emptyCover() {
     return {
-        principal_dob: "",
+        principal_age: "",
         include_spouse: false,
-        spouse_dob: "",
+        spouse_age: "",
         children: 0,
         children_only: false,
         limit_min: "",
         limit_max: "",
         insurer: "",
-        template_id: "",
     };
 }
 
@@ -107,6 +107,67 @@ function emptyQuote() {
 export class MedicalQuote extends Component {
     static template = "odin_medical_quote.MedicalQuote";
     static props = { ...standardActionServiceProps };
+    /** The server model the screen works with, and the key a plan goes by:
+     * motor quotes reuse this screen with their own. */
+    static model = "odin.medical.quote";
+    static planKey = "template_id";
+
+    get model() {
+        return this.constructor.model;
+    }
+
+    // -- what another insurance line changes ------------------------------
+
+    get title() {
+        return _t("Add Medical Quote");
+    }
+
+    get detailsTemplate() {
+        return "odin_medical_quote.MedicalQuote.Details";
+    }
+
+    get optionsTitle() {
+        return _t("Cover options and premiums");
+    }
+
+    get optionsHelp() {
+        return _t("Every premium is for this family. Select the inpatient cover of each plan to compare, and the options to add.");
+    }
+
+    get nothingFound() {
+        return _t("No plan in this range covers this family. Widen the limit range, or choose another insurer.");
+    }
+
+    get unavailableText() {
+        const n = this.unavailablePlans.length;
+        return n === 1
+            ? _t("1 plan in range is not available for this family")
+            : _t("%s plans in range are not available for this family", n);
+    }
+
+    get pickHint() {
+        return _t("Select a plan's inpatient cover, or any of its options.");
+    }
+
+    emptyCover() {
+        return emptyCover();
+    }
+
+    blankQuote() {
+        return { ...emptyQuote(), cover: this.emptyCover() };
+    }
+
+    coverProblem() {
+        const cover = this.state.cover;
+        const adult = (age) => Number(age) >= 18 && Number(age) <= 99;
+        if (!cover.children_only && !adult(cover.principal_age)) {
+            return _t("Enter the principal's age (18 to 99).");
+        }
+        if (cover.include_spouse && !cover.children_only && !adult(cover.spouse_age)) {
+            return _t("Enter the spouse's age (18 to 99), or untick Include spouse.");
+        }
+        return "";
+    }
 
     setup() {
         this.orm = useService("orm");
@@ -115,7 +176,7 @@ export class MedicalQuote extends Component {
         this.amount = amount;
         this.partText = partText;
         this.basisLabel = (basis) => BASIS[basis] || "";
-        this.state = useState({ setup: null, ...emptyQuote() });
+        this.state = useState({ setup: null, ...this.blankQuote() });
         // Each answer is applied only if no newer question has been asked
         // since: typing "10" then "10%" must not let the slower "10" land last.
         this.calls = { totals: 0, contacts: 0, leads: 0 };
@@ -144,7 +205,7 @@ export class MedicalQuote extends Component {
 
     async start() {
         const params = this.params;
-        this.state.setup = await this.orm.call(MODEL, "get_setup", [], {
+        this.state.setup = await this.orm.call(this.model, "get_setup", [], {
             lead_id: params.lead_id || false,
         });
         const restored = this.props.state?.quote;
@@ -152,7 +213,7 @@ export class MedicalQuote extends Component {
             Object.assign(this.state, restored);
             if (this.state.saved && this.state.comparisonId) {
                 // It may have been accepted in the meantime.
-                this.state.saved = await this.orm.call(MODEL, "load_quote", [this.state.comparisonId]);
+                this.state.saved = await this.orm.call(this.model, "load_quote", [this.state.comparisonId]);
             }
             return;
         }
@@ -205,7 +266,7 @@ export class MedicalQuote extends Component {
         const call = ++this.calls.contacts;
         const query = this.state.contactQuery;
         const found =
-            query.trim().length < 2 ? [] : await this.orm.call(MODEL, "find_contacts", [query]);
+            query.trim().length < 2 ? [] : await this.orm.call(this.model, "find_contacts", [query]);
         if (call === this.calls.contacts) {
             this.state.contactResults = found;
         }
@@ -222,7 +283,7 @@ export class MedicalQuote extends Component {
         this.state.matches = [];
         // Quoting a customer who already has a sale in progress belongs on that
         // opportunity, not on a second one beside it.
-        this.state.partnerLeads = await this.orm.call(MODEL, "partner_leads", [partner.id]);
+        this.state.partnerLeads = await this.orm.call(this.model, "partner_leads", [partner.id]);
     }
 
     clearContact() {
@@ -237,7 +298,7 @@ export class MedicalQuote extends Component {
 
     async loadLeads() {
         const call = ++this.calls.leads;
-        const found = await this.orm.call(MODEL, "find_leads", [this.state.leadQuery]);
+        const found = await this.orm.call(this.model, "find_leads", [this.state.leadQuery]);
         if (call === this.calls.leads) {
             this.state.leadResults = found;
         }
@@ -248,7 +309,6 @@ export class MedicalQuote extends Component {
             source: "lead",
             lead_id: lead.id,
             lead,
-            source_id: lead.source_id || false,
         });
         this.state.leadQuery = "";
         this.state.leadResults = [];
@@ -265,7 +325,7 @@ export class MedicalQuote extends Component {
             this.state.matches = [];
             return;
         }
-        this.state.matches = await this.orm.call(MODEL, "match_prospect", [name, phone, email]);
+        this.state.matches = await this.orm.call(this.model, "match_prospect", [name, phone, email]);
     }
 
     get customerSummary() {
@@ -309,15 +369,6 @@ export class MedicalQuote extends Component {
         }
     }
 
-    get planChoices() {
-        const { insurer, children_only } = this.state.cover;
-        return (this.state.setup?.plans || []).filter(
-            (plan) =>
-                (!insurer || plan.insurer === insurer) &&
-                plan.type === (children_only ? "child_only" : "family")
-        );
-    }
-
     get coverSummary() {
         const cover = this.state.searchedCover || this.state.cover;
         const household = this.state.results?.household;
@@ -336,9 +387,7 @@ export class MedicalQuote extends Component {
             }
         }
         let range;
-        if (cover.template_id) {
-            range = this.state.setup.plans.find((p) => p.id === Number(cover.template_id))?.name;
-        } else if (cover.limit_min || cover.limit_max) {
+        if (cover.limit_min || cover.limit_max) {
             range = _t("limit %(min)s to %(max)s", {
                 min: cover.limit_min ? amount(cover.limit_min) : "0",
                 max: cover.limit_max ? amount(cover.limit_max) : _t("any"),
@@ -353,20 +402,15 @@ export class MedicalQuote extends Component {
 
     async search() {
         const cover = this.state.cover;
-        if (!cover.children_only && !cover.principal_dob) {
-            this.notification.add(_t("Enter the principal's date of birth."), { type: "warning" });
-            return;
-        }
-        if (cover.include_spouse && !cover.spouse_dob) {
-            this.notification.add(_t("Enter the spouse's date of birth, or untick Include spouse."), {
-                type: "warning",
-            });
+        const problem = this.coverProblem();
+        if (problem) {
+            this.notification.add(problem, { type: "warning" });
             return;
         }
         this.state.searching = true;
         try {
             const snapshot = JSON.parse(JSON.stringify(cover));
-            const results = await this.orm.call(MODEL, "search_plans", [{ cover: snapshot }]);
+            const results = await this.orm.call(this.model, "search_plans", [{ cover: snapshot }]);
             this.state.results = results;
             this.state.searchedCover = snapshot;
             this.state.coverDirty = false;
@@ -457,8 +501,16 @@ export class MedicalQuote extends Component {
             : _t("%(label)s %(amount)s", { label: group.label, amount: this.amount(least) });
     }
 
-    confirmDates() {
-        this.state.cover.ages_only = false;
+    /** Back to step 1 from anywhere below it: the details open at the top. */
+    editDetails() {
+        this.state.coverOpen = true;
+        document.querySelector(".o_mq_page")?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    goToStep(step) {
+        if (step === 1 && !this.state.saved && this.step > 1) {
+            this.editDetails();
+        }
     }
 
     isOptionSelected(plan, option) {
@@ -605,7 +657,8 @@ export class MedicalQuote extends Component {
             cover: this.state.searchedCover || this.state.cover,
             plans: this.state.order.map((id) => {
                 const { options, discount, policy_charge, recommended } = this.state.selection[id];
-                return { template_id: id, options: [...options], discount, policy_charge, recommended };
+                const key = this.constructor.planKey;
+                return { [key]: id, options: [...options], discount, policy_charge, recommended };
             }),
             comparison_id: this.state.comparisonId || false,
         };
@@ -618,7 +671,7 @@ export class MedicalQuote extends Component {
         const call = ++this.calls.totals;
         this.state.totalsLoading = true;
         try {
-            const totals = await this.orm.call(MODEL, "compute_totals", [this.payload()]);
+            const totals = await this.orm.call(this.model, "compute_totals", [this.payload()]);
             if (call !== this.calls.totals) {
                 return; // a newer change is being priced; its answer wins
             }
@@ -660,7 +713,7 @@ export class MedicalQuote extends Component {
         }
         this.state.saving = true;
         try {
-            const saved = await this.orm.call(MODEL, "save_quote", [this.payload()]);
+            const saved = await this.orm.call(this.model, "save_quote", [this.payload()]);
             this.state.saved = saved;
             this.state.comparisonId = saved.comparison.id;
             this.state.customerLocked = true;
@@ -670,7 +723,7 @@ export class MedicalQuote extends Component {
     }
 
     async reopen(comparisonId) {
-        const data = await this.orm.call(MODEL, "load_quote", [comparisonId]);
+        const data = await this.orm.call(this.model, "load_quote", [comparisonId]);
         this.state.comparisonId = data.comparison.id;
         this.state.customerLocked = true;
         if (data.comparison.state === "accepted" || !data.params) {
@@ -685,7 +738,7 @@ export class MedicalQuote extends Component {
         Object.assign(this.state.cover, params.cover || {});
         await this.search();
         for (const plan of params.plans || []) {
-            const offered = this.plan(plan.template_id);
+            const offered = this.plan(plan[this.constructor.planKey]);
             if (!offered) {
                 continue;
             }
@@ -708,7 +761,7 @@ export class MedicalQuote extends Component {
     /** Start the next quote on the same screen, not on a new one stacked
      * behind the breadcrumb. */
     newQuote() {
-        Object.assign(this.state, emptyQuote());
+        Object.assign(this.state, this.blankQuote());
         this.calls.totals++;
     }
 
@@ -727,7 +780,7 @@ export class MedicalQuote extends Component {
 
     async refreshSaved() {
         if (this.state.saved && this.state.comparisonId) {
-            this.state.saved = await this.orm.call(MODEL, "load_quote", [this.state.comparisonId]);
+            this.state.saved = await this.orm.call(this.model, "load_quote", [this.state.comparisonId]);
         }
     }
 

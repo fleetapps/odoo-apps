@@ -33,19 +33,24 @@ class MedicalQuoteAccept(models.TransientModel):
     )
     currency_id = fields.Many2one(related="order_id.currency_id")
     amount_total = fields.Monetary(related="order_id.amount_total", string="Total premium")
-    invoice_mode = fields.Selection(
+    payment = fields.Selection(
         [
-            ("full", "Invoice the full premium"),
-            ("deposit", "Invoice a deposit"),
+            ("full", "Pays in full"),
+            ("instalments", "Pays in instalments"),
             ("later", "Confirm only, invoice later"),
         ],
-        string="Invoice", required=True, default="full",
+        string="Payment", required=True, default="full",
     )
-    deposit_percent = fields.Float(
-        string="Deposit (%)",
-        default=lambda self: self._default_deposit_percent(),
+    available_instalment_plan_ids = fields.Many2many(
+        "odin.quote.instalment.plan", compute="_compute_available_order_ids")
+    instalment_plan_id = fields.Many2one(
+        "odin.quote.instalment.plan", string="Instalment plan",
+        domain="[('id', 'in', available_instalment_plan_ids)]",
     )
-    deposit_amount = fields.Monetary(compute="_compute_deposit_amount")
+    instalment_amount = fields.Monetary(compute="_compute_schedule", string="Each instalment")
+    instalment_payable = fields.Monetary(compute="_compute_schedule", string="Total payable")
+    instalment_financing = fields.Monetary(compute="_compute_schedule", string="Financing")
+    instalment_months = fields.Integer(compute="_compute_schedule")
     post_invoice = fields.Boolean(
         string="Post the invoice now",
         help="Leave it unticked to have accounts check and post the draft.",
@@ -67,17 +72,14 @@ class MedicalQuoteAccept(models.TransientModel):
             return False
         return comparison.odin_handler_id or comparison._odin_default_handler()
 
-    @api.model
-    def _default_deposit_percent(self):
-        plan = self.env["odin.quote.instalment.plan"].search(
-            [("company_id", "=", self.env.company.id), ("deposit_percent", ">", 0)], limit=1)
-        return plan.deposit_percent or 25.0
-
     @api.depends("comparison_id")
     def _compute_available_order_ids(self):
         for wizard in self:
             wizard.available_order_ids = wizard.comparison_id.plan_ids.order_id.filtered(
                 lambda o: o.state in ("draft", "sent", "sale"))
+            wizard.available_instalment_plan_ids = wizard.comparison_id.instalment_plan_ids or \
+                wizard.env["odin.quote.instalment.plan"].search(
+                    [("company_id", "=", wizard.env.company.id)])
 
     @api.depends("comparison_id", "order_id")
     def _compute_other_order_ids(self):
@@ -86,11 +88,64 @@ class MedicalQuoteAccept(models.TransientModel):
                 wizard.comparison_id.plan_ids.order_id - wizard.order_id
             ).filtered(lambda o: o.state in ("draft", "sent"))
 
-    @api.depends("deposit_percent", "order_id.amount_total")
-    def _compute_deposit_amount(self):
+    @api.depends("instalment_plan_id", "order_id.amount_total")
+    def _compute_schedule(self):
         for wizard in self:
-            wizard.deposit_amount = wizard.currency_id.round(
-                wizard.order_id.amount_total * wizard.deposit_percent / 100.0)
+            schedule = wizard.instalment_plan_id.schedule(
+                wizard._odin_premium()) if wizard.instalment_plan_id else {}
+            wizard.instalment_amount = schedule.get("instalment", 0.0)
+            wizard.instalment_payable = schedule.get("payable", 0.0)
+            wizard.instalment_financing = schedule.get("financing", 0.0)
+            wizard.instalment_months = schedule.get("months", 0)
+
+    @api.onchange("payment")
+    def _onchange_payment(self):
+        if self.payment == "instalments" and not self.instalment_plan_id:
+            self.instalment_plan_id = self.available_instalment_plan_ids[-1:]
+
+    def _odin_premium(self):
+        """What the instalments are worked out on: the order without any
+        financing already on it."""
+        order = self.order_id
+        financing = order.order_line.filtered(lambda l: l.product_id.odin_instalment_interest)
+        return order.amount_total - sum(financing.mapped("price_total"))
+
+    def _odin_finance(self, order):
+        """Paying by instalments, like a loan: the financing goes on the
+        order and its invoice falls due in equal monthly parts, the first
+        on the day it is issued."""
+        plan = self.instalment_plan_id
+        schedule = plan.schedule(self._odin_premium())
+        product = self.env.ref("odin_medical_quote.product_financing")
+        locked = order.locked
+        if locked:
+            order.action_unlock()
+        old = order.order_line.filtered(
+            lambda l: l.product_id == product
+            or (l.display_type == "line_section" and l.benefit_key == "financing"))
+        old.unlink()
+        if order.currency_id.compare_amounts(schedule["financing"], 0) > 0:
+            sequence = max(order.order_line.mapped("sequence") or [0])
+            order.order_line = [
+                fields.Command.create({
+                    "display_type": "line_section",
+                    "name": _("Paying by instalments"),
+                    "benefit_label": _("Paying by instalments"),
+                    "benefit_key": "financing",
+                    "sequence": sequence + 1,
+                }),
+                fields.Command.create({
+                    "product_id": product.id,
+                    "name": plan.display_name,
+                    "product_uom_qty": 1,
+                    "price_unit": schedule["financing"],
+                    "tax_ids": [fields.Command.clear()],
+                    "sequence": sequence + 2,
+                }),
+            ]
+        order.payment_term_id = plan._odin_payment_term()
+        if locked:
+            order.action_lock()
 
     def _compute_can_post(self):
         can_post = self.env.user.has_group("account.group_account_invoice")
@@ -103,9 +158,11 @@ class MedicalQuoteAccept(models.TransientModel):
         comparison = self.comparison_id
         if order not in self.available_order_ids:
             raise UserError(_("Pick one of the plans on this quote."))
-        if self.invoice_mode == "deposit" and not 0 < self.deposit_percent < 100:
-            raise UserError(_("The deposit must be between 0% and 100% of the premium."))
+        if self.payment == "instalments" and not self.instalment_plan_id:
+            raise UserError(_("Choose the instalment plan the client is paying by."))
 
+        if self.payment == "instalments":
+            self._odin_finance(order)
         if order.state in ("draft", "sent"):
             # Confirming closes out the quote (see sale.order._action_confirm):
             # the other plans cancelled, the opportunity won.
@@ -124,31 +181,25 @@ class MedicalQuoteAccept(models.TransientModel):
             # was picked here.
             comparison.odin_handler_id = self.handler_id
 
-        if self.invoice_mode == "later":
+        if self.payment == "later":
             return {
                 "type": "ir.actions.act_window",
                 "res_model": "sale.order",
                 "res_id": order.id,
                 "views": [(False, "form")],
             }
-        invoices = self._create_invoices(order)
+        if order.invoice_status != "to invoice":
+            raise UserError(_("%s has nothing left to invoice.", order.name))
+        invoices = order._create_invoices()
+        # Printed and sent in the quotation's look from now on.
+        report = self.env.ref("odin_medical_quote.action_report_insurance_invoice",
+                              raise_if_not_found=False)
+        partner = order.partner_id.commercial_partner_id.sudo()
+        if report and not partner.invoice_template_pdf_report_id:
+            partner.invoice_template_pdf_report_id = report
         if self.post_invoice and self.can_post:
             self._post(invoices)
         return order.action_view_invoice(invoices=invoices)
-
-    def _create_invoices(self, order):
-        if self.invoice_mode == "deposit":
-            wizard = self.env["sale.advance.payment.inv"].with_context(
-                active_model="sale.order", active_ids=order.ids, active_id=order.id,
-            ).create({
-                "advance_payment_method": "percentage",
-                "amount": self.deposit_percent,
-                "sale_order_ids": [fields.Command.set(order.ids)],
-            })
-            return wizard._create_invoices(order)
-        if order.invoice_status != "to invoice":
-            raise UserError(_("%s has nothing left to invoice.", order.name))
-        return order._create_invoices()
 
     def _post(self, invoices):
         """Post, but keep the sale if posting is refused: the draft is still

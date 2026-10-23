@@ -1,7 +1,5 @@
 import base64
 
-from markupsafe import Markup
-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import format_date, format_datetime, formatLang, html2plaintext, is_html_empty
@@ -27,6 +25,11 @@ class QuoteComparison(models.Model):
         "crm.lead", string="Opportunity", index=True, tracking=True,
         ondelete="set null", copy=False,
     )
+    odin_quote_type = fields.Selection(
+        [("medical", "Medical")], string="Type", default="medical", required=True,
+        index=True, copy=False,
+        help="The insurance line quoted: it decides the screen Edit quote opens "
+        "and what the quotation prints about the risk.")
     odin_builder_params = fields.Json(
         string="Quote builder input", copy=False,
         help="What was entered in Add Medical Quote, so Edit quote reopens it "
@@ -112,7 +115,7 @@ class QuoteComparison(models.Model):
             plans = comparison._odin_export_plans() or comparison.plan_ids.sorted(
                 lambda p: (p.sequence, p.id))
             comparison.odin_plan_summary = " · ".join(
-                plan.order_id.sale_order_template_id.name or plan.name or plan.order_id.name
+                plan.order_id._odin_plan_label() or plan.name or plan.order_id.name
                 for plan in plans)
             basis = plans.filtered("highlight")[:1] or plans
             amounts = basis.order_id.mapped("amount_total")
@@ -175,16 +178,21 @@ class QuoteComparison(models.Model):
                 comparison.activity_schedule(
                     activity_type_id=activity_type.id,
                     summary=_("Place cover: %(plan)s for %(client)s",
-                              plan=order.sale_order_template_id.name or order.name,
+                              plan=order._odin_plan_label() or order.name,
                               client=comparison.partner_id.name),
                     user_id=person.id,
                 )
 
+    def _odin_builder_tags(self):
+        """The screen each type of quote is made and edited on."""
+        return {"medical": ("odin_medical_quote", _("Add Medical Quote"))}
+
     def _odin_builder_action(self, **params):
+        tag, name = self._odin_builder_tags()[self[:1].odin_quote_type or "medical"]
         return {
             "type": "ir.actions.client",
-            "tag": "odin_medical_quote",
-            "name": _("Add Medical Quote"),
+            "tag": tag,
+            "name": name,
             "params": params,
         }
 
@@ -238,7 +246,7 @@ class QuoteComparison(models.Model):
             comparison.write({"state": "accepted", "odin_accepted_order_id": order.id})
             comparison.message_post(body=_(
                 "Client accepted %(plan)s (%(order)s). %(others)s",
-                plan=order.sale_order_template_id.name or order.name,
+                plan=order._odin_plan_label() or order.name,
                 order=order.name,
                 others=_("Other plans cancelled: %s.", ", ".join(others.mapped("name")))
                 if others else "",
@@ -304,7 +312,9 @@ class QuoteComparison(models.Model):
 
     def _odin_export_filename(self):
         self.ensure_one()
-        return _("Medical quotation - %(client)s - %(ref)s",
+        return _("%(line)s quotation - %(client)s - %(ref)s",
+                 line=dict(self._fields["odin_quote_type"]._description_selection(self.env)).get(
+                     self.odin_quote_type, ""),
                  client=self.partner_id.name or "", ref=self.name)
 
     def _comparison_pdf_attachment(self):
@@ -324,13 +334,17 @@ class QuoteComparison(models.Model):
             "mimetype": "application/pdf",
         })
 
+    def _odin_email_template(self):
+        """The email a quote of this type goes out with."""
+        return self.env.ref("odin_medical_quote.mail_template_medical_quote",
+                            raise_if_not_found=False)
+
     def action_odin_send_email(self):
         """Email the quotation to the client, the PDF attached."""
         self.ensure_one()
         if not self.plan_ids:
             raise UserError(_("There is nothing to send until the quote has plans."))
-        template = self.env.ref(
-            "odin_medical_quote.mail_template_medical_quote", raise_if_not_found=False)
+        template = self._odin_email_template()
         return {
             "type": "ir.actions.act_window",
             "name": _("Send by email"),
@@ -385,8 +399,8 @@ class QuoteComparison(models.Model):
 
         pairs = []
         if not cover.get("children_only"):
-            if cover.get("ages_only"):
-                # Given as ages (the online form), not yet confirmed as dates.
+            if cover.get("principal_age") not in (None, "", False):
+                # Ages, as the screen and the online form take them.
                 pairs.append((_("Principal age"), str(cover.get("principal_age") or "")))
                 if cover.get("include_spouse"):
                     pairs.append((_("Spouse age"), str(cover.get("spouse_age") or "")))
@@ -405,6 +419,10 @@ class QuoteComparison(models.Model):
         if cover.get("insurer"):
             pairs.append((_("Insurer"), cover["insurer"]))
         return pairs
+
+    def _odin_export_member_headings(self):
+        """The heading and table title of the who-or-what-is-covered block."""
+        return _("Member details"), _("People included in this quotation")
 
     def _odin_export_member_rows(self, columns=2):
         """The member details in rows of ``columns`` label/value pairs."""
@@ -427,13 +445,11 @@ class QuoteComparison(models.Model):
         columns = []
         for plan in plans:
             order = plan.order_id
-            template = order.sale_order_template_id
             sections = {s["key"]: s for s in order._client_sections() if s["included"]}
             columns.append({
                 "plan": plan,
-                "insurer": template._odin_insurer_name() if template else (plan.name or ""),
-                "name": (template._odin_heading()[1] or template.name) if template
-                else (plan.subtitle or order.name),
+                "insurer": order._odin_insurer_label() or plan.name or "",
+                "name": order._odin_plan_name() or plan.subtitle or order.name,
                 "highlight": plan.highlight,
                 "sections": sections,
                 "amounts": order._client_amounts(),
@@ -450,7 +466,15 @@ class QuoteComparison(models.Model):
             return [getter(column) for column in columns]
 
         def section_value(key, field):
-            return lambda column: (column["sections"].get(key) or {}).get(field) or None
+            """None where the plan has no such section; an amount of 0 where
+            it has, which prints as Included (a limit of 0 is no limit)."""
+            def get(column):
+                section = column["sections"].get(key)
+                if not section:
+                    return None
+                value = section.get(field) or 0.0
+                return value if field == "amount" else (value or None)
+            return get
 
         rows = []
         for key in keys:
@@ -477,10 +501,7 @@ class QuoteComparison(models.Model):
         for instalment in self.instalment_plan_ids:
             schedules = cells(lambda column, plan=instalment: plan.schedule(
                 column["amounts"]["total"]))
-            label = (_("%(months)s months, %(deposit)s%% deposit",
-                       months=instalment.months, deposit=round(instalment.deposit_percent))
-                     if instalment.deposit_percent
-                     else _("%s months", instalment.months))
+            label = _("%s monthly instalments", instalment.months)
             rows.append({"kind": "instalment", "label": label, "cells": schedules})
         return {"columns": columns, "rows": rows}
 
@@ -513,23 +534,9 @@ class QuoteComparison(models.Model):
         return terms
 
     def _odin_export_payment(self):
-        """How to pay, as printed under the quotation: the company's own
-        wording when it has set it, otherwise its bank accounts."""
+        """How to pay, as printed under the quotation."""
         self.ensure_one()
-        company = self.company_id
-        if not is_html_empty(company.odin_quote_payment_note):
-            return company.odin_quote_payment_note
-        accounts = company.partner_id.bank_ids
-        if not accounts:
-            return False
-        lines = []
-        for account in accounts:
-            lines.append(Markup("<b>%s</b>") % (account.bank_id.name or _("Bank account")))
-            lines.append(_("A/C name: %s", account.acc_holder_name or company.name))
-            lines.append(_("A/C no: %s", account.acc_number))
-            if account.bank_id.bic:
-                lines.append(_("SWIFT: %s", account.bank_id.bic))
-        return Markup("<br/>").join(lines)
+        return self.company_id._odin_payment_html()
 
     def _odin_export_date(self, value):
         """``21 Jan 1984``: every date on the quotation, day first and with the

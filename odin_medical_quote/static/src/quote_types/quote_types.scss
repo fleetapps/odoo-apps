@@ -1,0 +1,57 @@
+.o_quote_new {
+    overflow: auto;
+    background: var(--body-bg, #f8f9fb);
+
+    .o_quote_new_inner {
+        max-width: 640px;
+        margin: 48px auto;
+        padding: 0 16px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .o_quote_new_types {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .o_quote_new_type {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        padding: 18px 20px;
+        text-align: left;
+        background: #fff;
+        border: 1px solid var(--border-color, #dee2e6);
+        border-radius: 12px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+
+        > .fa:first-child {
+            width: 36px;
+            font-size: 1.6rem;
+            text-align: center;
+            color: var(--primary, #714b67);
+        }
+
+        b,
+        small {
+            display: block;
+        }
+
+        small {
+            color: var(--text-muted, #6c757d);
+        }
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--primary, #714b67);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+    }
+}

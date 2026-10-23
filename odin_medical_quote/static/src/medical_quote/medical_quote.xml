@@ -5,10 +5,11 @@
             <div class="o_mq_page">
                 <div class="o_mq_inner">
                     <header class="o_mq_header">
-                        <h1 class="o_mq_title">Add Medical Quote</h1>
+                        <h1 class="o_mq_title" t-esc="title"/>
                         <ol class="o_mq_steps" aria-label="Progress">
                             <li t-foreach="steps" t-as="s" t-key="s.n"
-                                t-att-class="{'o_done': step > s.n, 'o_current': step === s.n}">
+                                t-att-class="{'o_done': step > s.n, 'o_current': step === s.n, 'o_mq_step_link': s.n === 1 and step > 1 and !state.saved}"
+                                t-on-click="() => this.goToStep(s.n)">
                                 <span class="o_mq_step_dot">
                                     <i t-if="step > s.n" class="fa fa-check"/>
                                     <t t-else="" t-esc="s.n"/>
@@ -22,7 +23,7 @@
                         <t t-call="odin_medical_quote.MedicalQuote.Saved"/>
                     </t>
                     <t t-elif="state.setup">
-                        <t t-call="odin_medical_quote.MedicalQuote.Details"/>
+                        <t t-call="{{ detailsTemplate }}"/>
                         <t t-if="state.results" t-call="odin_medical_quote.MedicalQuote.Options"/>
                         <t t-if="selectedPlans.length" t-call="odin_medical_quote.MedicalQuote.Compare"/>
                     </t>
@@ -35,7 +36,7 @@
                         <t t-esc="selectedPlans.length"/> <t t-if="selectedPlans.length === 1">plan</t><t t-else="">plans</t>
                         <span t-if="state.totalsLoading" class="text-muted ms-2"><i class="fa fa-circle-o-notch fa-spin"/></span>
                     </t>
-                    <t t-else="">Select a plan's inpatient cover, or any of its options.</t>
+                    <t t-else="" t-esc="pickHint"/>
                 </div>
                 <span t-if="saveProblem and selectedPlans.length" class="o_mq_footer_problem" t-esc="saveProblem"/>
                 <button class="btn btn-primary o_mq_save" t-att-disabled="state.saving or !selectedPlans.length"
@@ -47,23 +48,8 @@
         </div>
     </t>
 
-    <!-- 1. Client and cover details ======================================== -->
-    <t t-name="odin_medical_quote.MedicalQuote.Details">
-        <section class="o_mq_card">
-            <div class="o_mq_card_head">
-                <span class="o_mq_badge">1</span>
-                <div class="flex-grow-1">
-                    <h2>Client and cover details</h2>
-                    <p t-if="state.coverOpen">Enter the people to be covered and the inpatient limit you want to compare.</p>
-                    <p t-else="" class="o_mq_summary">
-                        <b t-esc="customerSummary"/> · <t t-esc="coverSummary"/>
-                    </p>
-                </div>
-                <button t-if="!state.coverOpen" class="btn btn-link o_mq_edit_details"
-                        t-on-click="() => state.coverOpen = true">Change</button>
-            </div>
-
-            <div t-if="state.coverOpen" class="o_mq_card_body">
+    <!-- Who the quote is for: shared by every insurance line's first step. -->
+    <t t-name="odin_medical_quote.QuoteClient">
                 <h3>Client information</h3>
                 <div class="o_mq_grid">
                     <div class="o_mq_field">
@@ -126,18 +112,6 @@
                         </div>
                     </t>
 
-                    <!-- The opportunity is new for both, so both say where it came from. -->
-                    <div class="o_mq_field" t-if="state.customer.source !== 'lead'">
-                        <label for="mq_lead_source">Lead source</label>
-                        <select id="mq_lead_source" class="form-select" t-att-disabled="state.customerLocked"
-                                t-on-change="(ev) => state.customer.source_id = Number(ev.target.value) || false">
-                            <option value="">Not recorded</option>
-                            <option t-foreach="state.setup.sources" t-as="src" t-key="src.id"
-                                    t-att-value="src.id" t-att-selected="state.customer.source_id === src.id"
-                                    t-esc="src.name"/>
-                        </select>
-                    </div>
-
                     <t t-if="state.customer.source === 'lead'">
                         <div class="o_mq_field o_mq_wide">
                             <label for="mq_lead">Lead or opportunity</label>
@@ -191,19 +165,36 @@
                         </button>
                     </t>
                 </div>
+    </t>
+
+    <!-- 1. Client and cover details ======================================== -->
+    <t t-name="odin_medical_quote.MedicalQuote.Details">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">1</span>
+                <div class="flex-grow-1">
+                    <h2>Client and cover details</h2>
+                    <p t-if="state.coverOpen">Enter the people to be covered and the inpatient limit you want to compare.</p>
+                    <p t-else="" class="o_mq_summary" role="button" t-on-click="editDetails">
+                        <b t-esc="customerSummary"/> · <t t-esc="coverSummary"/>
+                    </p>
+                </div>
+                <button t-if="!state.coverOpen" class="btn btn-secondary o_mq_edit_details"
+                        t-on-click="editDetails">
+                    <i class="fa fa-pencil me-1"/>Edit details
+                </button>
+            </div>
+
+            <div t-if="state.coverOpen" class="o_mq_card_body">
+                <t t-call="odin_medical_quote.QuoteClient"/>
 
                 <h3>People covered</h3>
-                <div t-if="state.cover.ages_only" class="o_mq_dirty mb-3" role="status">
-                    <i class="fa fa-info-circle me-1"/>
-                    The client gave ages on the online form, not dates of birth: confirm them
-                    before the quote is final.
-                    <button class="btn btn-sm btn-secondary ms-2" t-on-click="confirmDates">Dates confirmed</button>
-                </div>
                 <div class="o_mq_grid" t-on-change="onCoverChange">
                     <t t-if="!state.cover.children_only">
                         <div class="o_mq_field">
-                            <label for="mq_principal">Principal date of birth <span class="o_mq_req">*</span></label>
-                            <input id="mq_principal" type="date" class="form-control" t-model="state.cover.principal_dob"/>
+                            <label for="mq_principal">Principal's age <span class="o_mq_req">*</span></label>
+                            <input id="mq_principal" type="number" min="18" max="99" inputmode="numeric"
+                                   class="form-control" placeholder="e.g. 35" t-model="state.cover.principal_age"/>
                         </div>
                         <div class="o_mq_field">
                             <label class="o_mq_check" for="mq_spouse_on">
@@ -216,8 +207,9 @@
                             </label>
                         </div>
                         <div class="o_mq_field" t-if="state.cover.include_spouse">
-                            <label for="mq_spouse">Spouse date of birth <span class="o_mq_req">*</span></label>
-                            <input id="mq_spouse" type="date" class="form-control" t-model="state.cover.spouse_dob"/>
+                            <label for="mq_spouse">Spouse's age <span class="o_mq_req">*</span></label>
+                            <input id="mq_spouse" type="number" min="18" max="99" inputmode="numeric"
+                                   class="form-control" placeholder="e.g. 32" t-model="state.cover.spouse_age"/>
                         </div>
                     </t>
                     <div class="o_mq_field">
@@ -240,14 +232,12 @@
                     <div class="o_mq_field">
                         <label for="mq_min">Minimum limit</label>
                         <input id="mq_min" type="number" min="0" step="50000" class="form-control"
-                               placeholder="No minimum" t-model="state.cover.limit_min"
-                               t-att-disabled="state.cover.template_id"/>
+                               placeholder="No minimum" t-model="state.cover.limit_min"/>
                     </div>
                     <div class="o_mq_field">
                         <label for="mq_max">Maximum limit</label>
                         <input id="mq_max" type="number" min="0" step="50000" class="form-control"
-                               placeholder="No maximum" t-model="state.cover.limit_max"
-                               t-att-disabled="state.cover.template_id"/>
+                               placeholder="No maximum" t-model="state.cover.limit_max"/>
                     </div>
                     <div class="o_mq_field">
                         <label for="mq_insurer">Insurer</label>
@@ -255,14 +245,6 @@
                             <option value="">All insurers</option>
                             <option t-foreach="state.setup.insurers" t-as="insurer" t-key="insurer"
                                     t-att-value="insurer" t-esc="insurer"/>
-                        </select>
-                    </div>
-                    <div class="o_mq_field">
-                        <label for="mq_plan">Specific plan</label>
-                        <select id="mq_plan" class="form-select" t-model="state.cover.template_id">
-                            <option value="">Any plan in the range</option>
-                            <option t-foreach="planChoices" t-as="choice" t-key="choice.id"
-                                    t-att-value="choice.id" t-esc="choice.name"/>
                         </select>
                     </div>
                 </div>
@@ -290,12 +272,12 @@
             <div class="o_mq_card_head">
                 <span class="o_mq_badge">2</span>
                 <div class="flex-grow-1">
-                    <h2>Cover options and premiums</h2>
-                    <p>Every premium is for this family. Select the inpatient cover of each plan to compare, and the options to add.</p>
+                    <h2 t-esc="optionsTitle"/>
+                    <p t-esc="optionsHelp"/>
                 </div>
             </div>
             <div t-if="!state.results.plans.length" class="o_mq_empty">
-                No plan in this range covers this family. Widen the limit range, or choose another insurer.
+                <t t-esc="nothingFound"/>
             </div>
             <div t-else="" class="o_mq_table_wrap">
                 <table class="o_mq_table">
@@ -317,7 +299,7 @@
                                 <div class="o_mq_option o_mq_core" t-att-class="{'o_on': isPlanSelected(plan)}">
                                     <div class="o_mq_option_name">
                                         <b t-esc="plan.core.label"/>
-                                        <span class="text-muted ms-1">Limit <t t-esc="amount(plan.limit)"/></span>
+                                        <span t-if="plan.limit" class="text-muted ms-1"><t t-esc="plan.limit_label || 'Limit'"/> <t t-esc="amount(plan.limit)"/></span>
                                         <div class="o_mq_parts">
                                             <t t-foreach="plan.core.parts" t-as="part" t-key="part_index">
                                                 <span t-esc="partText(part)"/>
@@ -379,9 +361,7 @@
             <div t-if="unavailablePlans.length" class="o_mq_unavailable">
                 <button class="btn btn-link p-0" t-on-click="() => state.showUnavailable = !state.showUnavailable">
                     <i class="fa" t-att-class="state.showUnavailable ? 'fa-caret-down' : 'fa-caret-right'"/>
-                    <t t-esc="unavailablePlans.length"/>
-                    <t t-if="unavailablePlans.length === 1"> plan in range is</t><t t-else=""> plans in range are</t>
-                    not available for this family
+                    <t t-esc="unavailableText"/>
                 </button>
                 <ul t-if="state.showUnavailable">
                     <li t-foreach="unavailablePlans" t-as="plan" t-key="plan.id">
@@ -417,11 +397,11 @@
                     </header>
                     <div class="o_mq_plan_band">
                         <span t-esc="plan.name"/>
-                        <span>Limit <t t-esc="amount(plan.limit)"/></span>
+                        <span t-if="plan.limit"><t t-esc="plan.limit_label || 'Limit'"/> <t t-esc="amount(plan.limit)"/></span>
                     </div>
                     <div class="o_mq_plan_row">
                         <div>
-                            <div><t t-esc="plan.core.label"/> premium</div>
+                            <div><t t-esc="plan.core.label"/><t t-if="!plan.limit_label"> premium</t></div>
                             <div class="o_mq_sub">
                                 <t t-foreach="plan.core.parts" t-as="part" t-key="part_index">
                                     <span t-esc="partText(part)"/>
@@ -478,9 +458,9 @@
                         <b t-esc="totals and !totals.error ? amount(totals.total) : '…'"/>
                     </footer>
                     <div t-if="totals and totals.instalments and totals.instalments.length" class="o_mq_instalment">
-                        <t t-set="first" t-value="totals.instalments[0]"/>
-                        or <t t-esc="amount(first.deposit)"/> deposit and
-                        <t t-esc="first.months"/> × <t t-esc="amount(first.instalment)"/>
+                        <t t-set="longest" t-value="totals.instalments[totals.instalments.length - 1]"/>
+                        or <t t-esc="longest.months"/> × <t t-esc="amount(longest.instalment)"/> a month,
+                        the first now
                     </div>
                 </article>
             </div>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_motor_rates"
+              name="Motor rates"
+              parent="odin_client_quote.menu_quote_configuration"
+              action="action_motor_rate"
+              sequence="30"/>
+    <menuitem id="menu_motor_classes"
+              name="Vehicle types"
+              parent="odin_client_quote.menu_quote_configuration"
+              action="action_motor_class"
+              sequence="35"/>
+</odoo>

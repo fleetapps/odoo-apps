@@ -1,27 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- First in the app, so opening Cover Quotes opens a new quote: that is
-         what an agent on a call opens it for. -->
+    <!-- After Quotes, so opening Cover Quotes lands on the list of quotes;
+         New quote asks what is being quoted before showing its form. -->
     <menuitem id="menu_medical_quote_new"
-              name="New medical quote"
+              name="New quote"
               parent="odin_client_quote.menu_quote_root"
-              action="action_medical_quote"
-              sequence="5"/>
+              action="action_quote_new"
+              sequence="11"/>
 
     <!-- In CRM, beside My Quotations, for salespeople who live in the pipeline. -->
     <menuitem id="menu_medical_quote_crm"
-              name="Medical quotes"
+              name="Insurance quotes"
               parent="crm.crm_menu_sales"
               action="odin_client_quote.action_quote_comparison"
               sequence="3"/>
-
-    <record id="odin_client_quote.menu_quote_comparison_app" model="ir.ui.menu">
-        <field name="name">Quotes</field>
-    </record>
-
-    <!-- Add Medical Quote replaces it: two ways to quote is one too many for
-         a new member of staff. Still there in debug mode. -->
-    <record id="odin_client_quote.menu_quote_member_builder" model="ir.ui.menu">
-        <field name="group_ids" eval="[Command.set([ref('base.group_no_one')])]"/>
-    </record>
 </odoo>

@@ -12,24 +12,14 @@
               web_icon="odin_client_quote,static/description/icon.png"/>
 
     <menuitem id="menu_quote_comparison_app"
-              name="Comparisons"
+              name="Quotes"
               parent="menu_quote_root"
               action="action_quote_comparison"
               sequence="10"/>
 
     <!-- Here rather than beside its wizard: the wizard views load before this
          file, and a menu cannot name a parent that does not exist yet. -->
-    <menuitem id="menu_quote_member_builder"
-              name="Quote a household"
-              parent="menu_quote_root"
-              action="action_quote_member_builder"
-              sequence="15"/>
 
-    <menuitem id="menu_quote_quotations_app"
-              name="Quotations"
-              parent="menu_quote_root"
-              action="sale.action_quotations_with_onboarding"
-              sequence="20"/>
 
     <menuitem id="menu_quote_configuration"
               name="Configuration"
@@ -48,10 +38,4 @@
               action="sale_management.sale_order_template_action"
               sequence="20"/>
 
-    <!-- Kept alongside the app: salespeople already live in Sales. -->
-    <menuitem id="menu_quote_comparison"
-              name="Cover comparisons"
-              parent="sale.sale_order_menu"
-              action="action_quote_comparison"
-              sequence="15"/>
 </odoo>

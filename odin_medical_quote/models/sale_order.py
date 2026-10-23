@@ -15,10 +15,28 @@ class SaleOrder(models.Model):
             return super()._compute_display_name()
         for order in self:
             order.display_name = " · ".join(filter(None, [
-                order.sale_order_template_id.name,
+                order._odin_plan_label(),
                 formatLang(self.env, order.amount_total, currency_obj=order.currency_id),
                 order.name,
             ]))
+
+    # -- how a quoted plan is named; motor quotes name theirs by rate ------
+
+    def _odin_plan_label(self):
+        """``APA Jamii Plus – Family Cover (KES 500,000)``: the plan quoted."""
+        self.ensure_one()
+        return self.sale_order_template_id.name or ""
+
+    def _odin_insurer_label(self):
+        self.ensure_one()
+        template = self.sale_order_template_id
+        return template._odin_insurer_name() if template else ""
+
+    def _odin_plan_name(self):
+        """The plan without its insurer, as a column of the quotation heads it."""
+        self.ensure_one()
+        template = self.sale_order_template_id
+        return (template._odin_heading()[1] or template.name) if template else ""
 
     def _action_confirm(self):
         """A plan of a medical quote confirmed is the client's choice, however

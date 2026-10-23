@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- The vehicle types Kenyan motor rate cards price. Add, rename or
+         archive them in Cover Quotes ▸ Configuration ▸ Vehicle types. -->
+    <record id="class_private" model="odin.motor.class">
+        <field name="name">Private car</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="class_commercial" model="odin.motor.class">
+        <field name="name">Commercial (own goods / general cartage)</field>
+        <field name="sequence">20</field>
+        <field name="ask_tonnage" eval="True"/>
+    </record>
+    <record id="class_pickup" model="odin.motor.class">
+        <field name="name">Pick-up (commercial)</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="class_institutional" model="odin.motor.class">
+        <field name="name">Institutional / school bus</field>
+        <field name="sequence">40</field>
+        <field name="ask_seats" eval="True"/>
+    </record>
+    <record id="class_psv" model="odin.motor.class">
+        <field name="name">PSV (taxi, Uber, matatu, bus)</field>
+        <field name="sequence">50</field>
+        <field name="ask_seats" eval="True"/>
+    </record>
+    <record id="class_tsv" model="odin.motor.class">
+        <field name="name">Tour service vehicle</field>
+        <field name="sequence">60</field>
+        <field name="ask_seats" eval="True"/>
+    </record>
+    <record id="class_motorcycle_private" model="odin.motor.class">
+        <field name="name">Motorcycle (private)</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="class_motorcycle_psv" model="odin.motor.class">
+        <field name="name">Motorcycle (boda boda PSV)</field>
+        <field name="sequence">80</field>
+        <field name="ask_seats" eval="True"/>
+    </record>
+    <record id="class_motorcycle_commercial" model="odin.motor.class">
+        <field name="name">Motorcycle (corporate / delivery)</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="class_tuktuk_commercial" model="odin.motor.class">
+        <field name="name">Tuk-tuk (commercial / delivery)</field>
+        <field name="sequence">100</field>
+    </record>
+    <record id="class_tuktuk_psv" model="odin.motor.class">
+        <field name="name">Tuk-tuk (PSV)</field>
+        <field name="sequence">110</field>
+        <field name="ask_seats" eval="True"/>
+    </record>
+    <record id="class_special" model="odin.motor.class">
+        <field name="name">Special vehicle (ambulance and similar)</field>
+        <field name="sequence">120</field>
+    </record>
+    <record id="class_construction" model="odin.motor.class">
+        <field name="name">Construction plant (crane, forklift, roller, excavator)</field>
+        <field name="sequence">130</field>
+    </record>
+    <record id="class_farm" model="odin.motor.class">
+        <field name="name">Farm and warehouse / tractor</field>
+        <field name="sequence">140</field>
+    </record>
+    <record id="class_prime_mover" model="odin.motor.class">
+        <field name="name">Prime mover</field>
+        <field name="sequence">150</field>
+    </record>
+</odoo>

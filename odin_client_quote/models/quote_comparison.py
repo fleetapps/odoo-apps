@@ -174,17 +174,9 @@ class QuoteComparison(models.Model):
             })
             for instalment in self.instalment_plan_ids:
                 rows.append({"kind": "group", "label": instalment.display_name, "cells": []})
-                if instalment.deposit_percent:
-                    rows.append({
-                        "kind": "instalment",
-                        "label": _("Deposit (%s%%)", round(instalment.deposit_percent)),
-                        "cells": cells(
-                            lambda _p, _s, amounts, plan=instalment: plan.schedule(
-                                amounts["total"])["deposit"]),
-                    })
                 rows.append({
                     "kind": "instalment",
-                    "label": _("%s monthly payments of", instalment.months),
+                    "label": _("%s equal monthly payments of, the first now", instalment.months),
                     "cells": cells(
                         lambda _p, _s, amounts, plan=instalment: plan.schedule(
                             amounts["total"])["instalment"]),

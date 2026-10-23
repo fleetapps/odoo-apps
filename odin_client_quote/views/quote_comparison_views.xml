@@ -28,9 +28,6 @@
                             string="Create quotations" class="btn-primary"
                             invisible="not template_ids"
                             help="Creates one quotation per selected plan for this customer."/>
-                    <button name="action_build_from_members" type="object"
-                            string="Members" invisible="not plan_ids"
-                            help="Change who is covered and re-price every plan."/>
                     <button name="action_pick_addons" type="object"
                             string="Optional benefits"
                             invisible="not plan_ids"
@@ -71,11 +68,7 @@
                                        options="{'no_create': True}"
                                        placeholder="e.g. Birdview Plan 1, Plan 2, Plan 3, Plan 4"/>
                             </group>
-                            <!-- Two ways to start, and only while there is nothing
-                                 yet: once the plans exist this disappears and the
-                                 header offers Optional benefits instead. Three
-                                 buttons meaning three different kinds of thing is
-                                 what would confuse somebody. -->
+                            <!-- How to start, only while there is nothing yet. -->
                             <div class="alert alert-info" role="status"
                                  invisible="plan_ids">
                                 <div class="mb-2">
@@ -83,14 +76,6 @@
                                     <b>Create quotations</b>. One quotation per plan, for
                                     this customer; you do not need to prepare them first.
                                 </div>
-                                <div class="mb-1">or, if you know who is covered:</div>
-                                <button name="action_build_from_members" type="object"
-                                        class="btn btn-secondary btn-sm">
-                                    <i class="fa fa-users me-1"/>Enter members
-                                </button>
-                                <span class="ms-2">type the ages and the plans are priced
-                                for them &#8212; principal, spouse and children each on
-                                their own rate.</span>
                             </div>
                             <!-- Not editable inline: order_id is required, and a
                                  half-filled row here made the comparison

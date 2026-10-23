@@ -92,6 +92,7 @@ class TestSave(MedicalQuoteCase):
         self.assertEqual(lead.type, "opportunity")
         self.assertEqual(lead.partner_id, partner)
         self.assertEqual(lead.user_id, self.agent)
+        self.assertIn("Medical", lead.tag_ids.mapped("name"), "filterable by line in the pipeline")
 
         comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
         self.assertEqual(comparison.opportunity_id, lead)
@@ -245,3 +246,53 @@ class TestSave(MedicalQuoteCase):
             self.Quote.save_quote(self.params([]))
         with self.assertRaisesRegex(UserError, "Choose the customer"):
             self.Quote.save_quote(self.params([self.jamii_selection(result)], source="existing"))
+
+
+@tagged("post_install", "-at_install")
+class TestInstalmentPlans(MedicalQuoteCase):
+    """Instalments work like a loan: equal payments, the first now."""
+
+    def test_schedule(self):
+        """The broker's own example: 91,061.76 over 10 months with a fee of
+        1,000 a month is 10 payments of 10,106.18."""
+        plan = self.env["odin.quote.instalment.plan"].create({
+            "name": "10 months", "months": 10, "monthly_fee": 1000, "deposit_percent": 25})
+        schedule = plan.schedule(91061.76)
+        self.assertEqual(schedule["instalment"], 10106.18)
+        self.assertEqual(schedule["deposit"], schedule["instalment"], "the first payment is the deposit")
+        self.assertEqual(schedule["last_instalment"], schedule["instalment"])
+        self.assertAlmostEqual(schedule["payable"], 101061.80)
+        interest = self.env["odin.quote.instalment.plan"].create({
+            "name": "3 months", "months": 3, "monthly_rate": 3})
+        self.assertAlmostEqual(interest.schedule(10000)["payable"], 10900, delta=0.02,
+                               msg="3% a month on the whole premium, from the first instalment")
+
+    def test_payment_terms(self):
+        plan = self.env["odin.quote.instalment.plan"].create({"name": "3 months", "months": 3})
+        term = plan._odin_payment_term()
+        self.assertEqual(plan._odin_payment_term(), term, "made once")
+        self.assertEqual(term.line_ids.mapped("nb_days"), [0, 30, 60])
+        self.assertAlmostEqual(sum(term.line_ids.mapped("value_amount")), 100)
+
+
+@tagged("post_install", "-at_install")
+class TestAges(MedicalQuoteCase):
+    """The screen asks for ages; quotes saved with dates of birth still open."""
+
+    def test_ages_typed(self):
+        result = self.Quote.search_plans({"cover": {
+            "principal_age": 35, "include_spouse": True, "spouse_age": 28, "children": 3}})
+        self.assertEqual(result["household"]["principal"], 35)
+        self.assertEqual(result["household"]["spouse"], 28)
+        with self.assertRaisesRegex(UserError, "principal's age"):
+            self.Quote.search_plans({"cover": {"children": 1}})
+
+    def test_saved_with_dates_of_birth(self):
+        saved = self.Quote.save_quote({
+            "customer": {"source": "new", "name": "Old Quote", "phone": "0700 000 001"},
+            "cover": dict(self.cover(), template_id=self.jamii.id),
+            "plans": [{"template_id": self.jamii.id, "options": []}],
+        })
+        cover = self.Quote.load_quote(saved["comparison"]["id"])["params"]["cover"]
+        self.assertEqual((cover["principal_age"], cover["spouse_age"]), (35, 28))
+        self.assertNotIn("template_id", cover, "no single-plan choice any more")

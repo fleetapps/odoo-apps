@@ -61,17 +61,50 @@ class TestAccept(MedicalQuoteCase):
         with self.assertRaises(UserError):
             self.comparison.action_odin_edit()
 
-    def test_deposit(self):
-        wizard = self.wizard(order_id=self.afya_order.id, invoice_mode="deposit", deposit_percent=25)
-        self.assertAlmostEqual(wizard.deposit_amount, self.afya_order.currency_id.round(
-            self.afya_order.amount_total / 4))
-        action = wizard.action_accept()
-        invoice = self.env["account.move"].browse(action["res_id"])
-        self.assertAlmostEqual(invoice.amount_total, wizard.deposit_amount, places=2)
-        self.assertEqual(self.jamii_order.state, "cancel")
+    def test_instalments(self):
+        """Paid like a loan: equal monthly payments, the first now, the
+        financing on the whole premium -- on the order, and the invoice due
+        in the same parts."""
+        plan = self.env["odin.quote.instalment.plan"].create({
+            "name": "10 monthly instalments", "months": 10, "monthly_fee": 1000})
+        self.comparison.sudo().instalment_plan_ids = plan
+        premium = self.jamii_order.amount_total
+        wizard = self.wizard(payment="instalments", instalment_plan_id=plan.id)
+        self.assertEqual(wizard.instalment_months, 10)
+        self.assertAlmostEqual(wizard.instalment_amount, round((premium + 10000) / 10, 2))
+        self.assertAlmostEqual(wizard.instalment_financing, wizard.instalment_payable - premium)
+        invoice = self.env["account.move"].browse(wizard.action_accept()["res_id"])
+
+        financing = self.jamii_order.order_line.filtered(
+            lambda l: l.product_id == self.env.ref("odin_medical_quote.product_financing"))
+        self.assertAlmostEqual(financing.price_total, wizard.instalment_financing)
+        self.assertFalse(financing.tax_ids, "no levies on financing")
+        self.assertAlmostEqual(invoice.amount_total, wizard.instalment_payable)
+        dues = invoice.line_ids.filtered(lambda l: l.display_type == "payment_term").sorted("date_maturity")
+        self.assertEqual(len(dues), 10)
+        self.assertEqual(dues[0].date_maturity, invoice.invoice_date or dues[0].date_maturity)
+        self.assertEqual(len(set(round(abs(d.amount_currency), 0) for d in dues)), 1, "equal parts")
+
+        # Printed in the quotation's look, by default from now on.
+        report = self.env.ref("odin_medical_quote.action_report_insurance_invoice")
+        self.assertEqual(self.jamii_order.partner_id.commercial_partner_id.invoice_template_pdf_report_id, report)
+        html, _type = self.env["ir.actions.report"]._render_qweb_html(report.report_name, invoice.ids)
+        text = str(html)
+        for expected in ("Billed to", "People included in this quotation", "Instalments",
+                         "1 of 10", "Taxes and levies", self.comparison.name):
+            self.assertIn(expected, text)
+
+    def test_financing_is_replaced_not_added(self):
+        plan = self.env["odin.quote.instalment.plan"].create({
+            "name": "3 monthly instalments", "months": 3, "monthly_rate": 3})
+        wizard = self.wizard(payment="instalments", instalment_plan_id=plan.id)
+        wizard._odin_finance(self.jamii_order)
+        wizard._odin_finance(self.jamii_order)
+        product = self.env.ref("odin_medical_quote.product_financing")
+        self.assertEqual(len(self.jamii_order.order_line.filtered(lambda l: l.product_id == product)), 1)
 
     def test_confirm_only(self):
-        action = self.wizard(invoice_mode="later").action_accept()
+        action = self.wizard(payment="later").action_accept()
         self.assertEqual(action["res_model"], "sale.order")
         self.assertEqual(self.jamii_order.state, "sale")
         self.assertFalse(self.jamii_order.invoice_ids)

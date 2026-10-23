@@ -43,7 +43,7 @@ Odoo itself.
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
-    "depends": ["account", "odin_client_quote", "odin_medical_quote"],
+    "depends": ["account", "odin_client_quote", "odin_medical_quote", "odin_motor_quote"],
     "data": [
         "data/product_category.xml",
         "data/account_tax.xml",
@@ -51,6 +51,8 @@ Odoo itself.
         "data/insurer.xml",
         "data/quote_instalment_plan.xml",
         "data/sale_order_template.xml",
+        "data/motor_rate.xml",
+        "data/motor_product.xml",
     ],
     "application": False,
     "installable": True,

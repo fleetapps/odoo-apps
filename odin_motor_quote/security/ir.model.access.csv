@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_motor_class_user,motor.class.user,model_odin_motor_class,sales_team.group_sale_salesman,1,0,0,0
+access_motor_class_manager,motor.class.manager,model_odin_motor_class,sales_team.group_sale_manager,1,1,1,1
+access_motor_rate_user,motor.rate.user,model_odin_motor_rate,sales_team.group_sale_salesman,1,0,0,0
+access_motor_rate_manager,motor.rate.manager,model_odin_motor_rate,sales_team.group_sale_manager,1,1,1,1

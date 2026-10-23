@@ -107,6 +107,28 @@ the derivation handles deliberately, both of which bite a naive reading:
 Sections of add-ons are flagged `is_optional`, which is Odoo 19's own
 section-level flag — a line is optional because its parent section is.
 
+## Motor rates
+
+`data/motor_rate.xml` is Bizsure's motor rate card from
+*MOTOR_RATES_REVAMPED_1.xlsx* (selling premiums): 87 lines for Definite
+Assurance, Fidelity, CIC, GA, AMACO and Pioneer. It covers comprehensive
+rates by value band with minimums and vehicle age limits, and third-party
+premiums by class, tonnage, passengers and period, with PVT, excess
+protector, PLL and courtesy car as each insurer offers them. It is loaded
+once (noupdate), then maintained in Cover Quotes ▸ Configuration ▸ Motor
+rates. `tools/generate_motor_rates.py` rebuilds it.
+
+Read from the sheet:
+* **AMACO's** "MIN 42,500" is a minimum premium.
+* **Fidelity's** age column (15 to 18 years by band) is a maximum vehicle
+  age.
+* **Pioneer's** "Assets" line is left out (unclear).
+* **GA's** 3 to 8 million band has no rate in the sheet, so GA does not
+  quote that band.
+
+`data/motor_product.xml` puts the training levy and PHCF on the motor
+products, as on medical premiums.
+
 ## Tests
 
 `tests/test_quote_example.py` prices the brief's worked example from these

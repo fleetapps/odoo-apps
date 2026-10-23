@@ -1,17 +1,5 @@
 import { registry } from "@web/core/registry";
 
-/** Set an <input type="date">: typing into one is browser-specific. */
-function setDate(selector, value) {
-    return {
-        trigger: selector,
-        run() {
-            this.anchor.value = value;
-            this.anchor.dispatchEvent(new Event("input", { bubbles: true }));
-            this.anchor.dispatchEvent(new Event("change", { bubbles: true }));
-        },
-    };
-}
-
 /**
  * The example from the brief: a new prospect, principal, spouse and three
  * children, the Afya plan with outpatient and dental, saved to CRM.
@@ -23,9 +11,9 @@ registry.category("web_tour.tours").add("odin_medical_quote_tour", {
         { trigger: ".o_mq_title:contains(Add Medical Quote)" },
         { trigger: "#mq_name", run: "edit Tour Prospect" },
         { trigger: "#mq_phone", run: "edit 0711 222 333" },
-        setDate("#mq_principal", "1991-01-01"),
+        { trigger: "#mq_principal", run: "edit 35" },
         { trigger: "#mq_spouse_on", run: "check" },
-        setDate("#mq_spouse", "1998-01-01"),
+        { trigger: "#mq_spouse", run: "edit 28" },
         { trigger: "#mq_children", run: "edit 3" },
         { trigger: ".o_mq_find", run: "click" },
         { trigger: ".o_mq_summary:contains(Tour Prospect):contains(3 children)" },

@@ -4,4 +4,9 @@
         <field name="name">Add Medical Quote</field>
         <field name="tag">odin_medical_quote</field>
     </record>
+
+    <record id="action_quote_new" model="ir.actions.client">
+        <field name="name">New quote</field>
+        <field name="tag">odin_quote_new</field>
+    </record>
 </odoo>
