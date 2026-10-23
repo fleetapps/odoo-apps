@@ -17,6 +17,14 @@
               action="action_quote_comparison"
               sequence="10"/>
 
+    <!-- Here rather than beside its wizard: the wizard views load before this
+         file, and a menu cannot name a parent that does not exist yet. -->
+    <menuitem id="menu_quote_member_builder"
+              name="Quote a household"
+              parent="menu_quote_root"
+              action="action_quote_member_builder"
+              sequence="15"/>
+
     <menuitem id="menu_quote_quotations_app"
               name="Quotations"
               parent="menu_quote_root"
