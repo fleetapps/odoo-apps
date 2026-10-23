@@ -49,6 +49,9 @@ Print (with *Vehicle details* in place of *Member details*), Send by email
 (its own template), WhatsApp, Client accepted, the hand-over and the
 insurance invoice all work unchanged.
 
+The public version, where clients price their own vehicle, is
+`odin_motor_quote_online` (`/motor-quote`).
+
 ## Rates
 
 Rates are kept in **Cover Quotes ▸ Configuration ▸ Motor rates**, grouped by

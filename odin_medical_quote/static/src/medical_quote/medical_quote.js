@@ -238,6 +238,23 @@ export class MedicalQuote extends Component {
         return this.state.results ? 2 : 1;
     }
 
+    // What the line calls what it compares: plans here, insurers for motor.
+    countText(n) {
+        return n === 1 ? _t("1 plan") : _t("%s plans", n);
+    }
+
+    get planColumn() {
+        return _t("Plan");
+    }
+
+    get compareTitle() {
+        return _t("Compare plans");
+    }
+
+    get compareHelp() {
+        return _t("Adjust each plan: take off options, give a discount, add a policy charge. Totals include taxes and levies.");
+    }
+
     get steps() {
         return [
             { n: 1, label: _t("Client and cover") },

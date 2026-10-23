@@ -71,6 +71,15 @@ class QuoteComparison(models.Model):
         stored = self.sudo().odin_access_token
         return bool(stored and token and consteq(stored, str(token)))
 
+    def _whatsapp_page_url(self):
+        """Share on WhatsApp links to the client's own quote page -- the plans
+        in plain words on a phone, the PDF, Talk to an advisor -- rather than
+        a bare PDF."""
+        self.ensure_one()
+        if self.odin_from_builder and self.plan_ids:
+            return self._odin_online_url()
+        return super()._whatsapp_page_url()
+
     def action_odin_pick_up(self):
         """Assign to me: take an online quote nobody has picked up yet, with
         its opportunity, its quotations and the to-do to contact the client."""

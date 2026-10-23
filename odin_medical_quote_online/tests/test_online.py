@@ -1,3 +1,5 @@
+from urllib.parse import unquote
+
 from odoo import SUPERUSER_ID
 from odoo.exceptions import UserError
 from odoo.tests import new_test_user, tagged
@@ -253,6 +255,25 @@ class TestOnlineShare(OnlineCase):
         wizard = self.env["odin.medical.quote.online.share"].with_user(self.agent).create({})
         self.assertNotIn("lead=", wizard.url)
         self.assertTrue(wizard.action_whatsapp()["url"].startswith("https://wa.me/?text="))
+
+    def test_share_quote_on_whatsapp(self):
+        """An agent's quote on WhatsApp: in words, with each price, linking to
+        the client's own page rather than a bare PDF."""
+        saved = self.Quote.save_quote({
+            "customer": {"source": "new", "name": "Amina Hassan", "phone": "0722 444 555"},
+            "cover": self.cover(),
+            "plans": [{"template_id": self.afya.id, "options": [], "recommended": True}],
+        })
+        comparison = self.Comparison.browse(saved["comparison"]["id"])
+        action = comparison.with_user(self.agent).action_share_whatsapp()
+        text = unquote(action["url"].split("text=", 1)[1])
+        self.assertTrue(text.startswith("Hello Amina,\nhere is your medical insurance quote %s"
+                                        % comparison.name), text)
+        self.assertIn("(our recommendation)", text)
+        self.assertIn("/medical-quote/q/%s?token=" % comparison.id, text)
+        self.assertEqual(comparison.state, "sent")
+        values = self.Online.quote_values(comparison, comparison.odin_access_token)
+        self.assertEqual(values["advisor"], self.agent, "their agent, by name")
 
     def test_campaign_link(self):
         """For an ad: nobody's name on it, the source and campaign in it."""

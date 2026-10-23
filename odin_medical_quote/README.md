@@ -24,7 +24,9 @@ Cover Quotes opens on **Quotes**. To start a quote:
 * **New quote** asks what is being quoted (Medical, Motor...) and opens its
   form;
 * the Quotes list's **New ▾** has one entry per type;
-* **Medical Quote** on any CRM lead or opportunity opens the medical form.
+* **Insurance quote** on any CRM lead or opportunity asks the same question
+  and opens that form with the lead's client filled in. The lead's
+  **Insurance quotes** button lists its quotes.
 
 Each insurance line adds itself to both choices; `odin_motor_quote` adds
 Motor. Four steps on one page:
@@ -94,6 +96,13 @@ it.
   a saved quote reopens on the same options after its template is edited.
 
 ## The quotation the client gets
+
+**Share on WhatsApp** writes to the client in plain words:
+*Hello Amina, here is your medical insurance quote QC00012 from BizSure*,
+each plan with its total, the validity date, and a link. With
+`odin_medical_quote_online` the link opens the client's own quote page,
+where they can see the plans, download the PDF and ask an advisor to contact
+them. Without it, the link downloads the PDF.
 
 **Print quotation**, **Send by email** and **Share on WhatsApp** all send the
 same PDF, *Medical quotation - David Muthuri Muriuki - QC00012.pdf*, laid

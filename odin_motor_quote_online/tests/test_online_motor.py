@@ -113,6 +113,10 @@ class TestOnlineMotor(OnlineMotorCase):
         note = lead.message_ids.filtered(lambda m: "Vehicle value, year and use" in str(m.body))
         self.assertTrue(note)
 
+        message = comparison._whatsapp_message("https://example.com/q")
+        self.assertIn("here is your motor insurance quote %s" % comparison.name, message)
+        self.assertIn("Test Definite – Comprehensive", message)
+
         values = self.Online.quote_values(comparison, comparison.odin_access_token)
         self.assertEqual(values["kind"], "motor")
         self.assertEqual(values["about"], "KDA 123A · Toyota Fielder")
