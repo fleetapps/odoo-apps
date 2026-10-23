@@ -12,6 +12,11 @@
                     <field name="odin_quote_payment_note" class="w-100"
                            placeholder="A/C name, A/C no, bank, branch, SWIFT, M-Pesa paybill and account number..."/>
                 </setting>
+                <setting id="odin_quote_handler_id" company_dependent="1"
+                         string="Hand accepted medical quotes to"
+                         help="Who places the cover with the insurer when a client accepts. They get a Place cover to-do with the checklist (CRM ▸ Configuration ▸ Activity Types). Left empty, the salesperson does.">
+                    <field name="odin_quote_handler_id" options="{'no_create': True}"/>
+                </setting>
             </setting>
         </field>
     </record>

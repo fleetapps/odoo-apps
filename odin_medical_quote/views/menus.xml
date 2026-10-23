@@ -14,4 +14,14 @@
               parent="crm.crm_menu_sales"
               action="odin_client_quote.action_quote_comparison"
               sequence="3"/>
+
+    <record id="odin_client_quote.menu_quote_comparison_app" model="ir.ui.menu">
+        <field name="name">Quotes</field>
+    </record>
+
+    <!-- Add Medical Quote replaces it: two ways to quote is one too many for
+         a new member of staff. Still there in debug mode. -->
+    <record id="odin_client_quote.menu_quote_member_builder" model="ir.ui.menu">
+        <field name="group_ids" eval="[Command.set([ref('base.group_no_one')])]"/>
+    </record>
 </odoo>

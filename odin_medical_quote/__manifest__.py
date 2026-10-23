@@ -44,6 +44,7 @@ corrected on the product. See README.md.
         "data/product_data.xml",
         "report/medical_quotation.xml",
         "data/mail_template_data.xml",
+        "data/mail_activity_data.xml",
         "views/product_template_views.xml",
         "views/sale_order_template_views.xml",
         "views/medical_quote_actions.xml",

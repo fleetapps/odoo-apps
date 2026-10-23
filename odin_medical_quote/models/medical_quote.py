@@ -909,6 +909,7 @@ class MedicalQuote(models.AbstractModel):
                 "name": comparison.name,
                 "state": comparison.state,
                 "accepted_order_id": comparison.odin_accepted_order_id.id,
+                "handler": comparison.odin_handler_id.name or "",
             },
             "params": comparison.odin_builder_params or False,
             "partner": self._odin_partner_json(comparison.partner_id),

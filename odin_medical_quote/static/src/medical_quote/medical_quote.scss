@@ -294,43 +294,6 @@
 
 // -- options table -----------------------------------------------------------
 
-.o_mq_legend {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.6rem 1rem;
-    font-size: 0.8rem;
-    color: var(--mq-muted);
-
-    > span {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-}
-
-.o_mq_legend_hint {
-    margin-left: auto;
-}
-
-.o_mq_dot {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid var(--mq-accent);
-    border-radius: 50%;
-    font-size: 0.55rem;
-
-    &.o_on {
-        background: var(--mq-on);
-        border-color: var(--mq-on);
-        color: #fff;
-    }
-}
-
 .o_mq_table_wrap {
     overflow-x: auto;
 }
@@ -363,12 +326,21 @@
     }
 }
 
-.o_mq_col_insurer {
-    width: 15%;
+.o_mq_col_plan {
+    width: 26%;
 }
 
-.o_mq_col_plan {
-    width: 20%;
+.o_mq_folded {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+
+    .o_mq_unfold {
+        padding: 0;
+    }
 }
 
 .o_mq_group_label {
@@ -636,10 +608,6 @@
 }
 
 @include media-breakpoint-down(md) {
-    .o_mq_legend_hint {
-        margin-left: 0;
-    }
-
     .o_mq_footer {
         flex-wrap: wrap;
 

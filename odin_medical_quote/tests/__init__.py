@@ -4,3 +4,4 @@ from . import test_save
 from . import test_accept
 from . import test_tour
 from . import test_export
+from . import test_register
