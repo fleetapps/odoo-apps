@@ -45,8 +45,4 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <menuitem id="menu_quote_member_builder" name="Quote a household"
-              parent="odin_client_quote.menu_quote_root"
-              action="action_quote_member_builder" sequence="15"/>
 </odoo>
