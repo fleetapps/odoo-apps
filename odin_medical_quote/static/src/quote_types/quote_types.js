@@ -20,6 +20,7 @@ quoteTypes.add("medical", {
     description: _t("Individual and family medical cover"),
     icon: "fa-heartbeat",
     action: "odin_medical_quote.action_medical_quote",
+    tag: "odin_medical_quote",
 });
 
 function sortedTypes() {
@@ -28,7 +29,10 @@ function sortedTypes() {
         .sort((a, b) => a.sequence - b.sequence);
 }
 
-/** New quote: what is being quoted, before the form for it. */
+/**
+ * New quote: what is being quoted, before the form for it. From a lead
+ * (Insurance quote), the form opens with that lead's client.
+ */
 export class QuoteNew extends Component {
     static template = "odin_medical_quote.QuoteNew";
     static props = ["*"];
@@ -36,9 +40,21 @@ export class QuoteNew extends Component {
     setup() {
         this.action = useService("action");
         this.types = sortedTypes();
+        const params = (this.props.action && this.props.action.params) || {};
+        this.leadId = params.lead_id || false;
+        this.leadName = params.lead_name || "";
     }
 
     open(type) {
+        if (this.leadId) {
+            this.action.doAction({
+                type: "ir.actions.client",
+                tag: type.tag,
+                name: _t("%s quote", type.name),
+                params: { lead_id: this.leadId },
+            });
+            return;
+        }
         this.action.doAction(type.action);
     }
 }

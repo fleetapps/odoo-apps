@@ -6,20 +6,25 @@
         <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//block[@name='quotation_order_setting_container']" position="after">
-                <block title="Online medical quotes" name="odin_online_quote_setting_container">
-                    <setting id="odin_online_url" string="Online quote page"
-                             help="Anyone can price medical cover for their family here and get a quote. Link to it from your website, or share it on WhatsApp from a lead (Send online quote link).">
-                        <field name="odin_online_url" widget="CopyClipboardChar" readonly="1"/>
+                <block title="Online quotes" name="odin_online_quote_setting_container">
+                    <setting id="odin_online_url" string="Online quote pages"
+                             help="Anyone can get a quote here by themselves. For a link that brings quotes back to you, or one for an ad, use Cover Quotes ▸ Share quote link.">
+                        <div class="row mt-2">
+                            <label for="odin_online_url" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_url" widget="CopyClipboardChar" readonly="1"/>
+                        </div>
                     </setting>
                     <setting id="odin_online_user_id" company_dependent="1" string="Who follows them up"
-                             help="Online quotes go to the agent whose link the client used; otherwise to this person, or the sales team's leader. They get a to-do for the day.">
+                             help="An agent's own link, or a link sent from an opportunity, goes to that agent; a client who already has an agent goes back to them. Quotes from ads, the website or the plain page go to the person below, or, left empty, wait for anyone in the team to pick them up (the team is told).">
                         <div class="row mt-2">
                             <label for="odin_online_user_id" class="col-lg-4 o_light_label"/>
-                            <field name="odin_online_user_id" options="{'no_create': True}"/>
+                            <field name="odin_online_user_id" options="{'no_create': True}"
+                                   placeholder="Nobody: the team picks them up"/>
                         </div>
                         <div class="row">
                             <label for="odin_online_team_id" class="col-lg-4 o_light_label"/>
-                            <field name="odin_online_team_id" options="{'no_create': True}"/>
+                            <field name="odin_online_team_id" options="{'no_create': True}"
+                                   placeholder="The default sales team"/>
                         </div>
                     </setting>
                     <setting id="odin_online_whatsapp" company_dependent="1" string="Talking to clients"

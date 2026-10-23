@@ -5,8 +5,14 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="odin_medical_quote.crm_lead_view_form_medical_quote"/>
         <field name="arch" type="xml">
-            <button name="action_odin_medical_quote" position="after">
-                <button string="Send online quote link" name="action_odin_online_share" type="object"
+            <button name="action_odin_new_quote" position="before">
+                <button string="Assign to me" name="action_odin_pick_up" type="object"
+                        class="btn-primary" data-hotkey="a"
+                        title="Nobody is following this up yet: take it, with its online quotes and the to-do to contact the client"
+                        invisible="user_id or not active or probability == 100"/>
+            </button>
+            <button name="action_odin_new_quote" position="after">
+                <button string="Send quote link" name="action_odin_online_share" type="object"
                         class="btn-secondary"
                         title="Let the client price cover themselves: a link, filled in for them, that brings the quote back to this opportunity"
                         invisible="not active or probability == 100"/>

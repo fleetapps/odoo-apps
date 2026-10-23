@@ -13,10 +13,16 @@ const WHO = [
 
 /** Hospital cover bands, so nobody has to know what a limit is. */
 const BANDS = [
-    { key: "any", label: _t("Any"), test: () => true },
-    { key: "low", label: _t("Up to 300,000"), test: (limit) => limit <= 300000 },
-    { key: "mid", label: _t("300,000 to 1M"), test: (limit) => limit > 300000 && limit <= 1000000 },
+    { key: "any", label: _t("Any amount"), test: () => true },
+    { key: "low", label: _t("Up to 300K"), test: (limit) => limit <= 300000 },
+    { key: "mid", label: _t("300K to 1M"), test: (limit) => limit > 300000 && limit <= 1000000 },
     { key: "high", label: _t("Over 1M"), test: (limit) => limit > 1000000 },
+];
+
+const STEPS = [
+    { key: "who", label: _t("You") },
+    { key: "options", label: _t("Plans") },
+    { key: "details", label: _t("Your quote") },
 ];
 
 /**
@@ -83,6 +89,18 @@ export class OnlineQuote extends Component {
         });
         const { currency, currencyAfter } = this.props.company;
         return currencyAfter ? `${number} ${currency}` : `${currency} ${number}`;
+    }
+
+    get steps() {
+        return STEPS;
+    }
+
+    get stepIndex() {
+        return this.steps.findIndex((step) => step.key === this.state.step);
+    }
+
+    get backLabel() {
+        return _t("Back to the plans");
     }
 
     whole(value) {

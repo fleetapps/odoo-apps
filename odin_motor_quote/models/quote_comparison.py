@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.tools import formatLang
 
 
@@ -50,3 +50,16 @@ class QuoteComparison(models.Model):
         if period != 12:
             pairs.append((_("Period"), _("1 month") if period == 1 else _("%s months", period)))
         return pairs
+
+
+class QuoteComparisonPlan(models.Model):
+    _inherit = "odin.quote.comparison.plan"
+
+    @api.depends("order_id.odin_motor_rate_id")
+    def _compute_heading(self):
+        """A motor column is headed by its insurer, then the cover."""
+        motor = self.filtered("order_id.odin_motor_rate_id")
+        for plan in motor:
+            plan.name = plan.order_id._odin_insurer_label()
+            plan.subtitle = plan.order_id._odin_plan_name()
+        super(QuoteComparisonPlan, self - motor)._compute_heading()

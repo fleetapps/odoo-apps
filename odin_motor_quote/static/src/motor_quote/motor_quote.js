@@ -152,4 +152,5 @@ quoteTypes.add("motor", {
     description: _t("Private cars, commercial vehicles, PSVs and motorcycles"),
     icon: "fa-car",
     action: "odin_motor_quote.action_motor_quote",
+    tag: "odin_motor_quote",
 });

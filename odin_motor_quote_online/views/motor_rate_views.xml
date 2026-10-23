@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_motor_rate_list_online" model="ir.ui.view">
+        <field name="name">odin.motor.rate.list.online</field>
+        <field name="model">odin.motor.rate</field>
+        <field name="inherit_id" ref="odin_motor_quote.view_motor_rate_list"/>
+        <field name="arch" type="xml">
+            <field name="max_age" position="after">
+                <field name="odin_online" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_motor_rate_form_online" model="ir.ui.view">
+        <field name="name">odin.motor.rate.form.online</field>
+        <field name="model">odin.motor.rate</field>
+        <field name="inherit_id" ref="odin_motor_quote.view_motor_rate_form"/>
+        <field name="arch" type="xml">
+            <field name="period_months" position="after">
+                <field name="odin_online"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_motor_class_list_online" model="ir.ui.view">
+        <field name="name">odin.motor.class.list.online</field>
+        <field name="model">odin.motor.class</field>
+        <field name="inherit_id" ref="odin_motor_quote.view_motor_class_list"/>
+        <field name="arch" type="xml">
+            <field name="ask_tonnage" position="after">
+                <field name="odin_online"/>
+                <field name="online_name" optional="show" placeholder="As named"/>
+                <field name="online_hint" optional="show"/>
+                <field name="online_icon" optional="hide"/>
+            </field>
+        </field>
+    </record>
+</odoo>

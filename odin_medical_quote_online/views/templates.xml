@@ -6,7 +6,7 @@
         <t t-call="web.frontend_layout">
             <t t-set="no_header" t-value="True"/>
             <t t-set="no_footer" t-value="True"/>
-            <t t-set="title" t-value="title or ('%s – medical cover' % company.name)"/>
+            <t t-set="title" t-value="title or company.name"/>
             <t t-set="head">
                 <meta name="robots" content="noindex, nofollow"/>
             </t>
@@ -46,12 +46,12 @@
         </t>
     </template>
 
-    <!-- The client's own quote, at the link they were given. -->
-    <template id="quote_page" name="Your medical quote">
+    <!-- The client's own quote, at the link they were given: medical or
+         motor, the words that differ come from the line's online model. -->
+    <template id="quote_page" name="Your online quote">
         <t t-call="odin_medical_quote_online.layout">
-            <t t-set="title" t-value="'Your medical quote %s – %s' % (comparison.name, company.name)"/>
+            <t t-set="title" t-value="'Your %s quote %s – %s' % (kind, comparison.name, company.name)"/>
             <t t-set="money" t-value="{'widget': 'monetary', 'display_currency': company.currency_id}"/>
-            <t t-set="money_whole" t-value="{'widget': 'monetary', 'display_currency': company.currency_id, 'decimal_places': 0}"/>
             <div class="o_oq_quote">
                 <div t-if="status == 'accepted'" class="o_oq_banner o_oq_banner_ok" role="status">
                     You've chosen your plan. We're arranging your cover with the insurer and will
@@ -70,7 +70,7 @@
                 </h1>
                 <p class="o_oq_lead">
                     Quote <b t-out="comparison.name"/>
-                    <t t-if="people"> for <t t-out="people"/></t>.
+                    <t t-if="about"> for <t t-out="about"/></t>.
                     <t t-if="valid_until and status == 'open'">Valid until <t t-out="valid_until"/>.</t>
                 </p>
 
@@ -85,13 +85,13 @@
                         <ul class="o_oq_covers">
                             <li t-foreach="plan['sections']" t-as="section">
                                 <i class="fa fa-check" role="img" aria-label="Included"/>
-                                <span><b t-out="section['label']"/><t t-if="section['limit']">: up to
-                                    <t t-out="section['limit']" t-options="money_whole"/> a year</t></span>
+                                <span><b t-out="section['label']"/><t t-if="section['text']">:
+                                    <t t-out="section['text']"/></t></span>
                             </li>
                         </ul>
                         <div class="o_oq_price">
                             <span class="o_oq_amount" t-out="plan['total']" t-options="money"/>
-                            <span class="o_oq_per">a year</span>
+                            <span class="o_oq_per" t-out="per"/>
                         </div>
                         <div t-if="plan['monthly']" class="o_oq_monthly">
                             or <t t-out="plan['monthly']['months']"/> monthly payments of
@@ -129,7 +129,7 @@
                     <t t-else="">
                         <h2>Talk to an advisor</h2>
                         <p>Questions about what is covered, or ready to go ahead? We'll contact you.</p>
-                        <form method="post" t-attf-action="/medical-quote/q/{{ comparison.id }}/callback">
+                        <form method="post" t-att-action="callback_url">
                             <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                             <input type="hidden" name="token" t-att-value="token"/>
                             <fieldset class="o_oq_choice_row">
@@ -145,16 +145,12 @@
                                 <option t-foreach="contact_when" t-as="choice" t-att-value="choice[0]"
                                         t-out="choice[1]"/>
                             </select>
-                            <button type="submit" class="btn btn-primary btn-lg mt-3 w-100">Request a call</button>
+                            <button type="submit" class="btn btn-primary btn-lg mt-3 w-100">Ask an advisor to contact me</button>
                         </form>
                     </t>
                 </section>
 
-                <p class="o_oq_small o_oq_fineprint">
-                    Prices are for a year of cover and include government levies. Your advisor confirms
-                    the cover with the insurer before you pay; the insurer's policy document sets out
-                    exactly what is covered.
-                </p>
+                <p class="o_oq_small o_oq_fineprint" t-out="fineprint"/>
             </div>
         </t>
     </template>

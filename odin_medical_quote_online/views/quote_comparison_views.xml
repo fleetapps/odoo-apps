@@ -11,6 +11,9 @@
             </xpath>
             <xpath expr="//field[@name='opportunity_id']" position="after">
                 <field name="odin_channel" invisible="odin_channel != 'online'"/>
+                <field name="odin_online_via" invisible="not odin_online_via"/>
+                <field name="odin_source_id" invisible="odin_channel != 'online' or not odin_source_id"/>
+                <field name="odin_campaign_id" invisible="not odin_campaign_id"/>
                 <field name="odin_callback_requested" invisible="not odin_callback_requested"
                        decoration-danger="state in ('draft', 'sent')"/>
                 <field name="odin_contact_by" invisible="not odin_contact_by"/>
@@ -19,6 +22,10 @@
                        invisible="not odin_online_url"/>
             </xpath>
             <xpath expr="//header" position="inside">
+                <button name="action_odin_pick_up" type="object" string="Assign to me"
+                        class="btn-primary" data-hotkey="a"
+                        invisible="odin_channel != 'online' or user_id or state not in ('draft', 'sent')"
+                        help="Nobody has picked this online quote up yet: take it, with its opportunity and the to-do to contact the client."/>
                 <button name="action_odin_online_link" type="object" string="Client's link"
                         invisible="odin_online_url or not odin_from_builder or not plan_ids"
                         help="A private page for the client: their plans in plain words, the PDF and Talk to an advisor. Copy it to send it however you like."/>
@@ -31,9 +38,17 @@
         <field name="model">odin.quote.comparison</field>
         <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_list_medical"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <button name="action_odin_pick_up" type="object" string="Assign to me"
+                        class="btn-link p-0" icon="fa-hand-paper-o"
+                        invisible="user_id or odin_channel != 'online' or state not in ('draft', 'sent')"/>
+            </xpath>
             <xpath expr="//field[@name='state']" position="before">
                 <field name="odin_channel" optional="show" readonly="1" widget="badge"
                        decoration-info="odin_channel == 'online'"/>
+                <field name="odin_online_via" optional="hide" readonly="1"/>
+                <field name="odin_source_id" optional="hide" readonly="1"/>
+                <field name="odin_campaign_id" optional="hide" readonly="1"/>
                 <field name="odin_callback_requested" optional="hide" readonly="1"/>
             </xpath>
         </field>
@@ -44,15 +59,69 @@
         <field name="model">odin.quote.comparison</field>
         <field name="inherit_id" ref="odin_medical_quote.view_quote_comparison_search_medical"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='opportunity_id']" position="after">
+                <field name="odin_source_id"/>
+                <field name="odin_campaign_id"/>
+            </xpath>
             <xpath expr="//filter[@name='filter_open']" position="before">
+                <filter name="filter_team" string="Sales team" domain="[('odin_channel', '=', 'agent')]"/>
                 <filter name="filter_online" string="Online" domain="[('odin_channel', '=', 'online')]"/>
+                <separator/>
+                <filter name="filter_to_pick_up" string="To pick up"
+                        domain="[('odin_channel', '=', 'online'), ('user_id', '=', False), ('state', 'in', ('draft', 'sent'))]"/>
                 <filter name="filter_callback" string="Asked for a call"
                         domain="[('odin_callback_requested', '!=', False), ('state', 'in', ('draft', 'sent'))]"/>
                 <separator/>
             </xpath>
             <xpath expr="//filter[@name='group_state']" position="after">
                 <filter name="group_channel" string="Channel" context="{'group_by': 'odin_channel'}"/>
+                <filter name="group_source" string="Source" context="{'group_by': 'odin_source_id'}"/>
+                <filter name="group_campaign" string="Campaign" context="{'group_by': 'odin_campaign_id'}"/>
             </xpath>
+        </field>
+    </record>
+
+    <!-- Online quotes: what clients made themselves, newest first, with
+         Assign to me on the ones nobody has picked up. No New: these come
+         from the pages, not from here. -->
+    <record id="view_quote_comparison_list_online_inbox" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.list.online.inbox</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="view_quote_comparison_list_online"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="create">0</attribute>
+                <attribute name="default_order">create_date desc</attribute>
+                <attribute name="decoration-bf">not user_id and state in ('draft', 'sent')</attribute>
+            </xpath>
+            <xpath expr="//field[@name='odin_channel']" position="attributes">
+                <attribute name="column_invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='odin_source_id']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+            <xpath expr="//field[@name='odin_callback_requested']" position="attributes">
+                <attribute name="optional">show</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_online_quotes" model="ir.actions.act_window">
+        <field name="name">Online quotes</field>
+        <field name="res_model">odin.quote.comparison</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('odin_channel', '=', 'online')]</field>
+        <field name="view_ids" eval="[Command.clear(),
+            Command.create({'view_mode': 'list', 'view_id': ref('view_quote_comparison_list_online_inbox')}),
+            Command.create({'view_mode': 'form', 'view_id': ref('odin_medical_quote.view_quote_comparison_form_medical')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No online quotes yet</p>
+            <p>
+                Quotes clients make themselves on the online quote pages appear here. Share a
+                page from <b>Share quote link</b>: your own link, a link for one client, or a
+                campaign link for an ad or your website.
+            </p>
         </field>
     </record>
 </odoo>

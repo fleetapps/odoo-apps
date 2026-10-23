@@ -567,4 +567,11 @@ class QuoteComparisonPlan(models.Model):
 
     odin_order_state = fields.Selection(related="order_id.state", string="Status")
     odin_template_id = fields.Many2one(
-        related="order_id.sale_order_template_id", string="Plan")
+        related="order_id.sale_order_template_id", string="Plan template")
+    odin_plan_label = fields.Char(string="Plan", compute="_compute_odin_plan_label")
+
+    @api.depends("order_id")
+    def _compute_odin_plan_label(self):
+        # Medical: the plan; motor: the insurer and the cover.
+        for plan in self:
+            plan.odin_plan_label = plan.order_id._odin_plan_label() if plan.order_id else False

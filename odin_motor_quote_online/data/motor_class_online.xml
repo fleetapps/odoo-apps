@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Once, at install: how the standard vehicle types read to the public,
+         and which of them it is offered. Edit them afterwards in Cover
+         Quotes > Configuration > Vehicle types. -->
+    <data noupdate="1">
+        <function model="odin.motor.class" name="_odin_set_online">
+            <value eval="{
+                'odin_motor_quote.class_private': {'online_name': 'Private car', 'online_hint': 'Personal or family use', 'online_icon': 'fa-car'},
+                'odin_motor_quote.class_psv': {'online_name': 'Taxi, Uber or matatu', 'online_hint': 'Carries paying passengers', 'online_icon': 'fa-taxi'},
+                'odin_motor_quote.class_pickup': {'online_name': 'Pick-up', 'online_hint': 'Used for business', 'online_icon': 'fa-truck'},
+                'odin_motor_quote.class_commercial': {'online_name': 'Lorry or van', 'online_hint': 'Carries goods', 'online_icon': 'fa-truck'},
+                'odin_motor_quote.class_motorcycle_private': {'online_name': 'Motorbike', 'online_hint': 'Personal use', 'online_icon': 'fa-motorcycle'},
+                'odin_motor_quote.class_motorcycle_psv': {'online_name': 'Boda boda', 'online_hint': 'Carries paying passengers', 'online_icon': 'fa-motorcycle'},
+                'odin_motor_quote.class_motorcycle_commercial': {'online_name': 'Delivery motorbike', 'online_hint': 'Deliveries or company use', 'online_icon': 'fa-motorcycle'},
+                'odin_motor_quote.class_tuktuk_psv': {'online_name': 'Tuk-tuk', 'online_hint': 'Carries paying passengers', 'online_icon': 'fa-taxi'},
+                'odin_motor_quote.class_tuktuk_commercial': {'online_name': 'Delivery tuk-tuk', 'online_hint': 'Deliveries', 'online_icon': 'fa-truck'},
+                'odin_motor_quote.class_institutional': {'online_name': 'School or staff bus', 'online_hint': 'An institution\'s own bus', 'online_icon': 'fa-bus'},
+                'odin_motor_quote.class_tsv': {'online_name': 'Tour van', 'online_hint': 'Tours and safaris', 'online_icon': 'fa-bus'},
+                'odin_motor_quote.class_special': {'odin_online': False, 'online_icon': 'fa-ambulance'},
+                'odin_motor_quote.class_construction': {'odin_online': False, 'online_icon': 'fa-truck'},
+                'odin_motor_quote.class_farm': {'odin_online': False, 'online_icon': 'fa-truck'},
+                'odin_motor_quote.class_prime_mover': {'odin_online': False, 'online_icon': 'fa-truck'},
+            }"/>
+        </function>
+    </data>
+</odoo>
