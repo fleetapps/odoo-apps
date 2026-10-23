@@ -143,8 +143,8 @@
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="partner_phone" optional="show"/>
-                <field name="odin_cover_summary" optional="show"/>
-                <field name="odin_plan_summary" string="Plans" optional="show"/>
+                <field name="odin_cover_summary" optional="hide"/>
+                <field name="odin_plan_summary" string="Plans" optional="hide"/>
                 <field name="currency_id" column_invisible="1"/>
                 <field name="odin_amount_total" optional="show"/>
                 <field name="opportunity_id" optional="hide" readonly="1"/>
