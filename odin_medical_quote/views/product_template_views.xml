@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_medical_quote" model="ir.ui.view">
+        <field name="name">product.template.form.medical.quote</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <!--
+                Read from the product name; shown so the product that does not
+                follow the rate card's wording can be put right here.
+            -->
+            <xpath expr="//page[@name='sales']/group[@name='sale']" position="inside">
+                <group string="Medical quotes" name="odin_rate">
+                    <field name="odin_rate_basis"/>
+                    <field name="odin_rate_group"/>
+                    <field name="odin_rate_role" invisible="odin_rate_basis != 'person'"/>
+                    <field name="odin_rate_family_size" invisible="odin_rate_basis != 'family_size'"/>
+                    <label for="odin_rate_age_min" string="Ages"/>
+                    <div class="o_row">
+                        <field name="odin_rate_age_min" class="oe_inline"/>
+                        <span>to</span>
+                        <field name="odin_rate_age_max" class="oe_inline"/>
+                    </div>
+                    <field name="odin_rate_limit"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

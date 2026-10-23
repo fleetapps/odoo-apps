@@ -1,0 +1,5 @@
+from . import test_rating
+from . import test_engine
+from . import test_save
+from . import test_accept
+from . import test_tour

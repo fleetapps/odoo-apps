@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!--
+        Used when the company has no discount product of its own (Sales ▸
+        Settings). No taxes on the product itself: each discount line carries
+        the taxes of the premium it reduces, so the levies follow.
+    -->
+    <record id="product_discount" model="product.product">
+        <field name="name">Discount</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+
+    <!--
+        A broker's charge on the policy, after the levies. FEE- so the client
+        reports file it with the statutory charges, not as cover. No tax by
+        default; set one on the product if your charge attracts it.
+    -->
+    <record id="product_policy_charge" model="product.product">
+        <field name="name">Policy charge</field>
+        <field name="default_code">FEE-POLICY</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="list_price">0</field>
+        <field name="purchase_ok" eval="False"/>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+</odoo>
