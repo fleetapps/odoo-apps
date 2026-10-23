@@ -65,8 +65,9 @@ export class OnlineMotorQuote extends Component {
         });
         this.calls = 0;
         onMounted(() => {
-            if (this.state.vehicle.class_id && this.state.vehicle.cover) {
-                // Back from their quote to change it: straight to the prices.
+            if (this.vehicleClass && !this.vehicleProblem()) {
+                // Back from their quote to change it: straight to the prices. A
+                // link that only names the vehicle and cover still asks the rest.
                 this.showPlans();
             }
         });

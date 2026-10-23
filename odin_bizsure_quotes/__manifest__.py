@@ -44,7 +44,7 @@ Odoo itself.
     "author": "Fleet Apps",
     "license": "GPL-3",
     "depends": ["account", "odin_client_quote", "odin_medical_quote", "odin_motor_quote",
-                "odin_motor_quote_online"],
+                "odin_motor_quote_online", "odin_wa_autoreply"],
     "data": [
         "data/product_category.xml",
         "data/account_tax.xml",

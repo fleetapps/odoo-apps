@@ -10,7 +10,7 @@ class OnlineMotorQuote(OnlineMedicalQuote):
 
     @http.route("/motor-quote", type="http", auth="public", methods=["GET"], sitemap=False)
     def motor_page(self, lead=None, agent=None, quote_id=None, quote=None, **kwargs):
-        return self._page(MOTOR, lead, agent, quote_id, quote)
+        return self._page(MOTOR, lead, agent, quote_id, quote, hints=kwargs)
 
     @http.route("/motor-quote/options", type="jsonrpc", auth="public", methods=["POST"])
     def motor_options(self, vehicle=None, extras=None, only=None):

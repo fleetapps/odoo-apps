@@ -515,9 +515,13 @@ class MedicalQuoteOnline(models.AbstractModel):
             partner = self._quoter()._odin_partner({
                 "source": "new", "name": contact["name"],
                 "phone": contact["phone"], "email": contact["email"]})
-        elif not partner.email and contact["email"]:
-            # Their own link from an agent: what they add is theirs to add.
-            partner.email = contact["email"]
+        else:
+            # Their own link: what they add is theirs to add (a WhatsApp
+            # contact may have come without a phone number).
+            if not partner.email and contact["email"]:
+                partner.email = contact["email"]
+            if not partner.phone and contact["phone"]:
+                partner.phone = contact["phone"]
         if not lead:
             lead = self._new_lead(partner, cover, user)
         else:
@@ -707,10 +711,12 @@ class MedicalQuoteOnline(models.AbstractModel):
         }
 
     @api.model
-    def page_props(self, lead_token=None, agent_token=None, quote_id=None, quote_token=None):
+    def page_props(self, lead_token=None, agent_token=None, quote_id=None, quote_token=None,
+                   hints=None):
         """What the online quote page starts with: the company, and for a
         visitor who came by an agent's link or from their own quote, their
-        answers filled in."""
+        answers filled in. ``hints`` are answers the link itself carries
+        (who=family, from a WhatsApp auto-reply), checked like any input."""
         company = self.env.company.sudo()
         prefill, tokens = {}, {}
         agent = self._agent_from_token(agent_token)
@@ -731,6 +737,8 @@ class MedicalQuoteOnline(models.AbstractModel):
                 email=previous.partner_id.email or "",
                 contact_by=previous.odin_contact_by or "whatsapp")
             prefill.update(self._prefill(previous))
+        elif hints:
+            prefill.update(self._prefill_hints(hints))
         return dict(self._page_setup(), **{
             "company": self._company_props(company),
             "maxPlans": MAX_PLANS,
@@ -743,6 +751,11 @@ class MedicalQuoteOnline(models.AbstractModel):
         """Per line: what the page needs to ask its questions."""
         return {"benefits": [{"key": key, "label": str(label), "help": str(help_text)}
                              for key, (label, help_text) in BENEFITS.items()]}
+
+    @api.model
+    def _prefill_hints(self, hints):
+        """Per line: answers a link may carry."""
+        return {"who": hints["who"]} if hints.get("who") in WHO else {}
 
     @api.model
     def _prefill(self, previous):

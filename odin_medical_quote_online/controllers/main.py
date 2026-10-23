@@ -31,10 +31,11 @@ class OnlineMedicalQuote(http.Controller):
             return {"error": request.env._(
                 "Something went wrong on our side. Please try again, or chat with us on WhatsApp.")}
 
-    def _page(self, model, lead=None, agent=None, quote_id=None, quote=None):
+    def _page(self, model, lead=None, agent=None, quote_id=None, quote=None, hints=None):
         online = self._online(model)
         props = online.page_props(
-            lead_token=lead, agent_token=agent, quote_id=quote_id, quote_token=quote)
+            lead_token=lead, agent_token=agent, quote_id=quote_id, quote_token=quote,
+            hints=hints)
         return request.render(online._odin_page_template(), {
             "props": props,
             "company": request.env.company.sudo(),
@@ -77,7 +78,7 @@ class OnlineMedicalQuote(http.Controller):
 
     @http.route("/medical-quote", type="http", auth="public", methods=["GET"], sitemap=False)
     def page(self, lead=None, agent=None, quote_id=None, quote=None, **kwargs):
-        return self._page(MEDICAL, lead, agent, quote_id, quote)
+        return self._page(MEDICAL, lead, agent, quote_id, quote, hints=kwargs)
 
     @http.route("/medical-quote/options", type="jsonrpc", auth="public", methods=["POST"])
     def options(self, family=None, wants=None, tiers=None, only=None):

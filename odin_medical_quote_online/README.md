@@ -97,6 +97,17 @@ Riders (Hosi Cash, Femina...) are not offered online. The advisor adds them.
 * **Share on WhatsApp** on any quote made on the quote screen links to the
   client's own page rather than a bare PDF.
 
+## Links that already know something
+
+* `/medical-quote?who=family` (or `me`, `couple`, `me_kids`, `kids`) opens
+  with who needs cover chosen.
+* `/motor-quote?class_id=…&cover=tpo&period=1` opens with the vehicle type,
+  cover and period chosen.
+* Anything not offered is ignored, and the rest of the questions are still
+  asked.
+* `odin_wa_autoreply` builds these links from what a customer wrote on
+  WhatsApp.
+
 ## Safety
 
 * **A visitor never sees existing data.** An online quote always makes a new
