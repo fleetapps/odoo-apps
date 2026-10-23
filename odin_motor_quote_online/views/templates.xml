@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="page" name="Online motor quote">
+        <t t-call="odin_medical_quote_online.layout">
+            <t t-set="title" t-value="'Motor insurance quote – %s' % company.name"/>
+            <owl-component name="odin_motor_quote_online.OnlineMotorQuote" t-att-props="json.dumps(props)"/>
+            <noscript>
+                <p>This page needs JavaScript. You can also call us on <t t-out="company.phone"/>.</p>
+            </noscript>
+        </t>
+    </template>
+</odoo>

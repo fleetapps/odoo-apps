@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_motor_quote_online.OnlineMotorQuote">
+        <div class="o_oq_app o_oq_motor" t-att-class="{'o_oq_has_bar': state.step === 'options' and state.chosen.length}">
+            <t t-call="odin_medical_quote_online.Steps"/>
+
+            <t t-if="state.step === 'vehicle'" t-call="odin_motor_quote_online.OnlineMotorQuote.Vehicle"/>
+            <t t-elif="state.step === 'options'" t-call="odin_motor_quote_online.OnlineMotorQuote.Prices"/>
+            <t t-else="">
+                <t t-call="odin_medical_quote_online.Contact">
+                    <fieldset class="o_oq_fields o_oq_vehicle_ids">
+                        <legend>About the vehicle <small class="text-muted">(optional, printed on your quote)</small></legend>
+                        <div class="o_oq_field">
+                            <label for="oq_registration">Number plate</label>
+                            <input id="oq_registration" class="form-control form-control-lg text-uppercase"
+                                   placeholder="KDA 123A" autocomplete="off"
+                                   t-model="state.contact.registration"/>
+                        </div>
+                        <div class="o_oq_field">
+                            <label for="oq_make_model">Make and model</label>
+                            <input id="oq_make_model" class="form-control form-control-lg"
+                                   placeholder="Toyota Fielder" autocomplete="off"
+                                   t-model="state.contact.make_model"/>
+                        </div>
+                    </fieldset>
+                </t>
+            </t>
+
+            <t t-call="odin_medical_quote_online.Talk"/>
+        </div>
+    </t>
+
+    <!-- 1. The vehicle ===================================================== -->
+    <t t-name="odin_motor_quote_online.OnlineMotorQuote.Vehicle">
+        <section class="o_oq_section">
+            <h1 class="o_oq_title">Motor insurance prices in two minutes</h1>
+            <p class="o_oq_lead">Compare the insurers we work with, side by side. No jargon, no commitment.</p>
+
+            <h2 class="o_oq_question">What do you drive?</h2>
+            <div class="o_oq_tiles o_oq_tiles_compact" role="radiogroup">
+                <button t-foreach="props.classes" t-as="option" t-key="option.id" type="button"
+                        class="o_oq_tile" t-att-class="{'o_on': vehicle.class_id === option.id}"
+                        role="radio" t-att-aria-checked="vehicle.class_id === option.id ? 'true' : 'false'"
+                        t-on-click="() => this.pickClass(option)">
+                    <i class="fa" t-att-class="option.icon"/>
+                    <span>
+                        <b t-esc="option.name"/>
+                        <small t-if="option.hint" t-esc="option.hint"/>
+                    </span>
+                </button>
+            </div>
+            <p t-if="whatsappUrl" class="o_oq_small mt-2">
+                Something else, or several vehicles?
+                <a t-att-href="whatsappUrl" target="_blank" rel="noopener">Talk to us</a> and an advisor
+                will quote it.
+            </p>
+
+            <t t-if="vehicleClass">
+                <h2 class="o_oq_question">What cover do you want?</h2>
+                <div class="o_oq_tiles" role="radiogroup">
+                    <button t-foreach="vehicleClass.covers" t-as="cover" t-key="cover.key" type="button"
+                            class="o_oq_tile o_oq_tile_text" t-att-class="{'o_on': vehicle.cover === cover.key}"
+                            role="radio" t-att-aria-checked="vehicle.cover === cover.key ? 'true' : 'false'"
+                            t-on-click="() => this.pickCover(cover.key)">
+                        <i class="fa" t-att-class="cover.key === 'comprehensive' ? 'fa-shield' : 'fa-users'"/>
+                        <span>
+                            <b t-esc="cover.label"/>
+                            <small t-esc="cover.hint"/>
+                        </span>
+                    </button>
+                </div>
+            </t>
+
+            <div t-if="vehicle.cover" class="o_oq_fields">
+                <div t-if="isComprehensive" class="o_oq_field">
+                    <label for="oq_value">What is it worth today?</label>
+                    <input id="oq_value" type="number" inputmode="numeric" min="10000" step="10000"
+                           class="form-control form-control-lg" placeholder="1500000"
+                           t-model="vehicle.value"/>
+                    <small class="o_oq_field_hint">
+                        <t t-if="valueText"><b t-esc="valueText"/>. </t>Roughly what it would sell for.
+                    </small>
+                </div>
+                <div class="o_oq_field">
+                    <label for="oq_year">Year it was made</label>
+                    <select id="oq_year" class="form-select form-select-lg" t-model.number="vehicle.year">
+                        <option value="0">Choose…</option>
+                        <option t-foreach="props.years" t-as="year" t-key="year" t-att-value="year" t-esc="year"/>
+                    </select>
+                </div>
+                <div t-if="askSeats" class="o_oq_field">
+                    <label for="oq_seats">Passengers it can carry</label>
+                    <input id="oq_seats" type="number" inputmode="numeric" min="1" max="100"
+                           class="form-control form-control-lg" t-model="vehicle.seats"/>
+                    <small class="o_oq_field_hint">Not counting the driver.</small>
+                </div>
+                <div t-if="askTonnage" class="o_oq_field">
+                    <label for="oq_tonnage">Tonnes it can carry</label>
+                    <input id="oq_tonnage" type="number" inputmode="decimal" min="0.5" step="0.5"
+                           class="form-control form-control-lg" t-model="vehicle.tonnage"/>
+                </div>
+            </div>
+            <fieldset t-if="periods.length" class="o_oq_choice_row mt-3">
+                <legend>For how long?</legend>
+                <label t-foreach="periods" t-as="period" t-key="period.key" class="o_oq_pill">
+                    <input type="radio" name="oq_period" t-att-value="period.key"
+                           t-att-checked="vehicle.period === period.key"
+                           t-on-change="() => vehicle.period = period.key"/>
+                    <span t-esc="period.label"/>
+                </label>
+            </fieldset>
+
+            <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
+            <button type="button" class="btn btn-primary btn-lg o_oq_next" t-on-click="showPlans">
+                See prices <i class="fa fa-arrow-right ms-1"/>
+            </button>
+        </section>
+    </t>
+
+    <!-- 2. Every insurer's price =========================================== -->
+    <t t-name="odin_motor_quote_online.OnlineMotorQuote.Prices">
+        <section class="o_oq_section">
+            <div class="o_oq_for">
+                <span>
+                    <span class="o_oq_for_label">Prices for</span>
+                    <b t-esc="vehicleSummary"/>
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-primary o_oq_edit"
+                        t-on-click="() => this.back('vehicle')">
+                    <i class="fa fa-pencil me-1"/>Edit
+                </button>
+            </div>
+
+            <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
+            <div t-if="state.loading" class="o_oq_loading">
+                <i class="fa fa-circle-o-notch fa-spin me-2"/>Getting prices from the insurers…
+            </div>
+            <div t-elif="state.loaded and !state.plans.length and !state.error" class="o_oq_card o_oq_empty">
+                <h2>We can't price this online</h2>
+                <p>
+                    <t t-if="state.refused"><t t-esc="state.refused"/> </t>
+                    Talk to us and an advisor will find an insurer for it.
+                </p>
+                <a t-if="whatsappUrl" class="btn btn-success" t-att-href="whatsappUrl" target="_blank" rel="noopener">
+                    <i class="fa fa-whatsapp me-1"/>Chat with us on WhatsApp</a>
+            </div>
+            <p t-elif="state.loaded" class="o_oq_count">
+                <t t-esc="state.plans.length"/>
+                <t t-if="state.plans.length === 1"> insurer</t><t t-else=""> insurers</t>, cheapest first.
+                Add up to <t t-esc="props.maxPlans"/> to your quote to compare them.
+            </p>
+
+            <div class="o_oq_cards">
+                <article t-foreach="state.plans" t-as="plan" t-key="plan.id" class="o_oq_card o_oq_plan"
+                         t-att-class="{'o_oq_pick': isChosen(plan), 'o_oq_busy': state.refreshing[plan.id]}">
+                    <div class="o_oq_kicker">
+                        <t t-esc="plan.insurer"/>
+                        <span t-if="plan_first and state.plans.length > 1" class="o_oq_badge o_oq_badge_low">Lowest price</span>
+                    </div>
+                    <h2 class="o_oq_plan_name" t-esc="plan.name"/>
+                    <ul class="o_oq_covers">
+                        <li>
+                            <i class="fa fa-check" role="img" aria-label="Included"/>
+                            <span t-if="plan.cover === 'comprehensive'"><b>Your vehicle</b>: insured for
+                                <t t-esc="money(plan.value, 0)"/></span>
+                            <span t-else=""><b>Others</b>: damage and injuries you cause to other people</span>
+                        </li>
+                        <li t-foreach="plan.included" t-as="included" t-key="included_index">
+                            <i class="fa fa-check" role="img" aria-label="Included"/>
+                            <span><b t-esc="included"/>: included</span>
+                        </li>
+                    </ul>
+
+                    <div t-if="plan.extras.length" class="o_oq_extras">
+                        <div class="o_oq_extras_h">Add to this cover</div>
+                        <t t-foreach="plan.extras" t-as="extra" t-key="extra.key">
+                            <div t-if="extra.options.length === 1" class="o_oq_extra">
+                                <button type="button" class="o_oq_extra_toggle"
+                                        t-att-class="{'o_on': extra.chosen}"
+                                        t-att-aria-pressed="extra.chosen ? 'true' : 'false'"
+                                        t-att-disabled="state.refreshing[plan.id]"
+                                        t-on-click="() => this.toggleExtra(plan, extra)">
+                                    <i class="fa" t-att-class="extra.chosen ? 'fa-check-square' : 'fa-square-o'"/>
+                                    <span class="o_oq_extra_text">
+                                        <b t-esc="extra.label"/>
+                                        <small t-esc="extra.help"/>
+                                    </span>
+                                    <span class="o_oq_extra_price">+<t t-esc="money(extra.options[0].amount, 0)"/></span>
+                                </button>
+                            </div>
+                            <div t-else="" class="o_oq_extra">
+                                <div class="o_oq_extra_text">
+                                    <b t-esc="extra.label"/>
+                                    <small t-esc="extra.help"/>
+                                </div>
+                                <div class="o_oq_segment" role="radiogroup" t-att-aria-label="extra.label">
+                                    <button type="button" class="o_oq_seg" t-att-class="{'o_on': !extra.chosen}"
+                                            t-att-disabled="state.refreshing[plan.id]"
+                                            t-on-click="() => this.setExtra(plan, extra, '')">No</button>
+                                    <button t-foreach="extra.options" t-as="option" t-key="option.key" type="button"
+                                            class="o_oq_seg" t-att-class="{'o_on': extra.chosen === option.key}"
+                                            t-att-disabled="state.refreshing[plan.id]"
+                                            t-on-click="() => this.setExtra(plan, extra, option.key)">
+                                        <t t-esc="option.label"/> <small>+<t t-esc="money(option.amount, 0)"/></small>
+                                    </button>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+
+                    <div class="o_oq_price">
+                        <span class="o_oq_amount" t-esc="money(plan.total)"/>
+                        <span class="o_oq_per" t-esc="plan.per"/>
+                    </div>
+                    <div t-if="plan.monthly" class="o_oq_monthly">
+                        or <t t-esc="plan.monthly.months"/> monthly payments of
+                        <t t-esc="money(plan.monthly.instalment)"/>, the first when cover starts
+                    </div>
+                    <div class="o_oq_small">Includes government levies and stamp duty.</div>
+                    <button type="button" class="btn btn-lg w-100 mt-3 o_oq_choose"
+                            t-att-class="isChosen(plan) ? 'btn-success' : 'btn-outline-primary'"
+                            t-att-aria-pressed="isChosen(plan) ? 'true' : 'false'"
+                            t-on-click="() => this.toggleChosen(plan)">
+                        <t t-if="isChosen(plan)"><i class="fa fa-check me-1"/>On my quote</t>
+                        <t t-else="">Add to my quote</t>
+                    </button>
+                </article>
+            </div>
+
+            <div t-if="state.chosen.length" class="o_oq_bar">
+                <div class="o_oq_bar_inner">
+                    <span>
+                        <b t-esc="state.chosen.length"/>
+                        <t t-if="state.chosen.length === 1"> insurer</t><t t-else=""> insurers</t> on your quote
+                    </span>
+                    <button type="button" class="btn btn-primary btn-lg o_oq_get" t-on-click="toDetails">
+                        Get my quote <i class="fa fa-arrow-right ms-1"/>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </t>
+</templates>

@@ -3,23 +3,113 @@
 
     <t t-name="odin_medical_quote_online.OnlineQuote">
         <div class="o_oq_app" t-att-class="{'o_oq_has_bar': state.step === 'options' and state.chosen.length}">
-            <ol class="o_oq_steps" aria-label="Progress">
-                <li t-att-class="{'o_on': state.step === 'who'}">1. You</li>
-                <li t-att-class="{'o_on': state.step === 'options'}">2. Plans</li>
-                <li t-att-class="{'o_on': state.step === 'details'}">3. Your quote</li>
-            </ol>
+            <t t-call="odin_medical_quote_online.Steps"/>
 
             <t t-if="state.step === 'who'" t-call="odin_medical_quote_online.OnlineQuote.Who"/>
             <t t-elif="state.step === 'options'" t-call="odin_medical_quote_online.OnlineQuote.Plans"/>
             <t t-else="" t-call="odin_medical_quote_online.OnlineQuote.Details"/>
 
-            <p t-if="whatsappUrl" class="o_oq_talk">
-                Prefer to talk to someone?
-                <a t-att-href="whatsappUrl" target="_blank" rel="noopener">
-                    <i class="fa fa-whatsapp"/> Chat with us on WhatsApp</a>
-                <t t-if="props.company.phone"> or call <a t-attf-href="tel:{{ props.company.phone }}" t-esc="props.company.phone"/></t>
-            </p>
+            <t t-call="odin_medical_quote_online.Talk"/>
         </div>
+    </t>
+
+    <!-- Shared by every line's page (medical, motor): the steps, the way to
+         a person, and where to send the quote. Each page's component has
+         steps, state.step, goTo(), whatsappUrl, state.contact, submit(). -->
+    <t t-name="odin_medical_quote_online.Steps">
+        <ol class="o_oq_steps" aria-label="Progress">
+            <li t-foreach="steps" t-as="step" t-key="step.key"
+                t-att-class="{'o_on': state.step === step.key, 'o_done': step_index &lt; stepIndex}"
+                t-att-aria-current="state.step === step.key ? 'step' : false">
+                <button t-if="step_index &lt; stepIndex" type="button" class="o_oq_step_back"
+                        t-on-click="() => this.back(step.key)">
+                    <i class="fa fa-check me-1"/><t t-esc="step.label"/>
+                </button>
+                <t t-else=""><t t-esc="step_index + 1"/>. <t t-esc="step.label"/></t>
+            </li>
+        </ol>
+    </t>
+
+    <t t-name="odin_medical_quote_online.Talk">
+        <p t-if="whatsappUrl or props.company.phone" class="o_oq_talk">
+            Prefer to talk to someone?
+            <a t-if="whatsappUrl" t-att-href="whatsappUrl" target="_blank" rel="noopener">
+                <i class="fa fa-whatsapp"/> Chat with us on WhatsApp</a>
+            <t t-if="props.company.phone"><t t-if="whatsappUrl"> or</t> call
+                <a t-attf-href="tel:{{ props.company.phone }}" t-esc="props.company.phone"/></t>
+        </p>
+    </t>
+
+    <t t-name="odin_medical_quote_online.Contact">
+        <section class="o_oq_section">
+            <button type="button" class="btn btn-link p-0 mb-2" t-on-click="() => this.back('options')">
+                <i class="fa fa-arrow-left me-1"/><t t-esc="backLabel"/>
+            </button>
+            <h1 class="o_oq_title">Where should we send your quote?</h1>
+            <p class="o_oq_lead">
+                You'll see your quote straight away and can download it. An advisor can then answer
+                any questions.
+            </p>
+            <ul class="o_oq_summary">
+                <li t-foreach="chosenPlans" t-as="plan" t-key="plan.id">
+                    <span><b t-esc="plan.insurer"/> · <t t-esc="plan.name"/></span>
+                    <b t-esc="money(plan.total)"/>
+                </li>
+            </ul>
+            <form class="o_oq_fields o_oq_fields_stack" t-on-submit.prevent="submit">
+                <div class="o_oq_field">
+                    <label for="oq_name">Your name</label>
+                    <input id="oq_name" class="form-control form-control-lg" autocomplete="name"
+                           t-model="state.contact.name"/>
+                </div>
+                <div class="o_oq_field">
+                    <label for="oq_phone">Phone number</label>
+                    <input id="oq_phone" type="tel" class="form-control form-control-lg" autocomplete="tel"
+                           placeholder="0712 345 678" t-model="state.contact.phone"/>
+                </div>
+                <div class="o_oq_field">
+                    <label for="oq_email">Email <small class="text-muted">(optional, to get the quote by email)</small></label>
+                    <input id="oq_email" type="email" class="form-control form-control-lg" autocomplete="email"
+                           t-model="state.contact.email"/>
+                </div>
+                <t t-out="0"/>
+                <!-- Robots fill in every field; people never see this one. -->
+                <div class="o_oq_hp" aria-hidden="true">
+                    <label for="oq_website">Website</label>
+                    <input id="oq_website" tabindex="-1" autocomplete="off" t-model="state.contact.website"/>
+                </div>
+                <fieldset class="o_oq_choice_row">
+                    <legend>How should we contact you?</legend>
+                    <label class="o_oq_pill">
+                        <input type="radio" name="oq_contact_by" value="whatsapp" t-model="state.contact.contact_by"/>
+                        <span>WhatsApp</span>
+                    </label>
+                    <label class="o_oq_pill">
+                        <input type="radio" name="oq_contact_by" value="call" t-model="state.contact.contact_by"/>
+                        <span>Phone call</span>
+                    </label>
+                    <label class="o_oq_pill">
+                        <input type="radio" name="oq_contact_by" value="email" t-model="state.contact.contact_by"/>
+                        <span>Email</span>
+                    </label>
+                </fieldset>
+                <label class="o_oq_consent">
+                    <input type="checkbox" class="form-check-input" t-model="state.contact.consent"/>
+                    <span>
+                        <t t-esc="props.company.name"/> may contact me about this quote and keep my details
+                        for that purpose.
+                        <a t-if="props.company.privacy" t-att-href="props.company.privacy" target="_blank"
+                           rel="noopener">Privacy policy</a>
+                    </span>
+                </label>
+                <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
+                <button type="submit" class="btn btn-primary btn-lg w-100 o_oq_submit"
+                        t-att-disabled="state.submitting">
+                    <i t-if="state.submitting" class="fa fa-circle-o-notch fa-spin me-1"/>
+                    See my quote
+                </button>
+            </form>
+        </section>
     </t>
 
     <!-- 1. Who needs cover ================================================ -->
@@ -70,25 +160,33 @@
     <!-- 2. The plans that fit ============================================= -->
     <t t-name="odin_medical_quote_online.OnlineQuote.Plans">
         <section class="o_oq_section">
-            <p class="o_oq_for">
-                Prices for <b t-esc="familySummary"/>
-                <button type="button" class="btn btn-link p-0 ms-2" t-on-click="() => this.back('who')">Change</button>
-            </p>
+            <div class="o_oq_for">
+                <span>
+                    <span class="o_oq_for_label">Prices for</span>
+                    <b t-esc="familySummary"/>
+                </span>
+                <button type="button" class="btn btn-sm btn-outline-primary o_oq_edit"
+                        t-on-click="() => this.back('who')">
+                    <i class="fa fa-pencil me-1"/>Edit
+                </button>
+            </div>
 
             <div class="o_oq_filters">
                 <div class="o_oq_filter" t-if="offeredBenefits.length">
-                    <span class="o_oq_filter_label">Also cover</span>
+                    <span class="o_oq_filter_label">Add to your cover</span>
+                    <span class="o_oq_filter_hint">Every plan pays for hospital stays. Tap anything else you want covered.</span>
                     <button t-foreach="offeredBenefits" t-as="benefit" t-key="benefit.key" type="button"
                             class="o_oq_chip" t-att-class="{'o_on': isWanted(benefit.key)}"
                             t-att-aria-pressed="isWanted(benefit.key) ? 'true' : 'false'"
                             t-att-title="benefit.help"
                             t-on-click="() => this.toggleWant(benefit.key)">
-                        <i t-if="isWanted(benefit.key)" class="fa fa-check me-1"/>
+                        <i class="fa me-1" t-att-class="isWanted(benefit.key) ? 'fa-check' : 'fa-plus'"/>
                         <t t-esc="benefit.label"/>
                     </button>
                 </div>
                 <div class="o_oq_filter" t-if="bands.length > 2">
-                    <span class="o_oq_filter_label">Hospital cover a year</span>
+                    <span class="o_oq_filter_label">How much hospital cover?</span>
+                    <span class="o_oq_filter_hint">The most the plan pays for hospital bills in a year.</span>
                     <button t-foreach="bands" t-as="band" t-key="band.key" type="button"
                             class="o_oq_chip" t-att-class="{'o_on': state.band === band.key}"
                             t-att-aria-pressed="state.band === band.key ? 'true' : 'false'"
@@ -98,13 +196,20 @@
                 </div>
             </div>
 
+            <p t-if="state.loaded and shownPlans.length" class="o_oq_count">
+                <t t-esc="shownPlans.length"/> <t t-if="shownPlans.length === 1">plan</t><t t-else="">plans</t>,
+                cheapest first. Add up to <t t-esc="props.maxPlans"/> to your quote to compare them.
+            </p>
+
             <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
             <div t-if="state.loading" class="o_oq_loading">
                 <i class="fa fa-circle-o-notch fa-spin me-2"/>Finding plans for you…
             </div>
             <div t-elif="state.loaded and !shownPlans.length" class="o_oq_card o_oq_empty">
                 <h2>No plan to show yet</h2>
-                <p t-if="state.wants.length">No plan includes everything you picked. Try taking one off,
+                <p t-if="state.plans.length">No plan has that much hospital cover with what you picked.
+                    Choose another amount, or talk to us.</p>
+                <p t-elif="state.wants.length">No plan includes everything you picked. Try taking one off,
                     or talk to us and we'll find the closest fit.</p>
                 <p t-else="">We couldn't price this online. Talk to us and an advisor will find the right cover.</p>
                 <a t-if="whatsappUrl" class="btn btn-success" t-att-href="whatsappUrl" target="_blank" rel="noopener">
@@ -114,7 +219,10 @@
             <div class="o_oq_cards">
                 <article t-foreach="shownPlans" t-as="plan" t-key="plan.id" class="o_oq_card o_oq_plan"
                          t-att-class="{'o_oq_pick': isChosen(plan), 'o_oq_busy': state.refreshing[plan.id]}">
-                    <div class="o_oq_kicker" t-esc="plan.insurer"/>
+                    <div class="o_oq_kicker">
+                        <t t-esc="plan.insurer"/>
+                        <span t-if="plan_first and shownPlans.length > 1" class="o_oq_badge o_oq_badge_low">Lowest price</span>
+                    </div>
                     <h2 class="o_oq_plan_name">
                         <t t-esc="plan.name"/>
                         <small t-if="plan.product" t-esc="plan.product"/>
@@ -142,7 +250,7 @@
                                 <t t-elif="benefit.limit">up to <t t-esc="money(benefit.limit, 0)"/></t>
                                 <t t-else="">included</t>
                                 <small t-if="benefit.for" class="o_oq_needed">
-                                    Added: this plan only offers <t t-esc="benefit.for"/> with it.
+                                    Added: this plan needs it for <t t-esc="benefit.for"/>.
                                 </small>
                             </span>
                         </li>
@@ -182,73 +290,6 @@
 
     <!-- 3. Where to send it =============================================== -->
     <t t-name="odin_medical_quote_online.OnlineQuote.Details">
-        <section class="o_oq_section">
-            <button type="button" class="btn btn-link p-0 mb-2" t-on-click="() => this.back('options')">
-                <i class="fa fa-arrow-left me-1"/>Back to the plans
-            </button>
-            <h1 class="o_oq_title">Where should we send your quote?</h1>
-            <p class="o_oq_lead">
-                You'll see your quote straight away and can download it. An advisor can then answer
-                any questions.
-            </p>
-            <ul class="o_oq_summary">
-                <li t-foreach="chosenPlans" t-as="plan" t-key="plan.id">
-                    <span><b t-esc="plan.insurer"/> · <t t-esc="plan.name"/></span>
-                    <b t-esc="money(plan.total)"/>
-                </li>
-            </ul>
-            <form class="o_oq_fields o_oq_fields_stack" t-on-submit.prevent="submit">
-                <div class="o_oq_field">
-                    <label for="oq_name">Your name</label>
-                    <input id="oq_name" class="form-control form-control-lg" autocomplete="name"
-                           t-model="state.contact.name"/>
-                </div>
-                <div class="o_oq_field">
-                    <label for="oq_phone">Phone number</label>
-                    <input id="oq_phone" type="tel" class="form-control form-control-lg" autocomplete="tel"
-                           placeholder="0712 345 678" t-model="state.contact.phone"/>
-                </div>
-                <div class="o_oq_field">
-                    <label for="oq_email">Email <small class="text-muted">(optional, to get the quote by email)</small></label>
-                    <input id="oq_email" type="email" class="form-control form-control-lg" autocomplete="email"
-                           t-model="state.contact.email"/>
-                </div>
-                <!-- Robots fill in every field; people never see this one. -->
-                <div class="o_oq_hp" aria-hidden="true">
-                    <label for="oq_website">Website</label>
-                    <input id="oq_website" tabindex="-1" autocomplete="off" t-model="state.contact.website"/>
-                </div>
-                <fieldset class="o_oq_choice_row">
-                    <legend>How should we contact you?</legend>
-                    <label class="o_oq_pill">
-                        <input type="radio" name="oq_contact_by" value="whatsapp" t-model="state.contact.contact_by"/>
-                        <span>WhatsApp</span>
-                    </label>
-                    <label class="o_oq_pill">
-                        <input type="radio" name="oq_contact_by" value="call" t-model="state.contact.contact_by"/>
-                        <span>Phone call</span>
-                    </label>
-                    <label class="o_oq_pill">
-                        <input type="radio" name="oq_contact_by" value="email" t-model="state.contact.contact_by"/>
-                        <span>Email</span>
-                    </label>
-                </fieldset>
-                <label class="o_oq_consent">
-                    <input type="checkbox" class="form-check-input" t-model="state.contact.consent"/>
-                    <span>
-                        <t t-esc="props.company.name"/> may contact me about this quote and keep my details
-                        for that purpose.
-                        <a t-if="props.company.privacy" t-att-href="props.company.privacy" target="_blank"
-                           rel="noopener">Privacy policy</a>
-                    </span>
-                </label>
-                <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
-                <button type="submit" class="btn btn-primary btn-lg w-100 o_oq_submit"
-                        t-att-disabled="state.submitting">
-                    <i t-if="state.submitting" class="fa fa-circle-o-notch fa-spin me-1"/>
-                    See my quote
-                </button>
-            </form>
-        </section>
+        <t t-call="odin_medical_quote_online.Contact"/>
     </t>
 </templates>

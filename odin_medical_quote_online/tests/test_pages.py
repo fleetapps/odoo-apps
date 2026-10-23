@@ -49,3 +49,17 @@ class TestOnlinePages(OnlineCase, HttpCase):
         self.assertIn("Thank you", called.text)
         self.assertEqual(comparison.odin_contact_when, "evening")
         self.assertTrue(comparison.odin_callback_requested)
+
+    def test_ad_link_source(self):
+        """An ad's link: the source and campaign reach the opportunity through
+        the cookies the page sets, as for any Odoo web form."""
+        self.company.odin_online_user_id = False
+        self.url_open("/medical-quote?utm_source=Facebook&utm_campaign=Family%20October")
+        result = self.make_jsonrpc_request("/medical-quote/submit", {
+            "family": self.family, "chosen": [self.afya.id], "contact": self.contact(),
+            "tokens": {}})
+        self.assertIn("/medical-quote/q/", result["url"])
+        comparison = self.Comparison.search([("odin_channel", "=", "online")], order="id desc", limit=1)
+        self.assertEqual(comparison.opportunity_id.source_id.name, "Facebook")
+        self.assertEqual(comparison.odin_campaign_id.name, "Family October")
+        self.assertFalse(comparison.opportunity_id.user_id, "for the team")

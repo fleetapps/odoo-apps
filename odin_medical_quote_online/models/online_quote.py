@@ -6,10 +6,19 @@ by the same engine as Add Medical Quote, in words they understand. Saving
 makes the same records an agent's quote does (contact, opportunity,
 quotations, the quote), so from there it is an ordinary quote for the office.
 
+Who follows it up: the agent whose link it came by, or the salesperson of
+the opportunity the link was sent from; otherwise whoever already has an
+open opportunity with that phone or email; otherwise the person set in
+Settings; otherwise nobody yet -- it waits in the team's pool (an ad, the
+website) until someone presses Assign to me.
+
 Nothing a visitor types can reveal what is already in the database: a quote
 from the page always gets a new contact, however familiar the phone number,
 and only a link an agent sent (signed with the database secret) attaches it
 to an existing opportunity.
+
+Motor (odin_motor_quote_online) inherits all of this; what differs between
+lines is in the methods marked "per line".
 """
 
 import logging
@@ -22,7 +31,7 @@ from markupsafe import Markup
 
 from odoo import SUPERUSER_ID, _, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import LazyTranslate, consteq, email_normalize, format_datetime
+from odoo.tools import LazyTranslate, consteq, email_normalize, formatLang, format_datetime
 from odoo.tools import hmac as signature
 
 from .quote_comparison import CONTACT_BY, CONTACT_WHEN
@@ -278,17 +287,80 @@ class MedicalQuoteOnline(models.AbstractModel):
             "people": self._headcount(cover),
         }
 
+    # -- per line -------------------------------------------------------------
+    # Medical here; odin_motor_quote_online overrides these.
+
+    @api.model
+    def _odin_type(self):
+        return "medical"
+
+    @api.model
+    def _odin_path(self):
+        """Where the page is: /medical-quote."""
+        return "/medical-quote"
+
+    @api.model
+    def _odin_source_name(self):
+        return "Online medical quote"
+
+    @api.model
+    def _lead_name(self, partner, cover):
+        people = self._headcount(cover)
+        return _("Online medical quote – %(name)s (%(people)s)", name=partner.name,
+                 people=_("1 person") if people == 1 else _("%s people", people))
+
+    @api.model
+    def _share_message(self, hello, link):
+        return _("%(hello)s you can see medical cover prices for your family and get your "
+                 "quote here, in about two minutes:\n%(link)s", hello=hello, link=link)
+
+    @api.model
+    def _note_lines(self, cover):
+        """What the agent should check first, on the opportunity."""
+        return [_("Ages given, not dates of birth: confirm them before the quote is final.")]
+
     # -- who handles it -------------------------------------------------------
 
     @api.model
-    def _default_responsible(self):
+    def _team(self):
         company = self.env.company.sudo()
-        team = company.odin_online_team_id
-        for user in (company.odin_online_user_id, team.user_id, *team.member_ids,
-                     self.env.ref("base.user_admin", raise_if_not_found=False)):
-            if user and user.active and not user.share:
-                return user.sudo()
-        raise UserError(_("Online quotes are not set up yet. Please call us instead."))
+        return company.odin_online_team_id or self.env["crm.team"].sudo().search(
+            [("company_id", "in", (company.id, False))], limit=1)
+
+    @api.model
+    def _returning(self, contact):
+        """An open opportunity someone already handles with this phone or
+        email: the client of an agent, back through an ad or the website."""
+        matches = [("phone_mobile_search", "ilike", contact["digits"][-9:])]
+        email = email_normalize(contact["email"]) if contact["email"] else False
+        if email:
+            matches = ["|", *matches, ("email_normalized", "=", email)]
+        return self.env["crm.lead"].sudo().search([
+            *matches, ("user_id.active", "=", True), ("user_id.share", "=", False),
+            ("won_status", "!=", "won"), ("company_id", "in", (self.env.company.id, False)),
+        ], order="write_date desc", limit=1)
+
+    @api.model
+    def _assignee(self, lead, agent, contact):
+        """Who follows the quote up, and why, or nobody: the team picks it up.
+
+        The salesperson of the opportunity the link was sent from, then the
+        agent whose link it is, then whoever has an open opportunity with the
+        same phone or email, then the person in Settings."""
+        if lead.user_id.active:
+            return lead.user_id, ""
+        if agent:
+            return agent, ""
+        returning = self._returning(contact)
+        if returning:
+            return returning.user_id, _(
+                "Assigned to %(user)s, who has %(lead)s open with the same phone or email. "
+                "If it is the same person, merge the two.",
+                user=returning.user_id.name, lead=returning.name)
+        user = self.env.company.sudo().odin_online_user_id
+        if user.active and not user.share:
+            return user, ""
+        return self.env["res.users"], ""
 
     @api.model
     def _online_tag(self):
@@ -297,27 +369,27 @@ class MedicalQuoteOnline(models.AbstractModel):
             {"name": "Online quote"})
 
     @api.model
-    def _new_lead(self, partner, cover, responsible):
+    def _new_lead(self, partner, cover, user):
         company = self.env.company
         team = company.sudo().odin_online_team_id or self.env["crm.team"].sudo()._get_default_team_id(
-            user_id=responsible.id)
-        people = self._headcount(cover)
-        # As superuser, so the source, medium and campaign of the link the
-        # visitor came by (utm_source=WhatsApp...) are filled in from its
-        # cookies, as they are for any lead a website form makes.
-        lead = self.env["crm.lead"].sudo().with_context(mail_create_nosubscribe=True).create({
-            "name": _("Online quote – %(name)s (%(people)s)", name=partner.name,
-                      people=_("1 person") if people == 1 else _("%s people", people)),
+            user_id=user.id or None)
+        # As OdooBot, so the source, medium and campaign of the link the
+        # visitor came by (utm_source=Facebook...) are filled in from its
+        # cookies, as they are for any lead a website form makes, and the
+        # chatter does not say "Public user" created it.
+        lead = self.env["crm.lead"].with_user(SUPERUSER_ID).with_context(
+            mail_create_nosubscribe=True).create({
+            "name": self._lead_name(partner, cover),
             "type": "opportunity",
             "partner_id": partner.id,
-            "user_id": responsible.id,
+            "user_id": user.id or False,
             "team_id": team.id if team else False,
             "company_id": company.id,
             "tag_ids": [fields.Command.link(self._online_tag().id)],
         })
         if not lead.source_id:
             lead.source_id = self.env["utm.mixin"].sudo()._find_or_create_record(
-                "utm.source", "Online medical quote")
+                "utm.source", self._odin_source_name())
         return lead
 
     @api.model
@@ -330,6 +402,30 @@ class MedicalQuoteOnline(models.AbstractModel):
         bot.activity_schedule(
             activity_type_id=activity_type.id, summary=summary, note=note,
             date_deadline=fields.Date.context_today(self), user_id=user.id)
+
+    @api.model
+    def _contact_summary(self, partner, contact_by):
+        return _("Online quote: contact %(name)s (%(how)s)",
+                 name=partner.name, how=dict(CONTACT_BY).get(contact_by or "whatsapp"))
+
+    @api.model
+    def _notify_team(self, lead, body):
+        """Tell the team a quote is waiting to be picked up, in their Odoo
+        inbox (or by email, as each prefers). Nobody in the team: the sales
+        managers."""
+        team = lead.team_id or self._team()
+        users = team.member_ids | team.user_id
+        if not users:
+            users = self.env.ref("sales_team.group_sale_manager").sudo().user_ids
+        users = users.filtered(lambda u: u.active and not u.share)
+        self._post(lead, body, partners=users.partner_id)
+
+    @api.model
+    def _post(self, record, body, partners=None):
+        """A note in the chatter, by OdooBot rather than "Public user"."""
+        record.with_user(SUPERUSER_ID).message_post(
+            body=body, message_type="comment", subtype_xmlid="mail.mt_note",
+            partner_ids=partners.ids if partners else [])
 
     # -- the quote ------------------------------------------------------------
 
@@ -359,6 +455,15 @@ class MedicalQuoteOnline(models.AbstractModel):
                 "contact_by": contact_by}
 
     @api.model
+    def _check_chosen(self, chosen):
+        chosen = list(dict.fromkeys(int(i) for i in chosen or []))
+        if not chosen:
+            raise UserError(_("Choose at least one plan."))
+        if len(chosen) > MAX_PLANS:
+            raise UserError(_("Choose up to %s plans.", MAX_PLANS))
+        return chosen
+
+    @api.model
     def _check_caps(self, digits):
         params = self.env["ir.config_parameter"].sudo()
         Comparison = self.env["odin.quote.comparison"].sudo()
@@ -380,73 +485,84 @@ class MedicalQuoteOnline(models.AbstractModel):
     @api.model
     def submit(self, family, wants=None, tiers=None, chosen=None, contact=None, tokens=None):
         """Save the visitor's quote and return the link to their page."""
-        tokens = tokens or {}
         contact = self._check_contact(contact or {})
-        chosen = list(dict.fromkeys(int(i) for i in chosen or []))
-        if not chosen:
-            raise UserError(_("Choose at least one plan."))
-        if len(chosen) > MAX_PLANS:
-            raise UserError(_("Choose up to %s plans.", MAX_PLANS))
+        chosen = self._check_chosen(chosen)
         self._check_caps(contact["digits"])
         cover = self._cover(family)
         # Priced again here: nothing the browser says about a price is used.
         priced = {plan["id"]: plan for plan in self.options(family, wants, tiers, only=chosen)["plans"]}
         if any(plan_id not in priced for plan_id in chosen):
             raise UserError(_("A plan you chose is no longer available. Please choose again."))
-        selections = [{
+        return self._save(cover, [{
             "template_id": plan_id,
             "options": [benefit["option"] for benefit in priced[plan_id]["benefits"]],
-        } for plan_id in chosen]
+        } for plan_id in chosen], contact, tokens or {})
 
+    @api.model
+    def _save(self, cover, selections, contact, tokens):
+        """Save a quote from the page, whatever the line: the contact, the
+        opportunity and who follows it up, the quote itself."""
         previous = self._quote_from_token(tokens.get("quote_id"), tokens.get("quote"))
         lead = self._lead_from_token(tokens.get("lead"))
+        via = "client" if lead else False
         if not lead and previous.opportunity_id.active and previous.opportunity_id.won_status != "won":
             lead = previous.opportunity_id
         agent = self._agent_from_token(tokens.get("agent"))
-        responsible = (lead.user_id if lead and lead.user_id.active else False) or agent \
-            or self._default_responsible()
-        quoter = self._quoter()
+        via = via or ("agent" if agent else previous.odin_online_via or "public")
+        user, why = self._assignee(lead, agent, contact)
         partner = lead.partner_id or previous.partner_id
         if not partner:
-            partner = quoter._odin_partner({"source": "new", "name": contact["name"],
-                                            "phone": contact["phone"], "email": contact["email"]})
+            partner = self._quoter()._odin_partner({
+                "source": "new", "name": contact["name"],
+                "phone": contact["phone"], "email": contact["email"]})
         elif not partner.email and contact["email"]:
             # Their own link from an agent: what they add is theirs to add.
             partner.email = contact["email"]
         if not lead:
-            lead = self._new_lead(partner, cover, responsible)
-        elif not lead.partner_id:
-            lead.partner_id = partner
-        if not lead.user_id:
-            lead.user_id = responsible
+            lead = self._new_lead(partner, cover, user)
+        else:
+            if not lead.partner_id:
+                lead.partner_id = partner
+            if not lead.user_id and user:
+                lead.user_id = user
+        owner = lead.user_id
+        if owner:
+            # Before saving, so the quote does not add a follow-up of its own.
+            self._schedule(lead, owner, self._contact_summary(partner, contact["contact_by"]))
 
-        how = dict(CONTACT_BY)[contact["contact_by"]]
-        self._schedule(lead, lead.user_id, _(
-            "Online quote: contact %(name)s (%(how)s)", name=contact["name"], how=how))
-        saved = self.env["odin.medical.quote"].with_user(lead.user_id).sudo().with_context(
-            odin_online=True).save_quote({
-                "customer": {"source": "lead", "lead_id": lead.id},
-                "cover": cover,
-                "plans": selections,
-            })
+        engine = self._quoter()
+        engine = engine.with_user(owner).sudo() if owner else engine.with_user(
+            SUPERUSER_ID).with_context(odin_unassigned=True)
+        saved = engine.save_quote({
+            "customer": {"source": "lead", "lead_id": lead.id},
+            "cover": cover,
+            "plans": selections,
+        })
         comparison = self.env["odin.quote.comparison"].sudo().browse(saved["comparison"]["id"])
-        comparison.write({"odin_channel": "online", "odin_contact_by": contact["contact_by"]})
+        comparison.write({"odin_channel": "online", "odin_contact_by": contact["contact_by"],
+                          "odin_online_via": via})
         comparison._odin_online_ensure_token()
-        self._note(lead, comparison, partner, contact)
+        self._note(lead, comparison, partner, contact, cover, why)
+        if not owner:
+            self._notify_team(lead, _(
+                "New online quote %(quote)s from %(name)s, waiting to be picked up. Open it and "
+                "press Assign to me.", quote=comparison.name, name=partner.name))
         if contact["email"] and partner.email:
-            self._email(comparison, lead.user_id)
+            self._email(comparison, owner)
         return {"url": comparison._odin_online_url()}
 
     @api.model
-    def _note(self, lead, comparison, partner, contact):
+    def _note(self, lead, comparison, partner, contact, cover, why=""):
         """What the agent needs before calling, on the opportunity."""
         now = format_datetime(self.env, fields.Datetime.now(), dt_format="d MMM y HH:mm")
         lines = [
             _("Made by the client on the online quote page: %s.", comparison.name),
-            _("Ages given, not dates of birth: confirm them before the quote is final."),
+            *self._note_lines(cover),
             _("Prefers to be contacted by %s.", dict(CONTACT_BY)[contact["contact_by"]]),
             _("Agreed to be contacted about this quote on %s.", now),
         ]
+        if why:
+            lines.append(why)
         matches = [("phone_mobile_search", "ilike", contact["digits"][-9:])]
         if contact["email"]:
             matches = ["|", *matches, ("email", "=ilike", contact["email"])]
@@ -458,17 +574,18 @@ class MedicalQuoteOnline(models.AbstractModel):
                 "Already in Contacts with the same phone or email: %s. If it is the same "
                 "person, merge the contacts.", ", ".join(same.mapped("display_name"))))
         body = Markup("<br/>").join(lines)
-        lead.sudo().message_post(body=body, message_type="comment", subtype_xmlid="mail.mt_note")
-        comparison.message_post(body=body, message_type="comment", subtype_xmlid="mail.mt_note")
+        self._post(lead, body)
+        self._post(comparison, body)
 
     @api.model
     def _email(self, comparison, user):
         """The quote, with its PDF, to the email they gave -- as the agent
-        would send it."""
+        would send it, or from the company while nobody has picked it up."""
+        sender = user or self.env["res.users"].browse(SUPERUSER_ID)
         try:
             with self.env.cr.savepoint():
-                action = comparison.with_user(user).sudo().action_odin_send_email()
-                self.env["mail.compose.message"].with_user(user).sudo().with_context(
+                action = comparison.with_user(sender).sudo().action_odin_send_email()
+                self.env["mail.compose.message"].with_user(sender).sudo().with_context(
                     **action["context"]).create({})._action_send_mail()
         except Exception:
             _logger.exception("Online quote %s: the email could not be sent", comparison.id)
@@ -477,8 +594,9 @@ class MedicalQuoteOnline(models.AbstractModel):
 
     @api.model
     def request_callback(self, comparison, contact_by, contact_when):
-        """Talk to an advisor: the agent gets a to-do for today, the
-        opportunity is starred, and the quote says how and when."""
+        """Talk to an advisor: the agent gets a to-do for today and the
+        opportunity is starred; while nobody has picked it up, the team is
+        told again. The quote says how and when."""
         comparison = comparison.sudo()
         contact_by = contact_by if contact_by in dict(CONTACT_BY) else (
             comparison.odin_contact_by or "whatsapp")
@@ -494,16 +612,20 @@ class MedicalQuoteOnline(models.AbstractModel):
         when = dict(CONTACT_WHEN)[contact_when].lower()
         body = _("%(name)s asked to talk to an advisor about %(quote)s: by %(how)s, %(when)s.",
                  name=comparison.partner_id.name, quote=comparison.name, how=how, when=when)
-        comparison.message_post(body=body, message_type="comment", subtype_xmlid="mail.mt_note")
+        self._post(comparison, body)
         lead = comparison.opportunity_id
         if not lead:
             return
         if lead.priority < "2":
             lead.priority = "2"
-        self._schedule(lead, lead.user_id or comparison.user_id or self._default_responsible(), _(
+        user = lead.user_id or comparison.user_id
+        if not user:
+            self._notify_team(lead, _("%s Nobody has picked this quote up yet.", body))
+            return
+        self._schedule(lead, user, _(
             "Call back %(name)s: %(how)s, %(when)s", name=comparison.partner_id.name,
             how=how, when=when), note=body)
-        lead.message_post(body=body, message_type="comment", subtype_xmlid="mail.mt_note")
+        self._post(lead, body)
 
     @api.model
     def _status(self, comparison):
@@ -516,7 +638,9 @@ class MedicalQuoteOnline(models.AbstractModel):
         return "open"
 
     @api.model
-    def _plain_sections(self, order):
+    def _plain_sections(self, order, comparison):
+        """What a plan covers, in plain words: ``[{label, text}]``."""
+        currency = order.currency_id
         rows = []
         for section in order._client_sections():
             if not section["included"] or section["key"] in (
@@ -524,8 +648,41 @@ class MedicalQuoteOnline(models.AbstractModel):
                 continue
             label = HOSPITAL if section["key"] == "inpatient" else (
                 BENEFITS[section["key"]][0] if section["key"] in BENEFITS else section["label"])
-            rows.append({"label": str(label), "limit": section["limit"]})
+            text = _("up to %s a year", self._whole_money(section["limit"], currency)) \
+                if section["limit"] else ""
+            rows.append({"label": str(label), "text": text})
         return rows
+
+    @api.model
+    def _whole_money(self, amount, currency=None):
+        """``KES 300,000``: an amount with its currency, no cents."""
+        currency = currency or self.env.company.currency_id
+        number = formatLang(self.env, amount, digits=0)
+        symbol = currency.symbol or currency.name
+        return "%s %s" % ((number, symbol) if currency.position == "after" else (symbol, number))
+
+    @api.model
+    def _plan_heading(self, order, plan):
+        """(insurer, plan name) for the client's page."""
+        template = order.sale_order_template_id
+        if not template:
+            return plan.name, plan.subtitle or order.name
+        return template._odin_insurer_name(), self._plan_name(
+            {"name": template._odin_heading()[1] or template.name})
+
+    @api.model
+    def _quote_texts(self, comparison):
+        """The words of the client's page that depend on the line."""
+        return {
+            "kind": _("medical"),
+            "about": comparison.odin_cover_summary,
+            "per": _("a year"),
+            "monthly": True,
+            "fineprint": _(
+                "Prices are for a year of cover and include government levies. Your advisor "
+                "confirms the cover with the insurer before you pay; the insurer's policy "
+                "document sets out exactly what is covered."),
+        }
 
     @api.model
     def _whatsapp(self, company):
@@ -567,70 +724,84 @@ class MedicalQuoteOnline(models.AbstractModel):
                 phone=lead.partner_id.phone or lead.phone or "",
                 email=lead.partner_id.email or lead.email_from or "")
         previous = self._quote_from_token(quote_id, quote_token)
-        if previous:
+        if previous and previous.odin_quote_type == self._odin_type():
             tokens.update(quote_id=previous.id, quote=quote_token)
-            cover = (previous.odin_builder_params or {}).get("cover") or {}
-            prefill.update(self._family(cover))
             prefill.update(
                 name=previous.partner_id.name or "", phone=previous.partner_id.phone or "",
                 email=previous.partner_id.email or "",
-                contact_by=previous.odin_contact_by or "whatsapp",
-                wants=sorted({
-                    section["key"] for plan in previous._odin_export_plans()
-                    for section in plan.order_id._client_sections()
-                    if section["included"] and section["key"] in BENEFITS}))
-        return {
+                contact_by=previous.odin_contact_by or "whatsapp")
+            prefill.update(self._prefill(previous))
+        return dict(self._page_setup(), **{
             "company": self._company_props(company),
-            "benefits": [{"key": key, "label": str(label), "help": str(help_text)}
-                         for key, (label, help_text) in BENEFITS.items()],
             "maxPlans": MAX_PLANS,
             "prefill": prefill,
             "tokens": tokens,
-        }
+        })
+
+    @api.model
+    def _page_setup(self):
+        """Per line: what the page needs to ask its questions."""
+        return {"benefits": [{"key": key, "label": str(label), "help": str(help_text)}
+                             for key, (label, help_text) in BENEFITS.items()]}
+
+    @api.model
+    def _prefill(self, previous):
+        """Per line: the answers of a quote being changed."""
+        cover = (previous.odin_builder_params or {}).get("cover") or {}
+        return dict(self._family(cover), wants=sorted({
+            section["key"] for plan in previous._odin_export_plans()
+            for section in plan.order_id._client_sections()
+            if section["included"] and section["key"] in BENEFITS}))
 
     @api.model
     def quote_values(self, comparison, token):
         """The client's page for their quote."""
         comparison = comparison.sudo()
         company = comparison.company_id
+        texts = self._quote_texts(comparison)
         plans = comparison._odin_export_plans() or comparison.plan_ids.sorted(
             lambda p: (p.sequence, p.id))
         instalments = comparison.instalment_plan_ids.sorted("months")
-        longest = instalments[-1:] if instalments else instalments
+        longest = instalments[-1:] if instalments and texts["monthly"] else instalments.browse()
         quote_plans = []
         for plan in plans:
             order = plan.order_id
-            template = order.sale_order_template_id
-            schedule = longest.schedule(order.amount_total) if longest else False
+            insurer, name = self._plan_heading(order, plan)
             quote_plans.append({
-                "insurer": template._odin_insurer_name() if template else plan.name,
-                "name": self._plan_name({"name": template._odin_heading()[1] or template.name})
-                if template else plan.subtitle or order.name,
+                "insurer": insurer,
+                "name": name,
                 "highlight": plan.highlight,
-                "sections": self._plain_sections(order),
+                "sections": self._plain_sections(order, comparison),
                 "total": order.amount_total,
                 "levies": order.amount_tax + sum(
                     s["amount"] for s in order._client_sections() if s["key"] == "statutory_charges"),
-                "monthly": schedule,
+                "monthly": longest.schedule(order.amount_total) if longest else False,
             })
         whatsapp = self._whatsapp(company)
-        text = _("Hi %(company)s, I'd like to talk about my medical quote %(quote)s.",
-                 company=company.name, quote=comparison.name)
-        return {
+        text = _("Hi %(company)s, I'd like to talk about my %(kind)s quote %(quote)s.",
+                 company=company.name, kind=texts["kind"], quote=comparison.name)
+        path = "%s/q/%s" % (self._odin_path(), comparison.id)
+        return dict(texts, **{
             "comparison": comparison,
             "company": company,
             "status": self._status(comparison),
             "plans": quote_plans,
-            "people": comparison.odin_cover_summary,
             "valid_until": comparison._odin_export_date(comparison.validity_date),
             "token": token,
-            "pdf_url": "/medical-quote/q/%s/pdf?token=%s" % (comparison.id, token),
-            "change_url": "/medical-quote?quote_id=%s&quote=%s" % (comparison.id, token),
+            "pdf_url": "%s/pdf?token=%s" % (path, token),
+            "callback_url": "%s/callback" % path,
+            "change_url": "%s?quote_id=%s&quote=%s" % (self._odin_path(), comparison.id, token),
             "whatsapp_url": "https://wa.me/%s?text=%s" % (whatsapp, url_quote(text))
             if whatsapp else "",
             "contact_by": list(CONTACT_BY),
             "contact_when": list(CONTACT_WHEN),
             "reply": company.odin_online_reply_time or "",
-            "advisor": comparison.user_id,
-        }
+            # Named only to a client who came by their agent's link: anyone
+            # else is told "an advisor", whoever ends up with it.
+            "advisor": comparison.user_id if comparison.odin_online_via in ("agent", "client")
+            else comparison.user_id.browse(),
+        })
 
+    @api.model
+    def _odin_page_template(self):
+        return "odin_medical_quote_online.page"

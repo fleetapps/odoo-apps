@@ -7,16 +7,16 @@
         <field name="arch" type="xml">
             <!-- On leads too: quoting one converts it to an opportunity. -->
             <xpath expr="//button[@name='action_set_won_rainbowman']" position="before">
-                <button string="Medical Quote" name="action_odin_medical_quote" type="object"
+                <button string="Insurance quote" name="action_odin_new_quote" type="object"
                         class="btn-secondary" data-hotkey="m"
-                        title="Quote medical cover for this client"
+                        title="Quote medical, motor or other cover for this client"
                         invisible="not active or probability == 100"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
-                <button class="oe_stat_button" type="object" icon="fa-heartbeat"
+                <button class="oe_stat_button" type="object" icon="fa-shield"
                         name="action_odin_view_comparisons"
                         invisible="odin_comparison_count == 0">
-                    <field name="odin_comparison_count" widget="statinfo" string="Medical quotes"/>
+                    <field name="odin_comparison_count" widget="statinfo" string="Insurance quotes"/>
                 </button>
             </xpath>
         </field>

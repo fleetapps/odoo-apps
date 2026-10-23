@@ -12,6 +12,11 @@ registry.category("web_tour.tours").add("odin_medical_quote_online_tour", {
         { trigger: "#oq_children", run: "edit 3" },
         { trigger: ".o_oq_next", run: "click" },
         { trigger: ".o_oq_plan:contains(Plan 1 (KES 200,000))" },
+        // Back to change an answer, and on again.
+        { trigger: ".o_oq_for .o_oq_edit", run: "click" },
+        { trigger: "#oq_age", run: "edit 36" },
+        { trigger: ".o_oq_next", run: "click" },
+        { trigger: ".o_oq_for:contains(you (36))" },
         { trigger: ".o_oq_chip:contains(Doctor visits)", run: "click" },
         { trigger: ".o_oq_plan:contains(Plan 1 (KES 200,000)):contains(Doctor visits)" },
         {

@@ -683,7 +683,7 @@ class MedicalQuote(models.AbstractModel):
                 lead.convert_opportunity(partner)
             elif not lead.partner_id:
                 lead.partner_id = partner
-            if not lead.user_id:
+            if not lead.user_id and not self.env.context.get("odin_unassigned"):
                 # Unassigned until now: it is the quoting agent's to follow up.
                 lead.user_id = self.env.user
             lead.tag_ids = [Command.link(tag.id)]
@@ -692,9 +692,20 @@ class MedicalQuote(models.AbstractModel):
             "name": self._odin_lead_name(partner, context),
             "type": "opportunity",
             "partner_id": partner.id,
-            "user_id": self.env.uid,
+            "user_id": self._odin_owner(self.env["crm.lead"]).id,
             "tag_ids": [Command.link(tag.id)],
         })
+
+    @api.model
+    def _odin_owner(self, lead):
+        """Who the quote and its quotations belong to: the opportunity's
+        salesperson, else whoever saves it -- or nobody, for an online quote
+        left for the team to pick up (odin_unassigned)."""
+        if lead.user_id:
+            return lead.user_id
+        if self.env.context.get("odin_unassigned"):
+            return self.env["res.users"]
+        return self.env.user
 
     @api.model
     def _odin_line_tag(self):
@@ -841,6 +852,7 @@ class MedicalQuote(models.AbstractModel):
             lead = self._odin_opportunity(customer, partner, context)
         fiscal_position = self.env["account.fiscal.position"].with_company(
             self.env.company)._get_fiscal_position(partner)
+        owner = self._odin_owner(lead)
 
         # What sale_crm's New Quotation carries over from the opportunity;
         # anything the opportunity leaves empty is left to the order's own
@@ -849,13 +861,16 @@ class MedicalQuote(models.AbstractModel):
             "partner_id": partner.id,
             "company_id": self.env.company.id,
             "opportunity_id": lead.id,
-            "user_id": (lead.user_id or self.env.user).id,
+            "user_id": owner.id,
             "team_id": lead.team_id.id,
             "campaign_id": lead.campaign_id.id,
             "medium_id": lead.medium_id.id,
             "source_id": lead.source_id.id,
             "tag_ids": [Command.set(lead.tag_ids.ids)] if lead.tag_ids else False,
         }.items() if value}
+        if not owner:
+            # Left for the team: not whoever happened to save it.
+            header["user_id"] = False
         # Only the plans this screen put on the quote are rebuilt or taken
         # off. A quotation someone added to the comparison by hand is not the
         # screen's to cancel, and stays as it is.
@@ -917,6 +932,7 @@ class MedicalQuote(models.AbstractModel):
                 opportunity_id=lead.id if lead else False,
                 odin_quote_type=self._odin_quote_type(),
                 title=self._odin_quote_title(),
+                **({} if owner else {"user_id": False}),
                 note=orders[:1].note,
                 validity_date=fields.Date.context_today(self) + relativedelta(days=min(days))
                 if days else False,
@@ -933,7 +949,7 @@ class MedicalQuote(models.AbstractModel):
             if created and not lead.date_deadline and comparison.validity_date:
                 # The day the quote lapses is when the opportunity is decided.
                 lead.date_deadline = comparison.validity_date
-            if created and not lead.activity_ids:
+            if created and owner and not lead.activity_ids:
                 # A quote nobody chases is a quote lost: the opportunity gets
                 # its next step unless it already has one.
                 lead.activity_schedule(
@@ -941,7 +957,7 @@ class MedicalQuote(models.AbstractModel):
                     date_deadline=fields.Date.context_today(self) + relativedelta(
                         days=FOLLOW_UP_DAYS),
                     summary=_("Follow up on quote %s", comparison.name),
-                    user_id=(lead.user_id or self.env.user).id,
+                    user_id=owner.id,
                 )
         self._odin_log(comparison, lead, orders, self._odin_people(context), created=created)
         return self.load_quote(comparison.id)

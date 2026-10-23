@@ -102,11 +102,7 @@ class MotorQuote(models.AbstractModel):
     @api.model
     def _odin_cards(self, vehicle):
         """Each insurer's line of the card for this vehicle, or why there is none."""
-        rates = self.env["odin.motor.rate"].search([
-            ("class_id", "=", vehicle["class"].id),
-            ("cover", "=", vehicle["cover"]),
-            ("company_id", "=", self.env.company.id),
-        ])
+        rates = self.env["odin.motor.rate"].search(self._odin_rate_domain(vehicle))
         cards = []
         for insurer in rates.insurer_id.sorted("name"):
             mine = rates.filtered(lambda r: r.insurer_id == insurer)
@@ -122,6 +118,14 @@ class MotorQuote(models.AbstractModel):
                 continue
             cards.append((rate, rate._odin_refusal(vehicle)))
         return cards
+
+    @api.model
+    def _odin_rate_domain(self, vehicle):
+        return [
+            ("class_id", "=", vehicle["class"].id),
+            ("cover", "=", vehicle["cover"]),
+            ("company_id", "=", self.env.company.id),
+        ]
 
     @api.model
     def _odin_product(self, key):

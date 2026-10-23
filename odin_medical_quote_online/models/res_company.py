@@ -7,8 +7,9 @@ class ResCompany(models.Model):
     odin_online_user_id = fields.Many2one(
         "res.users", string="Assign online quotes to",
         domain=[("share", "=", False)],
-        help="Who gets an online quote when it did not come through an agent's "
-        "own link. Left empty, the sales team's leader.",
+        help="Who gets an online quote that came from an ad, the website or the plain "
+        "page, when the client has no agent already. Left empty, nobody: the team is "
+        "told and anyone can pick it up (Assign to me).",
     )
     odin_online_team_id = fields.Many2one(
         "crm.team", string="Online quotes sales team",
@@ -45,9 +46,11 @@ class ResConfigSettings(models.TransientModel):
     odin_online_privacy_url = fields.Char(
         related="company_id.odin_online_privacy_url", readonly=False)
     odin_online_url = fields.Char(
-        string="Online quote page", compute="_compute_odin_online_url")
+        string="Medical quote page", compute="_compute_odin_online_url")
 
     @api.depends("company_id")
     def _compute_odin_online_url(self):
         for settings in self:
-            settings.odin_online_url = "%s/medical-quote" % settings.company_id.get_base_url()
+            settings.odin_online_url = "%s%s" % (
+                settings.company_id.get_base_url(),
+                self.env["odin.medical.quote.online"]._odin_path())

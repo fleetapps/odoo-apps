@@ -121,6 +121,9 @@ class TestAccept(MedicalQuoteCase):
         self.assertEqual(self.comparison.state, "draft")
 
     def test_opened_from_crm(self):
+        action = self.lead.action_odin_new_quote()
+        self.assertEqual(action["tag"], "odin_quote_new", "the line first: medical, motor...")
+        self.assertEqual(action["params"]["lead_id"], self.lead.id)
         action = self.lead.action_odin_medical_quote()
         self.assertEqual(action["tag"], "odin_medical_quote")
         self.assertEqual(action["params"], {"lead_id": self.lead.id})

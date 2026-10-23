@@ -146,9 +146,12 @@ class TestOnlineSubmit(OnlineCase):
         _result, comparison = self.submit(tokens={"agent": self.Online.agent_token(other)})
         self.assertEqual(comparison.opportunity_id.user_id, other)
         self.assertEqual(comparison.user_id, other)
+        self.assertEqual(comparison.odin_online_via, "agent")
         forged = "%s-%s" % (other.id, "x" * 24)
-        _result, comparison = self.submit(tokens={"agent": forged})
+        _result, comparison = self.submit(tokens={"agent": forged},
+                                          contact=self.contact(phone="0733 444 555"))
         self.assertEqual(comparison.opportunity_id.user_id, self.agent, "a forged link is ignored")
+        self.assertEqual(comparison.odin_online_via, "public")
 
     def test_lead_link(self):
         lead = self.env["crm.lead"].create({
@@ -250,3 +253,101 @@ class TestOnlineShare(OnlineCase):
         wizard = self.env["odin.medical.quote.online.share"].with_user(self.agent).create({})
         self.assertNotIn("lead=", wizard.url)
         self.assertTrue(wizard.action_whatsapp()["url"].startswith("https://wa.me/?text="))
+
+    def test_campaign_link(self):
+        """For an ad: nobody's name on it, the source and campaign in it."""
+        source = self.env["utm.source"].create({"name": "Facebook"})
+        campaign = self.env["utm.campaign"].create({"name": "Family cover October"})
+        wizard = self.env["odin.medical.quote.online.share"].with_user(self.agent).create({
+            "audience": "campaign", "source_id": source.id, "campaign_id": campaign.id})
+        self.assertEqual(wizard.link_for, "campaign")
+        self.assertTrue(wizard.url.startswith("%s/medical-quote?" % wizard.get_base_url()), wizard.url)
+        self.assertIn("utm_source=Facebook", wizard.url)
+        self.assertIn("utm_campaign=Family+cover+October", wizard.url)
+        self.assertNotIn("agent=", wizard.url)
+        self.assertFalse(wizard.message)
+        self.assertIn("Quote Agent", wizard.routing, "the person in Settings")
+        self.company.odin_online_user_id = False
+        wizard.invalidate_recordset(["routing"])
+        self.assertIn("anyone in the team", wizard.routing)
+
+
+@tagged("post_install", "-at_install")
+class TestOnlinePool(OnlineCase):
+    """An ad, the website, the plain page: nobody's link, so the quote waits
+    for anyone in the team, unless the client already has an agent."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.company.odin_online_user_id = False
+        cls.team = cls.env["crm.team"].create({"name": "Online team"})
+        cls.env["crm.team.member"].create({"crm_team_id": cls.team.id, "user_id": cls.agent.id})
+        cls.company.odin_online_team_id = cls.team
+        cls.other = new_test_user(cls.env, login="other.agent", name="Other Agent",
+                                  groups="sales_team.group_sale_salesman")
+        cls.activity_type = cls.env.ref("odin_medical_quote_online.mail_activity_type_online_quote")
+
+    def test_waits_for_the_team(self):
+        _result, comparison = self.submit()
+        lead = comparison.opportunity_id
+        self.assertFalse(lead.user_id)
+        self.assertEqual(lead.team_id, self.team)
+        self.assertFalse(comparison.user_id)
+        self.assertFalse(comparison.plan_ids.order_id.user_id, "not OdooBot's quotations")
+        self.assertFalse(lead.activity_ids, "no to-do until someone takes it")
+        self.assertEqual(comparison.odin_online_via, "public")
+        told = lead.message_ids.filtered(lambda m: "waiting to be picked up" in str(m.body))
+        self.assertIn(self.agent.partner_id, told.partner_ids, "the team is notified")
+        self.assertIn(comparison, self.Comparison.search([
+            ("odin_channel", "=", "online"), ("user_id", "=", False)]), "To pick up")
+
+        comparison.with_user(self.agent).action_odin_pick_up()
+        self.assertEqual(lead.user_id, self.agent)
+        self.assertEqual(comparison.user_id, self.agent)
+        self.assertEqual(comparison.plan_ids.order_id.user_id, self.agent)
+        activity = lead.activity_ids.filtered(lambda a: a.activity_type_id == self.activity_type)
+        self.assertEqual(activity.user_id, self.agent)
+        self.assertIn("Grace Wanjiru", activity.summary)
+        self.assertTrue(lead.message_ids.filtered(lambda m: "Picked up by Quote Agent" in str(m.body)))
+        with self.assertRaisesRegex(UserError, "Quote Agent has already picked this up"):
+            comparison.with_user(self.other).action_odin_pick_up()
+
+    def test_assigned_in_crm(self):
+        """Given out with the Salesperson field (or CRM's assignment rules):
+        the same as Assign to me."""
+        _result, comparison = self.submit()
+        comparison.opportunity_id.user_id = self.other
+        self.assertEqual(comparison.user_id, self.other)
+        self.assertEqual(comparison.opportunity_id.activity_ids.user_id, self.other)
+
+    def test_call_before_anyone_picks_it_up(self):
+        _result, comparison = self.submit()
+        lead = comparison.opportunity_id
+        self.Online.request_callback(comparison, "call", "morning")
+        self.assertEqual(lead.priority, "2")
+        self.assertFalse(lead.activity_ids)
+        self.assertTrue(lead.message_ids.filtered(
+            lambda m: "Nobody has picked this quote up yet" in str(m.body)
+            and self.agent.partner_id in m.partner_ids))
+        lead.with_user(self.agent).action_odin_pick_up()
+        self.assertIn("Call back", lead.activity_ids.summary, "what the client asked for")
+
+    def test_returning_client(self):
+        """Their agent's client, back through an ad: to that agent, without
+        telling the visitor who it is."""
+        known = self.env["crm.lead"].create({
+            "name": "Grace – motor", "type": "opportunity", "phone": "+254722000111",
+            "user_id": self.other.id})
+        _result, comparison = self.submit()
+        lead = comparison.opportunity_id
+        self.assertNotEqual(lead, known, "a new opportunity: the visitor typed the number")
+        self.assertEqual(lead.user_id, self.other)
+        self.assertTrue(lead.message_ids.filtered(lambda m: "Assigned to Other Agent" in str(m.body)))
+        values = self.Online.quote_values(comparison, comparison.odin_access_token)
+        self.assertFalse(values["advisor"], "an advisor, not their name")
+
+    def test_agent_named_on_their_own_link(self):
+        _result, comparison = self.submit(tokens={"agent": self.Online.agent_token(self.other)})
+        values = self.Online.quote_values(comparison, comparison.odin_access_token)
+        self.assertEqual(values["advisor"], self.other)

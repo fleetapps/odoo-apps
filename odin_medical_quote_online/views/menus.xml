@@ -1,15 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_online_share" model="ir.actions.act_window">
-        <field name="name">Share the online quote page</field>
+        <field name="name">Share quote link</field>
         <field name="res_model">odin.medical.quote.online.share</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
 
+    <!-- Cover Quotes: Quotes (everything), New quote, Online quotes (what
+         clients made themselves, to pick up), Share quote link. -->
+    <menuitem id="menu_online_quotes"
+              name="Online quotes"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_online_quotes"
+              sequence="12"/>
+
     <menuitem id="menu_online_share"
-              name="Share online quote page"
+              name="Share quote link"
               parent="odin_client_quote.menu_quote_root"
               action="action_online_share"
-              sequence="12"/>
+              sequence="13"/>
 </odoo>

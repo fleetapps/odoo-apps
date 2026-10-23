@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_online_motor" model="ir.ui.view">
+        <field name="name">res.config.settings.form.online.motor.quote</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="odin_medical_quote_online.res_config_settings_view_form_online_quote"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='odin_online_url']" position="inside">
+                <div class="row">
+                    <label for="odin_online_motor_url" class="col-lg-4 o_light_label"/>
+                    <field name="odin_online_motor_url" widget="CopyClipboardChar" readonly="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

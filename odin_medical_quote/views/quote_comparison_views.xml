@@ -18,7 +18,7 @@
                         help="Mark the opportunity lost, with its reason, and cancel the quotations."/>
                 <button name="action_odin_edit" type="object" string="Edit quote"
                         invisible="not odin_from_builder or state == 'accepted'"
-                        help="Reopen in Add Medical Quote to change who is covered, the plans or the options."/>
+                        help="Reopen it on the quote screen to change the details, the plans or the options."/>
                 <button name="action_odin_send_email" type="object" string="Send by email"
                         invisible="not plan_ids"
                         help="Email the quotation to the client, the PDF attached."/>
@@ -61,7 +61,7 @@
                 <attribute name="column_invisible">parent.odin_from_builder</attribute>
             </xpath>
             <xpath expr="//field[@name='plan_ids']/list/field[@name='order_id']" position="after">
-                <field name="odin_template_id" column_invisible="not parent.odin_from_builder"/>
+                <field name="odin_plan_label" column_invisible="not parent.odin_from_builder"/>
                 <field name="odin_order_state" widget="badge" column_invisible="not parent.odin_from_builder"
                        decoration-success="odin_order_state == 'sale'"
                        decoration-muted="odin_order_state == 'cancel'"/>
@@ -99,15 +99,15 @@
                 <widget name="web_ribbon" title="Declined" bg_color="text-bg-danger"
                         invisible="state != 'declined'"/>
             </xpath>
-            <!-- On a quote made in Add Medical Quote the quotations are rebuilt
+            <!-- On a quote made on the quote screen the quotations are rebuilt
                  when it is saved again, so changes belong there, not on them. -->
             <xpath expr="//page[@name='plans']/div[hasclass('text-muted')]" position="attributes">
                 <attribute name="invisible">odin_from_builder</attribute>
             </xpath>
             <xpath expr="//page[@name='plans']/div[hasclass('text-muted')]" position="after">
                 <div class="text-muted mt-2" invisible="not odin_from_builder">
-                    Made in Add Medical Quote. Use <b>Edit quote</b> to change who is
-                    covered, the plans or the options: saving there rebuilds these
+                    Made on the quote screen. Use <b>Edit quote</b> to change the
+                    details, the plans or the options: saving there rebuilds these
                     quotations, so changes made on them directly are replaced.
                 </div>
             </xpath>

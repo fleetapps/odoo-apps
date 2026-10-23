@@ -30,6 +30,17 @@ class CrmLead(models.Model):
             "params": {"lead_id": self.id},
         }
 
+    def action_odin_new_quote(self):
+        """Insurance quote: pick the line (medical, motor...), then its
+        screen opens with this lead's client filled in."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.client",
+            "tag": "odin_quote_new",
+            "name": _("New quote"),
+            "params": {"lead_id": self.id, "lead_name": self.display_name},
+        }
+
     def action_odin_view_comparisons(self):
         self.ensure_one()
         action = self.env["ir.actions.act_window"]._for_xml_id(

@@ -4,30 +4,50 @@
         <field name="name">odin.medical.quote.online.share.form</field>
         <field name="model">odin.medical.quote.online.share</field>
         <field name="arch" type="xml">
-            <form string="Share the online quote page">
+            <form string="Share a quote link">
                 <field name="conversation_id" invisible="1"/>
                 <field name="phone" invisible="1"/>
-                <p class="text-muted" invisible="lead_id">
-                    Your own link to the online quote page: send it to anyone, a group or your
-                    status. Quotes made through it come to you, with a to-do.
-                </p>
-                <p class="text-muted" invisible="not lead_id">
-                    A link for this client only: their name and number are filled in, and their
-                    quote comes back to this opportunity with a to-do for you.
-                </p>
+                <field name="link_for" invisible="1"/>
                 <group>
+                    <field name="quote_type" widget="radio" options="{'horizontal': true}"/>
+                    <field name="audience" widget="radio" invisible="lead_id"/>
                     <field name="lead_id" invisible="not lead_id"/>
+                </group>
+                <div class="alert alert-light border mb-3" role="status">
+                    <span invisible="link_for != 'mine'">
+                        Your own link: send it to anyone, a group or your status. Quotes made
+                        through it come to you, with a to-do.
+                    </span>
+                    <span invisible="link_for != 'client'">
+                        A link for this client only: their name and number are filled in, and
+                        their quote comes back to this opportunity with a to-do for you.
+                    </span>
+                    <span invisible="link_for != 'campaign'">
+                        For an ad (its website link), your website or a WhatsApp auto-reply.
+                        Nobody's name is on it. <field name="routing" class="d-inline" nolabel="1"/>
+                    </span>
+                </div>
+                <group invisible="link_for != 'campaign'">
+                    <field name="source_id" required="link_for == 'campaign'"
+                           placeholder="Facebook, Instagram, Google, Website..."/>
+                    <field name="campaign_id" placeholder="Optional"/>
+                </group>
+                <group>
                     <field name="url" widget="CopyClipboardChar"/>
-                    <field name="message"/>
+                    <field name="message" invisible="link_for == 'campaign'"/>
                 </group>
                 <footer>
                     <button name="action_send_in_conversation" type="object" class="btn-primary"
-                            string="Send in their WhatsApp chat" invisible="not conversation_id"/>
+                            string="Send in their WhatsApp chat"
+                            invisible="not conversation_id or link_for == 'campaign'"/>
                     <button name="action_whatsapp" type="object" string="Open WhatsApp"
-                            class="btn-primary" invisible="conversation_id"/>
+                            class="btn-primary" invisible="conversation_id or link_for == 'campaign'"/>
                     <button name="action_whatsapp" type="object" string="Open WhatsApp"
-                            class="btn-secondary" invisible="not conversation_id"/>
-                    <button string="Close" class="btn-secondary" special="cancel"/>
+                            class="btn-secondary" invisible="not conversation_id or link_for == 'campaign'"/>
+                    <button string="Done" class="btn-primary" special="cancel"
+                            invisible="link_for != 'campaign'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"
+                            invisible="link_for == 'campaign'"/>
                 </footer>
             </form>
         </field>
