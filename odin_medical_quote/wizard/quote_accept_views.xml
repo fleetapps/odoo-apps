@@ -14,7 +14,6 @@
                     <field name="order_id"
                            context="{'odin_plan_label': True}"
                            options="{'no_create': True, 'no_open': True}"/>
-                    <field name="plan_summary" string="" readonly="1" class="text-muted"/>
                     <field name="invoice_mode" widget="radio"/>
                     <label for="deposit_percent" invisible="invoice_mode != 'deposit'"/>
                     <div class="o_row" invisible="invoice_mode != 'deposit'">

@@ -31,7 +31,6 @@ class MedicalQuoteAccept(models.TransientModel):
         "sale.order", string="Plan accepted", required=True,
         domain="[('id', 'in', available_order_ids)]",
     )
-    plan_summary = fields.Char(compute="_compute_plan_summary")
     currency_id = fields.Many2one(related="order_id.currency_id")
     amount_total = fields.Monetary(related="order_id.amount_total", string="Total premium")
     invoice_mode = fields.Selection(
@@ -65,12 +64,6 @@ class MedicalQuoteAccept(models.TransientModel):
         for wizard in self:
             wizard.available_order_ids = wizard.comparison_id.plan_ids.order_id.filtered(
                 lambda o: o.state in ("draft", "sent", "sale"))
-
-    @api.depends("order_id")
-    def _compute_plan_summary(self):
-        for wizard in self:
-            wizard.plan_summary = wizard.order_id.with_context(
-                odin_plan_label=True).display_name or ""
 
     @api.depends("comparison_id", "order_id")
     def _compute_other_order_ids(self):
