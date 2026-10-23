@@ -41,7 +41,8 @@ class TestAccept(MedicalQuoteCase):
         wizard = self.wizard()
         self.assertEqual(wizard.order_id, self.jamii_order, "the recommended plan first")
         self.assertEqual(wizard.other_order_ids, self.afya_order)
-        self.assertIn(self.jamii.name, wizard.plan_summary)
+        self.assertIn(self.jamii.name, wizard.order_id.display_name,
+                      "the plan's name where it is picked, not just S00042")
         action = wizard.action_accept()
 
         self.assertEqual(self.jamii_order.state, "sale")
