@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_online_share_form" model="ir.ui.view">
+        <field name="name">odin.medical.quote.online.share.form</field>
+        <field name="model">odin.medical.quote.online.share</field>
+        <field name="arch" type="xml">
+            <form string="Share the online quote page">
+                <field name="conversation_id" invisible="1"/>
+                <field name="phone" invisible="1"/>
+                <p class="text-muted" invisible="lead_id">
+                    Your own link to the online quote page: send it to anyone, a group or your
+                    status. Quotes made through it come to you, with a to-do.
+                </p>
+                <p class="text-muted" invisible="not lead_id">
+                    A link for this client only: their name and number are filled in, and their
+                    quote comes back to this opportunity with a to-do for you.
+                </p>
+                <group>
+                    <field name="lead_id" invisible="not lead_id"/>
+                    <field name="url" widget="CopyClipboardChar"/>
+                    <field name="message"/>
+                </group>
+                <footer>
+                    <button name="action_send_in_conversation" type="object" class="btn-primary"
+                            string="Send in their WhatsApp chat" invisible="not conversation_id"/>
+                    <button name="action_whatsapp" type="object" string="Open WhatsApp"
+                            class="btn-primary" invisible="conversation_id"/>
+                    <button name="action_whatsapp" type="object" string="Open WhatsApp"
+                            class="btn-secondary" invisible="not conversation_id"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

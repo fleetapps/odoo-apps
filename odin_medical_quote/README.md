@@ -150,6 +150,29 @@ Quotations for a client who said no. If the client comes back, **Edit quote**
 and save: the quote is a draft again, the opportunity is restored and the
 plans get fresh quotations.
 
+## Quotes register
+
+**Cover Quotes ▸ Quotes** lists every quote:
+* the phone, who's covered, the plans, the premium, valid until (red once
+  expired), handled by and the next activity;
+* search by customer name, email or phone as typed (`07...` finds
+  `+2547...`), plan or insurer;
+* filters for open, accepted, waiting to be placed, declined, expired,
+  expiring in 7 days, follow-up due, quote date, my quotes and handled by
+  me;
+* a pivot by salesperson and status.
+
+Select quotes to print them together, or to change *Handled by* in place.
+
+## Hand-over
+
+**Client accepted** asks who places the cover with the insurer. The default
+is **Settings ▸ Sales ▸ Hand accepted medical quotes to**, else the
+salesperson. That person gets a **Place cover** to-do with a checklist,
+editable in CRM ▸ Configuration ▸ Activity Types, however the quote was
+accepted. Changing *Handled by* moves the to-do. *Waiting to be placed*
+lists accepted quotes whose to-do is still open.
+
 ## How a premium is priced
 
 From the quotation templates and their products, read the way the rate

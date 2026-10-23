@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_online_quote" model="ir.ui.view">
+        <field name="name">res.config.settings.form.online.medical.quote</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='quotation_order_setting_container']" position="after">
+                <block title="Online medical quotes" name="odin_online_quote_setting_container">
+                    <setting id="odin_online_url" string="Online quote page"
+                             help="Anyone can price medical cover for their family here and get a quote. Link to it from your website, or share it on WhatsApp from a lead (Send online quote link).">
+                        <field name="odin_online_url" widget="CopyClipboardChar" readonly="1"/>
+                    </setting>
+                    <setting id="odin_online_user_id" company_dependent="1" string="Who follows them up"
+                             help="Online quotes go to the agent whose link the client used; otherwise to this person, or the sales team's leader. They get a to-do for the day.">
+                        <div class="row mt-2">
+                            <label for="odin_online_user_id" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_user_id" options="{'no_create': True}"/>
+                        </div>
+                        <div class="row">
+                            <label for="odin_online_team_id" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_team_id" options="{'no_create': True}"/>
+                        </div>
+                    </setting>
+                    <setting id="odin_online_whatsapp" company_dependent="1" string="Talking to clients"
+                             help="Chat with us on WhatsApp opens this number; the reply time finishes 'An advisor will contact you ...'.">
+                        <div class="row mt-2">
+                            <label for="odin_online_whatsapp" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_whatsapp" placeholder="Company phone"/>
+                        </div>
+                        <div class="row">
+                            <label for="odin_online_reply_time" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_reply_time"/>
+                        </div>
+                        <div class="row">
+                            <label for="odin_online_privacy_url" class="col-lg-4 o_light_label"/>
+                            <field name="odin_online_privacy_url" placeholder="https://..."/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

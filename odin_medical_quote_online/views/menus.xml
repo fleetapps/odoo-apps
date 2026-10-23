@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_online_share" model="ir.actions.act_window">
+        <field name="name">Share the online quote page</field>
+        <field name="res_model">odin.medical.quote.online.share</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_online_share"
+              name="Share online quote page"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_online_share"
+              sequence="12"/>
+</odoo>

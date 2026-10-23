@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_online_share_user,online.share.user,model_odin_medical_quote_online_share,sales_team.group_sale_salesman,1,1,1,1
