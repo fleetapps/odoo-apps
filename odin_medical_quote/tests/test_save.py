@@ -1,3 +1,4 @@
+from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
@@ -173,6 +174,66 @@ class TestSave(MedicalQuoteCase):
         self.assertNotIn(self.afya_dental[0], afya_order.order_line.product_id)
         self.assertEqual(len(self.env["crm.lead"].search([("partner_id.name", "=", "Henry")])), 1,
                          "no second opportunity")
+
+    def test_option_keys_survive_template_edits(self):
+        """A saved quote reopens on the same options after the rate card's
+        lines are reordered or rewritten: keys name the benefit and the
+        rate, not a template line."""
+        result = self.search()
+        before = self.option(self.plan(result, self.afya), "outpatient")
+        self.assertTrue(before.startswith("outpatient/"), before)
+        lines = self.afya.sale_order_template_line_ids
+        self.afya.sale_order_template_line_ids = [Command.clear()] + [Command.create({
+            "sequence": line.sequence, "display_type": line.display_type, "name": line.name,
+            "product_id": line.product_id.id, "product_uom_qty": line.product_uom_qty,
+            "benefit_label": line.benefit_label, "benefit_key": line.benefit_key,
+            "cover_limit": line.cover_limit, "is_optional": line.is_optional,
+        }) for line in lines]
+        self.assertEqual(self.option(self.plan(self.search(), self.afya), "outpatient"), before)
+
+    def test_resave_keeps_quotations_added_by_hand(self):
+        result = self.search()
+        saved = self.Quote.save_quote(self.params([self.jamii_selection(result)]))
+        comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
+        by_hand = self.env["sale.order"].create({
+            "partner_id": comparison.partner_id.id, "sale_order_template_id": self.afya70.id})
+        comparison.plan_ids = [Command.create({"order_id": by_hand.id, "sequence": 99})]
+        params = dict(comparison.odin_builder_params, comparison_id=comparison.id)
+        self.Quote.save_quote(params)
+        self.assertEqual(by_hand.state, "draft", "not the screen's to cancel")
+        self.assertIn(by_hand, comparison.plan_ids.order_id)
+
+    def test_follow_up(self):
+        result = self.search()
+        saved = self.Quote.save_quote(self.params([self.jamii_selection(result)]))
+        comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
+        lead = comparison.opportunity_id
+        self.assertEqual(lead.date_deadline, comparison.validity_date)
+        self.assertEqual(len(lead.activity_ids), 1)
+        self.assertEqual(lead.activity_ids.user_id, self.agent)
+        self.assertIn(comparison.name, lead.activity_ids.summary)
+        self.Quote.save_quote(dict(comparison.odin_builder_params, comparison_id=comparison.id))
+        self.assertEqual(len(lead.activity_ids), 1, "saving again does not add another")
+
+    def test_existing_customer_open_opportunities(self):
+        company = self.env["res.partner"].create({"name": "Acme Ltd", "is_company": True})
+        person = self.env["res.partner"].create({"name": "Jane", "parent_id": company.id})
+        lead = self.env["crm.lead"].create({
+            "name": "Staff cover", "type": "opportunity", "partner_id": person.id})
+        self.env["crm.lead"].create({
+            "name": "Old sale", "type": "opportunity", "partner_id": company.id,
+        }).action_set_won()
+        self.assertEqual([found["id"] for found in self.Quote.partner_leads(company.id)], [lead.id])
+        self.assertEqual(self.Quote.partner_leads(0), [])
+
+    def test_unassigned_lead_goes_to_the_agent(self):
+        lead = self.env["crm.lead"].create({
+            "name": "Website", "type": "lead", "contact_name": "Jane Achieng",
+            "phone": "+254711000222", "user_id": False,
+        })
+        self.Quote.save_quote(self.params(
+            [self.jamii_selection(self.search())], source="lead", lead_id=lead.id))
+        self.assertEqual(lead.user_id, self.agent)
 
     def test_validation(self):
         result = self.search()

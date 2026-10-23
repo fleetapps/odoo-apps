@@ -112,7 +112,12 @@ section-level flag — a line is optional because its parent section is.
 `tests/test_quote_example.py` prices the brief's worked example from these
 rate cards -- principal 35, spouse 28, three children, Birdview plans 1 to 3
 -- and checks 50,317, 69,919 and 84,857 to the shilling, with taxes and
-levies of 265, 353 and 420. It also checks the insurers and the five APA
+levies of 265, 353 and 420. It also prices quotation #1323 as the client
+received it -- Birdview Plan 4 for two adults of 42 and three children,
+outpatient 100,000, dental and optical 10,000: 90,614 premium, 447.76 taxes
+and levies, 91,061.76 total (Odoo rounds the two levies to the cent each, so
+the total can be one cent above a single 0.45% figure) -- and checks the
+export shows it that way. It also checks the insurers and the five APA
 outpatient tiers.
 
 ## Known issue: the Motor templates are not shipped

@@ -11,11 +11,17 @@
             <xpath expr="//header/button[@name='action_build_plans']" position="before">
                 <button name="action_odin_accept" type="object" string="Client accepted"
                         class="btn-primary" data-hotkey="a"
-                        invisible="not plan_ids or state == 'accepted'"
+                        invisible="not plan_ids or state in ('accepted', 'declined')"
                         help="Confirm the plan the client chose, cancel the others, mark the opportunity won and invoice it."/>
+                <button name="action_odin_decline" type="object" string="Client declined"
+                        invisible="not odin_from_builder or state not in ('draft', 'sent')"
+                        help="Mark the opportunity lost, with its reason, and cancel the quotations."/>
                 <button name="action_odin_edit" type="object" string="Edit quote"
                         invisible="not odin_from_builder or state == 'accepted'"
                         help="Reopen in Add Medical Quote to change who is covered, the plans or the options."/>
+                <button name="action_odin_send_email" type="object" string="Send by email"
+                        invisible="not plan_ids"
+                        help="Email the quotation to the client, the PDF attached."/>
             </xpath>
             <!-- A quote made in Add Medical Quote is changed there: these build
                  and re-price the quotations another way, and would undo it. -->
@@ -51,6 +57,20 @@
                 </div>
                 <widget name="web_ribbon" title="Accepted" bg_color="text-bg-success"
                         invisible="state != 'accepted'"/>
+                <widget name="web_ribbon" title="Declined" bg_color="text-bg-danger"
+                        invisible="state != 'declined'"/>
+            </xpath>
+            <!-- On a quote made in Add Medical Quote the quotations are rebuilt
+                 when it is saved again, so changes belong there, not on them. -->
+            <xpath expr="//page[@name='plans']/div[hasclass('text-muted')]" position="attributes">
+                <attribute name="invisible">odin_from_builder</attribute>
+            </xpath>
+            <xpath expr="//page[@name='plans']/div[hasclass('text-muted')]" position="after">
+                <div class="text-muted mt-2" invisible="not odin_from_builder">
+                    Made in Add Medical Quote. Use <b>Edit quote</b> to change who is
+                    covered, the plans or the options: saving there rebuilds these
+                    quotations, so changes made on them directly are replaced.
+                </div>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="opportunity_id" readonly="odin_from_builder"/>
@@ -75,6 +95,7 @@
             </xpath>
             <xpath expr="//field[@name='state']" position="attributes">
                 <attribute name="decoration-info">state == 'accepted'</attribute>
+                <attribute name="decoration-danger">state == 'declined'</attribute>
             </xpath>
         </field>
     </record>
@@ -87,6 +108,8 @@
             <xpath expr="//filter[@name='filter_sent']" position="after">
                 <filter name="filter_accepted" string="Accepted"
                         domain="[('state', '=', 'accepted')]"/>
+                <filter name="filter_declined" string="Declined"
+                        domain="[('state', '=', 'declined')]"/>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="opportunity_id"/>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_medical_quote" model="ir.ui.view">
+        <field name="name">res.config.settings.form.medical.quote</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <setting id="quotation_validity_days" position="after">
+                <setting id="odin_quote_payment_note" company_dependent="1"
+                         string="Payment details on medical quotations"
+                         help="Printed in the Payment options box: bank account, M-Pesa paybill, how to quote the reference. Left empty, the company's bank accounts are printed.">
+                    <field name="odin_quote_payment_note" class="w-100"
+                           placeholder="A/C name, A/C no, bank, branch, SWIFT, M-Pesa paybill and account number..."/>
+                </setting>
+            </setting>
+        </field>
+    </record>
+</odoo>

@@ -81,3 +81,53 @@ class TestQuoteExample(TransactionCase):
                          [50000, 75000, 100000, 150000, 200000])
         # 41-54 band for the principal, the child band for the child.
         self.assertEqual(outpatient["options"][0]["amount"], 28981 + 20040)
+
+    def test_exported_example(self):
+        """Quotation #1323 as the client received it: Birdview Plan 4 for two
+        adults of 42 and three children, outpatient 100,000, dental and
+        optical 10,000 -- 90,614 premium, 447.76 taxes and levies, 91,061.76.
+
+        Odoo rounds the training levy and PHCF each to the cent, so the
+        levies can come to a cent more than one 0.45% figure would."""
+        Quote = self.env["odin.medical.quote"]
+        cover = {
+            "principal_dob": self.dob(42),
+            "include_spouse": True,
+            "spouse_dob": self.dob(42),
+            "children": 3,
+            "limit_min": 750000,
+            "limit_max": 750000,
+            "insurer": self.env.ref("odin_bizsure_quotes.insurer_birdview").name,
+        }
+        result = Quote.search_plans({"cover": cover})
+        plan = next(p for p in result["plans"] if p["name"] == "Plan 4 (KES 750,000) – Below 70")
+        self.assertEqual(plan["core"]["amount"], 34736)
+        groups = {group["benefit_key"]: group for group in plan["groups"]}
+        options = []
+        for benefit, limit, amount in (("outpatient", 100000, 31798),
+                                       ("dental", 10000, 12040), ("optical", 10000, 12040)):
+            option = next(o for o in groups[benefit]["options"] if o["limit"] == limit)
+            self.assertEqual(option["amount"], amount, benefit)
+            options.append(option["key"])
+        selection = {"template_id": plan["id"], "options": options}
+        totals = Quote.compute_totals({"cover": cover, "plans": [selection]})[str(plan["id"])]
+        self.assertEqual(totals["premium"], 90614)
+        self.assertAlmostEqual(totals["levies"], 447.76, delta=0.015)
+        self.assertAlmostEqual(totals["total"], 91061.76, delta=0.015)
+
+        saved = Quote.save_quote({
+            "customer": {"source": "new", "name": "David Muthuri Muriuki", "phone": "0722537502"},
+            "cover": cover, "plans": [selection],
+        })
+        comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
+        rows = {row["label"]: row["cells"] for row in comparison._odin_export_matrix()["rows"]}
+        self.assertEqual(rows["Inpatient limit"], [750000])
+        self.assertEqual(rows["Outpatient limit"], [100000])
+        self.assertEqual(rows["Dental limit"], [10000])
+        self.assertEqual(rows["Optical limit"], [10000])
+        self.assertEqual([rows[benefit][0] for benefit in ("Inpatient", "Outpatient", "Dental", "Optical")],
+                         [34736, 31798, 12040, 12040])
+        self.assertAlmostEqual(rows["Taxes and levies"][0], 447.76, delta=0.015)
+        self.assertAlmostEqual(rows["Total premium"][0], 91061.76, delta=0.015)
+        members = dict(comparison._odin_export_members())
+        self.assertEqual(members["Requested limit"], "750,000 — 750,000")

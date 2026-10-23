@@ -56,6 +56,37 @@ function emptyCover() {
     };
 }
 
+/** Everything one quote holds on screen, as a new quote starts it. */
+function emptyQuote() {
+    return {
+        customer: emptyCustomer(),
+        cover: emptyCover(),
+        // The cover the plans on screen were priced for. Totals and the save
+        // use this, not what is being typed, so a half-edited form never
+        // prices one family's options for another.
+        searchedCover: null,
+        coverDirty: false,
+        coverOpen: true,
+        results: null,
+        showUnavailable: false,
+        searching: false,
+        selection: {},
+        order: [],
+        totals: {},
+        totalsLoading: false,
+        saving: false,
+        saved: null,
+        comparisonId: false,
+        customerLocked: false,
+        contactQuery: "",
+        contactResults: [],
+        leadQuery: "",
+        leadResults: [],
+        partnerLeads: [],
+        matches: [],
+    };
+}
+
 /**
  * Add Medical Quote: the four steps of the example, on one page.
  *
@@ -82,33 +113,10 @@ export class MedicalQuote extends Component {
         this.amount = amount;
         this.partText = partText;
         this.basisLabel = (basis) => BASIS[basis] || "";
-        this.state = useState({
-            setup: null,
-            customer: emptyCustomer(),
-            cover: emptyCover(),
-            // The cover the plans on screen were priced for. Totals and the
-            // save use this, not what is being typed, so a half-edited form
-            // never prices one family's options for another.
-            searchedCover: null,
-            coverDirty: false,
-            coverOpen: true,
-            results: null,
-            showUnavailable: false,
-            searching: false,
-            selection: {},
-            order: [],
-            totals: {},
-            totalsLoading: false,
-            saving: false,
-            saved: null,
-            comparisonId: false,
-            customerLocked: false,
-            contactQuery: "",
-            contactResults: [],
-            leadQuery: "",
-            leadResults: [],
-            matches: [],
-        });
+        this.state = useState({ setup: null, ...emptyQuote() });
+        // Each answer is applied only if no newer question has been asked
+        // since: typing "10" then "10%" must not let the slower "10" land last.
+        this.calls = { totals: 0, contacts: 0, leads: 0 };
         // Leaving for an invoice or a quotation and coming back through the
         // breadcrumb brings the screen back as it was left, not empty.
         useSetupAction({
@@ -192,14 +200,16 @@ export class MedicalQuote extends Component {
     }
 
     async loadContacts() {
+        const call = ++this.calls.contacts;
         const query = this.state.contactQuery;
-        this.state.contactResults =
-            query.trim().length < 2
-                ? []
-                : await this.orm.call(MODEL, "find_contacts", [query]);
+        const found =
+            query.trim().length < 2 ? [] : await this.orm.call(MODEL, "find_contacts", [query]);
+        if (call === this.calls.contacts) {
+            this.state.contactResults = found;
+        }
     }
 
-    pickContact(partner) {
+    async pickContact(partner) {
         Object.assign(this.state.customer, {
             source: "existing",
             partner_id: partner.id,
@@ -208,10 +218,14 @@ export class MedicalQuote extends Component {
         this.state.contactQuery = "";
         this.state.contactResults = [];
         this.state.matches = [];
+        // Quoting a customer who already has a sale in progress belongs on that
+        // opportunity, not on a second one beside it.
+        this.state.partnerLeads = await this.orm.call(MODEL, "partner_leads", [partner.id]);
     }
 
     clearContact() {
         Object.assign(this.state.customer, { partner_id: false, partner: null });
+        this.state.partnerLeads = [];
     }
 
     onLeadInput(ev) {
@@ -220,7 +234,11 @@ export class MedicalQuote extends Component {
     }
 
     async loadLeads() {
-        this.state.leadResults = await this.orm.call(MODEL, "find_leads", [this.state.leadQuery]);
+        const call = ++this.calls.leads;
+        const found = await this.orm.call(MODEL, "find_leads", [this.state.leadQuery]);
+        if (call === this.calls.leads) {
+            this.state.leadResults = found;
+        }
     }
 
     pickLead(lead) {
@@ -232,6 +250,7 @@ export class MedicalQuote extends Component {
         });
         this.state.leadQuery = "";
         this.state.leadResults = [];
+        this.state.partnerLeads = [];
     }
 
     clearLead() {
@@ -557,14 +576,20 @@ export class MedicalQuote extends Component {
         if (!this.state.order.length || !this.state.searchedCover) {
             return;
         }
+        const call = ++this.calls.totals;
         this.state.totalsLoading = true;
         try {
             const totals = await this.orm.call(MODEL, "compute_totals", [this.payload()]);
+            if (call !== this.calls.totals) {
+                return; // a newer change is being priced; its answer wins
+            }
             for (const [id, value] of Object.entries(totals)) {
                 this.state.totals[id] = value;
             }
         } finally {
-            this.state.totalsLoading = false;
+            if (call === this.calls.totals) {
+                this.state.totalsLoading = false;
+            }
         }
     }
 
@@ -641,8 +666,11 @@ export class MedicalQuote extends Component {
         this.state.saved = null;
     }
 
+    /** Start the next quote on the same screen, not on a new one stacked
+     * behind the breadcrumb. */
     newQuote() {
-        this.action.doAction("odin_medical_quote.action_medical_quote", { clearBreadcrumbs: false });
+        Object.assign(this.state, emptyQuote());
+        this.calls.totals++;
     }
 
     // -- after saving -----------------------------------------------------
@@ -650,7 +678,17 @@ export class MedicalQuote extends Component {
     async callComparison(method) {
         const action = await this.orm.call("odin.quote.comparison", method, [[this.state.comparisonId]]);
         if (action && typeof action === "object") {
-            await this.action.doAction(action);
+            // A dialog (email, lost reason) may change the quote: show it as
+            // it is once the dialog closes.
+            await this.action.doAction(action, { onClose: () => this.refreshSaved() });
+        } else {
+            await this.refreshSaved();
+        }
+    }
+
+    async refreshSaved() {
+        if (this.state.saved && this.state.comparisonId) {
+            this.state.saved = await this.orm.call(MODEL, "load_quote", [this.state.comparisonId]);
         }
     }
 

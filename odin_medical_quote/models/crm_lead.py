@@ -13,6 +13,13 @@ class CrmLead(models.Model):
         for lead in self:
             lead.odin_comparison_count = len(lead.odin_comparison_ids)
 
+    def action_set_lost(self, **additional_values):
+        """A lost opportunity's medical quotes are declined and their open
+        quotations cancelled, whether it was lost from CRM or from the quote."""
+        result = super().action_set_lost(**additional_values)
+        self.sudo().odin_comparison_ids.filtered("odin_from_builder")._odin_decline()
+        return result
+
     def action_odin_medical_quote(self):
         """Quote this lead in Add Medical Quote, the client already filled in."""
         self.ensure_one()

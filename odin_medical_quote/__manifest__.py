@@ -21,19 +21,20 @@ The quick way to quote family medical cover, for an agent on a call.
    premium, a discount (% or amount), taxes and levies, a policy charge and
    the total.
 4. **Save.** The client is added to Contacts, the opportunity to the CRM
-   pipeline, one quotation per plan is linked to it, and the cover
-   comparison is ready to print or share on WhatsApp.
+   pipeline with a follow-up, one quotation per plan is linked to it, and
+   the medical quotation is ready to print, email or share on WhatsApp.
 
 When the client accepts a plan, **Client accepted** confirms that quotation,
 cancels the others, marks the opportunity won and creates the invoice -- the
-full premium or a deposit.
+full premium or a deposit. **Client declined** marks the opportunity lost and
+cancels the quotations.
 
 Premiums come from the rate cards already in Odoo: quotation templates and
 their products. How each product is priced (by family size, per person by
 role and age band, or once per policy) is read from its name and can be
 corrected on the product. See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -41,12 +42,15 @@ corrected on the product. See README.md.
     "data": [
         "security/ir.model.access.csv",
         "data/product_data.xml",
+        "report/medical_quotation.xml",
+        "data/mail_template_data.xml",
         "views/product_template_views.xml",
         "views/sale_order_template_views.xml",
         "views/medical_quote_actions.xml",
         "wizard/quote_accept_views.xml",
         "views/quote_comparison_views.xml",
         "views/crm_lead_views.xml",
+        "views/res_config_settings_views.xml",
         "views/menus.xml",
     ],
     "assets": {

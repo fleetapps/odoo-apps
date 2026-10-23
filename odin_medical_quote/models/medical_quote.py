@@ -16,7 +16,7 @@ import copy
 import re
 
 from dateutil.relativedelta import relativedelta
-from markupsafe import Markup, escape
+from markupsafe import Markup
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import AccessError, UserError
@@ -28,6 +28,8 @@ from .rating import Household
 EDITABLE_ORDER_STATES = ("draft", "sent")
 #: what marks a global discount line for Odoo (see sale.order.line)
 DISCOUNT_KEY = "global_discount,odin_medical_quote"
+#: days until the follow-up a new quote puts on its opportunity
+FOLLOW_UP_DAYS = 2
 
 
 class MedicalQuote(models.AbstractModel):
@@ -586,6 +588,19 @@ class MedicalQuote(models.AbstractModel):
         return [self._odin_lead_json(lead) for lead in leads]
 
     @api.model
+    def partner_leads(self, partner_id):
+        """Open opportunities of a customer, so a new quote can join one
+        instead of opening a second opportunity for the same sale."""
+        partner = self.env["res.partner"].browse(int(partner_id or 0)).exists()
+        if not partner:
+            return []
+        leads = self.env["crm.lead"].search([
+            ("partner_id", "child_of", partner.commercial_partner_id.id),
+            ("won_status", "!=", "won"),
+        ], limit=5, order="write_date desc")
+        return [self._odin_lead_json(lead) for lead in leads]
+
+    @api.model
     def match_prospect(self, name, phone, email):
         """Contacts a 'new' prospect may already be: same email or number."""
         domain = []
@@ -651,6 +666,9 @@ class MedicalQuote(models.AbstractModel):
                 lead.convert_opportunity(partner)
             elif not lead.partner_id:
                 lead.partner_id = partner
+            if not lead.user_id:
+                # Unassigned until now: it is the quoting agent's to follow up.
+                lead.user_id = self.env.user
             return lead
         people = household.headcount
         return self.env["crm.lead"].create({
@@ -758,8 +776,14 @@ class MedicalQuote(models.AbstractModel):
             "source_id": lead.source_id.id,
             "tag_ids": [Command.set(lead.tag_ids.ids)] if lead.tag_ids else False,
         }.items() if value}
+        # Only the plans this screen put on the quote are rebuilt or taken
+        # off. A quotation someone added to the comparison by hand is not the
+        # screen's to cancel, and stays as it is.
+        managed = {int(p.get("template_id") or 0)
+                   for p in (comparison.odin_builder_params or {}).get("plans", [])}
         existing = {plan.order_id.sale_order_template_id.id: plan
-                    for plan in comparison.plan_ids} if comparison else {}
+                    for plan in comparison.plan_ids
+                    if plan.order_id.sale_order_template_id.id in managed}
         SaleOrder = self.env["sale.order"]
         Plan = self.env["odin.quote.comparison.plan"]
         plans = []
@@ -802,6 +826,11 @@ class MedicalQuote(models.AbstractModel):
             "template_ids": [Command.set(orders.sale_order_template_id.ids)],
         }
         if comparison:
+            if comparison.state == "declined":
+                # Quoting again after a no: the client is back in play.
+                values["state"] = "draft"
+                if lead and not lead.active:
+                    lead.action_restore()
             comparison.write(values)
         else:
             days = [t.number_of_days for t, _o, _s in priced if t.number_of_days]
@@ -818,11 +847,25 @@ class MedicalQuote(models.AbstractModel):
             ))
             orders.filtered(lambda o: not o.origin).origin = comparison.name
 
+        created = not params.get("comparison_id")
         if lead:
             recommended = [order for _p, order, _i, rec in plans if rec]
             basis = recommended[0] if recommended else min(orders, key=lambda o: o.amount_untaxed)
             lead.expected_revenue = basis.amount_untaxed
-        self._odin_log(comparison, lead, orders, household, created=not params.get("comparison_id"))
+            if created and not lead.date_deadline and comparison.validity_date:
+                # The day the quote lapses is when the opportunity is decided.
+                lead.date_deadline = comparison.validity_date
+            if created and not lead.activity_ids:
+                # A quote nobody chases is a quote lost: the opportunity gets
+                # its next step unless it already has one.
+                lead.activity_schedule(
+                    "mail.mail_activity_data_todo",
+                    date_deadline=fields.Date.context_today(self) + relativedelta(
+                        days=FOLLOW_UP_DAYS),
+                    summary=_("Follow up on medical quote %s", comparison.name),
+                    user_id=(lead.user_id or self.env.user).id,
+                )
+        self._odin_log(comparison, lead, orders, household, created=created)
         return self.load_quote(comparison.id)
 
     @api.model
@@ -844,8 +887,7 @@ class MedicalQuote(models.AbstractModel):
         if lead:
             link = Markup('<a href="#" data-oe-model="%s" data-oe-id="%s">%s</a>') % (
                 comparison._name, comparison.id, comparison.name)
-            lead.message_post(body=body + Markup("<p>%s</p>") % escape(
-                _("Comparison: ")) + link)
+            lead.message_post(body=body + Markup("<p>%s %s</p>") % (_("Quote:"), link))
 
     # -- reopening --------------------------------------------------------
 

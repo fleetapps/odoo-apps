@@ -159,6 +159,20 @@ class SaleOrderTemplate(models.Model):
                              "lines": []}
                     block["groups"].append(group)
                 group["lines"].append(line)
+
+        # Keys that outlive the template's lines: a saved quote names the
+        # options it picked, and regenerating the catalogue recreates the
+        # lines with new ids. The benefit and the group's name do not change.
+        used = set()
+        for block in blocks:
+            for group in block["groups"]:
+                key = "%s/%s" % (block["key"], (group["label"] or "").strip().lower())
+                candidate, count = key, 1
+                while candidate in used:
+                    count += 1
+                    candidate = "%s#%s" % (key, count)
+                used.add(candidate)
+                group["key"] = candidate
         return blocks
 
     @staticmethod
@@ -241,7 +255,7 @@ class SaleOrderTemplate(models.Model):
             priced, reason = book.price(products, members)
             first = products[:1]
             options.append({
-                "key": "%s:%s" % (group["anchor"].id, rate_key),
+                "key": "%s:%s" % (group["key"], rate_key),
                 "rate_key": rate_key,
                 "name": rate_key,
                 "limit": first.odin_rate_limit,
@@ -259,7 +273,7 @@ class SaleOrderTemplate(models.Model):
             # "Limit 50,000" -- otherwise the words that differ do.
             option["label"] = "" if by_limit else (label or option["name"])
         return {
-            "key": "%s" % group["anchor"].id,
+            "key": group["key"],
             "label": group["label"],
             "benefit_key": block["key"],
             "requires": block["requires"],

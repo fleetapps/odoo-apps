@@ -4,3 +4,4 @@ from . import quote_comparison
 from . import medical_quote
 from . import crm_lead
 from . import sale_order
+from . import res_company
