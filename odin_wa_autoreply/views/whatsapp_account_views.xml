@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="whatsapp_account_view_form_autoreply" model="ir.ui.view">
+        <field name="name">whatsapp_connector.account.form.autoreply</field>
+        <field name="model">whatsapp_connector.account</field>
+        <field name="inherit_id" ref="whatsapp_connector.whatsapp_account_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='routing']" position="after">
+                <group string="Auto-reply" name="odin_autoreply">
+                    <group>
+                        <field name="odin_autoreply"/>
+                        <field name="odin_autoreply_delay" invisible="not odin_autoreply"/>
+                        <field name="odin_tz" invisible="not odin_autoreply"/>
+                        <label for="odin_open_hour" string="Weekdays" invisible="not odin_autoreply"/>
+                        <div class="o_row" invisible="not odin_autoreply">
+                            <field name="odin_open_hour" widget="float_time" nolabel="1"/>
+                            <span>to</span>
+                            <field name="odin_close_hour" widget="float_time" nolabel="1"/>
+                        </div>
+                        <label for="odin_saturday_open_hour" string="Saturday" invisible="not odin_autoreply"/>
+                        <div class="o_row" invisible="not odin_autoreply">
+                            <field name="odin_saturday_open_hour" widget="float_time" nolabel="1"/>
+                            <span>to</span>
+                            <field name="odin_saturday_close_hour" widget="float_time" nolabel="1"/>
+                        </div>
+                    </group>
+                    <group invisible="not odin_autoreply">
+                        <field name="odin_alert_after" widget="float_time"/>
+                        <field name="odin_window_alert" widget="float_time"/>
+                        <field name="odin_escalate_user_ids" widget="many2many_tags_avatar"
+                               options="{'no_create': True}"
+                               placeholder="WhatsApp managers"/>
+                    </group>
+                    <div class="text-muted" colspan="2" invisible="not odin_autoreply">
+                        Customers nobody has answered get a reply at once outside business hours,
+                        and after the wait above during them: the medical or motor quote page that
+                        fits their message, signed for them, or "an advisor will reply". Payments
+                        and claims go to the people above at once. Sundays are closed.
+                    </div>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Conversations: who is waiting for a person, and what they were sent. -->
+    <record id="discuss_channel_whatsapp_view_form_autoreply" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.form.autoreply</field>
+        <field name="model">discuss.channel</field>
+        <field name="inherit_id" ref="whatsapp_connector.discuss_channel_whatsapp_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='wa_last_message_at']" position="after">
+                <field name="odin_wait_since" invisible="not odin_wait_since"/>
+                <field name="odin_autoreply_kind" invisible="not odin_autoreply_kind"/>
+                <field name="odin_autoreply_at" invisible="not odin_autoreply_at"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="discuss_channel_whatsapp_view_list_autoreply" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.list.autoreply</field>
+        <field name="model">discuss.channel</field>
+        <field name="inherit_id" ref="whatsapp_connector.discuss_channel_whatsapp_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='wa_last_message_at']" position="after">
+                <field name="odin_wait_since" string="Waiting since" optional="show"
+                       decoration-danger="odin_wait_since"/>
+                <field name="odin_autoreply_kind" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="discuss_channel_whatsapp_view_search_autoreply" model="ir.ui.view">
+        <field name="name">discuss.channel.whatsapp.search.autoreply</field>
+        <field name="model">discuss.channel</field>
+        <field name="inherit_id" ref="whatsapp_connector.discuss_channel_whatsapp_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='last_message']" position="before">
+                <filter name="odin_waiting" string="Waiting for a reply"
+                        domain="[('odin_wait_since', '!=', False), ('wa_status', '=', 'open')]"/>
+                <separator/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

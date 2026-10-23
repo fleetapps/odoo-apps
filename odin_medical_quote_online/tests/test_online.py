@@ -75,6 +75,12 @@ class TestOnlinePlans(OnlineCase):
         self.assertEqual(picked["option"], dearer["key"])
         self.assertEqual(picked["amount"], 5 * 1803)
 
+    def test_link_hints(self):
+        """A link may say who needs cover (a WhatsApp auto-reply does);
+        anything else is ignored."""
+        self.assertEqual(self.Online.page_props(hints={"who": "family"})["prefill"], {"who": "family"})
+        self.assertEqual(self.Online.page_props(hints={"who": "<script>"})["prefill"], {})
+
     def test_only_plans_shown_online(self):
         self.jamii.odin_online = False
         self.assertEqual(set(self.plans()), {self.afya.id})

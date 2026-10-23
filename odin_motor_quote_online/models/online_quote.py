@@ -301,6 +301,27 @@ class MotorQuoteOnline(models.AbstractModel):
         }
 
     @api.model
+    def _prefill_hints(self, hints):
+        """The vehicle type, cover and period a link may carry, if offered."""
+        try:
+            class_id = int(hints.get("class_id") or 0)
+            period = int(hints.get("period") or 0)
+        except (TypeError, ValueError):
+            return {}
+        offered = next((c for c in self._classes() if c["id"] == class_id), None)
+        if not offered:
+            return {}
+        vehicle = {"class_id": class_id}
+        covers = [c["key"] for c in offered["covers"]]
+        if hints.get("cover") in covers:
+            vehicle["cover"] = hints["cover"]
+        elif len(covers) == 1:
+            vehicle["cover"] = covers[0]
+        if vehicle.get("cover") == "tpo" and period in offered["periods"]:
+            vehicle["period"] = period
+        return {"vehicle": vehicle}
+
+    @api.model
     def _prefill(self, previous):
         cover = (previous.odin_builder_params or {}).get("cover") or {}
         plans = (previous.odin_builder_params or {}).get("plans") or []

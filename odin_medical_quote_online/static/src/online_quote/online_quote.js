@@ -73,8 +73,9 @@ export class OnlineQuote extends Component {
         });
         this.calls = 0;
         onMounted(() => {
-            if (prefill.who) {
+            if (prefill.who && !this.familyProblem()) {
                 // Back from their quote to change it: straight to the plans.
+                // A link that only says who needs cover still asks the ages.
                 this.showPlans();
             }
         });
