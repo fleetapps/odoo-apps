@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_template_form_medical_quote" model="ir.ui.view">
+        <field name="name">sale.order.template.form.medical.quote</field>
+        <field name="model">sale.order.template</field>
+        <field name="inherit_id" ref="sale_management.sale_order_template_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='so_confirmation']" position="after">
+                <group name="odin_medical" string="Medical quotes">
+                    <field name="odin_medical"/>
+                    <field name="odin_insurer_id" invisible="not odin_medical"
+                           context="{'default_is_company': True}"/>
+                    <field name="odin_plan_type" invisible="not odin_medical"/>
+                    <field name="odin_currency_id" invisible="1"/>
+                    <field name="odin_inpatient_limit" invisible="not odin_medical"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sale_order_template_list_medical_quote" model="ir.ui.view">
+        <field name="name">sale.order.template.list.medical.quote</field>
+        <field name="model">sale.order.template</field>
+        <field name="inherit_id" ref="sale_management.sale_order_template_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="odin_insurer_id" optional="show"/>
+                <field name="odin_currency_id" column_invisible="True"/>
+                <field name="odin_inpatient_limit" optional="show"/>
+                <field name="odin_medical" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

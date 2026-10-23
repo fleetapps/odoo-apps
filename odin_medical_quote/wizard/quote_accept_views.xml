@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_medical_quote_accept_form" model="ir.ui.view">
+        <field name="name">odin.medical.quote.accept.form</field>
+        <field name="model">odin.medical.quote.accept</field>
+        <field name="arch" type="xml">
+            <form string="Client accepted">
+                <field name="comparison_id" invisible="1"/>
+                <field name="available_order_ids" invisible="1"/>
+                <field name="other_order_ids" invisible="1"/>
+                <field name="can_post" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <group>
+                    <field name="order_id"
+                           context="{'odin_plan_label': True}"
+                           options="{'no_create': True, 'no_open': True}"/>
+                    <field name="plan_summary" string="" readonly="1" class="text-muted"/>
+                    <field name="invoice_mode" widget="radio"/>
+                    <label for="deposit_percent" invisible="invoice_mode != 'deposit'"/>
+                    <div class="o_row" invisible="invoice_mode != 'deposit'">
+                        <field name="deposit_percent" class="oe_inline"/>
+                        <span>% of the premium:</span>
+                        <field name="deposit_amount" class="oe_inline fw-bold"/>
+                    </div>
+                    <field name="post_invoice"
+                           invisible="not can_post or invoice_mode == 'later'"/>
+                </group>
+                <div class="alert alert-info mb-0" role="status">
+                    The quotation is confirmed and the opportunity marked won.
+                    <span invisible="not other_order_ids">&#160;The other plans on this quote are
+                    cancelled.</span>
+                    <span invisible="invoice_mode == 'later'">&#160;The invoice opens next, in draft
+                    unless you post it here.</span>
+                </div>
+                <footer>
+                    <button name="action_accept" type="object" class="btn-primary"
+                            string="Confirm and invoice" data-hotkey="q"
+                            invisible="invoice_mode == 'later'"/>
+                    <button name="action_accept" type="object" class="btn-primary"
+                            string="Confirm" data-hotkey="q"
+                            invisible="invoice_mode != 'later'"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

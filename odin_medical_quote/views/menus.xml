@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- First in the app, so opening Cover Quotes opens a new quote: that is
+         what an agent on a call opens it for. -->
+    <menuitem id="menu_medical_quote_new"
+              name="New medical quote"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_medical_quote"
+              sequence="5"/>
+
+    <!-- In CRM, beside My Quotations, for salespeople who live in the pipeline. -->
+    <menuitem id="menu_medical_quote_crm"
+              name="Medical quotes"
+              parent="crm.crm_menu_sales"
+              action="odin_client_quote.action_quote_comparison"
+              sequence="3"/>
+</odoo>

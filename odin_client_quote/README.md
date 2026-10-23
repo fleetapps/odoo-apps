@@ -44,6 +44,11 @@ Product codes are stripped from descriptions (`[CODE] Name` → `Name`).
 
 ### Cover comparison (`odin.quote.comparison`)
 
+> The quick way to make one is **Add Medical Quote** (`odin_medical_quote`):
+> who is covered, the plans in range priced for that family, the chosen plans
+> side by side, saved to CRM. What follows is the record it produces, and the
+> older ways to build one by hand.
+
 It is its own app — **Cover Quotes** — so the sales team finds it without
 being told where to look. The same menu is kept under Sales ▸ Orders, because
 that is where salespeople already are.

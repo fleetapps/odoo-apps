@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_medical_quote" model="ir.actions.client">
+        <field name="name">Add Medical Quote</field>
+        <field name="tag">odin_medical_quote</field>
+    </record>
+</odoo>

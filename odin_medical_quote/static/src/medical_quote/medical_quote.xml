@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_medical_quote.MedicalQuote">
+        <div class="o_action o_mq">
+            <div class="o_mq_page">
+                <div class="o_mq_inner">
+                    <header class="o_mq_header">
+                        <h1 class="o_mq_title">Add Medical Quote</h1>
+                        <ol class="o_mq_steps" aria-label="Progress">
+                            <li t-foreach="steps" t-as="s" t-key="s.n"
+                                t-att-class="{'o_done': step > s.n, 'o_current': step === s.n}">
+                                <span class="o_mq_step_dot">
+                                    <i t-if="step > s.n" class="fa fa-check"/>
+                                    <t t-else="" t-esc="s.n"/>
+                                </span>
+                                <span class="o_mq_step_label" t-esc="s.label"/>
+                            </li>
+                        </ol>
+                    </header>
+
+                    <t t-if="state.saved">
+                        <t t-call="odin_medical_quote.MedicalQuote.Saved"/>
+                    </t>
+                    <t t-elif="state.setup">
+                        <t t-call="odin_medical_quote.MedicalQuote.Details"/>
+                        <t t-if="state.results" t-call="odin_medical_quote.MedicalQuote.Options"/>
+                        <t t-if="selectedPlans.length" t-call="odin_medical_quote.MedicalQuote.Compare"/>
+                    </t>
+                </div>
+            </div>
+            <footer t-if="state.setup and !state.saved and state.results" class="o_mq_footer">
+                <div class="o_mq_footer_text">
+                    <t t-if="selectedPlans.length">
+                        <b t-esc="customerSummary"/>:
+                        <t t-esc="selectedPlans.length"/> <t t-if="selectedPlans.length === 1">plan</t><t t-else="">plans</t>
+                        <span t-if="state.totalsLoading" class="text-muted ms-2"><i class="fa fa-circle-o-notch fa-spin"/></span>
+                    </t>
+                    <t t-else="">Select a plan's inpatient cover, or any of its options.</t>
+                </div>
+                <span t-if="saveProblem and selectedPlans.length" class="o_mq_footer_problem" t-esc="saveProblem"/>
+                <button class="btn btn-primary o_mq_save" t-att-disabled="state.saving or !selectedPlans.length"
+                        t-on-click="save">
+                    <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/>
+                    <t t-if="state.comparisonId">Save changes</t><t t-else="">Save quote</t>
+                </button>
+            </footer>
+        </div>
+    </t>
+
+    <!-- 1. Client and cover details ======================================== -->
+    <t t-name="odin_medical_quote.MedicalQuote.Details">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">1</span>
+                <div class="flex-grow-1">
+                    <h2>Client and cover details</h2>
+                    <p t-if="state.coverOpen">Enter the people to be covered and the inpatient limit you want to compare.</p>
+                    <p t-else="" class="o_mq_summary">
+                        <b t-esc="customerSummary"/> · <t t-esc="coverSummary"/>
+                    </p>
+                </div>
+                <button t-if="!state.coverOpen" class="btn btn-link o_mq_edit_details"
+                        t-on-click="() => state.coverOpen = true">Change</button>
+            </div>
+
+            <div t-if="state.coverOpen" class="o_mq_card_body">
+                <h3>Client information</h3>
+                <div class="o_mq_grid">
+                    <div class="o_mq_field">
+                        <label for="mq_source">Customer source</label>
+                        <select id="mq_source" class="form-select" t-att-disabled="state.customerLocked"
+                                t-on-change="(ev) => this.setSource(ev.target.value)">
+                            <option value="new" t-att-selected="state.customer.source === 'new'">New prospect</option>
+                            <option value="existing" t-att-selected="state.customer.source === 'existing'">Existing customer</option>
+                            <option value="lead" t-att-selected="state.customer.source === 'lead'">Lead or opportunity in CRM</option>
+                        </select>
+                    </div>
+
+                    <t t-if="state.customer.source === 'new'">
+                        <div class="o_mq_field">
+                            <label for="mq_name">Prospect name <span class="o_mq_req">*</span></label>
+                            <input id="mq_name" class="form-control" t-model="state.customer.name"
+                                   placeholder="Full name" t-att-disabled="state.customerLocked"/>
+                        </div>
+                        <div class="o_mq_field">
+                            <label for="mq_phone">Prospect phone</label>
+                            <input id="mq_phone" type="tel" class="form-control" t-model="state.customer.phone"
+                                   placeholder="0712 345 678" t-on-change="checkProspect"
+                                   t-att-disabled="state.customerLocked"/>
+                        </div>
+                        <div class="o_mq_field">
+                            <label for="mq_email">Prospect email</label>
+                            <input id="mq_email" type="email" class="form-control" t-model="state.customer.email"
+                                   placeholder="Enter prospect email" t-on-change="checkProspect"
+                                   t-att-disabled="state.customerLocked"/>
+                        </div>
+                        <div class="o_mq_field">
+                            <label for="mq_lead_source">Lead source</label>
+                            <select id="mq_lead_source" class="form-select" t-att-disabled="state.customerLocked"
+                                    t-on-change="(ev) => state.customer.source_id = Number(ev.target.value) || false">
+                                <option value="">Not recorded</option>
+                                <option t-foreach="state.setup.sources" t-as="src" t-key="src.id"
+                                        t-att-value="src.id" t-att-selected="state.customer.source_id === src.id"
+                                        t-esc="src.name"/>
+                            </select>
+                        </div>
+                    </t>
+
+                    <t t-if="state.customer.source === 'existing'">
+                        <div class="o_mq_field o_mq_wide">
+                            <label for="mq_contact">Customer</label>
+                            <div t-if="state.customer.partner" class="o_mq_chip">
+                                <i class="fa fa-user me-2"/>
+                                <b t-esc="state.customer.partner.name"/>
+                                <span class="text-muted ms-2" t-esc="state.customer.partner.phone or state.customer.partner.email"/>
+                                <button t-if="!state.customerLocked" class="btn btn-link btn-sm ms-auto"
+                                        t-on-click="clearContact">Change</button>
+                            </div>
+                            <div t-else="" class="o_mq_lookup">
+                                <input id="mq_contact" class="form-control" autocomplete="off"
+                                       placeholder="Search by name, phone or email"
+                                       t-att-value="state.contactQuery" t-on-input="onContactInput"/>
+                                <ul t-if="state.contactResults.length" class="o_mq_lookup_results">
+                                    <li t-foreach="state.contactResults" t-as="partner" t-key="partner.id">
+                                        <button class="btn" t-on-click="() => this.pickContact(partner)">
+                                            <b t-esc="partner.name"/>
+                                            <span class="text-muted ms-2" t-esc="partner.phone"/>
+                                            <span class="text-muted ms-2" t-esc="partner.email"/>
+                                        </button>
+                                    </li>
+                                </ul>
+                                <div t-elif="state.contactQuery.length > 1" class="o_mq_hint">
+                                    No customer found. Choose New prospect to add them.
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+
+                    <t t-if="state.customer.source === 'lead'">
+                        <div class="o_mq_field o_mq_wide">
+                            <label for="mq_lead">Lead or opportunity</label>
+                            <div t-if="state.customer.lead" class="o_mq_chip">
+                                <i class="fa fa-star me-2"/>
+                                <b t-esc="state.customer.lead.name"/>
+                                <span class="text-muted ms-2" t-esc="state.customer.lead.contact"/>
+                                <span class="text-muted ms-2" t-esc="state.customer.lead.phone"/>
+                                <span class="badge text-bg-light ms-2" t-esc="state.customer.lead.stage"/>
+                                <button t-if="!state.customerLocked" class="btn btn-link btn-sm ms-auto"
+                                        t-on-click="clearLead">Change</button>
+                            </div>
+                            <div t-else="" class="o_mq_lookup">
+                                <input id="mq_lead" class="form-control" autocomplete="off"
+                                       placeholder="Search leads by name, contact or phone"
+                                       t-att-value="state.leadQuery" t-on-input="onLeadInput"
+                                       t-on-focus="loadLeads"/>
+                                <ul t-if="state.leadResults.length" class="o_mq_lookup_results">
+                                    <li t-foreach="state.leadResults" t-as="lead" t-key="lead.id">
+                                        <button class="btn" t-on-click="() => this.pickLead(lead)">
+                                            <b t-esc="lead.name"/>
+                                            <span class="text-muted ms-2" t-esc="lead.contact"/>
+                                            <span class="text-muted ms-2" t-esc="lead.phone"/>
+                                            <span class="badge text-bg-light ms-2" t-esc="lead.stage"/>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <div t-if="state.matches.length" class="o_mq_matches" role="status">
+                    <i class="fa fa-info-circle me-1"/>
+                    Already in your contacts:
+                    <t t-foreach="state.matches" t-as="match" t-key="match.id">
+                        <button class="btn btn-sm btn-outline-primary ms-2" t-on-click="() => this.pickContact(match)">
+                            Use <t t-esc="match.name"/> <span class="text-muted" t-esc="match.phone or match.email"/>
+                        </button>
+                    </t>
+                </div>
+
+                <h3>People covered</h3>
+                <div class="o_mq_grid" t-on-change="onCoverChange">
+                    <t t-if="!state.cover.children_only">
+                        <div class="o_mq_field">
+                            <label for="mq_principal">Principal date of birth <span class="o_mq_req">*</span></label>
+                            <input id="mq_principal" type="date" class="form-control" t-model="state.cover.principal_dob"/>
+                        </div>
+                        <div class="o_mq_field">
+                            <label class="o_mq_check" for="mq_spouse_on">
+                                <input id="mq_spouse_on" type="checkbox" class="form-check-input"
+                                       t-model="state.cover.include_spouse"/>
+                                <span>
+                                    <b>Include spouse</b>
+                                    <small>Add spouse to this quotation</small>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="o_mq_field" t-if="state.cover.include_spouse">
+                            <label for="mq_spouse">Spouse date of birth <span class="o_mq_req">*</span></label>
+                            <input id="mq_spouse" type="date" class="form-control" t-model="state.cover.spouse_dob"/>
+                        </div>
+                    </t>
+                    <div class="o_mq_field">
+                        <label for="mq_children">Number of children</label>
+                        <input id="mq_children" type="number" min="0" max="20" class="form-control"
+                               t-model.number="state.cover.children"/>
+                    </div>
+                    <div class="o_mq_field">
+                        <label class="o_mq_check o_mq_check_plain" for="mq_children_only">
+                            <input id="mq_children_only" type="checkbox" class="form-check-input"
+                                   t-model="state.cover.children_only"/>
+                            <span><small>Children only, no adult on the policy</small></span>
+                        </label>
+                    </div>
+                </div>
+
+                <h3>Inpatient limit range</h3>
+                <p class="o_mq_help">Enter the minimum and maximum cover limits to retrieve matching plans.</p>
+                <div class="o_mq_grid" t-on-change="onCoverChange">
+                    <div class="o_mq_field">
+                        <label for="mq_min">Minimum limit</label>
+                        <input id="mq_min" type="number" min="0" step="50000" class="form-control"
+                               placeholder="No minimum" t-model="state.cover.limit_min"
+                               t-att-disabled="state.cover.template_id"/>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_max">Maximum limit</label>
+                        <input id="mq_max" type="number" min="0" step="50000" class="form-control"
+                               placeholder="No maximum" t-model="state.cover.limit_max"
+                               t-att-disabled="state.cover.template_id"/>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_insurer">Insurer</label>
+                        <select id="mq_insurer" class="form-select" t-model="state.cover.insurer">
+                            <option value="">All insurers</option>
+                            <option t-foreach="state.setup.insurers" t-as="insurer" t-key="insurer"
+                                    t-att-value="insurer" t-esc="insurer"/>
+                        </select>
+                    </div>
+                    <div class="o_mq_field">
+                        <label for="mq_plan">Plan</label>
+                        <select id="mq_plan" class="form-select" t-model="state.cover.template_id">
+                            <option value="">Use limit range</option>
+                            <option t-foreach="planChoices" t-as="choice" t-key="choice.id"
+                                    t-att-value="choice.id" t-esc="choice.name"/>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="o_mq_actions">
+                    <button class="btn btn-primary o_mq_find" t-on-click="search" t-att-disabled="state.searching">
+                        <i t-if="state.searching" class="fa fa-circle-o-notch fa-spin me-1"/>
+                        <i t-else="" class="fa fa-search me-1"/>
+                        <t t-if="state.results">Update plans</t><t t-else="">Find plans</t>
+                    </button>
+                    <button t-if="state.results and !state.coverDirty" class="btn btn-link"
+                            t-on-click="() => state.coverOpen = false">Done</button>
+                </div>
+            </div>
+            <div t-if="state.coverDirty and !state.coverOpen" class="o_mq_dirty" role="alert">
+                The cover details changed.
+                <button class="btn btn-sm btn-primary ms-2" t-on-click="search">Update plans</button>
+            </div>
+        </section>
+    </t>
+
+    <!-- 2. Cover options ==================================================== -->
+    <t t-name="odin_medical_quote.MedicalQuote.Options">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">2</span>
+                <div class="flex-grow-1">
+                    <h2>Cover options and premiums</h2>
+                    <p>Every premium is for this family. Select the inpatient cover of each plan to compare, and the options to add.</p>
+                </div>
+            </div>
+            <div class="o_mq_legend">
+                <span><span class="o_mq_dot"/> Select an option</span>
+                <span><span class="o_mq_dot o_on"><i class="fa fa-check"/></span> Already selected</span>
+                <span class="o_mq_legend_hint">Scroll sideways to view all columns on smaller screens.</span>
+            </div>
+            <div t-if="!state.results.plans.length" class="o_mq_empty">
+                No plan in this range covers this family. Widen the limit range, or choose another insurer.
+            </div>
+            <div t-else="" class="o_mq_table_wrap">
+                <table class="o_mq_table">
+                    <thead>
+                        <tr>
+                            <th class="o_mq_col_insurer">Insurer</th>
+                            <th class="o_mq_col_plan">Plan</th>
+                            <th>Cover options and premiums</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="state.results.plans" t-as="plan" t-key="plan.id"
+                            t-att-class="{'o_mq_row_on': isPlanSelected(plan)}">
+                            <td class="o_mq_col_insurer">
+                                <b t-esc="plan.insurer"/>
+                                <div class="text-muted small" t-if="plan.product !== plan.insurer" t-esc="plan.product"/>
+                            </td>
+                            <td class="o_mq_col_plan">
+                                <b t-esc="plan.name"/>
+                                <div class="text-muted small">Limit <t t-esc="amount(plan.limit)"/></div>
+                            </td>
+                            <td class="o_mq_options">
+                                <div class="o_mq_option o_mq_core" t-att-class="{'o_on': isPlanSelected(plan)}">
+                                    <div class="o_mq_option_name">
+                                        <b t-esc="plan.core.label"/>
+                                        <span class="text-muted ms-1">Limit <t t-esc="amount(plan.limit)"/></span>
+                                        <div class="o_mq_parts">
+                                            <t t-foreach="plan.core.parts" t-as="part" t-key="part_index">
+                                                <span t-esc="partText(part)"/>
+                                            </t>
+                                        </div>
+                                    </div>
+                                    <button class="btn o_mq_select" t-att-class="{'o_on': isPlanSelected(plan)}"
+                                            t-on-click="() => this.togglePlan(plan)"
+                                            t-att-aria-pressed="isPlanSelected(plan) ? 'true' : 'false'">
+                                        <i t-if="isPlanSelected(plan)" class="fa fa-check me-1"/>
+                                        <t t-if="isPlanSelected(plan)">Selected</t><t t-else="">Select</t>
+                                    </button>
+                                    <span class="o_mq_amount" t-esc="amount(plan.core.amount)"/>
+                                </div>
+                                <t t-foreach="plan.groups" t-as="group" t-key="group.key">
+                                    <div class="o_mq_group_label">
+                                        <t t-esc="group.label"/>
+                                        <span t-if="basisLabel(group.basis)" class="text-muted fw-normal"> · <t t-esc="basisLabel(group.basis)"/></span>
+                                        <span t-if="group.requires" class="o_mq_requires">
+                                            with <t t-esc="benefitLabel(plan, group.requires)"/> only
+                                        </span>
+                                    </div>
+                                    <div t-foreach="group.options" t-as="option" t-key="option.key"
+                                         class="o_mq_option" t-att-class="{'o_on': isOptionSelected(plan, option), 'o_off': !option.available}">
+                                        <div class="o_mq_option_name">
+                                            <span t-esc="optionLabel(option)"/>
+                                            <div class="o_mq_parts" t-if="option.available and option.parts.length and (option.parts.length > 1 or option.parts[0].qty > 1)">
+                                                <t t-foreach="option.parts" t-as="part" t-key="part_index">
+                                                    <span t-esc="partText(part)"/>
+                                                </t>
+                                            </div>
+                                            <div class="o_mq_reason" t-if="!option.available" t-esc="option.reason"/>
+                                        </div>
+                                        <button t-if="option.available" class="btn o_mq_select"
+                                                t-att-class="{'o_on': isOptionSelected(plan, option)}"
+                                                t-on-click="() => this.toggleOption(plan, group, option)"
+                                                t-att-aria-pressed="isOptionSelected(plan, option) ? 'true' : 'false'">
+                                            <i t-if="isOptionSelected(plan, option)" class="fa fa-check me-1"/>
+                                            <t t-if="isOptionSelected(plan, option)">Selected</t><t t-else="">Select</t>
+                                        </button>
+                                        <span class="o_mq_amount" t-esc="option.available ? amount(option.amount) : '–'"/>
+                                    </div>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div t-if="unavailablePlans.length" class="o_mq_unavailable">
+                <button class="btn btn-link p-0" t-on-click="() => state.showUnavailable = !state.showUnavailable">
+                    <i class="fa" t-att-class="state.showUnavailable ? 'fa-caret-down' : 'fa-caret-right'"/>
+                    <t t-esc="unavailablePlans.length"/>
+                    <t t-if="unavailablePlans.length === 1"> plan in range is</t><t t-else=""> plans in range are</t>
+                    not available for this family
+                </button>
+                <ul t-if="state.showUnavailable">
+                    <li t-foreach="unavailablePlans" t-as="plan" t-key="plan.id">
+                        <b t-esc="plan.title"/>: <t t-esc="plan.reason"/>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </t>
+
+    <!-- 3. The chosen plans side by side =================================== -->
+    <t t-name="odin_medical_quote.MedicalQuote.Compare">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">3</span>
+                <div class="flex-grow-1">
+                    <h2>Compare plans</h2>
+                    <p>Adjust each plan: take off options, give a discount, add a policy charge. Totals include taxes and levies.</p>
+                </div>
+            </div>
+            <div class="o_mq_plans">
+                <article t-foreach="selectedPlans" t-as="plan" t-key="plan.id" class="o_mq_plan"
+                         t-att-class="{'o_recommended': state.selection[plan.id].recommended}">
+                    <t t-set="totals" t-value="totalsFor(plan)"/>
+                    <t t-set="sel" t-value="state.selection[plan.id]"/>
+                    <header class="o_mq_plan_head">
+                        <div>
+                            <div class="o_mq_kicker">Insurer</div>
+                            <div class="o_mq_plan_insurer" t-esc="plan.insurer"/>
+                        </div>
+                        <button class="btn o_mq_remove_plan" aria-label="Remove plan" title="Remove plan"
+                                t-on-click="() => this.removePlan(plan.id)">×</button>
+                    </header>
+                    <div class="o_mq_plan_band">
+                        <span t-esc="plan.name"/>
+                        <span>Limit <t t-esc="amount(plan.limit)"/></span>
+                    </div>
+                    <div class="o_mq_plan_row">
+                        <div>
+                            <div><t t-esc="plan.core.label"/> premium</div>
+                            <div class="o_mq_sub">
+                                <t t-foreach="plan.core.parts" t-as="part" t-key="part_index">
+                                    <span t-esc="partText(part)"/>
+                                </t>
+                            </div>
+                        </div>
+                        <b t-esc="amount(plan.core.amount)"/>
+                    </div>
+                    <div t-foreach="chosen(plan)" t-as="row" t-key="row.option.key" class="o_mq_plan_row">
+                        <div>
+                            <div t-esc="row.group.label"/>
+                            <div class="o_mq_sub" t-esc="optionLabel(row.option)"/>
+                            <button class="btn btn-link o_mq_remove"
+                                    t-on-click="() => this.toggleOption(plan, row.group, row.option)">Remove</button>
+                        </div>
+                        <b t-esc="amount(row.option.amount)"/>
+                    </div>
+                    <div class="o_mq_plan_row o_mq_input_row">
+                        <label t-att-for="'mq_disc_' + plan.id">
+                            Discount
+                            <div class="o_mq_sub">% or amount</div>
+                        </label>
+                        <div class="text-end">
+                            <input t-att-id="'mq_disc_' + plan.id" class="form-control o_mq_small_input"
+                                   placeholder="0" t-model="state.selection[plan.id].discount" t-on-input="refreshTotals"/>
+                            <div t-if="totals and totals.discount" class="o_mq_sub text-success">
+                                − <t t-esc="amount(totals.discount)"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_mq_plan_row">
+                        <div>
+                            Taxes and levies
+                            <div class="o_mq_sub" t-if="totals and totals.charges">
+                                Levies <t t-esc="amount(totals.taxes)"/> · stamp duty <t t-esc="amount(totals.charges)"/>
+                            </div>
+                        </div>
+                        <b t-esc="totals ? amount(totals.levies) : '…'"/>
+                    </div>
+                    <div class="o_mq_plan_row o_mq_input_row">
+                        <label t-att-for="'mq_policy_' + plan.id">Policy charge</label>
+                        <input t-att-id="'mq_policy_' + plan.id" type="number" min="0"
+                               class="form-control o_mq_small_input" placeholder="0"
+                               t-model="state.selection[plan.id].policy_charge" t-on-input="refreshTotals"/>
+                    </div>
+                    <div t-if="totals and totals.error" class="o_mq_plan_error" role="alert" t-esc="totals.error"/>
+                    <label class="o_mq_plan_row o_mq_recommend">
+                        <span><i class="fa fa-star me-1"/>Recommend this plan</span>
+                        <input type="checkbox" class="form-check-input" t-att-checked="sel.recommended"
+                               t-on-change="() => this.toggleRecommended(plan)"/>
+                    </label>
+                    <footer class="o_mq_total">
+                        <span>Total premium</span>
+                        <b t-esc="totals and !totals.error ? amount(totals.total) : '…'"/>
+                    </footer>
+                    <div t-if="totals and totals.instalments and totals.instalments.length" class="o_mq_instalment">
+                        <t t-set="first" t-value="totals.instalments[0]"/>
+                        or <t t-esc="amount(first.deposit)"/> deposit and
+                        <t t-esc="first.months"/> × <t t-esc="amount(first.instalment)"/>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </t>
+
+    <!-- 4. Saved ============================================================ -->
+    <t t-name="odin_medical_quote.MedicalQuote.Saved">
+        <t t-set="saved" t-value="state.saved"/>
+        <section class="o_mq_card o_mq_saved">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge o_mq_badge_done"><i class="fa fa-check"/></span>
+                <div class="flex-grow-1">
+                    <h2>
+                        <t t-if="saved.comparison.state === 'accepted'">Quote <t t-esc="saved.comparison.name"/> was accepted</t>
+                        <t t-else="">Quote <t t-esc="saved.comparison.name"/> saved for <t t-esc="saved.partner.name"/></t>
+                    </h2>
+                    <p>
+                        <t t-esc="saved.partner.name"/> is in Contacts
+                        <t t-if="saved.lead">and <b t-esc="saved.lead.name"/> is in the CRM pipeline</t>
+                        with <t t-esc="saved.orders.length"/>
+                        <t t-if="saved.orders.length === 1"> quotation.</t><t t-else=""> quotations.</t>
+                    </p>
+                </div>
+            </div>
+            <div class="o_mq_card_body">
+                <div class="o_mq_saved_actions">
+                    <button class="btn btn-primary" t-on-click="() => this.callComparison('action_print')">
+                        <i class="fa fa-print me-1"/>Print comparison
+                    </button>
+                    <button class="btn btn-secondary" t-on-click="() => this.callComparison('action_share_whatsapp')">
+                        <i class="fa fa-whatsapp me-1"/>Share on WhatsApp
+                    </button>
+                    <button class="btn btn-secondary" t-on-click="openComparison">
+                        <i class="fa fa-file-text-o me-1"/>Open quote
+                    </button>
+                    <button t-if="saved.lead" class="btn btn-secondary"
+                            t-on-click="() => this.openRecord('crm.lead', saved.lead.id)">
+                        <i class="fa fa-star me-1"/>Open opportunity
+                    </button>
+                </div>
+                <h3>When the client chooses a plan</h3>
+                <table class="o_mq_saved_orders">
+                    <tbody>
+                        <tr t-foreach="saved.orders" t-as="order" t-key="order.id">
+                            <td>
+                                <b t-esc="order.plan"/>
+                                <span t-if="order.recommended" class="badge text-bg-warning ms-2">Recommended</span>
+                                <div class="text-muted small">
+                                    <a href="#" t-on-click.prevent="() => this.openRecord('sale.order', order.id)" t-esc="order.name"/>
+                                    <t t-if="order.state === 'sale'"> · confirmed</t>
+                                    <t t-if="order.state === 'cancel'"> · cancelled</t>
+                                </div>
+                            </td>
+                            <td class="text-end"><b t-esc="amount(order.total)"/></td>
+                            <td class="text-end">
+                                <button t-if="saved.comparison.state !== 'accepted' and order.state !== 'cancel'"
+                                        class="btn btn-sm btn-outline-primary" t-on-click="() => this.accept(order)">
+                                    Client accepted <i class="fa fa-arrow-right ms-1"/>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="o_mq_help">Client accepted confirms that quotation, cancels the others, marks the opportunity won and creates the invoice.</p>
+                <div class="o_mq_actions">
+                    <button class="btn btn-primary" t-on-click="newQuote"><i class="fa fa-plus me-1"/>New quote</button>
+                    <button t-if="saved.comparison.state !== 'accepted' and saved.params !== false" class="btn btn-link" t-on-click="editAgain">Back to this quote</button>
+                </div>
+            </div>
+        </section>
+    </t>
+</templates>

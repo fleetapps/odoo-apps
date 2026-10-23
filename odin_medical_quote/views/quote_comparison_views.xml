@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quote_comparison_form_medical" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.form.medical</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_client_quote.view_quote_comparison_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="odin_from_builder" invisible="1"/>
+            </xpath>
+            <xpath expr="//header/button[@name='action_build_plans']" position="before">
+                <button name="action_odin_accept" type="object" string="Client accepted"
+                        class="btn-primary" data-hotkey="a"
+                        invisible="not plan_ids or state == 'accepted'"
+                        help="Confirm the plan the client chose, cancel the others, mark the opportunity won and invoice it."/>
+                <button name="action_odin_edit" type="object" string="Edit quote"
+                        invisible="not odin_from_builder or state == 'accepted'"
+                        help="Reopen in Add Medical Quote to change who is covered, the plans or the options."/>
+            </xpath>
+            <!-- A quote made in Add Medical Quote is changed there: these build
+                 and re-price the quotations another way, and would undo it. -->
+            <xpath expr="//header/button[@name='action_build_plans']" position="attributes">
+                <attribute name="invisible">not template_ids or odin_from_builder or state == 'accepted'</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_build_from_members']" position="attributes">
+                <attribute name="invisible">not plan_ids or odin_from_builder or state == 'accepted'</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_pick_addons']" position="attributes">
+                <attribute name="invisible">not plan_ids or odin_from_builder or state == 'accepted'</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_share_whatsapp']" position="attributes">
+                <attribute name="class">btn-secondary</attribute>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="statusbar_visible">draft,sent,accepted</attribute>
+            </xpath>
+            <xpath expr="//sheet/div[hasclass('oe_title')]" position="before">
+                <div class="oe_button_box" name="button_box">
+                    <button name="action_odin_open_opportunity" type="object"
+                            class="oe_stat_button" icon="fa-star"
+                            invisible="not opportunity_id">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Opportunity</span>
+                        </div>
+                    </button>
+                    <button name="action_odin_view_invoices" type="object"
+                            class="oe_stat_button" icon="fa-pencil-square-o"
+                            invisible="not odin_invoice_count">
+                        <field name="odin_invoice_count" widget="statinfo" string="Invoices"/>
+                    </button>
+                </div>
+                <widget name="web_ribbon" title="Accepted" bg_color="text-bg-success"
+                        invisible="state != 'accepted'"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="opportunity_id" readonly="odin_from_builder"/>
+                <field name="odin_accepted_order_id" invisible="not odin_accepted_order_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_list_medical" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.list.medical</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_client_quote.view_quote_comparison_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <header>
+                    <button name="%(action_medical_quote)d" type="action"
+                            string="New medical quote" class="btn-primary" display="always"/>
+                </header>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="opportunity_id" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='state']" position="attributes">
+                <attribute name="decoration-info">state == 'accepted'</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_quote_comparison_search_medical" model="ir.ui.view">
+        <field name="name">odin.quote.comparison.search.medical</field>
+        <field name="model">odin.quote.comparison</field>
+        <field name="inherit_id" ref="odin_client_quote.view_quote_comparison_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='filter_sent']" position="after">
+                <filter name="filter_accepted" string="Accepted"
+                        domain="[('state', '=', 'accepted')]"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="opportunity_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
