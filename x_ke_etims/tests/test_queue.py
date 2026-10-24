@@ -4,7 +4,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-from odoo import Command, fields
+from odoo import fields
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 
