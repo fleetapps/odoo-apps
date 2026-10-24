@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scheduled actions. Both loop only over initialised devices of Kenyan
+     companies, and commit after each document or device, so one slow branch
+     never holds the others back.
+     https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html#scheduled-actions -->
+<odoo noupdate="1">
+    <record id="ir_cron_ke_etims_queue" model="ir.cron">
+        <field name="name">Kenya eTIMS: send the queue</field>
+        <field name="model_id" ref="model_ke_etims_document"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_process_queue()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="ir_cron_ke_etims_reference" model="ir.cron">
+        <field name="name">Kenya eTIMS: sync KRA codes, item classes and notices</field>
+        <field name="model_id" ref="model_ke_etims_device"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync_reference()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=1, minute=40) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

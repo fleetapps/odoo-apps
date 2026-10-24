@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ke_etims_document_list" model="ir.ui.view">
+        <field name="name">ke.etims.document.list</field>
+        <field name="model">ke.etims.document</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Queue" create="0"
+                  decoration-danger="state == 'failed'" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="device_id" optional="show"/>
+                <field name="kra_invoice_no"/>
+                <field name="receipt_no" optional="show"/>
+                <field name="attempts" optional="hide"/>
+                <field name="next_try" optional="show"/>
+                <field name="signed_at" optional="show"/>
+                <field name="last_error" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'sent'"
+                       decoration-info="state in ('to_send', 'sending')"
+                       decoration-warning="state == 'pending'"
+                       decoration-danger="state == 'failed'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_document_form" model="ir.ui.view">
+        <field name="name">ke.etims.document.form</field>
+        <field name="model">ke.etims.document</field>
+        <field name="arch" type="xml">
+            <form string="eTIMS Document" create="0">
+                <header>
+                    <button name="action_send_now" type="object" string="Send now" class="btn-primary"
+                            invisible="state not in ('to_send', 'failed', 'pending')"/>
+                    <button name="action_mark_signed" type="object" string="Record receipt"
+                            groups="x_ke_etims.group_ke_etims_manager"
+                            invisible="state != 'failed' or not kra_invoice_no"
+                            confirm="Record this receipt as signed? Copy it exactly from the eTIMS portal."/>
+                    <button name="action_release_number" type="object" string="Release number"
+                            groups="x_ke_etims.group_ke_etims_manager"
+                            invisible="state != 'failed' or not kra_invoice_no"
+                            confirm="Release this KRA invoice number? Only do this after checking in the eTIMS portal that KRA never recorded it."/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state in ('sent', 'cancelled') or kra_invoice_no"/>
+                    <field name="state" widget="statusbar" statusbar_visible="to_send,sent"/>
+                </header>
+                <div class="alert alert-danger mb-0" role="alert" invisible="not last_error or state == 'sent'">
+                    <field name="last_error" readonly="1"/>
+                </div>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_source" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" string="Source"/>
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group string="Document">
+                            <field name="kind"/>
+                            <field name="device_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="original_document_id" invisible="not original_document_id"/>
+                            <field name="reason_code" invisible="kind != 'credit_note'"/>
+                            <field name="attempts"/>
+                            <field name="next_try" invisible="state not in ('to_send', 'pending')"/>
+                            <field name="confirmed_at"/>
+                            <field name="provider_ref" invisible="not provider_ref"/>
+                            <field name="idempotency_key" groups="base.group_no_one"/>
+                        </group>
+                        <group string="Receipt">
+                            <field name="kra_invoice_no"/>
+                            <field name="receipt_no" readonly="state != 'failed'"/>
+                            <field name="total_receipt_no" readonly="state != 'failed'"/>
+                            <field name="receipt_label"/>
+                            <field name="scu_id" readonly="state != 'failed'"/>
+                            <field name="internal_data" readonly="state != 'failed'"/>
+                            <field name="signature" readonly="state != 'failed'"/>
+                            <field name="signed_at" readonly="state != 'failed'"/>
+                            <field name="qr_url" widget="url"/>
+                        </group>
+                    </group>
+                    <notebook groups="x_ke_etims.group_ke_etims_manager">
+                        <page string="Exchanges" name="logs">
+                            <field name="log_ids" readonly="1">
+                                <list>
+                                    <field name="create_date"/>
+                                    <field name="endpoint"/>
+                                    <field name="http_status"/>
+                                    <field name="result_code"/>
+                                    <field name="duration_ms"/>
+                                    <field name="error"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_document_search" model="ir.ui.view">
+        <field name="name">ke.etims.document.search</field>
+        <field name="model">ke.etims.document</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="kra_invoice_no"/>
+                <field name="device_id"/>
+                <filter name="todo" string="Not signed"
+                        domain="[('state', 'in', ('to_send', 'sending', 'pending', 'failed'))]"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <filter name="sent" string="Signed" domain="[('state', '=', 'sent')]"/>
+                <separator/>
+                <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                <filter name="group_device" string="Device" context="{'group_by': 'device_id'}"/>
+                <filter name="group_kind" string="Kind" context="{'group_by': 'kind'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_document" model="ir.actions.act_window">
+        <field name="name">eTIMS Queue</field>
+        <field name="res_model">ke.etims.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_todo': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing waiting for eTIMS</p>
+            <p>Every posted Kenyan invoice and credit note passes through here on
+                its way to KRA.</p>
+        </field>
+    </record>
+
+</odoo>

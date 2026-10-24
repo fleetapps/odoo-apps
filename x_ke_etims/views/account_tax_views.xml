@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tax_form_ke_etims" model="ir.ui.view">
+        <field name="name">account.tax.form.ke.etims</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='country_id']" position="after">
+                <field name="ke_etims_tax_type_id" options="{'no_create': True}"
+                       invisible="country_code != 'KE'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_tax_tree_ke_etims" model="ir.ui.view">
+        <field name="name">account.tax.list.ke.etims</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_tree"/>
+        <field name="arch" type="xml">
+            <field name="description" position="after">
+                <field name="ke_etims_tax_type_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+</odoo>

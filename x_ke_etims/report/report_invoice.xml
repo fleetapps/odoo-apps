@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The eTIMS block on the invoice PDF: printed only for a signed invoice of a
+    Kenyan company that uses eTIMS. Every other invoice prints exactly as it
+    did. A demo device's invoices say DEMO - NOT A TAX INVOICE at the top, and
+    a posted invoice not signed yet says so, because the TIS specification
+    (section 10) forbids issuing a receipt before the control unit answered.
+-->
+<odoo>
+    <template id="report_invoice_document_ke_etims" inherit_id="account.report_invoice_document">
+        <xpath expr="//t[@t-set='forced_vat']" position="after">
+            <t t-set="ke_etims" t-value="o.country_code == 'KE' and o._ke_etims_report_values() or {}"/>
+            <div t-if="ke_etims.get('demo')" id="ke_etims_demo"
+                 class="text-center fw-bold border border-2 border-danger text-danger p-2 mb-3"
+                 style="font-size: 1.6em;">
+                DEMO - NOT A TAX INVOICE
+            </div>
+            <div t-elif="ke_etims.get('unsigned')" id="ke_etims_unsigned"
+                 class="text-center fw-bold border border-2 p-2 mb-3">
+                Not yet signed by KRA eTIMS - not a valid tax invoice
+            </div>
+        </xpath>
+        <xpath expr="//div[@name='comment']" position="before">
+            <div t-if="ke_etims.get('signed')" id="ke_etims_scu_information"
+                 class="row avoid-page-break-inside mb-3 small">
+                <div class="col-7">
+                    <strong class="d-block">SCU INFORMATION</strong>
+                    <div>Date: <span t-out="ke_etims['date']"/>
+                        <span class="ms-3">Time: <span t-out="ke_etims['time']"/></span></div>
+                    <div>CU ID: <span t-out="ke_etims['cu_id']"/></div>
+                    <div>CU Invoice No.: <span t-out="ke_etims['cu_invoice_no']"/></div>
+                    <div>Receipt Counter: <span t-out="ke_etims['counter']"/></div>
+                    <div t-if="ke_etims['original_cu_invoice_no']">
+                        Original CU Invoice No.#: <span t-out="ke_etims['original_cu_invoice_no']"/>
+                    </div>
+                    <div>Internal Data: <span class="text-break" t-out="ke_etims['internal_data']"/></div>
+                    <div>Receipt Signature: <span class="text-break" t-out="ke_etims['signature']"/></div>
+                    <strong class="d-block mt-2">TIS INFORMATION</strong>
+                    <div>KRA Invoice No.: <span t-out="ke_etims['kra_invoice_no']"/></div>
+                    <div>Date: <span t-out="ke_etims['tis_date']"/>
+                        <span class="ms-3">Time: <span t-out="ke_etims['tis_time']"/></span></div>
+                    <table t-if="ke_etims['bands']" class="table table-sm table-borderless mt-2 mb-0 w-auto">
+                        <thead>
+                            <tr><th>Rate</th><th class="text-end">Taxable Amount</th><th class="text-end">VAT</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="ke_etims['bands']" t-as="band">
+                                <td t-out="band['label']"/>
+                                <td class="text-end" t-out="band['taxable']"
+                                    t-options='{"widget": "float", "precision": 2}'/>
+                                <td class="text-end" t-out="band['tax']"
+                                    t-options='{"widget": "float", "precision": 2}'/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-5 text-end">
+                    <img t-if="ke_etims['qr']" t-att-src="ke_etims['qr']"
+                         style="width: 140px; height: 140px;" alt="eTIMS QR code"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

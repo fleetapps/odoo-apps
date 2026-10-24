@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- The running part of every KRA item code this database generates.
+         Global rather than per company: KRA only needs item codes unique per
+         taxpayer, and a product shared between companies keeps one code. -->
+    <record id="seq_ke_etims_item_code" model="ir.sequence">
+        <field name="name">eTIMS item codes</field>
+        <field name="code">ke.etims.item.code</field>
+        <field name="padding">0</field>
+        <field name="number_next">1</field>
+        <field name="number_increment">1</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

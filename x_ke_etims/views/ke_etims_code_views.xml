@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- KRA codes -->
+    <record id="view_ke_etims_code_list" model="ir.ui.view">
+        <field name="name">ke.etims.code.list</field>
+        <field name="model">ke.etims.code</field>
+        <field name="arch" type="xml">
+            <list string="KRA Codes">
+                <field name="code_class"/>
+                <field name="class_name"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="description" optional="hide"/>
+                <field name="rate" optional="show"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_code_search" model="ir.ui.view">
+        <field name="name">ke.etims.code.search</field>
+        <field name="model">ke.etims.code</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="code_class"/>
+                <filter name="tax_types" string="Tax Types" domain="[('code_class', '=', '04')]"/>
+                <filter name="units" string="Units"
+                        domain="[('code_class', 'in', ('10', '17'))]"/>
+                <filter name="reasons" string="Credit Note Reasons" domain="[('code_class', '=', '32')]"/>
+                <filter name="group_class" string="Code Class" context="{'group_by': 'class_name'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_code" model="ir.actions.act_window">
+        <field name="name">KRA Codes</field>
+        <field name="res_model">ke.etims.code</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_class': 1}</field>
+    </record>
+
+    <!-- Item classes -->
+    <record id="view_ke_etims_item_class_list" model="ir.ui.view">
+        <field name="name">ke.etims.item.class.list</field>
+        <field name="model">ke.etims.item.class</field>
+        <field name="arch" type="xml">
+            <list string="KRA Item Classes">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="level" optional="show"/>
+                <field name="tax_type_code" optional="show"/>
+                <field name="major_target" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_item_class_search" model="ir.ui.view">
+        <field name="name">ke.etims.item.class.search</field>
+        <field name="model">ke.etims.item.class</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_item_class" model="ir.actions.act_window">
+        <field name="name">KRA Item Classes</field>
+        <field name="res_model">ke.etims.item.class</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Notices -->
+    <record id="view_ke_etims_notice_list" model="ir.ui.view">
+        <field name="name">ke.etims.notice.list</field>
+        <field name="model">ke.etims.notice</field>
+        <field name="arch" type="xml">
+            <list string="KRA Notices">
+                <field name="registered_at"/>
+                <field name="number" optional="hide"/>
+                <field name="name"/>
+                <field name="url" widget="url" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_notice_form" model="ir.ui.view">
+        <field name="name">ke.etims.notice.form</field>
+        <field name="model">ke.etims.notice</field>
+        <field name="arch" type="xml">
+            <form string="KRA Notice">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <field name="registered_at"/>
+                        <field name="number"/>
+                        <field name="url" widget="url"/>
+                    </group>
+                    <field name="contents"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_notice" model="ir.actions.act_window">
+        <field name="name">KRA Notices</field>
+        <field name="res_model">ke.etims.notice</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Branches -->
+    <record id="view_ke_etims_branch_list" model="ir.ui.view">
+        <field name="name">ke.etims.branch.list</field>
+        <field name="model">ke.etims.branch</field>
+        <field name="arch" type="xml">
+            <list string="KRA Branches" editable="bottom" create="0">
+                <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                <field name="bhf_id" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="is_head_office" readonly="1"/>
+                <field name="status" readonly="1" optional="hide"/>
+                <field name="linked_company_id" options="{'no_create': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_branch" model="ir.actions.act_window">
+        <field name="name">KRA Branches</field>
+        <field name="res_model">ke.etims.branch</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Fetch your branches from KRA</p>
+            <p>Use "Fetch branches from KRA" on an initialised device, then link each
+                KRA branch to the company or branch company that trades as it.</p>
+        </field>
+    </record>
+
+    <!-- Item registrations, read-only: they are made by registering products. -->
+    <record id="view_ke_etims_item_registration_list" model="ir.ui.view">
+        <field name="name">ke.etims.item.registration.list</field>
+        <field name="model">ke.etims.item.registration</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Registrations" create="0" edit="0">
+                <field name="product_tmpl_id"/>
+                <field name="device_id"/>
+                <field name="item_code"/>
+                <field name="provider_item_id" optional="hide"/>
+                <field name="registered_at"/>
+                <field name="state" widget="badge" decoration-success="state == 'registered'"
+                       decoration-danger="state == 'failed'"/>
+                <field name="last_error" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+</odoo>

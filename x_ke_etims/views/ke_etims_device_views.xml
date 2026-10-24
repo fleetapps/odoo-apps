@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ke_etims_device_list" model="ir.ui.view">
+        <field name="name">ke.etims.device.list</field>
+        <field name="model">ke.etims.device</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Devices">
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="bhf_id"/>
+                <field name="tin"/>
+                <field name="backend"/>
+                <field name="environment"/>
+                <field name="scu_id" optional="show"/>
+                <field name="last_init" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'initialised'"
+                       decoration-danger="state == 'error'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_device_form" model="ir.ui.view">
+        <field name="name">ke.etims.device.form</field>
+        <field name="model">ke.etims.device</field>
+        <field name="arch" type="xml">
+            <form string="eTIMS Device">
+                <header>
+                    <button name="action_initialize" type="object" string="Initialise"
+                            class="btn-primary" invisible="state == 'initialised'"/>
+                    <button name="action_initialize" type="object" string="Initialise again"
+                            invisible="state != 'initialised'"
+                            confirm="Initialise this device again? KRA issues the communication key once per device serial."/>
+                    <button name="action_sync_codes" type="object" string="Sync KRA codes"
+                            invisible="state != 'initialised' or not can_sync_codes"/>
+                    <button name="action_fetch_branches" type="object" string="Fetch branches from KRA"
+                            invisible="state != 'initialised' or not can_fetch_branches"/>
+                    <button name="action_process_queue" type="object" string="Send queue now"
+                            invisible="state != 'initialised'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,initialised"/>
+                </header>
+                <div class="alert alert-warning mb-0" role="alert" invisible="not backend_note">
+                    <field name="backend_note" readonly="1"/>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert" invisible="state != 'error'">
+                    <field name="last_error" readonly="1"/>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert" invisible="not blocking_document_id">
+                    Every later invoice of this device is waiting for
+                    <field name="blocking_document_id" readonly="1" class="oe_inline"/>,
+                    which holds a KRA invoice number that is neither signed nor
+                    released. KRA refuses invoice numbers out of order.
+                </div>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_documents" type="object" class="oe_stat_button"
+                                icon="fa-paper-plane-o">
+                            <field name="document_queued_count" widget="statinfo" string="Queued"/>
+                        </button>
+                        <button name="action_view_documents" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle">
+                            <field name="document_failed_count" widget="statinfo" string="Failed"/>
+                        </button>
+                        <button name="action_view_logs" type="object" class="oe_stat_button"
+                                icon="fa-list-alt" string="Logs"/>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="can_sync_codes" invisible="1"/>
+                    <field name="can_fetch_branches" invisible="1"/>
+                    <field name="experimental" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Taxpayer">
+                            <field name="company_id" groups="base.group_multi_company"
+                                   options="{'no_create': True}"/>
+                            <field name="tin"/>
+                            <field name="bhf_id"/>
+                            <field name="serial"
+                                   invisible="backend not in ('kra_direct', 'kra_etims_lib')"
+                                   required="backend in ('kra_direct', 'kra_etims_lib')"/>
+                            <field name="responsible_user_id"/>
+                        </group>
+                        <group string="Backend">
+                            <field name="backend"/>
+                            <field name="environment"/>
+                            <field name="certification_ref" invisible="backend == 'demo'"
+                                   required="environment == 'production'"/>
+                            <field name="api_key" password="True" invisible="backend != 'digitax'"
+                                   required="backend == 'digitax'"/>
+                            <field name="cmc_key" password="True" readonly="1"
+                                   invisible="backend not in ('kra_direct', 'kra_etims_lib')"/>
+                            <field name="base_url" invisible="backend == 'demo'"
+                                   placeholder="The backend's own address"/>
+                            <field name="callback_url" widget="CopyClipboardChar"
+                                   invisible="backend != 'digitax' or not id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Device" name="device">
+                            <group>
+                                <group>
+                                    <field name="scu_id"/>
+                                    <field name="mrc_no"/>
+                                    <field name="device_ref"/>
+                                    <field name="last_init"/>
+                                </group>
+                                <group>
+                                    <field name="taxpayer_name"/>
+                                    <field name="branch_name"/>
+                                    <field name="next_invoice_no"
+                                           groups="x_ke_etims.group_ke_etims_manager"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Reference Data" name="reference">
+                            <group>
+                                <field name="last_code_sync"/>
+                                <field name="last_item_class_sync"/>
+                                <field name="last_notice_sync"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_device_search" model="ir.ui.view">
+        <field name="name">ke.etims.device.search</field>
+        <field name="model">ke.etims.device</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="tin"/>
+                <field name="bhf_id"/>
+                <filter name="initialised" string="Initialised" domain="[('state', '=', 'initialised')]"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_device" model="ir.actions.act_window">
+        <field name="name">eTIMS Devices</field>
+        <field name="res_model">ke.etims.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Set up the device that signs this branch's invoices</p>
+            <p>One device per KRA branch. Start with the Demo backend to try the
+                flow without touching KRA.</p>
+        </field>
+    </record>
+
+</odoo>
