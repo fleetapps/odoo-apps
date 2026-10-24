@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Three roles. Outlet staff take payments and see their own till's receipts
+    and nothing of accounting; officers allocate and park receipts across the
+    companies they may see; managers hold the Daraja secrets.
+-->
+<odoo>
+    <data>
+
+        <record id="module_category_mpesa" model="ir.module.category">
+            <field name="name">M-Pesa</field>
+            <field name="sequence">66</field>
+        </record>
+
+        <!-- Odoo 19: res.groups.category_id was replaced by privilege_id. -->
+        <record id="privilege_mpesa" model="res.groups.privilege">
+            <field name="name">M-Pesa</field>
+            <field name="category_id" ref="module_category_mpesa"/>
+            <field name="sequence">66</field>
+        </record>
+
+        <record id="group_mpesa_outlet" model="res.groups">
+            <field name="name">Outlet</field>
+            <field name="sequence">10</field>
+            <field name="privilege_id" ref="privilege_mpesa"/>
+            <field name="comment">Takes M-Pesa payments and sees the receipts of
+                the tills the user is assigned to (Shortcode > Outlet staff).
+                No accounting menus.</field>
+        </record>
+
+        <record id="group_mpesa_officer" model="res.groups">
+            <field name="name">Officer</field>
+            <field name="sequence">20</field>
+            <field name="privilege_id" ref="privilege_mpesa"/>
+            <!-- Allocating a receipt means choosing an invoice, so an officer
+                 must be able to read them. -->
+            <field name="implied_ids" eval="[(4, ref('group_mpesa_outlet')),
+                                             (4, ref('account.group_account_invoice'))]"/>
+            <field name="comment">Sees every receipt of the companies the user
+                may access, allocates them to invoices, customers or POS orders,
+                parks them in suspense, and reads the M-Pesa reports.</field>
+        </record>
+
+        <record id="group_mpesa_manager" model="res.groups">
+            <field name="name">Manager</field>
+            <field name="sequence">30</field>
+            <field name="privilege_id" ref="privilege_mpesa"/>
+            <field name="implied_ids" eval="[(4, ref('group_mpesa_officer'))]"/>
+            <field name="comment">Configures Daraja apps and shortcodes and is the
+                only role that can read or change consumer secrets, passkeys and
+                initiator credentials.</field>
+        </record>
+
+        <!-- Accountants allocate receipts as part of the bank reconciliation
+             they already do. The manager role is NOT implied by
+             account.group_account_manager: holding Safaricom secrets should be
+             an explicit grant. -->
+        <record id="account.group_account_user" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_mpesa_officer'))]"/>
+        </record>
+
+        <!-- Without this nobody holds the manager role on a fresh install, so
+             the configuration menu is unreachable although the module
+             installed cleanly. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_mpesa_manager'))]"/>
+        </record>
+
+    </data>
+
+    <data noupdate="1">
+
+        <!-- Global multi-company rules: no group field, so they bind everyone. -->
+        <record id="rule_mpesa_app_company" model="ir.rule">
+            <field name="name">Daraja app: multi-company</field>
+            <field name="model_id" ref="model_mpesa_app"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_shortcode_company" model="ir.rule">
+            <field name="name">M-Pesa shortcode: multi-company</field>
+            <field name="model_id" ref="model_mpesa_shortcode"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_transaction_company" model="ir.rule">
+            <field name="name">M-Pesa transaction: multi-company</field>
+            <field name="model_id" ref="model_mpesa_transaction"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_callback_company" model="ir.rule">
+            <field name="name">M-Pesa callback: multi-company</field>
+            <field name="model_id" ref="model_mpesa_callback"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_report_till_day_company" model="ir.rule">
+            <field name="name">M-Pesa till report: multi-company</field>
+            <field name="model_id" ref="model_mpesa_report_till_day"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_report_unallocated_company" model="ir.rule">
+            <field name="name">M-Pesa unallocated report: multi-company</field>
+            <field name="model_id" ref="model_mpesa_report_unallocated"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_mpesa_report_callback_health_company" model="ir.rule">
+            <field name="name">M-Pesa callback report: multi-company</field>
+            <field name="model_id" ref="model_mpesa_report_callback_health"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <!-- Outlet staff: their own tills only. Group rules are OR-ed across a
+             user's groups, so the officer rule below lifts this for officers. -->
+        <record id="rule_mpesa_transaction_outlet" model="ir.rule">
+            <field name="name">M-Pesa transaction: outlet staff see their tills</field>
+            <field name="model_id" ref="model_mpesa_transaction"/>
+            <field name="groups" eval="[(4, ref('group_mpesa_outlet'))]"/>
+            <field name="domain_force">[('shortcode_id.user_ids', 'in', [user.id])]</field>
+        </record>
+
+        <record id="rule_mpesa_transaction_officer" model="ir.rule">
+            <field name="name">M-Pesa transaction: officers see all</field>
+            <field name="model_id" ref="model_mpesa_transaction"/>
+            <field name="groups" eval="[(4, ref('group_mpesa_officer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="rule_mpesa_shortcode_outlet" model="ir.rule">
+            <field name="name">M-Pesa shortcode: outlet staff see their tills</field>
+            <field name="model_id" ref="model_mpesa_shortcode"/>
+            <field name="groups" eval="[(4, ref('group_mpesa_outlet'))]"/>
+            <field name="domain_force">[('user_ids', 'in', [user.id])]</field>
+        </record>
+
+        <record id="rule_mpesa_shortcode_officer" model="ir.rule">
+            <field name="name">M-Pesa shortcode: officers see all</field>
+            <field name="model_id" ref="model_mpesa_shortcode"/>
+            <field name="groups" eval="[(4, ref('group_mpesa_officer'))]"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+    </data>
+</odoo>

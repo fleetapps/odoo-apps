@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_allocate_form" model="ir.ui.view">
+        <field name="name">mpesa.allocate.form</field>
+        <field name="model">mpesa.allocate</field>
+        <field name="arch" type="xml">
+            <form string="Allocate receipt">
+                <group>
+                    <group>
+                        <field name="transaction_ids" widget="many2many_tags" readonly="1"/>
+                        <field name="amount"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="company_id" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="mode" widget="radio"/>
+                    </group>
+                </group>
+                <group invisible="mode == 'park'">
+                    <field name="partner_id" required="mode == 'partner'"/>
+                    <field name="invoice_ids" invisible="mode != 'invoice'"
+                           widget="many2many_tags" options="{'no_create': True}"/>
+                </group>
+                <group invisible="mode != 'park'">
+                    <field name="reason" required="mode == 'park'"
+                           placeholder="e.g. no account number, customer not found"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

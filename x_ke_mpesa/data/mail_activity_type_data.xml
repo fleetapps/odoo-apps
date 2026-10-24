@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="mail_activity_unconfirmed_receipt" model="mail.activity.type">
+            <field name="name">Unconfirmed M-Pesa receipt</field>
+            <field name="summary">Check the receipt against the till statement</field>
+            <field name="res_model">mpesa.transaction</field>
+            <field name="icon">fa-exclamation-triangle</field>
+            <field name="delay_count">0</field>
+        </record>
+    </data>
+</odoo>
