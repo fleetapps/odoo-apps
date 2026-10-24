@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_company_form_ke_etims" model="ir.ui.view">
+        <field name="name">res.company.form.ke.etims</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_info']" position="inside">
+                <field name="ke_etims_kenyan" invisible="1"/>
+                <group string="Kenya eTIMS" name="ke_etims" invisible="not ke_etims_kenyan">
+                    <group>
+                        <field name="ke_etims_bhf_id"/>
+                        <field name="ke_etims_device_id" readonly="1"/>
+                    </group>
+                    <group>
+                        <button name="action_ke_etims_fetch_branches" type="object"
+                                string="Fetch branches from KRA" class="btn-link"
+                                groups="x_ke_etims.group_ke_etims_manager"
+                                invisible="not id"/>
+                        <button name="action_ke_etims_devices" type="object"
+                                string="eTIMS devices" class="btn-link"
+                                groups="x_ke_etims.group_ke_etims_manager"
+                                invisible="not id"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

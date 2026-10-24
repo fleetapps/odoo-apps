@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_move_reversal_ke_etims" model="ir.ui.view">
+        <field name="name">account.move.reversal.form.ke.etims</field>
+        <field name="model">account.move.reversal</field>
+        <field name="inherit_id" ref="account.view_account_move_reversal"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='reason']" position="after">
+                <field name="ke_etims_required" invisible="1"/>
+                <field name="ke_etims_reason_code_id" options="{'no_create': True}"
+                       invisible="not ke_etims_required" required="ke_etims_required"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

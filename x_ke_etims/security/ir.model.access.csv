@@ -1,0 +1,17 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ke_etims_device_user,ke etims device user,model_ke_etims_device,base.group_user,1,0,0,0
+access_ke_etims_device_manager,ke etims device manager,model_ke_etims_device,group_ke_etims_manager,1,1,1,1
+access_ke_etims_code_user,ke etims code user,model_ke_etims_code,base.group_user,1,0,0,0
+access_ke_etims_code_manager,ke etims code manager,model_ke_etims_code,group_ke_etims_manager,1,1,1,1
+access_ke_etims_item_class_user,ke etims item class user,model_ke_etims_item_class,base.group_user,1,0,0,0
+access_ke_etims_item_class_manager,ke etims item class manager,model_ke_etims_item_class,group_ke_etims_manager,1,1,1,1
+access_ke_etims_notice_user,ke etims notice user,model_ke_etims_notice,base.group_user,1,0,0,0
+access_ke_etims_notice_manager,ke etims notice manager,model_ke_etims_notice,group_ke_etims_manager,1,1,1,1
+access_ke_etims_branch_user,ke etims branch user,model_ke_etims_branch,account.group_account_readonly,1,0,0,0
+access_ke_etims_branch_manager,ke etims branch manager,model_ke_etims_branch,group_ke_etims_manager,1,1,1,1
+access_ke_etims_registration_user,ke etims registration user,model_ke_etims_item_registration,base.group_user,1,0,0,0
+access_ke_etims_registration_manager,ke etims registration manager,model_ke_etims_item_registration,group_ke_etims_manager,1,1,1,1
+access_ke_etims_document_invoice,ke etims document invoice,model_ke_etims_document,account.group_account_invoice,1,0,0,0
+access_ke_etims_document_readonly,ke etims document readonly,model_ke_etims_document,account.group_account_readonly,1,0,0,0
+access_ke_etims_document_manager,ke etims document manager,model_ke_etims_document,group_ke_etims_manager,1,1,1,1
+access_ke_etims_log_manager,ke etims log manager,model_ke_etims_log,group_ke_etims_manager,1,1,1,1

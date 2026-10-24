@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Everything here is invisible unless the invoice belongs to a Kenyan company
+    that uses eTIMS (ke_etims_applicable). For a user who works in no Kenyan
+    company at all, account.move._get_view also removes the list column and
+    the filters, so their invoice list is exactly what it was.
+-->
+<odoo>
+
+    <record id="view_move_form_ke_etims" model="ir.ui.view">
+        <field name="name">account.move.form.ke.etims</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='button_draft']" position="before">
+                <button name="action_ke_etims_send" type="object" string="Send to eTIMS"
+                        groups="account.group_account_invoice"
+                        invisible="not ke_etims_applicable or state != 'posted' or ke_etims_state not in ('not_sent', 'to_send', 'failed', 'pending')"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="after">
+                <field name="ke_etims_applicable" invisible="1"/>
+                <div class="float-end" invisible="not ke_etims_applicable or not ke_etims_state">
+                    <field name="ke_etims_state" widget="badge" readonly="1"
+                           decoration-success="ke_etims_state == 'sent'"
+                           decoration-info="ke_etims_state in ('not_sent', 'to_send', 'sending')"
+                           decoration-warning="ke_etims_state == 'pending'"
+                           decoration-danger="ke_etims_state == 'failed'"/>
+                </div>
+            </xpath>
+            <xpath expr="//page[@name='other_info']" position="after">
+                <page string="eTIMS" name="ke_etims"
+                      invisible="not ke_etims_applicable">
+                    <group>
+                        <group string="Status">
+                            <field name="ke_etims_state" string="Status" readonly="1"/>
+                            <field name="ke_etims_kra_invoice_no"/>
+                            <field name="ke_etims_receipt_no" string="Receipt No."/>
+                            <field name="ke_etims_total_receipt_no" string="Total Receipt No."/>
+                            <field name="ke_etims_signed_at" string="Signed At"/>
+                            <field name="ke_etims_scu_id" string="SCU ID"/>
+                            <field name="ke_etims_payment_type_id"
+                                   readonly="ke_etims_state in ('sent', 'sending', 'pending')"/>
+                            <field name="ke_etims_reason_code_id"
+                                   invisible="move_type != 'out_refund'"
+                                   required="move_type == 'out_refund' and state == 'posted' and ke_etims_state != 'sent'"
+                                   readonly="ke_etims_state in ('sent', 'sending', 'pending')"/>
+                            <field name="ke_etims_document_id" string="Queue Entry"
+                                   invisible="not ke_etims_document_id"/>
+                        </group>
+                        <group string="Signature">
+                            <field name="ke_etims_internal_data" string="Internal Data"/>
+                            <field name="ke_etims_signature" string="Receipt Signature"/>
+                            <field name="ke_etims_qr_url" string="Verification" widget="url"
+                                   invisible="not ke_etims_qr_url"/>
+                            <field name="ke_etims_qr_image" widget="image" string="QR Code"
+                                   invisible="not ke_etims_qr_url" options="{'size': [120, 120]}"/>
+                            <field name="ke_etims_last_error" string="Last Error"
+                                   invisible="ke_etims_state not in ('failed', 'to_send', 'pending')"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_invoice_tree_ke_etims" model="ir.ui.view">
+        <field name="name">account.invoice.list.ke.etims</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='status_in_payment']" position="after">
+                <field name="ke_etims_state" string="eTIMS" widget="badge" optional="show"
+                       column_invisible="context.get('default_move_type') not in ('out_invoice', 'out_refund', 'out_receipt')"
+                       decoration-success="ke_etims_state == 'sent'"
+                       decoration-info="ke_etims_state in ('not_sent', 'to_send', 'sending')"
+                       decoration-warning="ke_etims_state == 'pending'"
+                       decoration-danger="ke_etims_state == 'failed'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_account_invoice_filter_ke_etims" model="ir.ui.view">
+        <field name="name">account.invoice.select.ke.etims</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='cancel']" position="after">
+                <separator/>
+                <filter name="ke_etims_unsigned" string="eTIMS: not signed"
+                        domain="[('ke_etims_state', 'in', ('not_sent', 'to_send', 'sending', 'pending'))]"/>
+                <filter name="ke_etims_failed" string="eTIMS: failed"
+                        domain="[('ke_etims_state', '=', 'failed')]"/>
+                <filter name="ke_etims_signed" string="eTIMS: signed"
+                        domain="[('ke_etims_state', '=', 'sent')]"/>
+            </xpath>
+            <xpath expr="//search" position="inside">
+                <filter name="ke_etims_group_state" string="eTIMS Status"
+                        context="{'group_by': 'ke_etims_state'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
