@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_mpesa" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.mpesa</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='pay_invoice_online_setting_container']" position="after">
+                <block title="M-Pesa" id="mpesa_settings" groups="x_ke_mpesa.group_mpesa_manager">
+                    <setting id="mpesa_accounts" string="Accounts" company_dependent="1"
+                             help="Where unallocated receipts wait, and where whole-shilling differences go">
+                        <div class="row mt8">
+                            <label for="mpesa_suspense_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_suspense_account_id"/>
+                        </div>
+                        <div class="row">
+                            <label for="mpesa_rounding_account_id" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_rounding_account_id"/>
+                        </div>
+                    </setting>
+                    <setting id="mpesa_matching" string="Matching" company_dependent="1"
+                             help="Rules applied to every confirmed receipt, in this order">
+                        <div><field name="mpesa_match_stk"/> <label for="mpesa_match_stk"/></div>
+                        <div><field name="mpesa_match_claims"/> <label for="mpesa_match_claims"/></div>
+                        <div><field name="mpesa_match_paybill"/> <label for="mpesa_match_paybill"/></div>
+                        <div class="row mt8">
+                            <label for="mpesa_claim_window" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_claim_window"/>
+                        </div>
+                    </setting>
+                    <setting id="mpesa_controls" string="Fraud controls" company_dependent="1"
+                             help="Manual receipts are flagged until M-PESA confirms them">
+                        <div class="row mt8">
+                            <label for="mpesa_manual_alert_minutes" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_manual_alert_minutes"/>
+                        </div>
+                        <div class="row">
+                            <label for="mpesa_supervisor_id" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_supervisor_id"/>
+                        </div>
+                        <div><field name="mpesa_transaction_status_check"/> <label for="mpesa_transaction_status_check"/></div>
+                    </setting>
+                    <setting id="mpesa_privacy" string="Data protection" company_dependent="1"
+                             help="Full phone numbers from STK Push are masked after this many days">
+                        <field name="mpesa_phone_retention_days"/>
+                    </setting>
+                    <setting id="mpesa_callbacks" string="Callbacks"
+                             help="Where Safaricom sends confirmations, and whom to believe">
+                        <div class="row mt8">
+                            <label for="mpesa_callback_base_url" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_callback_base_url" placeholder="https://pay.example.co.ke"/>
+                        </div>
+                        <div><field name="mpesa_ip_allowlist_enabled"/> <label for="mpesa_ip_allowlist_enabled"/></div>
+                        <div class="row" invisible="not mpesa_ip_allowlist_enabled">
+                            <label for="mpesa_ip_allowlist" class="col-lg-5 o_light_label"/>
+                            <field name="mpesa_ip_allowlist"/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

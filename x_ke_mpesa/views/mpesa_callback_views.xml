@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_mpesa_callback_list" model="ir.ui.view">
+        <field name="name">mpesa.callback.list</field>
+        <field name="model">mpesa.callback</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-danger="state == 'error'" decoration-muted="state == 'ignored'">
+                <field name="received_at"/>
+                <field name="kind"/>
+                <field name="shortcode_id"/>
+                <field name="dedup_key"/>
+                <field name="remote_ip"/>
+                <field name="ip_trusted" optional="show"/>
+                <field name="duplicate" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"
+                       decoration-danger="state == 'error'"/>
+                <field name="transaction_id" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_callback_form" model="ir.ui.view">
+        <field name="name">mpesa.callback.form</field>
+        <field name="model">mpesa.callback</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <header>
+                    <button name="action_process" type="object" string="Process again"
+                            invisible="state == 'done'" groups="x_ke_mpesa.group_mpesa_manager"
+                            confirm="Process this callback now? For an untrusted source, check the receipt on the M-PESA Org Portal first."/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="shortcode_id"/>
+                            <field name="dedup_key"/>
+                            <field name="transaction_id"/>
+                        </group>
+                        <group>
+                            <field name="received_at"/>
+                            <field name="remote_ip"/>
+                            <field name="ip_trusted"/>
+                            <field name="duplicate"/>
+                            <field name="attempts"/>
+                        </group>
+                    </group>
+                    <group string="Error" invisible="not error">
+                        <field name="error" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Body as received">
+                        <field name="payload" nolabel="1" colspan="2" widget="code" options="{'mode': 'javascript'}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mpesa_callback_search" model="ir.ui.view">
+        <field name="name">mpesa.callback.search</field>
+        <field name="model">mpesa.callback</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="dedup_key"/>
+                <field name="shortcode_id"/>
+                <field name="remote_ip"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'error')]"/>
+                <filter name="ignored" string="Ignored" domain="[('state', '=', 'ignored')]"/>
+                <filter name="untrusted" string="Untrusted source" domain="[('ip_trusted', '=', False)]"/>
+                <filter name="duplicates" string="Duplicates" domain="[('duplicate', '=', True)]"/>
+                <group>
+                    <filter name="group_kind" string="Kind" context="{'group_by': 'kind'}"/>
+                    <filter name="group_shortcode" string="Shortcode" context="{'group_by': 'shortcode_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mpesa_callback" model="ir.actions.act_window">
+        <field name="name">Callbacks</field>
+        <field name="res_model">mpesa.callback</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

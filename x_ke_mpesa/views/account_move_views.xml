@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_move_form_mpesa" model="ir.ui.view">
+        <field name="name">account.move.form.mpesa</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@id='account_invoice_payment_btn']" position="after">
+                <field name="mpesa_can_request" invisible="1"/>
+                <button name="action_mpesa_request_payment" type="object"
+                        string="Request M-Pesa payment" invisible="not mpesa_can_request"
+                        groups="account.group_account_invoice"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="M-Pesa" name="mpesa" invisible="not mpesa_transaction_ids">
+                    <field name="mpesa_transaction_ids" readonly="1">
+                        <list decoration-success="state == 'confirmed'" decoration-danger="state == 'failed'">
+                            <field name="requested_at"/>
+                            <field name="name"/>
+                            <field name="msisdn_masked"/>
+                            <field name="amount"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="state"/>
+                            <field name="cashier_message"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
