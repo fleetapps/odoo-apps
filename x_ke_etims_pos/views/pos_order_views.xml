@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_order_form_ke_etims" model="ir.ui.view">
+        <field name="name">pos.order.form.ke.etims</field>
+        <field name="model">pos.order</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="ke_etims_applicable" invisible="1"/>
+                <button name="action_ke_etims_send" type="object" string="Send to eTIMS"
+                        invisible="not ke_etims_applicable or ke_etims_state in ('sent', 'pending') or state not in ('paid', 'done')"/>
+            </xpath>
+            <xpath expr="//page[@name='extra']" position="after">
+                <page string="eTIMS" name="ke_etims" invisible="not ke_etims_applicable">
+                    <group>
+                        <group>
+                            <field name="ke_etims_state"/>
+                            <field name="ke_etims_kra_invoice_no"/>
+                            <field name="ke_etims_receipt_no" string="Receipt No."/>
+                            <field name="ke_etims_total_receipt_no" string="Total Receipt No."/>
+                            <field name="ke_etims_signed_at_display" string="Signed At"/>
+                            <field name="ke_etims_document_id" string="Queue Entry"
+                                   invisible="not ke_etims_document_id"/>
+                        </group>
+                        <group>
+                            <field name="ke_etims_scu_id" string="SCU ID"/>
+                            <field name="ke_etims_internal_data" string="Internal Data"/>
+                            <field name="ke_etims_signature" string="Receipt Signature"/>
+                            <field name="ke_etims_qr_url" widget="url" string="Verification"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

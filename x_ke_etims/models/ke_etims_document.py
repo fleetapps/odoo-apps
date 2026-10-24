@@ -38,15 +38,18 @@ once rather than eight times.
 import json
 import logging
 import random
+import re
 import uuid
 from datetime import timedelta
-
-from markupsafe import Markup
+from decimal import Decimal
 
 from odoo import _, api, fields, models, modules, tools
 from odoo.exceptions import UserError
 
-from ..backends import REGISTRY, EtimsError, NotSupported
+from ..backends import REGISTRY, EtimsError, Line, NotSupported
+from ..backends.base import money
+
+PIN_RE = re.compile(r"^[A-Z]\d{9}[A-Z]$")
 
 _logger = logging.getLogger(__name__)
 
@@ -72,7 +75,8 @@ STATES = [
 class KeEtimsDocument(models.Model):
     _name = "ke.etims.document"
     _description = "eTIMS Document"
-    _inherit = ["mail.thread"]
+    # Activities, for sources that have none of their own (a POS order).
+    _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
     _check_company_auto = True
 
@@ -604,3 +608,90 @@ class KeEtimsDocument(models.Model):
         source = self._ke_etims_source()
         if source:
             source._ke_etims_on_failed(self)
+
+    # ------------------------------------------------ shared by every source
+
+    def _ke_etims_check_line(self, product, taxes, label, quantity, price_unit):
+        """What stops one sold line from going to eTIMS, as messages. Registers
+        the product on the document's device on the way, if KRA has everything
+        it needs to know about it."""
+        self.ensure_one()
+        if not product:
+            return [_("%s has no product; eTIMS only accepts registered items.", label)]
+        errors = []
+        if len(taxes) != 1:
+            errors.append(_(
+                "%(line)s needs exactly one VAT tax with a KRA tax type "
+                "(it has %(count)s).", line=label, count=len(taxes)))
+        if quantity <= 0 or price_unit < 0:
+            errors.append(_(
+                "%s has a negative quantity or price. eTIMS takes discounts "
+                "on the line itself, not as negative lines.", label))
+        device = self.device_id
+        template = product.product_tmpl_id
+        if not template._ke_etims_registration(device) \
+                and not template._ke_etims_register(device, document=self, raise_errors=False):
+            registration = template.sudo().ke_etims_registration_ids.filtered(
+                lambda r: r.device_id == device)[:1]
+            reason = registration.last_error or ", ".join(template._ke_etims_missing()) \
+                or _("no sales tax with a KRA tax type")
+            errors.append(_("%(product)s is not registered with eTIMS: %(reason)s",
+                            product=template.display_name, reason=reason))
+        return errors
+
+    def _ke_etims_build_line(self, seq, product, tax, *, price_unit, quantity, discount,
+                             name, currency, partner, is_refund, to_company):
+        """One ``Line``, VAT included, from Odoo's own tax computation.
+
+        ``to_company`` converts an amount of the document's currency into
+        shillings and rounds it to the cent.
+        """
+        self.ensure_one()
+        template = product.product_tmpl_id
+        registration = template._ke_etims_registration(self.device_id)
+        common = dict(currency=currency, quantity=quantity, product=product,
+                      partner=partner, is_refund=is_refund)
+        full = tax.compute_all(price_unit, **common)
+        discounted = tax.compute_all(price_unit * (1 - (discount or 0.0) / 100.0), **common)
+        supply = to_company(full["total_included"])
+        taxable = to_company(discounted["total_included"])
+        tax_amount = money(taxable - to_company(discounted["total_excluded"]))
+        qty = money(quantity)
+        return Line(
+            seq=seq,
+            item_code=registration.item_code or template.ke_etims_item_code,
+            item_class_code=template.ke_etims_item_class_id.code,
+            name=(name or template.name).split("\n")[0],
+            quantity=qty,
+            unit_price=money(supply / Decimal(str(quantity))) if quantity else supply,
+            tax_type=tax.ke_etims_tax_type_id.code,
+            supply_amount=supply,
+            discount_amount=money(supply - taxable),
+            taxable_amount=taxable,
+            tax_amount=tax_amount,
+            discount_rate=money(discount or 0.0),
+            packaging_unit=template.ke_etims_packaging_unit_id.code,
+            quantity_unit=template.ke_etims_quantity_unit_id.code,
+            package_quantity=qty,
+            barcode=product.barcode or None,
+            provider_item_id=registration.provider_item_id or None,
+        )
+
+    @api.model
+    def _ke_etims_check_pin(self, pin):
+        pin = (pin or "").strip().upper()
+        if pin and not PIN_RE.match(pin):
+            return [_("The customer's PIN %s is not a KRA PIN (a letter, nine digits "
+                      "and a letter). Correct it or remove it.", pin)]
+        return []
+
+    def _ke_etims_schedule_activity(self, user=None):
+        """An activity on the document itself, for whoever looks after the device."""
+        self.ensure_one()
+        summary = _("eTIMS could not sign this document")
+        user = user or self.device_id.responsible_user_id
+        if not user or user._is_public() or user._is_superuser() \
+                or self.activity_ids.filtered(lambda a: a.summary == summary):
+            return
+        self.activity_schedule("mail.mail_activity_data_warning", summary=summary,
+                               note=self.last_error, user_id=user.id)

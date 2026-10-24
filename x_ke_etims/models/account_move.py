@@ -19,18 +19,15 @@ add up to the same thing.
 import base64
 import io
 import json
-import re
 from decimal import Decimal
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from ..backends import Line, Operator, Sale
+from ..backends import Operator, Sale
 from ..backends.base import money
 from .ke_etims_code import CODE_CLASS_CREDIT_NOTE_REASON, CODE_CLASS_PAYMENT_TYPE
 from .ke_etims_document import STATES
-
-PIN_RE = re.compile(r"^[A-Z]\d{9}[A-Z]$")
 
 #: Seconds: the attempt made just before an invoice is sent.
 SEND_TIMEOUT = 4.0
@@ -362,40 +359,15 @@ class AccountMove(models.Model):
         if not device._ke_etims_tax_rates():
             errors.append(_("KRA's tax types have not been synced on %s yet; "
                             "use \"Sync KRA codes\" on the device.", device.display_name))
-        pin = (self.commercial_partner_id.vat or "").strip().upper()
-        if pin and not PIN_RE.match(pin):
-            errors.append(_(
-                "The customer's PIN %s is not a KRA PIN (a letter, nine digits "
-                "and a letter). Correct it or remove it.", pin))
+        errors += document._ke_etims_check_pin(self.commercial_partner_id.vat)
         lines = self._ke_etims_product_lines()
         if not lines:
             errors.append(_("There are no invoice lines to send."))
         for line in lines:
-            label = line.name or line.product_id.display_name or _("A line")
-            if not line.product_id:
-                errors.append(_("%s has no product; eTIMS only accepts registered items.",
-                                label))
-                continue
-            taxes = self._ke_etims_line_tax(line)
-            if len(taxes) != 1:
-                errors.append(_(
-                    "%(line)s needs exactly one VAT tax with a KRA tax type "
-                    "(it has %(count)s).", line=label, count=len(taxes)))
-            if line.quantity <= 0 or line.price_unit < 0:
-                errors.append(_(
-                    "%s has a negative quantity or price. eTIMS takes discounts "
-                    "on the line itself, not as negative lines.", label))
-            template = line.product_id.product_tmpl_id
-            if not template._ke_etims_registration(device):
-                # Register it now if KRA has everything it needs to know.
-                if not template._ke_etims_register(device, document=document,
-                                                   raise_errors=False):
-                    registration = template.sudo().ke_etims_registration_ids.filtered(
-                        lambda r: r.device_id == device)[:1]
-                    reason = registration.last_error or ", ".join(template._ke_etims_missing()) \
-                        or _("no sales tax with a KRA tax type")
-                    errors.append(_("%(product)s is not registered with eTIMS: %(reason)s",
-                                    product=template.display_name, reason=reason))
+            errors += document._ke_etims_check_line(
+                line.product_id, self._ke_etims_line_tax(line),
+                line.name or line.product_id.display_name or _("A line"),
+                line.quantity, line.price_unit)
         if self.move_type in CREDIT_TYPES:
             original = document.original_document_id or \
                 self.reversed_entry_id.sudo().ke_etims_document_ids.filtered(
@@ -429,41 +401,14 @@ class AccountMove(models.Model):
                 amount = amount / rate
             return money(amount)
 
-        lines = []
-        for seq, line in enumerate(self._ke_etims_product_lines(), start=1):
-            tax = self._ke_etims_line_tax(line)
-            template = line.product_id.product_tmpl_id
-            registration = template._ke_etims_registration(device)
-            common = dict(currency=line.currency_id, quantity=line.quantity,
-                          product=line.product_id, partner=self.partner_id,
-                          is_refund=credit)
-            full = tax.compute_all(line.price_unit, **common)
-            discounted = tax.compute_all(
-                line.price_unit * (1 - (line.discount or 0.0) / 100.0), **common)
-            supply = to_kes(full["total_included"])
-            taxable = to_kes(discounted["total_included"])
-            tax_amount = money(taxable - to_kes(discounted["total_excluded"]))
-            quantity = money(line.quantity)
-            unit_price = money(supply / _decimal(line.quantity)) if line.quantity else supply
-            lines.append(Line(
-                seq=seq,
-                item_code=registration.item_code or template.ke_etims_item_code,
-                item_class_code=template.ke_etims_item_class_id.code,
-                name=(line.name or template.name).split("\n")[0],
-                quantity=quantity,
-                unit_price=unit_price,
-                tax_type=tax.ke_etims_tax_type_id.code,
-                supply_amount=supply,
-                discount_amount=money(supply - taxable),
-                taxable_amount=taxable,
-                tax_amount=tax_amount,
-                discount_rate=money(line.discount or 0.0),
-                packaging_unit=template.ke_etims_packaging_unit_id.code,
-                quantity_unit=template.ke_etims_quantity_unit_id.code,
-                package_quantity=quantity,
-                barcode=line.product_id.barcode or None,
-                provider_item_id=registration.provider_item_id or None,
-            ))
+        lines = [
+            document._ke_etims_build_line(
+                seq, line.product_id, self._ke_etims_line_tax(line),
+                price_unit=line.price_unit, quantity=line.quantity, discount=line.discount,
+                name=line.name, currency=line.currency_id, partner=self.partner_id,
+                is_refund=credit, to_company=to_kes)
+            for seq, line in enumerate(self._ke_etims_product_lines(), start=1)
+        ]
         partner = self.commercial_partner_id
         original = document.original_document_id
         return Sale(
