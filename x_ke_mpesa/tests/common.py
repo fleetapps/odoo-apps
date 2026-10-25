@@ -14,10 +14,18 @@ PHONE = "0708374149"
 
 
 class MpesaCommon(AccountTestInvoicingCommon):
-    """A Kenyan company with a store, a till under it and a paybill, all on a
-    fake Daraja, with their journals set up and C2B URLs registered."""
+    """A company in shillings with a store, two tills under it and a paybill,
+    all on a fake Daraja, with their journals set up and C2B URLs registered.
 
-    country_code = "KE"
+    The generic chart, not l10n_ke: the module does not depend on the Kenyan
+    localisation, so neither do its tests.
+    """
+
+    @classmethod
+    def setup_independent_company(cls, **kwargs):
+        kes = cls.env.ref("base.KES")
+        kes.active = True
+        return super().setup_independent_company(currency_id=kes.id, **kwargs)
 
     @classmethod
     def setUpClass(cls):

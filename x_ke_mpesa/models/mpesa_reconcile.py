@@ -109,7 +109,8 @@ class MpesaTransaction(models.Model):
 
     def _auto_match(self):
         for tx in self:
-            if tx.allocation_state != "unallocated":
+            # Claimed receipts too: a POS claim settles once its session closes.
+            if tx.allocation_state not in ("unallocated", "claimed"):
                 continue
             company = tx.company_id
             if company.mpesa_match_stk and tx._match_origin():

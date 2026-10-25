@@ -22,6 +22,8 @@
               parent="menu_mpesa_reports" sequence="30"/>
     <menuitem id="menu_mpesa_report_exceptions" action="action_mpesa_report_exceptions"
               parent="menu_mpesa_reports" sequence="40"/>
+    <menuitem id="menu_mpesa_report_stk" action="action_mpesa_report_stk"
+              parent="menu_mpesa_reports" sequence="50"/>
     <menuitem id="menu_mpesa_report_callback_health" action="action_mpesa_report_callback_health"
               parent="menu_mpesa_reports" sequence="60"/>
     <menuitem id="menu_mpesa_shortcode_health" action="action_mpesa_shortcode_health"

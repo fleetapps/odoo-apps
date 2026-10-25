@@ -113,6 +113,12 @@
             <field name="domain_force">[('company_id', 'in', company_ids)]</field>
         </record>
 
+        <record id="rule_mpesa_report_stk_company" model="ir.rule">
+            <field name="name">M-Pesa STK report: multi-company</field>
+            <field name="model_id" ref="model_mpesa_report_stk"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
         <!-- Outlet staff: their own tills only. Group rules are OR-ed across a
              user's groups, so the officer rule below lifts this for officers. -->
         <record id="rule_mpesa_transaction_outlet" model="ir.rule">
