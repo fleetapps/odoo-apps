@@ -517,3 +517,21 @@ PostgreSQL 16, with the OCA 19.0 branches on the addons path.
   sweeps, report 8.
 * **M4** `x_ke_mpesa_payment`: portal and website provider.
 * **M5** bridges (`_etims`, `_sms`, `_mis`), then phase 2 `x_ke_mpesa_b2c`.
+
+### v1 status (25 October 2026)
+
+* **Done:** M1 `x_ke_mpesa`, M2 `x_ke_mpesa_pos`, M3 `x_ke_mpesa_statement`,
+  M4 `x_ke_mpesa_payment`, and from M5 `x_ke_mpesa_etims`: 156 tests pass on
+  Odoo 19 Community with the OCA 19.0 modules, and the POS, statement and
+  portal screens were driven in a browser against the fake Daraja.
+* **Installed:** odin-demo, with `tools/odin-install-mpesa.sh` (which also
+  updates).
+* **On hold:** `x_ke_mpesa_sms` (M-PESA already texts the payer; no Kenyan SMS
+  gateway module yet) and `x_ke_mpesa_mis` (reports 1–9 are pivots that
+  ai_dashboards reads).
+* **Not started:** phase 2 `x_ke_mpesa_b2c` (B2C refunds, B2B, reversals; the
+  Daraja calls exist in `lib/daraja.py`).
+* **Still for Safaricom or a live test to settle (§9.1):** STK BusinessShortCode
+  and PartyB per till (KES 1 test), which shortcode C2B confirmations carry,
+  the Pull API's time zone and paging, the Org Portal export's columns, and
+  the callback source addresses.
