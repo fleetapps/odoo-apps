@@ -422,6 +422,26 @@ class AccountBankStatement(models.Model):
 
     def _mpesa_sync_balance(self):
         """Our daily statements have no bank-given closing balance: it is
-        whatever the lines add up to, so they stay complete as lines arrive."""
-        for statement in self:
+        whatever the lines add up to, so they stay complete as lines arrive.
+
+        A line added to an earlier day (a receipt the Pull API or a statement
+        file brought late) moves the opening balance of every later day; Odoo
+        computes an opening balance once, when the statement is created.
+        """
+        Statement = self.env["account.bank.statement"].sudo()
+        for journal in self.journal_id:
+            mine = self.filtered(lambda s, j=journal: s.journal_id == j and s.first_line_index)
+            if not mine:
+                continue
+            # Only our own daily statements: a statement with a bank-given
+            # closing balance keeps it.
+            later = Statement.search([("journal_id", "=", journal.id),
+                                      ("first_line_index", ">", min(mine.mapped("first_line_index"))),
+                                      ("name", "=like", f"{journal.code} ____-__-__"),
+                                      ("id", "not in", mine.ids)])
+            for statement in (mine | later).sorted("first_line_index"):
+                if statement in later:
+                    statement._compute_balance_start()
+                statement.balance_end_real = statement.balance_end
+        for statement in self.filtered(lambda s: not s.first_line_index):
             statement.balance_end_real = statement.balance_end
