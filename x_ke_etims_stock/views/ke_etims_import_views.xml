@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ke_etims_import_list" model="ir.ui.view">
+        <field name="name">ke.etims.import.list</field>
+        <field name="model">ke.etims.import</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Imports" create="0" editable="bottom">
+                <field name="declaration_date" readonly="1"/>
+                <field name="declaration_no" readonly="1"/>
+                <field name="item_seq" readonly="1"/>
+                <field name="hs_code" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="quantity" readonly="1"/>
+                <field name="supplier_name" readonly="1" optional="show"/>
+                <field name="product_id" options="{'no_create': True}"
+                       readonly="state != 'new'"/>
+                <button name="action_approve" type="object" string="Approve" icon="fa-check"
+                        invisible="state != 'new'"/>
+                <button name="action_reject" type="object" string="Reject" icon="fa-times"
+                        invisible="state != 'new'"/>
+                <field name="state" widget="badge" decoration-success="state == 'approved'"
+                       decoration-muted="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_import_form" model="ir.ui.view">
+        <field name="name">ke.etims.import.form</field>
+        <field name="model">ke.etims.import</field>
+        <field name="arch" type="xml">
+            <form string="eTIMS Import" create="0">
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state != 'new'"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state != 'new'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="Declaration">
+                            <field name="task_code" readonly="1"/>
+                            <field name="declaration_no" readonly="1"/>
+                            <field name="declaration_date" readonly="1"/>
+                            <field name="item_seq" readonly="1"/>
+                            <field name="hs_code" readonly="1"/>
+                            <field name="kra_status" readonly="1"/>
+                        </group>
+                        <group string="Goods">
+                            <field name="quantity" readonly="1"/>
+                            <field name="quantity_unit" readonly="1"/>
+                            <field name="origin_country" readonly="1"/>
+                            <field name="supplier_name" readonly="1"/>
+                            <field name="agent_name" readonly="1"/>
+                            <field name="invoice_amount" readonly="1"/>
+                            <field name="invoice_currency" readonly="1"/>
+                            <field name="product_id" options="{'no_create': True}"
+                                   readonly="state != 'new'"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_import" model="ir.actions.act_window">
+        <field name="name">eTIMS Imports</field>
+        <field name="res_model">ke.etims.import</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_todo': 1}</field>
+    </record>
+
+    <record id="view_ke_etims_import_search" model="ir.ui.view">
+        <field name="name">ke.etims.import.search</field>
+        <field name="model">ke.etims.import</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="declaration_no"/>
+                <filter name="todo" string="To review" domain="[('state', '=', 'new')]"/>
+            </search>
+        </field>
+    </record>
+</odoo>

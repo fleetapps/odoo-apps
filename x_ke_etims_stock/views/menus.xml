@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_ke_etims_purchases"
+              name="eTIMS Supplier Invoices"
+              parent="x_ke_base.menu_ke_tax_root"
+              action="action_ke_etims_purchase"
+              sequence="31"/>
+
+    <menuitem id="menu_ke_etims_imports"
+              name="eTIMS Imports"
+              parent="x_ke_base.menu_ke_tax_root"
+              action="action_ke_etims_import"
+              sequence="32"/>
+</odoo>

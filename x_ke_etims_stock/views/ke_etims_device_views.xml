@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ke_etims_device_form_stock" model="ir.ui.view">
+        <field name="name">ke.etims.device.form.stock</field>
+        <field name="model">ke.etims.device</field>
+        <field name="inherit_id" ref="x_ke_etims.view_ke_etims_device_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_process_queue']" position="after">
+                <field name="can_fetch_purchases" invisible="1"/>
+                <field name="can_fetch_imports" invisible="1"/>
+                <button name="action_fetch_purchases" type="object" string="Fetch supplier invoices"
+                        invisible="state != 'initialised' or not can_fetch_purchases"/>
+                <button name="action_fetch_imports" type="object" string="Fetch imports"
+                        invisible="state != 'initialised' or not can_fetch_imports"/>
+            </xpath>
+            <xpath expr="//field[@name='last_notice_sync']" position="after">
+                <field name="last_purchase_fetch"/>
+                <field name="last_import_fetch"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

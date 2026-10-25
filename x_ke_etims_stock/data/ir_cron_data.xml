@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Daily, over initialised devices of Kenyan companies only. -->
+<odoo noupdate="1">
+    <record id="ir_cron_ke_etims_fetch" model="ir.cron">
+        <field name="name">Kenya eTIMS: fetch supplier invoices and customs imports</field>
+        <field name="model_id" ref="x_ke_etims.model_ke_etims_device"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_fetch_purchases_and_imports()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=2, minute=10) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
