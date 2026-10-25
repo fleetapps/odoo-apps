@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mpesa_report_pos_session,mpesa.report.pos.session officer,model_mpesa_report_pos_session,x_ke_mpesa.group_mpesa_officer,1,0,0,0
+access_mpesa_report_pos_session_pos,mpesa.report.pos.session pos manager,model_mpesa_report_pos_session,point_of_sale.group_pos_manager,1,0,0,0

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_shortcode_form_pos" model="ir.ui.view">
+        <field name="name">mpesa.shortcode.form.pos</field>
+        <field name="model">mpesa.shortcode</field>
+        <field name="inherit_id" ref="x_ke_mpesa.view_mpesa_shortcode_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_register_c2b']" position="after">
+                <button name="action_create_pos_payment_method" type="object"
+                        string="Create POS payment method" groups="point_of_sale.group_pos_manager"
+                        invisible="not journal_id or pos_payment_method_ids"/>
+            </xpath>
+            <xpath expr="//page[@name='outlet']//field[@name='user_ids']" position="after">
+                <field name="pos_config_ids" widget="many2many_tags"/>
+                <field name="pos_payment_method_ids" widget="many2many_tags" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
