@@ -131,6 +131,7 @@ class TestEtimsVat(KeEtimsCase):
 
         states = {line.match_state: line for line in batch.line_ids}
         self.assertIn("kra_only", states)
+        self.assertFalse(states["kra_only"].ke_etims_number, "No document, no number.")
         self.assertEqual(states["odoo_only"].move_id, unsigned)
 
     def test_a_purchase_row_under_the_supplier_cu_number_is_matched(self):
