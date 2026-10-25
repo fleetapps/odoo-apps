@@ -68,7 +68,7 @@ class FakeDaraja:
 
     # -- lifecycle ------------------------------------------------------------
 
-    def start(self):
+    def start(self, host="127.0.0.1", port=0):
         fake = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -81,7 +81,7 @@ class FakeDaraja:
             def do_POST(self):
                 fake._handle(self, "POST")
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = ThreadingHTTPServer((host, port), Handler)
         self.server.daemon_threads = True
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
