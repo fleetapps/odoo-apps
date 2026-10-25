@@ -42,6 +42,9 @@ Design, decisions and open questions: [`docs/mpesa/PLAN.md`](../docs/mpesa/PLAN.
 
 ## Setting up
 
+On an Odin server, as root, this fetches and installs (or updates) the suite and the
+OCA modules it needs: `curl -fsSL https://raw.githubusercontent.com/fleetapps/odoo-apps/19.0/tools/odin-install-mpesa.sh | bash`
+
 1. **Daraja app** (one per environment): name, environment, consumer key and
    secret, and the Safaricom certificate for that environment (PEM), which
    encrypts initiator passwords. *Test connection* fetches a token.
