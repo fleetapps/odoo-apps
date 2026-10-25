@@ -55,6 +55,7 @@ the one its VAT3 box is derived from. See README.md.
         "security/ir.model.access.csv",
         "data/ke_etims_code_data.xml",
         "data/ir_sequence_data.xml",
+        "data/product_data.xml",
         "data/ir_cron_data.xml",
         "views/ke_etims_device_views.xml",
         "views/ke_etims_code_views.xml",

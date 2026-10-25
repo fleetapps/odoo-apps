@@ -25,6 +25,50 @@ pip install etims        # optional: only for the "KRA OSCU via etims library" b
 Install `x_ke_etims`. The POS, MRP and VAT modules install themselves when
 their other dependency is present. `x_ke_etims_stock` is installed by hand.
 
+## On an Odin instance
+
+As root on the instance, put the modules on the addons path (each run
+restarts Odoo; already-installed modules are upgraded):
+
+```
+for m in x_ke_base x_ke_vat x_ke_etims x_ke_etims_pos x_ke_etims_stock x_ke_etims_mrp x_ke_etims_vat; do
+  curl -fsSL https://raw.githubusercontent.com/fleetapps/odoo-apps/19.0/tools/odin-install-module.sh | bash -s "$m"
+done
+```
+
+Then install them in the database (or from Apps) and, for a demo, load the
+showcase data:
+
+```
+DB="$(python3 -c "import json; print(json.load(open('/etc/odin/instance.json'))['db_name'])")"
+. /etc/odin/odoo.env
+odoo_run() { docker run --rm -i --network host \
+  -v /etc/odoo/odoo.conf:/etc/odoo/odoo.conf:ro -v /mnt/extra-addons:/mnt/extra-addons:ro \
+  -v /var/lib/odoo:/var/lib/odoo -v /opt/odin/pydeps:/opt/odin/pydeps:ro \
+  -e PYTHONPATH=/opt/odin/pydeps "$ODOO_IMAGE" "$@"; }
+systemctl stop odoo
+odoo_run odoo -c /etc/odoo/odoo.conf -d "$DB" --no-http --workers 0 --max-cron-threads 0 \
+  -i x_ke_etims_pos,x_ke_etims_stock,x_ke_etims_mrp,x_ke_etims_vat,sale_management,sale_stock --stop-after-init
+odoo_run odoo shell -c /etc/odoo/odoo.conf -d "$DB" --no-http \
+  < /mnt/extra-addons/x_ke_etims/showcase/etims_showcase.py
+systemctl start odoo
+```
+
+## Showcase data
+
+`showcase/etims_showcase.py` (run with `odoo shell`, as above) creates the
+company "Nairobi Traders Ltd (eTIMS demo)" with the Kenyan chart and a Demo
+device -- nothing reaches KRA, and every document says DEMO -- and one example
+of each feature: signed invoices and a credit note, a sales receipt with a
+discount folded in, a failed invoice (a product whose category has no KRA
+item class), drafts showing what eTIMS would refuse, a sales order with a
+30% down payment, its delivery and its final invoice, stock movements and
+stock levels, supplier bills with and without an eTIMS number (and a bank's,
+which needs none), a supplier invoice from eTIMS and its draft bill, a
+customs import to approve, a bill of materials, this month's VAT return with
+iTax files matched on eTIMS numbers, and a shop with Cash and M-Pesa. Other
+companies are not touched, and running it again does nothing.
+
 ## Setting up
 
 1. **Settings > Accounting > Kenya eTIMS.** Choose the default backend and
@@ -117,6 +161,9 @@ integration, before they can be saved.
   credit note corrects, its KRA reason), and warns about cash rounding that
   changes the VAT amount. A credit note made by hand names its invoice under
   *Credits Invoice* on the eTIMS tab.
+- **Lines without a product** (a description typed in, an Odoo down
+  payment) go to KRA as the "Sundry goods and services (eTIMS)" item, under
+  the line's own description. Give that product a KRA item class once.
 
 ## Reverse invoices (DigiTax)
 

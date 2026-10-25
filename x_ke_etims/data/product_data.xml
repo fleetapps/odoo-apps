@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- KRA only takes registered items. An invoice line without a product (
+         a description typed in, a down payment) goes as this item, under
+         its own description. Give it a KRA item class once. -->
+    <record id="product_sundry" model="product.product">
+        <field name="name">Sundry goods and services (eTIMS)</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="False"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="list_price">0</field>
+        <field name="taxes_id" eval="[(5,)]"/>
+        <field name="supplier_taxes_id" eval="[(5,)]"/>
+    </record>
+</odoo>
