@@ -27,6 +27,16 @@
                            decoration-danger="ke_etims_state == 'failed'"/>
                 </div>
             </xpath>
+            <xpath expr="//field[@name='ref'][not(ancestor::page)]" position="after">
+                <field name="ke_etims_can_reverse_invoice" invisible="1"/>
+                <field name="ke_etims_reverse_invoice"
+                       invisible="not ke_etims_can_reverse_invoice and not ke_etims_reverse_invoice"
+                       readonly="state != 'draft'"/>
+                <field name="ke_etims_supplier_invoice_ref"
+                       invisible="country_code != 'KE' or move_type not in ('in_invoice', 'in_refund')"
+                       readonly="ke_etims_reverse_invoice"
+                       placeholder="e.g. KRACU0100000001/152"/>
+            </xpath>
             <xpath expr="//page[@name='other_info']" position="after">
                 <page string="eTIMS" name="ke_etims"
                       invisible="not ke_etims_applicable">

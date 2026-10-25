@@ -34,6 +34,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from ..backends import REGISTRY, EtimsError, Operator, get_adapter_class
+from .ke_etims_document import INVOICE_KINDS
 
 _logger = logging.getLogger(__name__)
 
@@ -478,7 +479,7 @@ class KeEtimsDevice(models.Model):
             ("device_id", "=", self.id),
             ("kra_invoice_no", "!=", False),
             ("state", "in", ("to_send", "sending", "failed")),
-            ("kind", "in", ("sale", "credit_note")),
+            ("kind", "in", INVOICE_KINDS),
         ], order="kra_invoice_no", limit=1)
 
     # ------------------------------------------------------------- helpers
