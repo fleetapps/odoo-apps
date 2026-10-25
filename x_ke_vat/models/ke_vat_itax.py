@@ -421,7 +421,6 @@ class KeVatItaxBatch(models.Model):
             by_number[number] |= move
             by_key[(number, _normalise_pin(move.commercial_partner_id.vat))] |= move
 
-        currency = self.company_id.currency_id
         for line in self.line_ids.filtered(lambda line: line.kra_invoice_no):
             candidates = self.env["account.move"]
             if not is_sale and line.kra_pin:
@@ -432,24 +431,30 @@ class KeVatItaxBatch(models.Model):
                 line._apply_match(self.env["account.move"], "kra_only")
                 continue
 
-            move = candidates[0]
-            partner_pin = _normalise_pin(move.commercial_partner_id.vat)
-            if line.kra_pin and partner_pin and partner_pin != line.kra_pin:
-                # KRA's FAQ calls this out explicitly: a supplier capturing the
-                # wrong PIN is a named reason to leave input tax unclaimed.
-                line._apply_match(move, "pin_variance")
-                continue
+            self._classify_match(line, candidates[0])
 
-            # KRA's figures are in shillings. amount_untaxed and amount_tax are
-            # in the invoice currency, so a USD export or a foreign bill would
-            # be compared as dollars against shillings; the *_signed fields
-            # are the company-currency amounts, signed by document type.
-            taxable_gap = currency.compare_amounts(
-                abs(move.amount_untaxed_signed), line.kra_taxable_amount)
-            tax_gap = currency.compare_amounts(
-                abs(move.amount_tax_signed), line.kra_tax_amount)
-            line._apply_match(
-                move, "amount_variance" if (taxable_gap or tax_gap) else "matched")
+    def _classify_match(self, line, move):
+        """Pair a KRA row with the document found for it, and say how well
+        the two agree."""
+        self.ensure_one()
+        partner_pin = _normalise_pin(move.commercial_partner_id.vat)
+        if line.kra_pin and partner_pin and partner_pin != line.kra_pin:
+            # KRA's FAQ calls this out explicitly: a supplier capturing the
+            # wrong PIN is a named reason to leave input tax unclaimed.
+            line._apply_match(move, "pin_variance")
+            return
+
+        # KRA's figures are in shillings. amount_untaxed and amount_tax are
+        # in the invoice currency, so a USD export or a foreign bill would
+        # be compared as dollars against shillings; the *_signed fields
+        # are the company-currency amounts, signed by document type.
+        currency = self.company_id.currency_id
+        taxable_gap = currency.compare_amounts(
+            abs(move.amount_untaxed_signed), line.kra_taxable_amount)
+        tax_gap = currency.compare_amounts(
+            abs(move.amount_tax_signed), line.kra_tax_amount)
+        line._apply_match(
+            move, "amount_variance" if (taxable_gap or tax_gap) else "matched")
 
     def _find_odoo_only(self):
         """Documents we have posted that no KRA file on this return mentions.

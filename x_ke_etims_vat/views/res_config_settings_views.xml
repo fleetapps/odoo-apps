@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_ke_etims_vat" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.ke.etims.vat</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="x_ke_etims.res_config_settings_view_form_ke_etims"/>
+        <field name="arch" type="xml">
+            <block name="ke_etims_setting_container" position="inside">
+                <setting string="Supplier eTIMS invoices" company_dependent="1"
+                         help="Flag local suppliers' bills with no eTIMS invoice number, from this date on: without one the expense is not deductible.">
+                    <field name="ke_etims_deductible_from"/>
+                </setting>
+            </block>
+        </field>
+    </record>
+</odoo>
