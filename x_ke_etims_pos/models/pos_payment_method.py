@@ -21,13 +21,32 @@ class PosPaymentMethod(models.Model):
         for method in self:
             method.ke_etims_show = method.company_id.account_fiscal_country_id.code == "KE"
 
-    @api.depends("is_cash_count", "type")
+    @api.depends("is_cash_count", "type", "name", "use_payment_terminal")
     def _compute_ke_etims_payment_type_id(self):
         Code = self.env["ke.etims.code"]
         for method in self:
             if method.ke_etims_payment_type_id:
                 continue
-            # Cash is the one KRA type a till can know for certain; anything
-            # else is left for the manager to say (card, mobile money...).
-            if method.is_cash_count:
-                method.ke_etims_payment_type_id = Code._ke_etims_find(CODE_CLASS_PAYMENT_TYPE, "01")
+            code = method._ke_etims_guess_payment_type()
+            if code:
+                method.ke_etims_payment_type_id = Code._ke_etims_find(CODE_CLASS_PAYMENT_TYPE, code)
+
+    def _ke_etims_guess_payment_type(self):
+        """KRA's type from what the method is, or what it is called: cash,
+        customer account (credit), M-Pesa and the like, card, cheque. A guess
+        the manager can change; nothing when there is no telling."""
+        self.ensure_one()
+        name = (self.name or "").lower().replace("-", "").replace(" ", "")
+        if self.is_cash_count:
+            return "01"
+        if self.type == "pay_later":
+            return "02"
+        if any(word in name for word in ("mpesa", "airtel", "tkash", "mobile", "paybill",
+                                          "till", "lipana")):
+            return "06"
+        if self.use_payment_terminal or any(word in name for word in (
+                "card", "visa", "mastercard", "pdq", "amex")):
+            return "05"
+        if "cheque" in name or "check" in name:
+            return "04"
+        return None

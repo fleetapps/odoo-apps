@@ -38,7 +38,13 @@ class ResCompany(models.Model):
     ke_etims_default_payment_type_id = fields.Many2one(
         "ke.etims.code", string="Default eTIMS Payment Type",
         domain=[("code_class", "=", "07")],
-        help="KRA's payment type for invoices that do not say otherwise.")
+        help="KRA's payment type for invoices that do not say otherwise. Left "
+             "empty, an invoice goes as credit and a sales receipt as cash.")
+    ke_etims_vat_registered = fields.Boolean(
+        string="Registered for VAT", default=True,
+        help="Off for a business that is not registered for VAT: eTIMS still "
+             "applies to it, and its lines, which carry no VAT, go to KRA as "
+             "Non-VAT (tax type D).")
     ke_etims_device_ids = fields.One2many("ke.etims.device", "company_id")
     ke_etims_device_id = fields.Many2one(
         "ke.etims.device", compute="_compute_ke_etims_device_id",

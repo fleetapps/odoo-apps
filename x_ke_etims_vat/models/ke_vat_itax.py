@@ -66,4 +66,4 @@ class KeVatItaxLine(models.Model):
     @api.depends("move_id.ke_etims_cu_invoice", "move_id.ke_etims_supplier_invoice_ref")
     def _compute_ke_etims_number(self):
         for line in self:
-            line.ke_etims_number = line.move_id and line.move_id._ke_etims_number()
+            line.ke_etims_number = line.move_id._ke_etims_number() if line.move_id else False

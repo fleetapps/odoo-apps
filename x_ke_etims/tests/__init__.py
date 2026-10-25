@@ -5,3 +5,4 @@ from . import test_report_security
 from . import test_kra_backends
 from . import test_digitax
 from . import test_reverse_invoice
+from . import test_business_flows

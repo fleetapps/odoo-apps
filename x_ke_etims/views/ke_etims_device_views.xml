@@ -112,7 +112,7 @@
                                     <field name="taxpayer_name"/>
                                     <field name="branch_name"/>
                                     <field name="next_invoice_no"
-                                           groups="x_ke_etims.group_ke_etims_manager"/>
+                                           groups="x_ke_etims.group_ke_etims_manager" options="{'enable_formatting': false}"/>
                                 </group>
                             </group>
                         </page>

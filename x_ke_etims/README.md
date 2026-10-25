@@ -97,6 +97,27 @@ integration, before they can be saved.
   note. An invoice PDF printed before signing says "Not yet signed by
   eTIMS", and is regenerated once the invoice is signed.
 
+## Everyday sales flows
+
+- **Discounts, down payments, loyalty rewards.** KRA has no negative lines.
+  A negative line (the Sales "Discount" button, a down payment deducted on
+  the final invoice, a coupon or loyalty reward, a POS discount) is spread
+  as discount over the lines of the same VAT rate, so KRA gets exactly the
+  invoice total. A deduction larger than the sale at that rate is refused.
+- **Payment type** is never empty: the company default, else credit for an
+  invoice and cash for a sales receipt. POS methods are guessed from what
+  they are (cash, customer account, M-Pesa, card, cheque) and can be changed.
+- **Not registered for VAT** (Settings): eTIMS still applies. Lines go to
+  KRA as Non-VAT (type D), and a line carrying VAT is flagged.
+- **KRA item class per product category**, taken by products without one
+  (a class on "All" covers the down payment and discount products too). The
+  item class is also a column of the product list, for editing many at once.
+- **Warnings on drafts**: before posting, an invoice or credit note says
+  what eTIMS would refuse (product setup, VAT, PIN, deductions, the invoice a
+  credit note corrects, its KRA reason), and warns about cash rounding that
+  changes the VAT amount. A credit note made by hand names its invoice under
+  *Credits Invoice* on the eTIMS tab.
+
 ## Reverse invoices (DigiTax)
 
 Tick **eTIMS Reverse Invoice** on a vendor bill when the seller cannot issue
