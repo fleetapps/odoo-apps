@@ -46,6 +46,8 @@ class FakeDaraja:
     def __init__(self):
         self.lock = threading.RLock()
         self.counter = itertools.count(1)
+        # Daraja's request ids are unique for good: so are these, across runs.
+        self.run_id = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
         self.consumer = ("ck_test", "cs_test")
         self.passkeys = {"174379": SANDBOX_PASSKEY}
         self.tokens = []
@@ -263,8 +265,8 @@ class FakeDaraja:
             return 400, {"requestId": "fake", "errorCode": "400.002.02",
                          "errorMessage": "Bad Request - Invalid Amount"}
         n = next(self.counter)
-        checkout = f"ws_CO_{n:08d}"
-        merchant = f"{n}-fake-1"
+        checkout = f"ws_CO_{self.run_id}_{n:08d}"
+        merchant = f"{n}-fake-{self.run_id}"
         script = self.next_stk.pop(0) if self.next_stk else {"result_code": 0, "query": "final"}
         code = script["result_code"]
         receipt = script.get("receipt") or (receipt_number() if code == 0 else None)

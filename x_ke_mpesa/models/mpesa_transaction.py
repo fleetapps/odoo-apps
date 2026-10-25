@@ -376,9 +376,11 @@ class MpesaTransaction(models.Model):
             self._stk_fail("", _("M-PESA accepted the prompt but returned no request id."))
             return
         self._lock("stk", checkout_request_id)
+        # Only a placeholder an early callback left: never an older request
+        # (a placeholder was never sent, so it has no request time).
         placeholder = self.sudo().search(
-            [("checkout_request_id", "=", checkout_request_id), ("id", "!=", self.id)],
-            limit=1)
+            [("checkout_request_id", "=", checkout_request_id), ("id", "!=", self.id),
+             ("requested_at", "=", False)], limit=1)
         outcome = placeholder._stk_outcome() if placeholder else None
         if placeholder:
             placeholder._hand_over_to(self)
@@ -423,7 +425,8 @@ class MpesaTransaction(models.Model):
         if not checkout_id:
             raise ValidationError(_("An STK callback without CheckoutRequestID."))
         self._lock("stk", checkout_id)
-        tx = self.sudo().search([("checkout_request_id", "=", checkout_id)], limit=1)
+        tx = self.sudo().search([("checkout_request_id", "=", checkout_id)],
+                                order="id desc", limit=1)
         code = str(callback.get("ResultCode", ""))
         metadata = daraja.stk_metadata(callback)
         if not tx:
