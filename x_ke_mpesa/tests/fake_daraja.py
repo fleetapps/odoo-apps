@@ -370,10 +370,28 @@ class FakeDaraja:
                      "ShortCode": body.get("ShortCode"),
                      "ResponseDescription": "Shortcode Registered Successfully"}
 
+    @staticmethod
+    def _pull_time(value, assume):
+        try:
+            moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return moment if moment.tzinfo else moment.replace(tzinfo=assume)
+
     def _pull_query(self, body):
+        """Rows of the shortcode between StartDate and EndDate (Nairobi time),
+        a page at a time from OffSetValue."""
         offset = int(body.get("OffSetValue") or 0)
+        start = self._pull_time(body.get("StartDate"), NAIROBI)
+        end = self._pull_time(body.get("EndDate"), NAIROBI)
+
+        def within(row):
+            moment = self._pull_time(row.get("trxDate"), UTC)
+            return not (moment and start and end) or start <= moment <= end
+
         rows = [row for row in self.pull_rows
-                if str(row.get("_shortcode", body.get("ShortCode"))) == str(body.get("ShortCode"))]
+                if str(row.get("_shortcode", body.get("ShortCode"))) == str(body.get("ShortCode"))
+                and within(row)]
         page = rows[offset:offset + self.pull_page_size]
         if not page:
             return 200, {"ResponseRefID": "fake", "ResponseCode": "1001",

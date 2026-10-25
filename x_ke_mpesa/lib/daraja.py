@@ -650,23 +650,7 @@ class DarajaClient:
             raise
         if str(data.get("ResponseCode")) == "1001":
             return []
-        rows = data.get("Response")
-        if rows is None:
-            rows = data.get("Transaction") or []
-        if isinstance(rows, str):
-            try:
-                rows = json.loads(rows)
-            except ValueError:
-                rows = []
-        flat = []
-        stack = [rows]
-        while stack:
-            item = stack.pop()
-            if isinstance(item, list):
-                stack.extend(reversed(item))
-            elif isinstance(item, dict) and item.get("transactionId"):
-                flat.append(item)
-        return flat
+        return pull_rows(data)
 
 
 # --------------------------------------------------------------------------
@@ -698,6 +682,33 @@ STK_RESULTS = {
     "SFC_IC0003": "This till is not set up for this kind of payment. Check "
                   "the STK settings of the shortcode.",
 }
+
+
+def pull_rows(data):
+    """The transaction rows in a Pull API answer or notification.
+
+    Daraja nests them as ``Response: [[...]]``; some answers carry them under
+    ``Transaction``, or as a JSON string, or post a single row.
+    """
+    if isinstance(data, dict) and data.get("transactionId"):
+        return [data]
+    rows = data.get("Response") if isinstance(data, dict) else data
+    if rows is None and isinstance(data, dict):
+        rows = data.get("Transaction") or []
+    if isinstance(rows, str):
+        try:
+            rows = json.loads(rows)
+        except ValueError:
+            rows = []
+    flat = []
+    stack = [rows]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, list):
+            stack.extend(reversed(item))
+        elif isinstance(item, dict) and item.get("transactionId"):
+            flat.append(item)
+    return flat
 
 
 def stk_message(code, fallback=""):
