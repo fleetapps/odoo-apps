@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_payment_method_view_form_mpesa" model="ir.ui.view">
+        <field name="name">pos.payment.method.form.mpesa</field>
+        <field name="model">pos.payment.method</field>
+        <field name="inherit_id" ref="point_of_sale.pos_payment_method_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='use_payment_terminal']" position="after">
+                <field name="mpesa_shortcode_id" invisible="use_payment_terminal != 'mpesa'"
+                       required="use_payment_terminal == 'mpesa'" options="{'no_create': True}"/>
+                <field name="mpesa_allow_stk" invisible="use_payment_terminal != 'mpesa'"/>
+                <field name="mpesa_allow_claim" invisible="use_payment_terminal != 'mpesa'"/>
+                <field name="mpesa_claim_any_amount"
+                       invisible="use_payment_terminal != 'mpesa' or not mpesa_allow_claim"/>
+                <field name="mpesa_allow_manual" invisible="use_payment_terminal != 'mpesa'"/>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <field name="mpesa_rounding_warning" invisible="1"/>
+                <div class="alert alert-warning mb-0" role="alert" invisible="not mpesa_rounding_warning">
+                    <field name="mpesa_rounding_warning" readonly="1" nolabel="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

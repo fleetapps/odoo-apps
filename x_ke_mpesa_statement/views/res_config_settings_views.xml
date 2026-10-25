@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_mpesa_statement" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.mpesa.statement</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="x_ke_mpesa.res_config_settings_view_form_mpesa"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='mpesa_accounts']" position="after">
+                <setting id="mpesa_statement_accounts" string="Charges and sweeps" company_dependent="1"
+                         help="How the M-PESA statement's money-out rows are booked">
+                    <div class="row mt8">
+                        <label for="mpesa_charges_account_id" class="col-lg-5 o_light_label"/>
+                        <field name="mpesa_charges_account_id"/>
+                    </div>
+                    <div class="row">
+                        <label for="mpesa_sweep_account_id" class="col-lg-5 o_light_label"/>
+                        <field name="mpesa_sweep_account_id"/>
+                    </div>
+                    <div class="row">
+                        <label for="mpesa_charge_words" class="col-lg-5 o_light_label"/>
+                        <field name="mpesa_charge_words"/>
+                    </div>
+                    <div class="row">
+                        <label for="mpesa_sweep_words" class="col-lg-5 o_light_label"/>
+                        <field name="mpesa_sweep_words"/>
+                    </div>
+                </setting>
+                <setting id="mpesa_pull" string="Pull API" company_dependent="1"
+                         help="How to read the times the Pull API gives">
+                    <field name="mpesa_pull_time_zone"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

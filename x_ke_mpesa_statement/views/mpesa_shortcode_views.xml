@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_shortcode_form_statement" model="ir.ui.view">
+        <field name="name">mpesa.shortcode.form.statement</field>
+        <field name="model">mpesa.shortcode</field>
+        <field name="inherit_id" ref="x_ke_mpesa.view_mpesa_shortcode_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_regenerate_token']" position="before">
+                <button name="action_import_statement" type="object" string="Import M-PESA statement"
+                        invisible="not journal_id" groups="account.group_account_user"/>
+            </xpath>
+            <xpath expr="//page[@name='initiator']" position="before">
+                <page string="Statements" name="statements">
+                    <group>
+                        <group string="Pull API">
+                            <field name="pull_number" placeholder="This shortcode's own number"/>
+                            <field name="pull_nominated_number"/>
+                            <field name="pull_registered_at"/>
+                            <field name="pull_provider_id" groups="account.group_account_user"/>
+                            <field name="pull_last_at"/>
+                            <field name="pull_last_rows"/>
+                            <field name="pull_last_new"/>
+                        </group>
+                        <group string="Org Portal statement">
+                            <div colspan="2" class="text-muted">
+                                Export the statement of this till's account from the M-PESA
+                                Org Portal (CSV) and import it here: receipts Odoo already
+                                has are left alone, missing ones are added, charges and
+                                sweeps to the bank are booked, and M-PESA's balance at the
+                                end of each day is checked against Odoo's.
+                            </div>
+                        </group>
+                    </group>
+                    <div class="d-flex gap-2" groups="x_ke_mpesa.group_mpesa_manager">
+                        <button name="action_register_pull" type="object" class="btn-secondary"
+                                string="Register Pull API" invisible="pull_registered_at"
+                                confirm="Pull registration is one-time in production, with the nominated number. Register now?"/>
+                        <button name="action_setup_pull" type="object" class="btn-secondary"
+                                string="Pull every hour" invisible="not journal_id or pull_provider_id"/>
+                    </div>
+                    <div class="text-muted mt-2">
+                        The Pull API reaches 48 hours back. Every hour, Odoo asks it for the
+                        last two hours and books the receipts no confirmation brought; for
+                        anything older, import the Org Portal statement.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

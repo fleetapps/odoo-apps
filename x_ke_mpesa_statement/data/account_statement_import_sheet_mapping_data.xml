@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The M-PESA Org Portal statement export (CSV). The column names are those
+    of the standard export; check them against a real export of each account
+    before go-live, and edit the mapping if Safaricom's differ. noupdate:
+    an edit survives module updates.
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="mapping_mpesa_org_portal" model="account.statement.import.sheet.mapping">
+            <field name="name">M-PESA Org Portal statement</field>
+            <field name="mpesa_org_portal" eval="True"/>
+            <field name="file_encoding">utf-8</field>
+            <field name="delimiter">comma</field>
+            <field name="quotechar">"</field>
+            <field name="float_thousands_sep">comma</field>
+            <field name="float_decimal_sep">dot</field>
+            <field name="timestamp_format">%Y-%m-%d %H:%M:%S</field>
+            <field name="timestamp_column">Completion Time</field>
+            <field name="amount_type">distinct_credit_debit</field>
+            <field name="amount_debit_column">Paid In</field>
+            <field name="amount_credit_column">Withdrawn</field>
+            <field name="balance_column">Balance</field>
+            <field name="transaction_id_column">Receipt No.</field>
+            <field name="description_column">Details</field>
+            <field name="partner_name_column">Other Party Info</field>
+            <field name="mpesa_status_column">Transaction Status</field>
+            <field name="mpesa_reason_column">Reason Type</field>
+            <field name="mpesa_account_column">A/C No.</field>
+            <field name="mpesa_linked_column">Linked Transaction ID</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,17 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mpesa_app_officer,mpesa.app officer,model_mpesa_app,group_mpesa_officer,1,0,0,0
+access_mpesa_app_manager,mpesa.app manager,model_mpesa_app,group_mpesa_manager,1,1,1,1
+access_mpesa_shortcode_outlet,mpesa.shortcode outlet,model_mpesa_shortcode,group_mpesa_outlet,1,0,0,0
+access_mpesa_shortcode_manager,mpesa.shortcode manager,model_mpesa_shortcode,group_mpesa_manager,1,1,1,1
+access_mpesa_transaction_outlet,mpesa.transaction outlet,model_mpesa_transaction,group_mpesa_outlet,1,0,0,0
+access_mpesa_transaction_officer,mpesa.transaction officer,model_mpesa_transaction,group_mpesa_officer,1,1,0,0
+access_mpesa_transaction_manager,mpesa.transaction manager,model_mpesa_transaction,group_mpesa_manager,1,1,1,0
+access_mpesa_transaction_invoice,mpesa.transaction billing,model_mpesa_transaction,account.group_account_invoice,1,0,0,0
+access_mpesa_callback_officer,mpesa.callback officer,model_mpesa_callback,group_mpesa_officer,1,0,0,0
+access_mpesa_callback_manager,mpesa.callback manager,model_mpesa_callback,group_mpesa_manager,1,1,0,1
+access_mpesa_stk_request,mpesa.stk.request billing,model_mpesa_stk_request,account.group_account_invoice,1,1,1,1
+access_mpesa_allocate,mpesa.allocate officer,model_mpesa_allocate,group_mpesa_officer,1,1,1,1
+access_mpesa_report_till_day,mpesa.report.till.day officer,model_mpesa_report_till_day,group_mpesa_officer,1,0,0,0
+access_mpesa_report_unallocated,mpesa.report.unallocated officer,model_mpesa_report_unallocated,group_mpesa_officer,1,0,0,0
+access_mpesa_report_callback_health,mpesa.report.callback.health officer,model_mpesa_report_callback_health,group_mpesa_officer,1,0,0,0
+access_mpesa_report_stk,mpesa.report.stk officer,model_mpesa_report_stk,group_mpesa_officer,1,0,0,0
