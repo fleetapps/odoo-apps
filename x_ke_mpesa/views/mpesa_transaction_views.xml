@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_mpesa_transaction_list" model="ir.ui.view">
+        <field name="name">mpesa.transaction.list</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="exception != 'none'" decoration-muted="state == 'failed'"
+                  decoration-warning="state == 'manual'">
+                <field name="trans_time"/>
+                <field name="name"/>
+                <field name="shortcode_id"/>
+                <field name="channel"/>
+                <field name="customer_name" optional="show"/>
+                <field name="msisdn_masked" optional="show"/>
+                <field name="bill_ref" optional="show"/>
+                <field name="partner_id" optional="show"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-success="state == 'confirmed'"
+                       decoration-warning="state in ('manual', 'unknown', 'requested')"
+                       decoration-danger="state == 'failed'"/>
+                <field name="allocation_state" widget="badge"
+                       decoration-success="allocation_state == 'allocated'"
+                       decoration-info="allocation_state == 'claimed'"
+                       decoration-warning="allocation_state in ('unallocated', 'parked', 'pending')"/>
+                <field name="exception" optional="show" invisible="exception == 'none'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_transaction_form" model="ir.ui.view">
+        <field name="name">mpesa.transaction.form</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <button name="action_open_allocate" type="object" string="Allocate"
+                            class="oe_highlight" groups="x_ke_mpesa.group_mpesa_officer"
+                            invisible="allocation_state not in ('unallocated', 'parked')"/>
+                    <button name="action_unpark" type="object" string="Back to the queue"
+                            groups="x_ke_mpesa.group_mpesa_officer"
+                            invisible="allocation_state != 'parked'"/>
+                    <button name="action_stk_query" type="object" string="Ask M-PESA"
+                            groups="x_ke_mpesa.group_mpesa_officer"
+                            invisible="source != 'stk' or state != 'requested'"/>
+                    <button name="action_retry" type="object" string="Retry"
+                            groups="x_ke_mpesa.group_mpesa_officer"
+                            invisible="state != 'confirmed' or allocation_state not in ('pending', 'unallocated')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="requested,confirmed"/>
+                </header>
+                <sheet>
+                    <div name="button_box" class="oe_button_box">
+                        <button name="action_open_statement_line" type="object" class="oe_stat_button"
+                                icon="fa-university" invisible="not statement_line_id"
+                                groups="account.group_account_readonly">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Bank line</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="exception == 'none'">
+                        <field name="exception" readonly="1" nolabel="1"/>:
+                        <field name="exception_note" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                        <field name="cashier_message" readonly="1" class="text-muted"/>
+                    </div>
+                    <group>
+                        <group string="Payment">
+                            <field name="amount" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount_requested" invisible="not amount_requested or amount_requested == amount"/>
+                            <field name="trans_time" readonly="1"/>
+                            <field name="shortcode_id" readonly="1"/>
+                            <field name="business_shortcode" invisible="not business_shortcode"/>
+                            <field name="channel"/>
+                            <field name="source"/>
+                        </group>
+                        <group string="Customer">
+                            <field name="customer_name" readonly="1"/>
+                            <field name="msisdn_masked" readonly="1"/>
+                            <field name="phone" groups="x_ke_mpesa.group_mpesa_officer"
+                                   invisible="not phone"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="bill_ref" readonly="1" invisible="not bill_ref"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Allocation" name="allocation">
+                            <group>
+                                <group>
+                                    <field name="allocation_state"/>
+                                    <field name="statement_line_id" groups="account.group_account_readonly"/>
+                                    <field name="claim_ref" invisible="not claimed"/>
+                                    <field name="claimed" invisible="1"/>
+                                    <field name="park_reason" invisible="not park_reason"/>
+                                </group>
+                                <group>
+                                    <field name="move_id" invisible="not move_id"/>
+                                    <field name="res_model" invisible="1"/>
+                                    <field name="res_id" invisible="not res_model"/>
+                                    <field name="user_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="M-PESA" name="mpesa">
+                            <group>
+                                <group>
+                                    <field name="receipt"/>
+                                    <field name="checkout_request_id"/>
+                                    <field name="merchant_request_id"/>
+                                    <field name="result_code"/>
+                                    <field name="result_desc"/>
+                                </group>
+                                <group>
+                                    <field name="transaction_type"/>
+                                    <field name="invoice_number" invisible="not invoice_number"/>
+                                    <field name="third_party_trans_id" invisible="not third_party_trans_id"/>
+                                    <field name="org_balance"/>
+                                    <field name="requested_at"/>
+                                    <field name="confirmed_at"/>
+                                    <field name="query_count"/>
+                                    <field name="manual_user_id" invisible="not manual_user_id"/>
+                                    <field name="manual_entered_at" invisible="not manual_entered_at"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Callbacks" name="callbacks" groups="x_ke_mpesa.group_mpesa_officer">
+                            <field name="callback_ids">
+                                <list>
+                                    <field name="received_at"/>
+                                    <field name="kind"/>
+                                    <field name="remote_ip"/>
+                                    <field name="ip_trusted"/>
+                                    <field name="state"/>
+                                    <field name="duplicate"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mpesa_transaction_search" model="ir.ui.view">
+        <field name="name">mpesa.transaction.search</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Receipt"/>
+                <field name="customer_name"/>
+                <field name="bill_ref"/>
+                <field name="partner_id"/>
+                <field name="shortcode_id"/>
+                <field name="amount"/>
+                <filter name="unallocated" string="Unallocated"
+                        domain="[('allocation_state', 'in', ('unallocated', 'pending')), ('state', '=', 'confirmed')]"/>
+                <filter name="exceptions" string="Exceptions"
+                        domain="['|', ('exception', '!=', 'none'), ('state', '=', 'manual')]"/>
+                <filter name="parked" string="Parked" domain="[('allocation_state', '=', 'parked')]"/>
+                <filter name="claimed" string="Claimed" domain="[('allocation_state', '=', 'claimed')]"/>
+                <separator/>
+                <filter name="confirmed" string="Confirmed" domain="[('state', '=', 'confirmed')]"/>
+                <filter name="stk" string="STK requests" domain="[('source', '=', 'stk')]"/>
+                <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
+                <separator/>
+                <filter name="today" string="Today" domain="[('trans_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="trans_date" string="Date" date="trans_date"/>
+                <group>
+                    <filter name="group_shortcode" string="Till" context="{'group_by': 'shortcode_id'}"/>
+                    <filter name="group_outlet" string="Outlet" context="{'group_by': 'analytic_account_id'}"/>
+                    <filter name="group_channel" string="Channel" context="{'group_by': 'channel'}"/>
+                    <filter name="group_date" string="Day" context="{'group_by': 'trans_date:day'}"/>
+                    <filter name="group_partner" string="Customer" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_exception" string="Exception" context="{'group_by': 'exception'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_mpesa_transaction_pivot" model="ir.ui.view">
+        <field name="name">mpesa.transaction.pivot</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="arch" type="xml">
+            <pivot string="M-Pesa collections" sample="1">
+                <field name="trans_date" interval="day" type="row"/>
+                <field name="channel" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_transaction_graph" model="ir.ui.view">
+        <field name="name">mpesa.transaction.graph</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="arch" type="xml">
+            <graph string="M-Pesa collections" type="bar" stacked="1" sample="1">
+                <field name="trans_date" interval="day"/>
+                <field name="channel"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- The queue: what still needs a person. -->
+    <record id="action_mpesa_transaction_queue" model="ir.actions.act_window">
+        <field name="name">M-Pesa Receipts</field>
+        <field name="res_model">mpesa.transaction</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_mpesa_transaction_search"/>
+        <field name="context">{'search_default_unallocated': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Nothing waiting</p>
+            <p>Receipts that matched an invoice, an STK request or a POS claim never
+                appear here. Allocate what is left, or park it with a reason.</p>
+        </field>
+    </record>
+
+    <record id="action_mpesa_transaction" model="ir.actions.act_window">
+        <field name="name">M-Pesa Transactions</field>
+        <field name="res_model">mpesa.transaction</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_mpesa_transaction_search"/>
+    </record>
+
+    <!-- Report 1: daily collections by till, outlet and channel. -->
+    <record id="action_mpesa_report_collections" model="ir.actions.act_window">
+        <field name="name">Daily Collections</field>
+        <field name="res_model">mpesa.transaction</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="domain">[('state', '=', 'confirmed')]</field>
+        <field name="context">{'pivot_row_groupby': ['trans_date:day', 'shortcode_id'], 'pivot_column_groupby': ['channel'], 'pivot_measures': ['amount', '__count']}</field>
+    </record>
+
+    <!-- Report 4: exceptions. -->
+    <record id="action_mpesa_report_exceptions" model="ir.actions.act_window">
+        <field name="name">Exceptions</field>
+        <field name="res_model">mpesa.transaction</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="domain">['|', ('exception', '!=', 'none'), ('state', '=', 'manual')]</field>
+        <field name="context">{'search_default_group_exception': 1}</field>
+    </record>
+
+    <!-- Report 9: customer payments by partner. -->
+    <record id="action_mpesa_report_partner" model="ir.actions.act_window">
+        <field name="name">Customer Payments</field>
+        <field name="res_model">mpesa.transaction</field>
+        <field name="view_mode">pivot,list,graph,form</field>
+        <field name="domain">[('state', '=', 'confirmed'), ('partner_id', '!=', False)]</field>
+        <field name="context">{'pivot_row_groupby': ['partner_id'], 'pivot_column_groupby': ['trans_date:month'], 'pivot_measures': ['amount']}</field>
+    </record>
+
+</odoo>

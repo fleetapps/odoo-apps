@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One channel for everything M-Pesa does in the background, so a busy
+    accounting job elsewhere never sits in front of a confirmation. Give it a
+    capacity in the server's queue_job channels setting, e.g.
+    channels = root:4,root.mpesa:2
+-->
+<odoo>
+    <data noupdate="1">
+        <record id="channel_mpesa" model="queue.job.channel">
+            <field name="name">mpesa</field>
+            <field name="parent_id" ref="queue_job.channel_root"/>
+        </record>
+
+        <record id="job_function_callback_process" model="queue.job.function">
+            <field name="model_id" ref="model_mpesa_callback"/>
+            <field name="method">_process</field>
+            <field name="channel_id" ref="channel_mpesa"/>
+            <!-- A conflict with a concurrent callback for the same receipt is
+                 retried quickly; anything else is kept on the callback. -->
+            <field name="retry_pattern" eval="{1: 5, 5: 30, 10: 300}"/>
+        </record>
+
+        <record id="job_function_stk_query" model="queue.job.function">
+            <field name="model_id" ref="model_mpesa_transaction"/>
+            <field name="method">_stk_query</field>
+            <field name="channel_id" ref="channel_mpesa"/>
+        </record>
+
+        <record id="job_function_transaction_status" model="queue.job.function">
+            <field name="model_id" ref="model_mpesa_transaction"/>
+            <field name="method">_request_transaction_status</field>
+            <field name="channel_id" ref="channel_mpesa"/>
+        </record>
+    </data>
+</odoo>

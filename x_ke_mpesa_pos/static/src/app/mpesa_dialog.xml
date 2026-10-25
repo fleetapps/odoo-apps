@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+
+    <t t-name="x_ke_mpesa_pos.MpesaDialog">
+        <Dialog title="title" size="'md'" footer="false">
+            <div class="o_mpesa_dialog">
+                <div class="d-flex justify-content-between align-items-baseline mb-3">
+                    <span class="fs-2 fw-bold" t-esc="amountText"/>
+                    <span t-if="props.offline" class="badge text-bg-warning">Offline: type the receipt</span>
+                </div>
+                <div t-if="tabs.length > 1" class="btn-group w-100 mb-3" role="group">
+                    <t t-foreach="tabs" t-as="tab" t-key="tab.id">
+                        <button type="button" class="btn btn-lg"
+                                t-att-class="state.tab === tab.id ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setTab(tab.id)">
+                            <t t-esc="tab.label"/>
+                        </button>
+                    </t>
+                </div>
+                <div t-if="state.error" class="alert alert-danger py-2" t-esc="state.error"/>
+
+                <t t-if="state.tab === 'stk'">
+                    <label class="form-label">Customer's M-PESA number</label>
+                    <input type="tel" class="form-control form-control-lg" t-model="state.phone"
+                           placeholder="07XX XXX XXX" t-on-keydown="(ev) => ev.key === 'Enter' and this.sendPrompt()"/>
+                    <button class="btn btn-primary btn-lg w-100 mt-3" t-on-click="sendPrompt">
+                        Send prompt for <t t-esc="amountText"/>
+                    </button>
+                    <p class="text-muted small mt-2 mb-0">The customer enters their PIN on the
+                        phone; the payment line completes by itself.</p>
+                </t>
+
+                <t t-if="state.tab === 'claim'">
+                    <div t-if="state.loading" class="text-center py-3">
+                        <i class="fa fa-circle-o-notch fa-spin"/>
+                    </div>
+                    <t t-else="">
+                        <div t-if="!state.receipts.length" class="text-muted py-2">
+                            No unclaimed payment of <t t-esc="amountText"/> to this till yet.
+                            Ask the customer for their SMS.
+                        </div>
+                        <div t-else="" class="list-group">
+                            <t t-foreach="state.receipts" t-as="tx" t-key="tx.id">
+                                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
+                                        t-on-click="() => this.pick(tx)">
+                                    <span>
+                                        <span class="fw-bold" t-esc="formatTime(tx.time)"/>
+                                        <span class="ms-2" t-esc="tx.name"/>
+                                        <span class="ms-2 text-muted" t-esc="tx.msisdn"/>
+                                        <span class="ms-2 text-muted small">…<t t-esc="tx.receipt_tail"/></span>
+                                    </span>
+                                    <span class="fs-4" t-esc="formatAmount(tx.amount)"/>
+                                </button>
+                            </t>
+                        </div>
+                        <button class="btn btn-secondary w-100 mt-3" t-on-click="loadReceipts">
+                            <i class="fa fa-refresh me-1"/> Refresh
+                        </button>
+                    </t>
+                </t>
+
+                <t t-if="state.tab === 'manual'">
+                    <label class="form-label">Receipt number from the customer's M-PESA SMS</label>
+                    <input type="text" class="form-control form-control-lg text-uppercase" maxlength="12"
+                           t-model="state.receipt" placeholder="QAB1CD2EF3"
+                           t-on-keydown="(ev) => ev.key === 'Enter' and this.useReceipt()"/>
+                    <button class="btn btn-primary btn-lg w-100 mt-3" t-on-click="useReceipt">
+                        Use this receipt
+                    </button>
+                    <p class="text-muted small mt-2 mb-0">A typed receipt stays flagged until M-PESA
+                        confirms the same receipt and amount on this till. If it never does, your
+                        supervisor is alerted.</p>
+                </t>
+            </div>
+        </Dialog>
+    </t>
+
+</templates>

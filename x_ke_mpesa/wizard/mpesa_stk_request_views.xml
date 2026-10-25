@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_stk_request_form" model="ir.ui.view">
+        <field name="name">mpesa.stk.request.form</field>
+        <field name="model">mpesa.stk.request</field>
+        <field name="arch" type="xml">
+            <form string="Request M-Pesa payment">
+                <field name="transaction_id" invisible="1"/>
+                <group invisible="transaction_id">
+                    <group>
+                        <field name="move_id"/>
+                        <field name="partner_id"/>
+                        <field name="amount_due"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="company_id" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="shortcode_id" options="{'no_create': True}"/>
+                        <field name="phone" placeholder="07XX XXX XXX"/>
+                        <field name="amount"/>
+                    </group>
+                </group>
+                <div invisible="not transaction_id">
+                    <h2><field name="state" readonly="1"/></h2>
+                    <p><field name="message" readonly="1"/></p>
+                    <p invisible="not receipt">Receipt: <field name="receipt" readonly="1"/></p>
+                </div>
+                <footer>
+                    <button name="action_send" type="object" string="Send prompt"
+                            class="btn-primary" invisible="transaction_id"/>
+                    <button name="action_refresh" type="object" string="Refresh"
+                            class="btn-primary" invisible="not transaction_id or state != 'requested'"/>
+                    <button name="action_query" type="object" string="Ask M-PESA"
+                            invisible="not transaction_id or state != 'requested'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

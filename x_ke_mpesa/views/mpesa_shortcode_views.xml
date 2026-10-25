@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_mpesa_shortcode_list" model="ir.ui.view">
+        <field name="name">mpesa.shortcode.list</field>
+        <field name="model">mpesa.shortcode</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="kind"/>
+                <field name="number"/>
+                <field name="parent_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="journal_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'live'"
+                       decoration-info="state == 'sandbox'"/>
+                <field name="c2b_registered_at" optional="hide"/>
+                <field name="last_callback_at" optional="show"/>
+                <field name="last_org_balance" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_shortcode_form" model="ir.ui.view">
+        <field name="name">mpesa.shortcode.form</field>
+        <field name="model">mpesa.shortcode</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_setup_accounting" type="object" string="Set up accounting"
+                            class="oe_highlight" invisible="journal_id"
+                            groups="x_ke_mpesa.group_mpesa_manager"/>
+                    <button name="action_register_c2b" type="object" string="Register C2B URLs"
+                            invisible="c2b_registered_at" groups="x_ke_mpesa.group_mpesa_manager"
+                            confirm="Production registration is one-time: changing the URLs later needs Safaricom. Register now?"/>
+                    <button name="action_regenerate_token" type="object" string="New callback token"
+                            groups="x_ke_mpesa.group_mpesa_manager"
+                            confirm="The URLs Safaricom holds stop working until you register again. Continue?"/>
+                    <field name="state" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div name="button_box" class="oe_button_box">
+                        <button name="action_open_transactions" type="object" class="oe_stat_button"
+                                icon="fa-exchange">
+                            <field name="transaction_count" widget="statinfo" string="Transactions"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not url_problems">
+                        <strong>Safaricom would refuse these callback URLs:</strong>
+                        <field name="url_problems" readonly="1" nolabel="1"/>
+                    </div>
+                    <group>
+                        <group string="Shortcode">
+                            <field name="kind"/>
+                            <field name="number"/>
+                            <field name="parent_id" invisible="kind != 'till'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="app_id"/>
+                            <field name="has_passkey" invisible="1"/>
+                            <field name="passkey" password="True"
+                                   groups="x_ke_mpesa.group_mpesa_manager"
+                                   placeholder="Leave empty on a till that uses its store's"/>
+                        </group>
+                        <group string="Accounting">
+                            <field name="journal_id"/>
+                            <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
+                            <field name="last_org_balance"/>
+                            <field name="last_org_balance_at"/>
+                            <field name="last_callback_at"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="STK Push" name="stk">
+                            <group>
+                                <group>
+                                    <field name="stk_enabled"/>
+                                    <field name="stk_business_shortcode" invisible="not stk_enabled"/>
+                                    <field name="stk_party_b" invisible="not stk_enabled"/>
+                                    <field name="stk_transaction_type" invisible="not stk_enabled"/>
+                                </group>
+                                <group>
+                                    <field name="stk_query_delay" invisible="not stk_enabled"/>
+                                    <field name="stk_confirm_threshold" invisible="not stk_enabled"/>
+                                </group>
+                            </group>
+                            <div class="text-muted" invisible="kind != 'till'">
+                                A till's prompt is signed with the store number used at
+                                go-live (BusinessShortCode) and credits the till (PartyB). A
+                                KES 1 test from a real phone settles it; error 2028 means
+                                these two need swapping.
+                            </div>
+                        </page>
+                        <page string="C2B confirmation" name="c2b">
+                            <group>
+                                <group>
+                                    <field name="c2b_shortcode"/>
+                                    <field name="c2b_validation"/>
+                                    <field name="c2b_response_type"/>
+                                    <field name="c2b_registered_at"/>
+                                </group>
+                                <group groups="x_ke_mpesa.group_mpesa_officer">
+                                    <field name="c2b_confirmation_url" widget="CopyClipboardChar"/>
+                                    <field name="c2b_validation_url" widget="CopyClipboardChar"/>
+                                    <field name="stk_callback_url" widget="CopyClipboardChar"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Initiator" name="initiator" groups="x_ke_mpesa.group_mpesa_manager">
+                            <group>
+                                <group>
+                                    <field name="initiator_name"/>
+                                    <field name="initiator_password" password="True"/>
+                                </group>
+                                <group>
+                                    <field name="security_credential" placeholder="Filled in from the password, or paste one from the Daraja portal"/>
+                                </group>
+                            </group>
+                            <div class="text-muted">
+                                The API operator created on the M-PESA Org Portal, used for
+                                Transaction Status, Pull registration, refunds and reversals.
+                            </div>
+                        </page>
+                        <page string="Outlet" name="outlet">
+                            <group>
+                                <group>
+                                    <field name="supervisor_id"/>
+                                    <field name="trading_hour_from" widget="float_time"/>
+                                    <field name="trading_hour_to" widget="float_time"/>
+                                </group>
+                                <group>
+                                    <field name="user_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Tills" name="tills" invisible="kind != 'store'">
+                            <field name="child_ids" context="{'default_parent_id': id, 'default_kind': 'till', 'default_company_id': company_id, 'default_app_id': app_id}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="number"/>
+                                    <field name="journal_id"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mpesa_shortcode_search" model="ir.ui.view">
+        <field name="name">mpesa.shortcode.search</field>
+        <field name="model">mpesa.shortcode</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="number"/>
+                <filter name="live" string="Live" domain="[('state', '=', 'live')]"/>
+                <filter name="no_journal" string="Without journal" domain="[('journal_id', '=', False)]"/>
+                <separator/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Kind" context="{'group_by': 'kind'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mpesa_shortcode" model="ir.actions.act_window">
+        <field name="name">Shortcodes</field>
+        <field name="res_model">mpesa.shortcode</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a till, store or paybill</p>
+            <p>Each one gets its own bank journal; every receipt to it becomes one
+                statement line there.</p>
+        </field>
+    </record>
+
+</odoo>

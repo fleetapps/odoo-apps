@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_mpesa" model="ir.ui.view">
+        <field name="name">res.partner.form.mpesa</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <group name="sale" position="inside">
+                <field name="mpesa_account_ref"/>
+            </group>
+            <div name="button_box" position="inside">
+                <button name="action_open_mpesa_payments" type="object" class="oe_stat_button"
+                        icon="fa-mobile" invisible="not mpesa_transaction_count"
+                        groups="x_ke_mpesa.group_mpesa_officer">
+                    <field name="mpesa_transaction_count" widget="statinfo" string="M-Pesa"/>
+                </button>
+            </div>
+        </field>
+    </record>
+</odoo>

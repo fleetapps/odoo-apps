@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Configuration -->
+    <menuitem id="menu_mpesa_config" name="M-Pesa" parent="account.menu_finance_configuration"
+              sequence="25" groups="x_ke_mpesa.group_mpesa_manager"/>
+    <menuitem id="menu_mpesa_app" action="action_mpesa_app" parent="menu_mpesa_config" sequence="10"/>
+    <menuitem id="menu_mpesa_shortcode" action="action_mpesa_shortcode" parent="menu_mpesa_config" sequence="20"/>
+    <menuitem id="menu_mpesa_callback" action="action_mpesa_callback" parent="menu_mpesa_config" sequence="30"/>
+
+    <!-- The queue, next to the bank reconciliation work -->
+    <menuitem id="menu_mpesa_receipts" name="M-Pesa Receipts" action="action_mpesa_transaction_queue"
+              parent="account.menu_finance_entries" sequence="15" groups="x_ke_mpesa.group_mpesa_officer"/>
+
+    <!-- Reports -->
+    <menuitem id="menu_mpesa_reports" name="M-Pesa" parent="account.menu_finance_reports"
+              sequence="30" groups="x_ke_mpesa.group_mpesa_officer"/>
+    <menuitem id="menu_mpesa_report_collections" action="action_mpesa_report_collections"
+              parent="menu_mpesa_reports" sequence="10"/>
+    <menuitem id="menu_mpesa_report_till_day" action="action_mpesa_report_till_day"
+              parent="menu_mpesa_reports" sequence="20"/>
+    <menuitem id="menu_mpesa_report_unallocated" action="action_mpesa_report_unallocated"
+              parent="menu_mpesa_reports" sequence="30"/>
+    <menuitem id="menu_mpesa_report_exceptions" action="action_mpesa_report_exceptions"
+              parent="menu_mpesa_reports" sequence="40"/>
+    <menuitem id="menu_mpesa_report_stk" action="action_mpesa_report_stk"
+              parent="menu_mpesa_reports" sequence="50"/>
+    <menuitem id="menu_mpesa_report_callback_health" action="action_mpesa_report_callback_health"
+              parent="menu_mpesa_reports" sequence="60"/>
+    <menuitem id="menu_mpesa_shortcode_health" action="action_mpesa_shortcode_health"
+              parent="menu_mpesa_reports" sequence="61"/>
+    <menuitem id="menu_mpesa_report_partner" action="action_mpesa_report_partner"
+              parent="menu_mpesa_reports" sequence="90"/>
+    <menuitem id="menu_mpesa_transactions_all" action="action_mpesa_transaction"
+              parent="menu_mpesa_reports" sequence="100"/>
+</odoo>

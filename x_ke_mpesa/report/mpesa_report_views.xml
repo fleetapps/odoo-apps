@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Report 2: till reconciliation per day. -->
+    <record id="view_mpesa_report_till_day_list" model="ir.ui.view">
+        <field name="name">mpesa.report.till.day.list</field>
+        <field name="model">mpesa.report.till.day</field>
+        <field name="arch" type="xml">
+            <list decoration-success="status == 'green'" decoration-danger="status == 'red'">
+                <field name="date"/>
+                <field name="shortcode_id"/>
+                <field name="analytic_account_id" optional="show"/>
+                <field name="receipt_count" sum="Receipts"/>
+                <field name="confirmed_amount" sum="Total"/>
+                <field name="allocated_amount" sum="Total"/>
+                <field name="claimed_amount" sum="Total" optional="show"/>
+                <field name="unallocated_amount" sum="Total"/>
+                <field name="parked_amount" sum="Total" optional="show"/>
+                <field name="manual_unconfirmed_amount" sum="Total"/>
+                <field name="exception_count" sum="Exceptions"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="status" widget="badge" decoration-success="status == 'green'"
+                       decoration-danger="status == 'red'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_till_day_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.till.day.pivot</field>
+        <field name="model">mpesa.report.till.day</field>
+        <field name="arch" type="xml">
+            <pivot string="Till reconciliation">
+                <field name="date" interval="day" type="row"/>
+                <field name="shortcode_id" type="col"/>
+                <field name="confirmed_amount" type="measure"/>
+                <field name="unallocated_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_till_day_search" model="ir.ui.view">
+        <field name="name">mpesa.report.till.day.search</field>
+        <field name="model">mpesa.report.till.day</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="shortcode_id"/>
+                <filter name="red" string="Needs attention" domain="[('status', '=', 'red')]"/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_shortcode" string="Till" context="{'group_by': 'shortcode_id'}"/>
+                    <filter name="group_outlet" string="Outlet" context="{'group_by': 'analytic_account_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_till_day" model="ir.actions.act_window">
+        <field name="name">Till Reconciliation</field>
+        <field name="res_model">mpesa.report.till.day</field>
+        <field name="view_mode">list,pivot</field>
+    </record>
+
+    <!-- Report 3: unallocated receipts with ageing. -->
+    <record id="view_mpesa_report_unallocated_list" model="ir.ui.view">
+        <field name="name">mpesa.report.unallocated.list</field>
+        <field name="model">mpesa.report.unallocated</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="trans_date"/>
+                <field name="transaction_id"/>
+                <field name="shortcode_id"/>
+                <field name="channel"/>
+                <field name="customer_name"/>
+                <field name="bill_ref" optional="show"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="allocation_state"/>
+                <field name="age_days"/>
+                <field name="age_bucket"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_unallocated_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.unallocated.pivot</field>
+        <field name="model">mpesa.report.unallocated</field>
+        <field name="arch" type="xml">
+            <pivot string="Unallocated receipts">
+                <field name="shortcode_id" type="row"/>
+                <field name="age_bucket" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_unallocated" model="ir.actions.act_window">
+        <field name="name">Unallocated Ageing</field>
+        <field name="res_model">mpesa.report.unallocated</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
+    <!-- Report 6: callback health. -->
+    <record id="view_mpesa_report_callback_health_list" model="ir.ui.view">
+        <field name="name">mpesa.report.callback.health.list</field>
+        <field name="model">mpesa.report.callback.health</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="gap" decoration-warning="failed_count &gt; 0">
+                <field name="hour"/>
+                <field name="shortcode_id"/>
+                <field name="callback_count" sum="Callbacks"/>
+                <field name="failed_count" sum="Failed"/>
+                <field name="in_trading_hours" optional="hide"/>
+                <field name="gap"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_callback_health_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.callback.health.pivot</field>
+        <field name="model">mpesa.report.callback.health</field>
+        <field name="arch" type="xml">
+            <pivot string="Callback health">
+                <field name="date" interval="day" type="row"/>
+                <field name="shortcode_id" type="col"/>
+                <field name="callback_count" type="measure"/>
+                <field name="failed_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_callback_health_search" model="ir.ui.view">
+        <field name="name">mpesa.report.callback.health.search</field>
+        <field name="model">mpesa.report.callback.health</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="shortcode_id"/>
+                <filter name="gaps" string="Silent trading hours" domain="[('gap', '=', True)]"/>
+                <filter name="failures" string="With failures" domain="[('failed_count', '&gt;', 0)]"/>
+                <filter name="date" string="Date" date="date"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_callback_health" model="ir.actions.act_window">
+        <field name="name">Callback Health</field>
+        <field name="res_model">mpesa.report.callback.health</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_gaps': 1}</field>
+    </record>
+
+    <!-- Report 5: STK performance by outlet and cashier. -->
+    <record id="view_mpesa_report_stk_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.stk.pivot</field>
+        <field name="model">mpesa.report.stk</field>
+        <field name="arch" type="xml">
+            <pivot string="STK performance">
+                <field name="analytic_account_id" type="row"/>
+                <field name="user_id" type="row"/>
+                <field name="request_count" type="measure"/>
+                <field name="success_count" type="measure"/>
+                <field name="cancelled_count" type="measure"/>
+                <field name="timeout_count" type="measure"/>
+                <field name="insufficient_count" type="measure"/>
+                <field name="wrong_pin_count" type="measure"/>
+                <field name="seconds_to_confirm" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_stk_list" model="ir.ui.view">
+        <field name="name">mpesa.report.stk.list</field>
+        <field name="model">mpesa.report.stk</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="date"/>
+                <field name="shortcode_id"/>
+                <field name="analytic_account_id" optional="show"/>
+                <field name="user_id"/>
+                <field name="request_count" sum="Requests"/>
+                <field name="success_count" sum="Paid"/>
+                <field name="cancelled_count" sum="Cancelled"/>
+                <field name="timeout_count" sum="No answer"/>
+                <field name="insufficient_count" sum="Insufficient"/>
+                <field name="wrong_pin_count" sum="Wrong PIN"/>
+                <field name="other_failure_count" sum="Other"/>
+                <field name="seconds_to_confirm"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_stk" model="ir.actions.act_window">
+        <field name="name">STK Performance</field>
+        <field name="res_model">mpesa.report.stk</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
+    <record id="action_mpesa_shortcode_health" model="ir.actions.act_window">
+        <field name="name">Last Callback per Till</field>
+        <field name="res_model">mpesa.shortcode</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'live')]</field>
+    </record>
+
+</odoo>
