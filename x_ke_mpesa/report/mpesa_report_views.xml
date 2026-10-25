@@ -148,6 +148,52 @@
         <field name="context">{'search_default_gaps': 1}</field>
     </record>
 
+    <!-- Report 5: STK performance by outlet and cashier. -->
+    <record id="view_mpesa_report_stk_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.stk.pivot</field>
+        <field name="model">mpesa.report.stk</field>
+        <field name="arch" type="xml">
+            <pivot string="STK performance">
+                <field name="analytic_account_id" type="row"/>
+                <field name="user_id" type="row"/>
+                <field name="request_count" type="measure"/>
+                <field name="success_count" type="measure"/>
+                <field name="cancelled_count" type="measure"/>
+                <field name="timeout_count" type="measure"/>
+                <field name="insufficient_count" type="measure"/>
+                <field name="wrong_pin_count" type="measure"/>
+                <field name="seconds_to_confirm" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_stk_list" model="ir.ui.view">
+        <field name="name">mpesa.report.stk.list</field>
+        <field name="model">mpesa.report.stk</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="date"/>
+                <field name="shortcode_id"/>
+                <field name="analytic_account_id" optional="show"/>
+                <field name="user_id"/>
+                <field name="request_count" sum="Requests"/>
+                <field name="success_count" sum="Paid"/>
+                <field name="cancelled_count" sum="Cancelled"/>
+                <field name="timeout_count" sum="No answer"/>
+                <field name="insufficient_count" sum="Insufficient"/>
+                <field name="wrong_pin_count" sum="Wrong PIN"/>
+                <field name="other_failure_count" sum="Other"/>
+                <field name="seconds_to_confirm"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_stk" model="ir.actions.act_window">
+        <field name="name">STK Performance</field>
+        <field name="res_model">mpesa.report.stk</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
     <record id="action_mpesa_shortcode_health" model="ir.actions.act_window">
         <field name="name">Last Callback per Till</field>
         <field name="res_model">mpesa.shortcode</field>

@@ -14,3 +14,4 @@ access_mpesa_allocate,mpesa.allocate officer,model_mpesa_allocate,group_mpesa_of
 access_mpesa_report_till_day,mpesa.report.till.day officer,model_mpesa_report_till_day,group_mpesa_officer,1,0,0,0
 access_mpesa_report_unallocated,mpesa.report.unallocated officer,model_mpesa_report_unallocated,group_mpesa_officer,1,0,0,0
 access_mpesa_report_callback_health,mpesa.report.callback.health officer,model_mpesa_report_callback_health,group_mpesa_officer,1,0,0,0
+access_mpesa_report_stk,mpesa.report.stk officer,model_mpesa_report_stk,group_mpesa_officer,1,0,0,0

@@ -203,3 +203,57 @@ class MpesaReportCallbackHealth(models.Model):
                          hours.trading_hour_from, hours.trading_hour_to
             )
         """)
+
+
+class MpesaReportStk(models.Model):
+    """Report 5: STK Push by outlet and cashier, outcome by outcome."""
+
+    _name = "mpesa.report.stk"
+    _description = "M-Pesa STK Performance"
+    _auto = False
+    _order = "date desc"
+
+    date = fields.Date(readonly=True)
+    company_id = fields.Many2one("res.company", readonly=True)
+    shortcode_id = fields.Many2one("mpesa.shortcode", "Till", readonly=True)
+    analytic_account_id = fields.Many2one("account.analytic.account", "Outlet", readonly=True)
+    user_id = fields.Many2one("res.users", "Cashier", readonly=True)
+    request_count = fields.Integer("Requests", readonly=True)
+    success_count = fields.Integer("Paid", readonly=True)
+    cancelled_count = fields.Integer("Cancelled", readonly=True)
+    timeout_count = fields.Integer("No answer", readonly=True,
+                                   help="Phone unreachable, prompt expired, or outcome unknown.")
+    insufficient_count = fields.Integer("Insufficient funds", readonly=True)
+    wrong_pin_count = fields.Integer("Wrong PIN", readonly=True)
+    other_failure_count = fields.Integer("Other failures", readonly=True)
+    seconds_to_confirm = fields.Float("Seconds to confirm", readonly=True, aggregator="avg")
+
+    def init(self):
+        tools.drop_view_if_exists(self.env.cr, self._table)
+        self.env.cr.execute(f"""
+            CREATE VIEW {self._table} AS (
+                SELECT
+                    min(t.id) AS id,
+                    (COALESCE(t.requested_at, t.create_date) + interval '3 hours')::date AS date,
+                    t.company_id,
+                    t.shortcode_id,
+                    t.analytic_account_id,
+                    t.user_id,
+                    count(*) AS request_count,
+                    count(*) FILTER (WHERE t.state = 'confirmed') AS success_count,
+                    count(*) FILTER (WHERE t.result_code = '1032') AS cancelled_count,
+                    count(*) FILTER (WHERE t.result_code IN ('1037', '1019')
+                                        OR t.state = 'unknown') AS timeout_count,
+                    count(*) FILTER (WHERE t.result_code = '1') AS insufficient_count,
+                    count(*) FILTER (WHERE t.result_code = '2001') AS wrong_pin_count,
+                    count(*) FILTER (WHERE t.state = 'failed' AND COALESCE(t.result_code, '')
+                                     NOT IN ('1032', '1037', '1019', '1', '2001'))
+                        AS other_failure_count,
+                    COALESCE(avg(t.seconds_to_confirm) FILTER (
+                        WHERE t.state = 'confirmed' AND t.seconds_to_confirm > 0), 0)
+                        AS seconds_to_confirm
+                FROM mpesa_transaction t
+                WHERE t.source = 'stk' AND t.state != 'draft'
+                GROUP BY 2, t.company_id, t.shortcode_id, t.analytic_account_id, t.user_id
+            )
+        """)
