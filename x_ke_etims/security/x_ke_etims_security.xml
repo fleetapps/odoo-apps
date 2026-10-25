@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    One new role, eTIMS Manager: devices, their credentials and the exchange
+    logs. Everyone else who works with invoices sees an invoice's eTIMS status
+    and receipt, and can press "Send to eTIMS", but never a key or a payload.
+
+    It sits in the Kenya Tax category x_ke_base set up for exactly this, as a
+    privilege of its own: it is not a level above "Kenya Tax: Manager" (an
+    eTIMS manager need not close VAT periods) but a separate grant.
+-->
+<odoo>
+    <data>
+
+        <record id="privilege_ke_etims" model="res.groups.privilege">
+            <field name="name">Kenya eTIMS</field>
+            <field name="category_id" ref="x_ke_base.module_category_ke_tax"/>
+            <field name="sequence">66</field>
+        </record>
+
+        <record id="group_ke_etims_manager" model="res.groups">
+            <field name="name">eTIMS Manager</field>
+            <field name="privilege_id" ref="privilege_ke_etims"/>
+            <field name="implied_ids" eval="[(4, ref('account.group_account_manager'))]"/>
+            <field name="comment">Set up eTIMS devices and their credentials, read the
+                request and response logs, release a KRA invoice number KRA never
+                recorded, and record a receipt by hand.</field>
+        </record>
+
+        <!-- As in x_ke_base: Odoo never puts the administrator in a group a
+             module invents, so without this nobody could set up a device on a
+             fresh install. -->
+        <record id="base.group_system" model="res.groups">
+            <field name="implied_ids" eval="[(4, ref('group_ke_etims_manager'))]"/>
+        </record>
+
+        <!-- Global rules, without groups: no role sees another company's
+             devices, queue or logs. -->
+        <record id="rule_ke_etims_device_company" model="ir.rule">
+            <field name="name">eTIMS device: multi-company</field>
+            <field name="model_id" ref="model_ke_etims_device"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_ke_etims_document_company" model="ir.rule">
+            <field name="name">eTIMS document: multi-company</field>
+            <field name="model_id" ref="model_ke_etims_document"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_ke_etims_log_company" model="ir.rule">
+            <field name="name">eTIMS log: multi-company</field>
+            <field name="model_id" ref="model_ke_etims_log"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_ke_etims_registration_company" model="ir.rule">
+            <field name="name">eTIMS item registration: multi-company</field>
+            <field name="model_id" ref="model_ke_etims_item_registration"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+        <record id="rule_ke_etims_branch_company" model="ir.rule">
+            <field name="name">eTIMS branch: multi-company</field>
+            <field name="model_id" ref="model_ke_etims_branch"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        </record>
+
+    </data>
+</odoo>

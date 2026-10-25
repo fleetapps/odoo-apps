@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_template_form_ke_etims" model="ir.ui.view">
+        <field name="name">product.template.form.ke.etims</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="account.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='invoicing']" position="inside">
+                <field name="ke_etims_show" invisible="1"/>
+                <field name="ke_etims_registered" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not ke_etims_show or ke_etims_registered or not id">
+                    Not registered with eTIMS. KRA refuses a sale of an item it
+                    does not know: fill in the KRA classification below and
+                    register it, or it is registered the first time it is invoiced.
+                </div>
+                <group string="Kenya eTIMS" name="ke_etims" invisible="not ke_etims_show">
+                    <group>
+                        <field name="ke_etims_item_class_id" options="{'no_create': True}"/>
+                        <field name="ke_etims_product_type"/>
+                        <field name="ke_etims_packaging_unit_id" options="{'no_create': True}"/>
+                        <field name="ke_etims_quantity_unit_id" options="{'no_create': True}"/>
+                    </group>
+                    <group>
+                        <field name="ke_etims_origin_country_id" options="{'no_create': True}"/>
+                        <field name="ke_etims_item_code"/>
+                        <button name="action_ke_etims_register" type="object"
+                                string="Register with eTIMS" class="btn-secondary"
+                                invisible="not id" colspan="2"/>
+                    </group>
+                    <field name="ke_etims_registration_ids" nolabel="1" colspan="2"
+                           invisible="not ke_etims_registration_ids"
+                           context="{'list_view_ref': 'x_ke_etims.view_ke_etims_item_registration_list'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
