@@ -15,7 +15,8 @@ Design, decisions and open questions: [`docs/mpesa/PLAN.md`](../docs/mpesa/PLAN.
 | `x_ke_mpesa_pos` | M-Pesa POS terminal: STK, "paid to till" picker, manual entry, session reconciliation |
 | `x_ke_mpesa_statement` | Pull API (48 h backfill, hourly) and the M-PESA Org Portal statement: missed receipts, charges, sweeps, balance check |
 | `x_ke_mpesa_payment` | "Pay now" by STK on the portal and website |
-| `x_ke_mpesa_etims`, `x_ke_mpesa_sms`, `x_ke_mpesa_mis` | Bridges, installed automatically |
+| `x_ke_mpesa_etims` | Sales paid with an M-Pesa terminal go to KRA as mobile money (06); installed automatically with eTIMS POS |
+| `x_ke_mpesa_sms`, `x_ke_mpesa_mis` | On hold: M-PESA already texts the payer, and reports 1–9 are pivots ai_dashboards reads |
 | `x_ke_mpesa_b2c` | Refunds (B2C v3), supplier payments (B2B), reversals |
 
 ## Where things are
