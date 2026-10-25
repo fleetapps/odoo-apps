@@ -111,3 +111,10 @@ class TestBusinessFlows(KeEtimsCase):
         refund.action_post()
         self.run_queue()
         self.assertEqual(refund.ke_etims_state, "sent", refund.ke_etims_last_error)
+
+    def test_lines_without_a_product_go_as_the_sundry_item(self):
+        self.env.ref("x_ke_etims.product_sundry").ke_etims_item_class_id = self.item_class
+        move = self.move([{"name": "Consulting, March", "price_unit": 5000.0}])
+        self.run_queue()
+        self.assertEqual(move.ke_etims_state, "sent", move.ke_etims_last_error)
+        self.assertEqual(self.sent_lines(move)[0].name, "Consulting, March")
