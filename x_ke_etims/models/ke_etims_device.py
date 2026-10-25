@@ -163,9 +163,10 @@ class KeEtimsDevice(models.Model):
         labels = dict(ENVIRONMENTS)
         for device in self:
             backend = dict(backend_selection()).get(device.backend, device.backend)
-            device.name = "%s / %s - %s (%s)" % (
+            environment = labels.get(device.environment, "")
+            device.name = "%s / %s - %s%s" % (
                 device.company_id.name or "", device.bhf_id or "??", backend,
-                labels.get(device.environment, ""))
+                " (%s)" % environment if environment and environment != backend else "")
 
     @api.depends("backend")
     def _compute_backend_flags(self):

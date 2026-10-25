@@ -188,6 +188,24 @@ class PosOrder(models.Model):
         self.ensure_one()
         return self.lines.filtered(lambda line: line.qty)
 
+    def _ke_etims_raw_lines(self, credit):
+        """The order's lines as the eTIMS helpers take them. A refund's
+        quantities are negative in Odoo and positive on KRA's credit note; a
+        discount or reward line keeps its own sign either way, and is folded
+        into the lines it reduces."""
+        sign = -1 if credit else 1
+        return [{
+            "product": line.product_id,
+            "taxes": self._ke_etims_line_tax(line),
+            "price_unit": line.price_unit,
+            "quantity": sign * line.qty,
+            "discount": line.discount,
+            "name": line.full_product_name or line.product_id.display_name,
+        } for line in self._ke_etims_lines()]
+
+    def _ke_etims_untaxed_type(self):
+        return None if self.company_id.ke_etims_vat_registered else "D"
+
     @staticmethod
     def _ke_etims_line_tax(line):
         return line.tax_ids_after_fiscal_position.flatten_taxes_hierarchy().filtered(
@@ -198,14 +216,11 @@ class PosOrder(models.Model):
         if not self.company_id._ke_etims_is_kenyan():
             return [_("%s is not a Kenyan company.", self.company_id.name)]
         errors = document._ke_etims_check_pin(self.partner_id.commercial_partner_id.vat)
-        lines = self._ke_etims_lines()
-        if not lines:
-            errors.append(_("The order has no lines to send."))
-        for line in lines:
-            errors += document._ke_etims_check_line(
-                line.product_id, self._ke_etims_line_tax(line),
-                line.full_product_name or line.product_id.display_name,
-                abs(line.qty), line.price_unit)
+        credit = document.kind == "credit_note"
+        errors += document._ke_etims_check_lines(
+            self._ke_etims_raw_lines(credit), currency=self.currency_id, partner=self.partner_id,
+            is_refund=credit, untaxed_type=self._ke_etims_untaxed_type(),
+            refuse_vat=not self.company_id.ke_etims_vat_registered)
         if document.kind == "credit_note":
             original = document.original_document_id or (
                 self.refunded_order_id._ke_etims_documents() if self.refunded_order_id
@@ -226,13 +241,15 @@ class PosOrder(models.Model):
         return errors
 
     def _ke_etims_payment_type(self):
-        """KRA's payment type for the method that paid most of the order."""
+        """KRA's payment type for the method that paid most of the order;
+        never empty, since KRA wants one on every receipt."""
+        default = self.company_id.ke_etims_default_payment_type_id.code
         payments = self.payment_ids.filtered(lambda p: not p.is_change)
         if not payments:
-            return self.company_id.ke_etims_default_payment_type_id.code or None
-        largest = max(payments, key=lambda p: abs(p.amount))
-        return largest.payment_method_id.ke_etims_payment_type_id.code \
-            or self.company_id.ke_etims_default_payment_type_id.code or None
+            return default or "01"
+        method = max(payments, key=lambda p: abs(p.amount)).payment_method_id
+        return method.ke_etims_payment_type_id.code or method._ke_etims_guess_payment_type() \
+            or default or "07"
 
     def _ke_etims_prepare(self, document):
         self.ensure_one()
@@ -245,14 +262,9 @@ class PosOrder(models.Model):
             amount = Decimal(repr(amount)) if isinstance(amount, float) else Decimal(str(amount))
             return money(amount if same_currency or not rate else amount / rate)
 
-        lines = [
-            document._ke_etims_build_line(
-                seq, line.product_id, self._ke_etims_line_tax(line),
-                price_unit=line.price_unit, quantity=abs(line.qty), discount=line.discount,
-                name=line.full_product_name, currency=self.currency_id,
-                partner=self.partner_id, is_refund=credit, to_company=to_kes)
-            for seq, line in enumerate(self._ke_etims_lines(), start=1)
-        ]
+        lines = document._ke_etims_build_lines(
+            self._ke_etims_raw_lines(credit), currency=self.currency_id, partner=self.partner_id,
+            is_refund=credit, to_company=to_kes, untaxed_type=self._ke_etims_untaxed_type())
         partner = self.partner_id.commercial_partner_id
         original = document.original_document_id
         user = self.user_id or self.env.user

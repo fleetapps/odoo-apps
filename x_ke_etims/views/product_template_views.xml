@@ -30,9 +30,35 @@
                     </group>
                     <field name="ke_etims_registration_ids" nolabel="1" colspan="2"
                            invisible="not ke_etims_registration_ids"
-                           context="{'list_view_ref': 'x_ke_etims.view_ke_etims_item_registration_list'}"/>
+                           context="{'list_view_ref': 'x_ke_etims.view_ke_etims_item_registration_list', 'ke_etims_from_product': True}"/>
                 </group>
             </xpath>
+        </field>
+    </record>
+
+    <!-- A catalogue is classified a category at a time. -->
+    <record id="product_category_form_view_ke_etims" model="ir.ui.view">
+        <field name="name">product.category.form.ke.etims</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="parent_id" position="after">
+                <field name="ke_etims_item_class_id" options="{'no_create': True}"
+                       groups="account.group_account_invoice"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- ... or many products at once, by editing this column on a selection. -->
+    <record id="product_template_tree_view_ke_etims" model="ir.ui.view">
+        <field name="name">product.template.list.ke.etims</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <field name="categ_id" position="after">
+                <field name="ke_etims_item_class_id" optional="hide"
+                       groups="account.group_account_invoice"/>
+            </field>
         </field>
     </record>
 </odoo>

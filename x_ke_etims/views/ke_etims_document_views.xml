@@ -11,8 +11,10 @@
                 <field name="kind"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
                 <field name="device_id" optional="show"/>
-                <field name="kra_invoice_no"/>
-                <field name="receipt_no" optional="show"/>
+                <field name="kra_invoice_no" options="{'enable_formatting': false}"
+                       invisible="not kra_invoice_no"/>
+                <field name="receipt_no" optional="show" options="{'enable_formatting': false}"
+                       invisible="not receipt_no"/>
                 <field name="attempts" optional="hide"/>
                 <field name="next_try" optional="show"/>
                 <field name="signed_at" optional="show"/>
@@ -69,9 +71,9 @@
                             <field name="idempotency_key" groups="base.group_no_one"/>
                         </group>
                         <group string="Receipt">
-                            <field name="kra_invoice_no"/>
-                            <field name="receipt_no" readonly="state != 'failed'"/>
-                            <field name="total_receipt_no" readonly="state != 'failed'"/>
+                            <field name="kra_invoice_no" options="{'enable_formatting': false}"/>
+                            <field name="receipt_no" readonly="state != 'failed'" options="{'enable_formatting': false}"/>
+                            <field name="total_receipt_no" readonly="state != 'failed'" options="{'enable_formatting': false}"/>
                             <field name="receipt_label"/>
                             <field name="scu_id" readonly="state != 'failed'"/>
                             <field name="internal_data" readonly="state != 'failed'"/>

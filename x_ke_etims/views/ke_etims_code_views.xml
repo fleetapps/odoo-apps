@@ -143,7 +143,8 @@
         <field name="model">ke.etims.item.registration</field>
         <field name="arch" type="xml">
             <list string="eTIMS Registrations" create="0" edit="0">
-                <field name="product_tmpl_id"/>
+                <field name="product_tmpl_id"
+                       column_invisible="context.get('ke_etims_from_product')"/>
                 <field name="device_id"/>
                 <field name="item_code"/>
                 <field name="provider_item_id" optional="hide"/>

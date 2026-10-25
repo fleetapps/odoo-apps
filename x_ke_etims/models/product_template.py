@@ -33,7 +33,9 @@ class ProductTemplate(models.Model):
 
     ke_etims_item_class_id = fields.Many2one(
         "ke.etims.item.class", string="KRA Item Class",
-        help="KRA's classification of the product (UNSPSC based).")
+        compute="_compute_ke_etims_item_class_id", store=True, readonly=False,
+        help="KRA's classification of the product (UNSPSC based). Taken from the "
+             "product category when the product has none of its own.")
     ke_etims_product_type = fields.Selection(
         PRODUCT_TYPES, string="KRA Product Type",
         compute="_compute_ke_etims_product_type", store=True, readonly=False)
@@ -60,6 +62,14 @@ class ProductTemplate(models.Model):
     ke_etims_registered = fields.Boolean(
         compute="_compute_ke_etims_registered", string="Registered with eTIMS")
     ke_etims_show = fields.Boolean(compute="_compute_ke_etims_registered")
+
+    @api.depends("categ_id", "categ_id.ke_etims_item_class_id",
+                 "categ_id.parent_id.ke_etims_item_class_id",
+                 "categ_id.parent_id.parent_id.ke_etims_item_class_id")
+    def _compute_ke_etims_item_class_id(self):
+        for template in self:
+            if not template.ke_etims_item_class_id:
+                template.ke_etims_item_class_id = template.categ_id._ke_etims_item_class()
 
     @api.depends("type")
     def _compute_ke_etims_product_type(self):
