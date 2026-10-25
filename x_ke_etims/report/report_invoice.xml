@@ -41,7 +41,7 @@
                         <span class="ms-3">Time: <span t-out="ke_etims['tis_time']"/></span></div>
                     <table t-if="ke_etims['bands']" class="table table-sm table-borderless mt-2 mb-0 w-auto">
                         <thead>
-                            <tr><th>Rate</th><th class="text-end">Taxable Amount</th><th class="text-end">VAT</th></tr>
+                            <tr><th>Rate</th><th class="text-end">Amount (VAT incl.)</th><th class="text-end">VAT</th></tr>
                         </thead>
                         <tbody>
                             <tr t-foreach="ke_etims['bands']" t-as="band">
@@ -57,6 +57,7 @@
                 <div class="col-5 text-end">
                     <img t-if="ke_etims['qr']" t-att-src="ke_etims['qr']"
                          style="width: 140px; height: 140px;" alt="eTIMS QR code"/>
+                    <div t-if="ke_etims['qr']" class="small">Scan to verify with KRA</div>
                 </div>
             </div>
         </xpath>

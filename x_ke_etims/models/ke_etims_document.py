@@ -634,11 +634,12 @@ class KeEtimsDocument(models.Model):
     # ------------------------------------------------ shared by every source
 
     def _ke_etims_check_line(self, product, taxes, label, quantity, price_unit,
-                             allow_untaxed=False):
+                             allow_untaxed=False, register=True):
         """What stops one sold line from going to eTIMS, as messages. Registers
         the product on the document's device on the way, if KRA has everything
-        it needs to know about it. ``allow_untaxed`` lets a line carry no VAT
-        tax at all, for a seller who is not registered for VAT."""
+        it needs to know about it -- unless ``register`` is off, for a check
+        made before anything is sent. ``allow_untaxed`` lets a line carry no
+        VAT tax at all, for a seller who is not registered for VAT."""
         self.ensure_one()
         if not product:
             return [_("%s has no product; eTIMS only accepts registered items.", label)]
@@ -649,19 +650,154 @@ class KeEtimsDocument(models.Model):
                 "(it has %(count)s).", line=label, count=len(taxes)))
         if quantity <= 0 or price_unit < 0:
             errors.append(_(
-                "%s has a negative quantity or price. eTIMS takes discounts "
+                "%s has a negative quantity and price. eTIMS takes discounts "
                 "on the line itself, not as negative lines.", label))
         device = self.device_id
         template = product.product_tmpl_id
-        if not template._ke_etims_registration(device) \
-                and not template._ke_etims_register(device, document=self, raise_errors=False):
+        if template._ke_etims_registration(device):
+            return errors
+        missing = template._ke_etims_missing()
+        if not register:
+            if missing:
+                errors.append(_("%(product)s is missing its %(fields)s for eTIMS.",
+                                product=template.display_name, fields=", ".join(missing)))
+            return errors
+        if not template._ke_etims_register(device, document=self, raise_errors=False):
             registration = template.sudo().ke_etims_registration_ids.filtered(
                 lambda r: r.device_id == device)[:1]
-            reason = registration.last_error or ", ".join(template._ke_etims_missing()) \
-                or _("no sales tax with a KRA tax type")
-            errors.append(_("%(product)s is not registered with eTIMS: %(reason)s",
-                            product=template.display_name, reason=reason))
+            if missing:
+                errors.append(_("%(product)s is missing its %(fields)s for eTIMS.",
+                                product=template.display_name, fields=", ".join(missing)))
+            else:
+                errors.append(_("%(product)s is not registered with eTIMS: %(reason)s",
+                                product=template.display_name,
+                                reason=registration.last_error
+                                or _("no sales tax with a KRA tax type")))
         return errors
+
+    # A source hands its lines to the two methods below as dicts: product,
+    # taxes (the KRA-typed ones), price_unit, quantity, discount (percent) and
+    # name, with the quantity signed the way the document reads. A line whose
+    # amount comes out negative -- a down payment deducted on the final
+    # invoice, a global discount, a loyalty reward, a POS discount -- is not
+    # a supply: KRA has no negative lines. It is spread, as discount, over the
+    # lines of the same tax type it reduces, in proportion to their amounts.
+
+    @staticmethod
+    def _ke_etims_line_sign(raw):
+        amount = raw["quantity"] * raw["price_unit"] * (1 - (raw.get("discount") or 0.0) / 100.0)
+        return (amount > 0) - (amount < 0)
+
+    def _ke_etims_line_band(self, raw, untaxed_type):
+        return raw["taxes"][:1].ke_etims_tax_type_id.code or untaxed_type
+
+    def _ke_etims_line_total(self, raw, currency, partner, is_refund):
+        """The line's amount with VAT, after its own discount, signed, in the
+        document's currency."""
+        price = raw["price_unit"] * (1 - (raw.get("discount") or 0.0) / 100.0)
+        return raw["taxes"][:1].compute_all(
+            price, currency=currency, quantity=raw["quantity"], product=raw["product"],
+            partner=partner, is_refund=is_refund)["total_included"]
+
+    def _ke_etims_band_label(self, band):
+        code = self.env["ke.etims.code"].sudo()._ke_etims_find("04", band)
+        return code.display_name if code else band
+
+    def _ke_etims_check_lines(self, raw_lines, *, currency, partner, is_refund=False,
+                              untaxed_type=None, register=True, refuse_vat=False):
+        """Everything that stops these lines from going to eTIMS, as messages.
+        ``refuse_vat`` is for a seller not registered for VAT, who cannot charge it."""
+        self.ensure_one()
+        raw_lines = [raw for raw in raw_lines if raw["quantity"]]
+        sold = [raw for raw in raw_lines if self._ke_etims_line_sign(raw) >= 0]
+        deducted = [raw for raw in raw_lines if self._ke_etims_line_sign(raw) < 0]
+        if not sold:
+            return [_("There are no lines to send.")]
+        errors = []
+        for raw in sold:
+            errors += self._ke_etims_check_line(
+                raw["product"], raw["taxes"], raw["name"], raw["quantity"], raw["price_unit"],
+                allow_untaxed=bool(untaxed_type), register=register)
+        for raw in deducted:
+            if len(raw["taxes"]) > 1 or (not raw["taxes"] and not untaxed_type):
+                errors.append(_(
+                    "%(line)s needs exactly one VAT tax with a KRA tax type, so that "
+                    "eTIMS knows which lines it reduces (it has %(count)s).",
+                    line=raw["name"], count=len(raw["taxes"])))
+        if refuse_vat:
+            rates = self.device_id._ke_etims_tax_rates()
+            for raw in raw_lines:
+                band = raw["taxes"][:1].ke_etims_tax_type_id.code
+                if band and rates.get(band):
+                    errors.append(_(
+                        "%(line)s carries VAT (%(tax)s), but the business is not "
+                        "registered for VAT: take the tax off the line.",
+                        line=raw["name"], tax=raw["taxes"][:1].name))
+        if errors:
+            return errors
+        totals, deductions = {}, {}
+        for raw in sold:
+            band = self._ke_etims_line_band(raw, untaxed_type)
+            totals[band] = totals.get(band, 0.0) + self._ke_etims_line_total(
+                raw, currency, partner, is_refund)
+        for raw in deducted:
+            band = self._ke_etims_line_band(raw, untaxed_type)
+            deductions[band] = deductions.get(band, 0.0) - self._ke_etims_line_total(
+                raw, currency, partner, is_refund)
+        for band, deduction in deductions.items():
+            if currency.compare_amounts(deduction, totals.get(band, 0.0)) > 0:
+                errors.append(_(
+                    "Discounts, down payments or rewards of %(deduction)s at %(band)s are "
+                    "more than the %(total)s of goods and services at that rate. eTIMS "
+                    "has no negative lines: reduce them, or invoice the rest first.",
+                    deduction=currency.format(deduction), band=self._ke_etims_band_label(band),
+                    total=currency.format(totals.get(band, 0.0))))
+        return errors
+
+    def _ke_etims_build_lines(self, raw_lines, *, currency, partner, is_refund, to_company,
+                              untaxed_type=None):
+        """The ``Line`` list KRA gets: the lines sold, with the negative lines
+        folded into them as discount. Checked by ``_ke_etims_check_lines``."""
+        self.ensure_one()
+        raw_lines = [raw for raw in raw_lines if raw["quantity"]]
+        sold = [raw for raw in raw_lines if self._ke_etims_line_sign(raw) >= 0]
+        lines = [
+            self._ke_etims_build_line(
+                seq, raw["product"], raw["taxes"][:1], price_unit=raw["price_unit"],
+                quantity=raw["quantity"], discount=raw.get("discount") or 0.0,
+                name=raw["name"], currency=currency, partner=partner, is_refund=is_refund,
+                to_company=to_company, tax_type=untaxed_type)
+            for seq, raw in enumerate(sold, start=1)
+        ]
+        deductions = {}
+        for raw in raw_lines:
+            if self._ke_etims_line_sign(raw) < 0:
+                band = self._ke_etims_line_band(raw, untaxed_type)
+                deductions[band] = deductions.get(band, Decimal(0)) + to_company(
+                    -self._ke_etims_line_total(raw, currency, partner, is_refund))
+        rates = self.device_id._ke_etims_tax_rates()
+        for band, deduction in deductions.items():
+            targets = sorted((line for line in lines if line.tax_type == band),
+                             key=lambda line: line.taxable_amount, reverse=True)
+            base = sum((line.taxable_amount for line in targets), Decimal(0))
+            if not targets or deduction > base:
+                raise UserError(_("The deductions at %s are more than the lines they reduce.",
+                                  self._ke_etims_band_label(band)))
+            # Proportional shares to the cent; the largest line takes the rest,
+            # so the lines add up to exactly what the invoice says.
+            shares = [money(deduction * line.taxable_amount / base) if base else Decimal(0)
+                      for line in targets[1:]]
+            shares.insert(0, deduction - sum(shares, Decimal(0)))
+            rate = Decimal(str(rates.get(band) or 0))
+            for line, share in zip(targets, shares):
+                share = min(share, line.taxable_amount)
+                line.discount_amount = money(line.discount_amount + share)
+                line.taxable_amount = money(line.taxable_amount - share)
+                line.tax_amount = money(line.taxable_amount * rate / (100 + rate)) \
+                    if rate else Decimal("0.00")
+                line.discount_rate = money(line.discount_amount * 100 / line.supply_amount) \
+                    if line.supply_amount else Decimal("0.00")
+        return lines
 
     def _ke_etims_build_line(self, seq, product, tax, *, price_unit, quantity, discount,
                              name, currency, partner, is_refund, to_company, tax_type=None):

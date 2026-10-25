@@ -33,6 +33,10 @@
                                     groups="x_ke_etims.group_ke_etims_manager"/>
                         </div>
                     </setting>
+                    <setting string="Registered for VAT" company_dependent="1"
+                             help="Turn off if the business is not registered for VAT. eTIMS still applies; its sales go to KRA as Non-VAT (type D) and need no VAT tax on the lines.">
+                        <field name="ke_etims_vat_registered"/>
+                    </setting>
                     <setting string="Send on posting" company_dependent="1"
                              help="Queue every posted customer invoice and credit note for eTIMS. Posting never waits for KRA; the queue signs within a minute and retries on its own.">
                         <field name="ke_etims_auto_send"/>

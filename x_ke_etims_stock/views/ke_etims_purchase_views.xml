@@ -8,7 +8,7 @@
                 <field name="sale_date"/>
                 <field name="supplier_name"/>
                 <field name="supplier_pin" optional="show"/>
-                <field name="supplier_invoice_no"/>
+                <field name="supplier_invoice_no" options="{'enable_formatting': false}"/>
                 <field name="partner_id" optional="show"/>
                 <field name="total_amount" sum="Total"/>
                 <field name="total_tax" sum="VAT" optional="show"/>
@@ -49,7 +49,7 @@
                                    readonly="state != 'new'"/>
                         </group>
                         <group string="Invoice">
-                            <field name="supplier_invoice_no" readonly="1"/>
+                            <field name="supplier_invoice_no" readonly="1" options="{'enable_formatting': false}"/>
                             <field name="supplier_cu_invoice" readonly="1"/>
                             <field name="sale_date" readonly="1"/>
                             <field name="total_taxable" readonly="1"/>

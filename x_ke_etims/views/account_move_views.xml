@@ -43,13 +43,18 @@
                     <group>
                         <group string="Status">
                             <field name="ke_etims_state" string="Status" readonly="1"/>
-                            <field name="ke_etims_kra_invoice_no"/>
-                            <field name="ke_etims_receipt_no" string="Receipt No."/>
-                            <field name="ke_etims_total_receipt_no" string="Total Receipt No."/>
+                            <field name="ke_etims_kra_invoice_no" options="{'enable_formatting': false}"/>
+                            <field name="ke_etims_receipt_no" string="Receipt No." options="{'enable_formatting': false}"/>
+                            <field name="ke_etims_total_receipt_no" string="Total Receipt No." options="{'enable_formatting': false}"/>
                             <field name="ke_etims_signed_at" string="Signed At"/>
                             <field name="ke_etims_scu_id" string="SCU ID"/>
                             <field name="ke_etims_payment_type_id"
                                    readonly="ke_etims_state in ('sent', 'sending', 'pending')"/>
+                            <field name="reversed_entry_id" string="Credits Invoice"
+                                   invisible="move_type != 'out_refund'"
+                                   readonly="state != 'draft'"
+                                   options="{'no_create': True}"
+                                   domain="[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('commercial_partner_id', '=', commercial_partner_id), ('company_id', '=', company_id)]"/>
                             <field name="ke_etims_reason_code_id"
                                    invisible="move_type != 'out_refund'"
                                    required="move_type == 'out_refund' and state == 'posted' and ke_etims_state != 'sent'"
