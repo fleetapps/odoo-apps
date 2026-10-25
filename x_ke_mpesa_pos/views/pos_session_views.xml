@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_pos_session_form_mpesa" model="ir.ui.view">
+        <field name="name">pos.session.form.mpesa</field>
+        <field name="model">pos.session</field>
+        <field name="inherit_id" ref="point_of_sale.view_pos_session_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='cash_register_balance_end_real']" position="after">
+                <field name="mpesa_expected" invisible="state != 'closed' or not mpesa_expected"/>
+                <field name="mpesa_confirmed" invisible="state != 'closed' or not mpesa_expected"/>
+                <field name="mpesa_difference" invisible="state != 'closed' or not mpesa_difference"
+                       decoration-danger="mpesa_difference != 0"/>
+                <field name="mpesa_unconfirmed_count"
+                       invisible="state != 'closed' or not mpesa_unconfirmed_count"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
