@@ -1,7 +1,7 @@
 # Copyright 2026 Fleet Apps
 # License LGPL-3 (https://www.gnu.org/licenses/lgpl-3.0)
 
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 
 
 class AccountJournal(models.Model):
@@ -31,10 +31,14 @@ class AccountJournal(models.Model):
         return super()._statement_line_import_update_unique_import_id(
             st_line_vals, account_number)
 
+    def _mpesa_daily_statement_name(self, date):
+        self.ensure_one()
+        return f"{self.code} {fields.Date.to_string(date)}"
+
     def _mpesa_daily_statement(self, date):
         """The statement holding this journal's M-Pesa lines for ``date``."""
         self.ensure_one()
-        name = _("%(journal)s %(date)s", journal=self.code, date=fields.Date.to_string(date))
+        name = self._mpesa_daily_statement_name(date)
         Statement = self.env["account.bank.statement"].sudo()
         statement = Statement.search(
             [("journal_id", "=", self.id), ("name", "=", name)], limit=1)
