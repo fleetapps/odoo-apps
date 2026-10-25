@@ -501,8 +501,11 @@ class AccountMove(models.Model):
         return errors
 
     def _ke_etims_raw_lines(self):
+        # A line without a product (typed in, or a down payment) goes as the
+        # sundry item, under the line's own description.
+        sundry = self.env.ref("x_ke_etims.product_sundry", raise_if_not_found=False)
         return [{
-            "product": line.product_id,
+            "product": line.product_id or sundry or line.product_id,
             "taxes": self._ke_etims_line_tax(line),
             "price_unit": line.price_unit,
             "quantity": line.quantity,
