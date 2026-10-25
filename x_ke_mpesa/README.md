@@ -150,7 +150,8 @@ odoo -d test -i x_ke_mpesa,l10n_ke --test-tags /x_ke_mpesa --stop-after-init
 
 `tools/mpesa_sandbox.py` runs the same calls against Safaricom's real sandbox
 (STK on 174379 with the public passkey, C2B simulate) from any machine that can
-reach it.
+reach it. `tools/mpesa_fake_daraja.py` runs the fake as a server, for training
+and rehearsals on a test database (see `x_ke_mpesa_pos/README.md`).
 
 ## Licence
 
