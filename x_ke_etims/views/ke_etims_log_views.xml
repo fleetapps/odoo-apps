@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_ke_etims_log_list" model="ir.ui.view">
+        <field name="name">ke.etims.log.list</field>
+        <field name="model">ke.etims.log</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Logs" create="0" edit="0">
+                <field name="create_date"/>
+                <field name="device_id"/>
+                <field name="document_id" optional="show"/>
+                <field name="endpoint"/>
+                <field name="http_status"/>
+                <field name="result_code"/>
+                <field name="duration_ms" optional="show"/>
+                <field name="error" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_log_form" model="ir.ui.view">
+        <field name="name">ke.etims.log.form</field>
+        <field name="model">ke.etims.log</field>
+        <field name="arch" type="xml">
+            <form string="eTIMS Log" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="endpoint"/>
+                            <field name="device_id"/>
+                            <field name="document_id"/>
+                        </group>
+                        <group>
+                            <field name="create_date"/>
+                            <field name="http_status"/>
+                            <field name="result_code"/>
+                            <field name="duration_ms"/>
+                        </group>
+                    </group>
+                    <field name="error" invisible="not error"/>
+                    <notebook>
+                        <page string="Request" name="request">
+                            <field name="request" widget="code" options="{'mode': 'json'}"/>
+                        </page>
+                        <page string="Response" name="response">
+                            <field name="response" widget="code" options="{'mode': 'json'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_log_search" model="ir.ui.view">
+        <field name="name">ke.etims.log.search</field>
+        <field name="model">ke.etims.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="endpoint"/>
+                <field name="device_id"/>
+                <field name="document_id"/>
+                <filter name="errors" string="Errors" domain="[('error', '!=', False)]"/>
+                <filter name="group_endpoint" string="Endpoint" context="{'group_by': 'endpoint'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_log" model="ir.actions.act_window">
+        <field name="name">eTIMS Logs</field>
+        <field name="res_model">ke.etims.log</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

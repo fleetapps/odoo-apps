@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ke_etims_purchase_list" model="ir.ui.view">
+        <field name="name">ke.etims.purchase.list</field>
+        <field name="model">ke.etims.purchase</field>
+        <field name="arch" type="xml">
+            <list string="eTIMS Supplier Invoices" create="0">
+                <field name="sale_date"/>
+                <field name="supplier_name"/>
+                <field name="supplier_pin" optional="show"/>
+                <field name="supplier_invoice_no"/>
+                <field name="partner_id" optional="show"/>
+                <field name="total_amount" sum="Total"/>
+                <field name="total_tax" sum="VAT" optional="show"/>
+                <field name="unmapped_count" string="Unmapped" optional="show"/>
+                <field name="move_id" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" widget="badge" decoration-success="state == 'confirmed'"
+                       decoration-info="state in ('new', 'billed')" decoration-muted="state == 'rejected'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_purchase_form" model="ir.ui.view">
+        <field name="name">ke.etims.purchase.form</field>
+        <field name="model">ke.etims.purchase</field>
+        <field name="arch" type="xml">
+            <form string="eTIMS Supplier Invoice" create="0">
+                <header>
+                    <button name="action_create_bill" type="object" string="Create bill"
+                            class="btn-primary" invisible="move_id or state != 'new'"/>
+                    <button name="action_map_products" type="object" string="Link products"
+                            invisible="state in ('confirmed', 'rejected')"/>
+                    <button name="action_open_bill" type="object" string="Open bill"
+                            invisible="not move_id"/>
+                    <button name="action_reject" type="object" string="Reject"
+                            invisible="state != 'new'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="new,billed,confirmed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="Supplier">
+                            <field name="supplier_name" readonly="1"/>
+                            <field name="supplier_pin" readonly="1"/>
+                            <field name="supplier_bhf_id" readonly="1"/>
+                            <field name="partner_id" options="{'no_create': True}"
+                                   readonly="state != 'new'"/>
+                        </group>
+                        <group string="Invoice">
+                            <field name="supplier_invoice_no" readonly="1"/>
+                            <field name="supplier_cu_invoice" readonly="1"/>
+                            <field name="sale_date" readonly="1"/>
+                            <field name="total_taxable" readonly="1"/>
+                            <field name="total_tax" readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="move_id" readonly="1"/>
+                            <field name="device_id" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0" delete="0">
+                            <field name="item_code" readonly="1"/>
+                            <field name="name" readonly="1"/>
+                            <field name="quantity" readonly="1"/>
+                            <field name="unit_price" readonly="1"/>
+                            <field name="tax_type" readonly="1"/>
+                            <field name="tax_amount" readonly="1"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="product_id" options="{'no_create': True}"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ke_etims_purchase_search" model="ir.ui.view">
+        <field name="name">ke.etims.purchase.search</field>
+        <field name="model">ke.etims.purchase</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="supplier_name"/>
+                <field name="supplier_pin"/>
+                <field name="partner_id"/>
+                <filter name="todo" string="To handle" domain="[('state', 'in', ('new', 'billed'))]"/>
+                <filter name="unmatched" string="No supplier" domain="[('partner_id', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_purchase" model="ir.actions.act_window">
+        <field name="name">eTIMS Supplier Invoices</field>
+        <field name="res_model">ke.etims.purchase</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_todo': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No supplier invoices from eTIMS yet</p>
+            <p>Sales your suppliers sign with your PIN arrive here every day, as draft bills.</p>
+        </field>
+    </record>
+</odoo>

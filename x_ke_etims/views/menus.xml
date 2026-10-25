@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Configuration lives where Odoo's own Kenyan localisation puts it, under
+    Accounting > Configuration. The queue is also under x_ke_base's "Kenya
+    Tax" root, beside VAT Returns, so a Kenyan user has one place to look.
+-->
+<odoo>
+
+    <menuitem id="menu_ke_etims_config"
+              name="Kenya eTIMS"
+              parent="account.menu_finance_configuration"
+              sequence="90"/>
+
+    <menuitem id="menu_ke_etims_devices"
+              name="Devices"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_device"
+              groups="x_ke_etims.group_ke_etims_manager"
+              sequence="10"/>
+
+    <menuitem id="menu_ke_etims_documents"
+              name="Queue"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_document"
+              sequence="20"/>
+
+    <menuitem id="menu_ke_etims_codes"
+              name="KRA Codes"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_code"
+              sequence="30"/>
+
+    <menuitem id="menu_ke_etims_item_classes"
+              name="Item Classes"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_item_class"
+              sequence="40"/>
+
+    <menuitem id="menu_ke_etims_notices"
+              name="Notices"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_notice"
+              sequence="50"/>
+
+    <menuitem id="menu_ke_etims_branches"
+              name="Branches"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_branch"
+              sequence="60"/>
+
+    <menuitem id="menu_ke_etims_logs"
+              name="Logs"
+              parent="menu_ke_etims_config"
+              action="action_ke_etims_log"
+              groups="x_ke_etims.group_ke_etims_manager"
+              sequence="70"/>
+
+    <menuitem id="menu_ke_etims_queue"
+              name="eTIMS Queue"
+              parent="x_ke_base.menu_ke_tax_root"
+              action="action_ke_etims_document"
+              sequence="30"/>
+
+</odoo>

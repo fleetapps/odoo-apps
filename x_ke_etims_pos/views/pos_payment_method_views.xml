@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pos_payment_method_view_form_ke_etims" model="ir.ui.view">
+        <field name="name">pos.payment.method.form.ke.etims</field>
+        <field name="model">pos.payment.method</field>
+        <field name="inherit_id" ref="point_of_sale.pos_payment_method_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='journal_id']" position="after">
+                <field name="ke_etims_show" invisible="1"/>
+                <field name="ke_etims_payment_type_id" options="{'no_create': True}"
+                       invisible="not ke_etims_show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

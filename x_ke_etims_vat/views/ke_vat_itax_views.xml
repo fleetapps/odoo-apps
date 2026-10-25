@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="ke_vat_itax_batch_view_form_ke_etims" model="ir.ui.view">
+        <field name="name">ke.vat.itax.batch.form.ke.etims</field>
+        <field name="model">ke.vat.itax.batch</field>
+        <field name="inherit_id" ref="x_ke_vat.ke_vat_itax_batch_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='line_ids']/list/field[@name='move_id']" position="after">
+                <field name="ke_etims_number" optional="show"/>
+                <field name="ke_etims_state" optional="hide" widget="badge"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="ke_vat_itax_line_view_list_ke_etims" model="ir.ui.view">
+        <field name="name">ke.vat.itax.line.list.ke.etims</field>
+        <field name="model">ke.vat.itax.line</field>
+        <field name="inherit_id" ref="x_ke_vat.ke_vat_itax_line_view_list"/>
+        <field name="arch" type="xml">
+            <field name="move_id" position="after">
+                <field name="ke_etims_number" optional="show"/>
+                <field name="ke_etims_state" optional="hide" widget="badge"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

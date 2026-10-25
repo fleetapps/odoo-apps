@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_move_form_ke_etims_vat" model="ir.ui.view">
+        <field name="name">account.move.form.ke.etims.vat</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="x_ke_etims.view_move_form_ke_etims"/>
+        <field name="arch" type="xml">
+            <field name="ke_etims_supplier_invoice_ref" position="after">
+                <field name="ke_etims_not_required"
+                       invisible="country_code != 'KE' or move_type not in ('in_invoice', 'in_receipt') or ke_etims_supplier_invoice_ref or ke_etims_reverse_invoice"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- The eTIMS number beside each journal item a VAT box drills down to. -->
+    <record id="view_move_line_tax_audit_tree_ke_etims" model="ir.ui.view">
+        <field name="name">account.move.line.tax.audit.list.ke.etims</field>
+        <field name="model">account.move.line</field>
+        <field name="inherit_id" ref="account.view_move_line_tax_audit_tree"/>
+        <field name="arch" type="xml">
+            <field name="move_name" position="after">
+                <field name="ke_etims_number" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_ke_etims_bills_missing" model="ir.actions.act_window">
+        <field name="name">Bills without eTIMS</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="account.view_in_invoice_bill_tree"/>
+        <field name="domain">[('ke_etims_invoice_missing', '=', True), ('state', '=', 'posted')]</field>
+        <field name="context">{'default_move_type': 'in_invoice'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Every expense is backed by an eTIMS invoice
+            </p>
+            <p>
+                A posted bill from a local supplier with no supplier eTIMS
+                invoice number shows here. Without one the expense is not
+                deductible: ask the supplier for it, or mark the bill or the
+                supplier as not needing one.
+            </p>
+        </field>
+    </record>
+
+</odoo>

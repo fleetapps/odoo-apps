@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_ke_etims" model="ir.ui.view">
+        <field name="name">res.partner.form.ke.etims</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="account.view_partner_property_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='accounting']" position="inside">
+                <field name="ke_etims_show" invisible="1"/>
+                <group string="Kenya eTIMS" name="ke_etims" invisible="not ke_etims_show">
+                    <field name="ke_etims_branch_code"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

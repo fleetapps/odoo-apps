@@ -432,12 +432,16 @@ class KeVatRender(models.AbstractModel):
             # program out of text: a value of inf or nan has no literal form
             # and would turn into a NameError halfway through a VAT return.
             namespace = {}
+            names = {}
 
             def substitute(match):
                 term = match.group(0)
                 code, _sep, label = term.partition(".")
                 dependency = by_key.get((code, label))
-                name = "t_" + re.sub(r"\W", "_", term)
+                # Positional names, not mangled ones: "box_19._applied..."
+                # mangles to a name containing "__", which safe_eval refuses
+                # as a dunder, and box 19 is on every VAT3.
+                name = names.setdefault(term, "t%d" % len(names))
                 namespace[name] = float(
                     values.get(dependency.id, 0.0) if dependency else 0.0)
                 return name
@@ -448,6 +452,9 @@ class KeVatRender(models.AbstractModel):
                 result = safe_eval(arithmetic, namespace)
             except ZeroDivisionError:
                 if subformula != "ignore_zero_division":
+                    # An unknown subformula is the more fundamental refusal:
+                    # report it rather than the division it failed to guard.
+                    self._apply_subformula(expression, subformula, 0.0, options)
                     raise UserError(_(
                         "%(expression)s divided by zero and is not marked "
                         "ignore_zero_division.",

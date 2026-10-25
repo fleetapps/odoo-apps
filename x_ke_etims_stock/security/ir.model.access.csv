@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ke_etims_purchase_user,ke etims purchase user,model_ke_etims_purchase,account.group_account_invoice,1,1,1,0
+access_ke_etims_purchase_manager,ke etims purchase manager,model_ke_etims_purchase,x_ke_etims.group_ke_etims_manager,1,1,1,1
+access_ke_etims_purchase_line_user,ke etims purchase line user,model_ke_etims_purchase_line,account.group_account_invoice,1,1,1,0
+access_ke_etims_purchase_line_manager,ke etims purchase line manager,model_ke_etims_purchase_line,x_ke_etims.group_ke_etims_manager,1,1,1,1
+access_ke_etims_product_map_user,ke etims product map user,model_ke_etims_product_map,account.group_account_invoice,1,1,1,1
+access_ke_etims_import_user,ke etims import user,model_ke_etims_import,stock.group_stock_user,1,1,0,0
+access_ke_etims_import_invoice,ke etims import invoice,model_ke_etims_import,account.group_account_invoice,1,1,0,0
+access_ke_etims_import_manager,ke etims import manager,model_ke_etims_import,x_ke_etims.group_ke_etims_manager,1,1,1,1
+access_ke_etims_purchase_map_user,ke etims purchase map user,model_ke_etims_purchase_map,account.group_account_invoice,1,1,1,1
+access_ke_etims_purchase_map_line_user,ke etims purchase map line user,model_ke_etims_purchase_map_line,account.group_account_invoice,1,1,1,1

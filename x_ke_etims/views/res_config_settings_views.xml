@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A block in the Invoicing app, beside Kenya VAT, rather than an app of
+         its own: it is part of the Kenyan localisation and belongs where the
+         person setting that up is already looking. -->
+    <record id="res_config_settings_view_form_ke_etims" model="ir.ui.view">
+        <field name="name">res.config.settings.form.inherit.ke.etims</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='fiscal_localization_setting_container']" position="after">
+                <block title="Kenya eTIMS" name="ke_etims_setting_container"
+                       invisible="country_code != 'KE'">
+                    <setting string="Backend and environment" company_dependent="1"
+                             help="What new eTIMS devices start with. Demo signs nothing and watermarks every invoice; Test talks to the provider's or KRA's sandbox; Production needs the device's certification recorded.">
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="ke_etims_default_backend" class="col-lg-4 o_light_label"/>
+                                <field name="ke_etims_default_backend"/>
+                            </div>
+                            <div class="row">
+                                <label for="ke_etims_environment" class="col-lg-4 o_light_label"/>
+                                <field name="ke_etims_environment"/>
+                            </div>
+                            <div class="row">
+                                <label for="ke_etims_bhf_id" class="col-lg-4 o_light_label"/>
+                                <field name="ke_etims_bhf_id"/>
+                            </div>
+                        </div>
+                        <div class="mt8">
+                            <button name="action_ke_etims_devices" type="object"
+                                    string="eTIMS Devices" icon="oi-arrow-right" class="btn-link"
+                                    groups="x_ke_etims.group_ke_etims_manager"/>
+                        </div>
+                    </setting>
+                    <setting string="Send on posting" company_dependent="1"
+                             help="Queue every posted customer invoice and credit note for eTIMS. Posting never waits for KRA; the queue signs within a minute and retries on its own.">
+                        <field name="ke_etims_auto_send"/>
+                        <div class="content-group mt8">
+                            <div class="row">
+                                <label for="ke_etims_default_payment_type_id" class="col-lg-4 o_light_label"/>
+                                <field name="ke_etims_default_payment_type_id" options="{'no_create': True}"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

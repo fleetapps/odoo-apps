@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    A seed of KRA's code list: only the classes the module's own flows read,
+    with the values KRA's OSCU specification v2.0 (chapter 4) publishes for
+    them. The first code sync from KRA overwrites and completes it.
+
+    It exists for DigiTax, which publishes no code list over its API: without
+    it a DigiTax-only database would have no tax types to map its taxes to.
+    noupdate, so a sync's corrections survive a module upgrade.
+-->
+<odoo noupdate="1">
+
+    <!-- 04: tax types. user_defined_1 is the rate, as KRA publishes it. -->
+    <record id="code_04_A" model="ke.etims.code">
+        <field name="code_class">04</field><field name="class_name">Taxation Type</field>
+        <field name="code">A</field><field name="name">A-Exempt</field>
+        <field name="user_defined_1">0</field><field name="sort_order">1</field>
+    </record>
+    <record id="code_04_B" model="ke.etims.code">
+        <field name="code_class">04</field><field name="class_name">Taxation Type</field>
+        <field name="code">B</field><field name="name">B-16.00%</field>
+        <field name="user_defined_1">16</field><field name="sort_order">2</field>
+    </record>
+    <record id="code_04_C" model="ke.etims.code">
+        <field name="code_class">04</field><field name="class_name">Taxation Type</field>
+        <field name="code">C</field><field name="name">C-0%</field>
+        <field name="user_defined_1">0</field><field name="sort_order">3</field>
+    </record>
+    <record id="code_04_D" model="ke.etims.code">
+        <field name="code_class">04</field><field name="class_name">Taxation Type</field>
+        <field name="code">D</field><field name="name">D-Non-VAT</field>
+        <field name="user_defined_1">0</field><field name="sort_order">4</field>
+    </record>
+    <record id="code_04_E" model="ke.etims.code">
+        <field name="code_class">04</field><field name="class_name">Taxation Type</field>
+        <field name="code">E</field><field name="name">E-8%</field>
+        <field name="user_defined_1">8</field><field name="sort_order">5</field>
+    </record>
+
+    <!-- 05, 10, 17: the defaults a new product starts from. -->
+    <record id="code_05_KE" model="ke.etims.code">
+        <field name="code_class">05</field><field name="class_name">Nation</field>
+        <field name="code">KE</field><field name="name">KENYA</field>
+    </record>
+    <record id="code_10_U" model="ke.etims.code">
+        <field name="code_class">10</field><field name="class_name">Quantity Unit</field>
+        <field name="code">U</field><field name="name">Pieces/item</field>
+    </record>
+    <record id="code_17_NT" model="ke.etims.code">
+        <field name="code_class">17</field><field name="class_name">Packaging Unit</field>
+        <field name="code">NT</field><field name="name">Net</field>
+    </record>
+
+    <!-- 07: payment types. -->
+    <record id="code_07_01" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">01</field><field name="name">CASH</field><field name="sort_order">1</field>
+    </record>
+    <record id="code_07_02" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">02</field><field name="name">CREDIT</field><field name="sort_order">2</field>
+    </record>
+    <record id="code_07_03" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">03</field><field name="name">CASH/CREDIT</field><field name="sort_order">3</field>
+    </record>
+    <record id="code_07_04" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">04</field><field name="name">BANK CHECK</field><field name="sort_order">4</field>
+    </record>
+    <record id="code_07_05" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">05</field><field name="name">DEBIT&amp;CREDIT CARD</field><field name="sort_order">5</field>
+    </record>
+    <record id="code_07_06" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">06</field><field name="name">MOBILE MONEY</field><field name="sort_order">6</field>
+    </record>
+    <record id="code_07_07" model="ke.etims.code">
+        <field name="code_class">07</field><field name="class_name">Payment Type</field>
+        <field name="code">07</field><field name="name">OTHER</field><field name="sort_order">7</field>
+    </record>
+
+    <!-- 32: credit note reasons. -->
+    <record id="code_32_01" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">01</field><field name="name">Missing Quantity</field><field name="sort_order">1</field>
+    </record>
+    <record id="code_32_02" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">02</field><field name="name">Missing data</field><field name="sort_order">2</field>
+    </record>
+    <record id="code_32_03" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">03</field><field name="name">Damaged</field><field name="sort_order">3</field>
+    </record>
+    <record id="code_32_04" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">04</field><field name="name">Wasted</field><field name="sort_order">4</field>
+    </record>
+    <record id="code_32_05" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">05</field><field name="name">Raw Material Shortage</field><field name="sort_order">5</field>
+    </record>
+    <record id="code_32_06" model="ke.etims.code">
+        <field name="code_class">32</field><field name="class_name">Credit Note Reason</field>
+        <field name="code">06</field><field name="name">Refund</field><field name="sort_order">6</field>
+    </record>
+
+</odoo>

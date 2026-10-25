@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The eTIMS part of the receipt, laid out after the TIS specification's
+    sample (section 6.23). It wraps at 58 mm as well as 80 mm: one value per
+    line, signatures dashed so they break between groups, a QR code sized as a
+    share of the width rather than in pixels.
+-->
+<templates id="template" xml:space="preserve">
+    <t t-name="x_ke_etims_pos.OrderReceipt" t-inherit="point_of_sale.OrderReceipt" t-inherit-mode="extension">
+        <xpath expr="//ReceiptHeader" position="after">
+            <t t-set="etims" t-value="keEtims"/>
+            <div t-if="etims and etims.demo" class="ke-etims-demo text-center fw-bolder pt-2">
+                DEMO - NOT A TAX INVOICE
+            </div>
+            <div t-if="etims and etims.copy" class="ke-etims-copy text-center pt-2">
+                <div class="fw-bolder fs-3">COPY</div>
+                <div class="fw-bolder">THIS IS NOT AN OFFICIAL RECEIPT</div>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('before-footer')]" position="after">
+            <t t-set="etims" t-value="keEtims"/>
+            <div t-if="etims" class="ke-etims-receipt text-center pt-3 text-break" style="font-size: 85%;">
+                <t t-if="etims.signed">
+                    <div class="fw-bolder">SCU INFORMATION</div>
+                    <div>Date: <t t-esc="etims.date"/> Time: <t t-esc="etims.time"/></div>
+                    <div>CU ID: <t t-esc="etims.cuId"/></div>
+                    <div>CU Invoice No.: <t t-esc="etims.cuInvoiceNo"/></div>
+                    <div>Receipt Counter: <t t-esc="etims.counter"/> <t t-esc="etims.label"/></div>
+                    <div t-if="etims.originalCuInvoice">
+                        Original CU Invoice No.#: <t t-esc="etims.originalCuInvoice"/>
+                    </div>
+                    <div>Internal Data:</div>
+                    <div class="font-monospace"><t t-esc="etims.internalData"/></div>
+                    <div>Receipt Signature:</div>
+                    <div class="font-monospace"><t t-esc="etims.signature"/></div>
+                    <img t-if="etims.qr" t-att-src="etims.qr" class="ke-etims-qr my-2"
+                         style="width: 45%; max-width: 160px;" alt="eTIMS QR code"/>
+                    <div>KRA Invoice No.: <t t-esc="etims.kraInvoiceNo"/></div>
+                </t>
+                <t t-else="">
+                    <div class="fw-bolder">eTIMS: pending</div>
+                    <div>Ref: <t t-esc="etims.reference"/></div>
+                    <div>Not yet a tax invoice. Ask for a reprint once it is signed.</div>
+                </t>
+            </div>
+        </xpath>
+    </t>
+</templates>
