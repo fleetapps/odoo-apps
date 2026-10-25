@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_ke_etims_vat" model="ir.ui.view">
+        <field name="name">res.partner.form.ke.etims.vat</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="x_ke_etims.view_partner_form_ke_etims"/>
+        <field name="arch" type="xml">
+            <field name="ke_etims_branch_code" position="after">
+                <field name="ke_etims_no_invoice_needed"/>
+            </field>
+        </field>
+    </record>
+</odoo>

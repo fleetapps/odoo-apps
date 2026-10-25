@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_ke_etims_bills_missing"
+              name="Bills without eTIMS"
+              parent="x_ke_vat.menu_ke_vat_reconciliation"
+              action="action_ke_etims_bills_missing"
+              sequence="30"/>
+
+</odoo>
