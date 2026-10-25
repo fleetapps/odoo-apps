@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_bank_statement_line_search_mpesa" model="ir.ui.view">
+        <field name="name">account.bank.statement.line.search.mpesa</field>
+        <field name="model">account.bank.statement.line</field>
+        <field name="inherit_id" ref="account_statement_base.account_bank_statement_line_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="mpesa_charges" string="M-Pesa charges"
+                        domain="[('mpesa_line_kind', '=', 'charge')]"/>
+                <filter name="mpesa_sweeps" string="M-Pesa sweeps"
+                        domain="[('mpesa_line_kind', '=', 'sweep')]"/>
+                <filter name="mpesa_to_look_at" string="M-Pesa rows to look at"
+                        domain="[('mpesa_line_kind', 'in', ('reversal', 'other')), ('is_reconciled', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
