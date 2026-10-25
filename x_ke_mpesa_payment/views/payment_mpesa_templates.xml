@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="inline_form">
+        <div t-attf-id="o_mpesa_container_{{provider_id}}" class="o_mpesa_inline_form">
+            <label t-attf-for="o_mpesa_phone_{{provider_id}}" class="form-label">
+                M-PESA number
+            </label>
+            <input type="tel" t-attf-id="o_mpesa_phone_{{provider_id}}" name="o_mpesa_phone"
+                   class="form-control" placeholder="07XX XXX XXX" autocomplete="tel"
+                   inputmode="tel"/>
+            <div class="form-text">
+                We send a payment prompt to this phone: enter your M-PESA PIN there to pay.
+            </div>
+        </div>
+    </template>
+</odoo>

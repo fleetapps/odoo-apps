@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_transaction_form_payment" model="ir.ui.view">
+        <field name="name">mpesa.transaction.form.payment</field>
+        <field name="model">mpesa.transaction</field>
+        <field name="inherit_id" ref="x_ke_mpesa.view_mpesa_transaction_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='move_id']" position="after">
+                <field name="payment_transaction_id" invisible="not payment_transaction_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
