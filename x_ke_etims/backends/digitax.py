@@ -270,8 +270,9 @@ class DigiTaxAdapter(Adapter):
         answer = self.request("POST", "/credit-notes", body=body)
         return self._receipt(answer, sale)
 
-    def get_status(self, provider_ref, kra_invoice_no=None):
-        answer = self.request("GET", "/sales/%s" % provider_ref)
+    def get_status(self, provider_ref, kra_invoice_no=None, kind="sale"):
+        path = "/reverse-invoices/%s" if kind == "reverse_invoice" else "/sales/%s"
+        answer = self.request("GET", path % provider_ref)
         receipt = self._receipt(answer)
         receipt.provider_ref = receipt.provider_ref or provider_ref
         receipt.kra_invoice_no = receipt.kra_invoice_no or kra_invoice_no
@@ -291,6 +292,9 @@ class DigiTaxAdapter(Adapter):
         elif event.startswith("sale") or event.startswith("credit"):
             kind = "sale"
             ref = first(data, "sale_id", "id")
+        elif event.startswith("reverse"):
+            kind = "reverse_invoice"
+            ref = first(data, "reverse_invoice_id", "id")
         else:
             raise EtimsError("Unknown DigiTax notification %r." % event)
         if not ref:
@@ -318,6 +322,7 @@ class DigiTaxAdapter(Adapter):
                 "total_amount": first(row, "total_amount", "totAmt"),
                 "remark": first(row, "remark"),
                 "provider_ref": str(first(row, "id", default="")) or None,
+                "supplier_cu_invoice": first(row, "cu_invoice_number", "scu_invoice_number"),
                 "lines": [
                     {
                         "seq": _int(first(line, "sequence", "itemSeq")),

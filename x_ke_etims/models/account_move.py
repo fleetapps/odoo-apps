@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Customer invoices and credit notes, signed by eTIMS.
+"""Customer invoices and credit notes, signed by eTIMS; and reverse invoices.
 
 Kenyan only, and only where eTIMS is in use: a move of any other company --
 or of a Kenyan company with no eTIMS device -- posts, prints and sends exactly
@@ -14,6 +14,11 @@ What is sent is the invoice as Odoo computed it. Each line's VAT-inclusive
 amounts come from the line's own VAT tax, converted to shillings at the
 invoice's rate, so the receipt KRA signs and the invoice the customer receives
 add up to the same thing.
+
+A reverse invoice is the buyer's eTIMS invoice for a purchase from a seller
+who cannot issue one, typically a small-scale farmer: ticked on the vendor
+bill, it is queued on posting like a sale, and once signed its CU invoice
+number is the bill's supplier eTIMS number. Only DigiTax offers it.
 """
 
 import base64
@@ -24,16 +29,19 @@ from decimal import Decimal
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from ..backends import Operator, Sale
+from ..backends import REGISTRY, Operator, Purchase, Sale
 from ..backends.base import money
 from .ke_etims_code import CODE_CLASS_CREDIT_NOTE_REASON, CODE_CLASS_PAYMENT_TYPE
-from .ke_etims_document import STATES
+from .ke_etims_document import INVOICE_KINDS, STATES
 
 #: Seconds: the attempt made just before an invoice is sent.
 SEND_TIMEOUT = 4.0
 
 SALE_TYPES = ("out_invoice", "out_receipt")
 CREDIT_TYPES = ("out_refund",)
+REVERSE_TYPES = ("in_invoice",)
+#: KRA tax type of a line with no VAT on it: the seller is not registered.
+NON_VAT = "D"
 
 
 def _decimal(value):
@@ -74,6 +82,19 @@ class AccountMove(models.Model):
     ke_etims_is_demo = fields.Boolean(compute="_compute_ke_etims_is_demo")
     ke_etims_qr_image = fields.Binary(compute="_compute_ke_etims_qr_image",
                                       string="eTIMS QR Code")
+    ke_etims_cu_invoice = fields.Char(
+        compute="_compute_ke_etims_cu_invoice", string="CU Invoice No.",
+        help="KRA's number for the signed sale: SCU ID / receipt number.")
+    ke_etims_reverse_invoice = fields.Boolean(
+        string="eTIMS Reverse Invoice", copy=False, tracking=True,
+        help="We issue the eTIMS invoice for this purchase, because the seller "
+             "cannot: a small-scale farmer, for instance. Signed on posting.")
+    ke_etims_can_reverse_invoice = fields.Boolean(
+        compute="_compute_ke_etims_can_reverse_invoice")
+    ke_etims_supplier_invoice_ref = fields.Char(
+        string="Supplier eTIMS Invoice No.", copy=False, tracking=True,
+        help="The CU invoice number on the supplier's eTIMS invoice. From the "
+             "2026 tax year, an expense without one is not deductible.")
 
     # ------------------------------------------------------------ computes
 
@@ -81,7 +102,7 @@ class AccountMove(models.Model):
     def _compute_ke_etims_document_id(self):
         for move in self:
             documents = move.sudo().ke_etims_document_ids.filtered(
-                lambda d: d.state != "cancelled" and d.kind in ("sale", "credit_note"))
+                lambda d: d.state != "cancelled" and d.kind in INVOICE_KINDS)
             move.ke_etims_document_id = documents.sorted("id")[-1:] if documents else documents
 
     @api.depends("ke_etims_document_id.signed_environment",
@@ -92,14 +113,15 @@ class AccountMove(models.Model):
             move.ke_etims_is_demo = bool(document) and (
                 document.signed_environment or document.device_id.environment) == "demo"
 
-    @api.depends("ke_etims_document_ids.state", "state", "country_code", "move_type")
+    @api.depends("ke_etims_document_ids.state", "state", "country_code", "move_type",
+                 "ke_etims_reverse_invoice")
     def _compute_ke_etims_state(self):
         for move in self:
-            if move.country_code != "KE" or move.move_type not in SALE_TYPES + CREDIT_TYPES:
+            if move.country_code != "KE" or not move._ke_etims_is_etims_type():
                 move.ke_etims_state = False
                 continue
             documents = move.sudo().ke_etims_document_ids.filtered(
-                lambda d: d.state != "cancelled" and d.kind in ("sale", "credit_note"))
+                lambda d: d.state != "cancelled" and d.kind in INVOICE_KINDS)
             if documents:
                 move.ke_etims_state = documents.sorted("id")[-1].state
             elif move.state == "posted" and move.company_id._ke_etims_enabled():
@@ -107,19 +129,42 @@ class AccountMove(models.Model):
             else:
                 move.ke_etims_state = False
 
-    @api.depends("country_code", "move_type", "company_id")
+    @api.depends("country_code", "move_type", "company_id", "ke_etims_reverse_invoice")
     def _compute_ke_etims_applicable(self):
         for move in self:
             move.ke_etims_applicable = (
                 move.country_code == "KE"
-                and move.move_type in SALE_TYPES + CREDIT_TYPES
+                and move._ke_etims_is_etims_type()
                 and move.company_id._ke_etims_enabled())
+
+    def _ke_etims_is_etims_type(self):
+        """A customer invoice or credit note, or a bill we invoice ourselves."""
+        self.ensure_one()
+        return self.move_type in SALE_TYPES + CREDIT_TYPES or (
+            self.move_type in REVERSE_TYPES and self.ke_etims_reverse_invoice)
+
+    @api.depends("country_code", "move_type", "company_id")
+    def _compute_ke_etims_can_reverse_invoice(self):
+        for move in self:
+            device = move.country_code == "KE" and move.move_type in REVERSE_TYPES \
+                and move.company_id._ke_etims_device()
+            cls = device and REGISTRY.get(device.sudo().backend)
+            move.ke_etims_can_reverse_invoice = bool(
+                cls and cls.supports("sign_reverse_invoice"))
 
     @api.depends("company_id", "move_type")
     def _compute_ke_etims_payment_type_id(self):
         for move in self:
             if not move.ke_etims_payment_type_id and move.country_code == "KE":
                 move.ke_etims_payment_type_id = move.company_id.ke_etims_default_payment_type_id
+
+    @api.depends("ke_etims_document_id.state", "ke_etims_document_id.scu_id",
+                 "ke_etims_document_id.receipt_no")
+    def _compute_ke_etims_cu_invoice(self):
+        for move in self:
+            document = move.sudo().ke_etims_document_id
+            move.ke_etims_cu_invoice = "%s/%s" % (document.scu_id, document.receipt_no) \
+                if document.state == "sent" and document.scu_id else False
 
     @api.depends("ke_etims_qr_url")
     def _compute_ke_etims_qr_image(self):
@@ -216,10 +261,12 @@ class AccountMove(models.Model):
 
     def _ke_etims_should_queue(self):
         self.ensure_one()
-        return (self.country_code == "KE"
-                and self.move_type in SALE_TYPES + CREDIT_TYPES
-                and self.company_id.ke_etims_auto_send
-                and self.company_id._ke_etims_enabled())
+        if self.country_code != "KE" or not self.company_id._ke_etims_enabled():
+            return False
+        # A reverse invoice was asked for on the bill itself.
+        if self.move_type in REVERSE_TYPES:
+            return self.ke_etims_reverse_invoice
+        return self.move_type in SALE_TYPES + CREDIT_TYPES and self.company_id.ke_etims_auto_send
 
     def _ke_etims_enqueue(self):
         Document = self.env["ke.etims.document"].sudo()
@@ -231,6 +278,8 @@ class AccountMove(models.Model):
                 documents |= Document._ke_etims_enqueue(
                     move, "credit_note", original_document_id=original.id,
                     reason_code=move.ke_etims_reason_code_id.code or False)
+            elif move.move_type in REVERSE_TYPES:
+                documents |= Document._ke_etims_enqueue(move, "reverse_invoice")
             else:
                 documents |= Document._ke_etims_enqueue(move, "sale")
         return documents
@@ -268,8 +317,8 @@ class AccountMove(models.Model):
     def action_ke_etims_send(self):
         moves = self.filtered(lambda m: m.ke_etims_applicable and m.state == "posted")
         if not moves:
-            raise UserError(_("Only posted Kenyan customer invoices and credit notes "
-                              "of a company using eTIMS can be sent."))
+            raise UserError(_("Only posted Kenyan customer invoices, credit notes and "
+                              "reverse invoices of a company using eTIMS can be sent."))
         documents = moves._ke_etims_enqueue()
         documents.action_send_now()
         failed = documents.filtered(lambda d: d.state == "failed")
@@ -359,7 +408,11 @@ class AccountMove(models.Model):
         if not device._ke_etims_tax_rates():
             errors.append(_("KRA's tax types have not been synced on %s yet; "
                             "use \"Sync KRA codes\" on the device.", device.display_name))
-        errors += document._ke_etims_check_pin(self.commercial_partner_id.vat)
+        reverse = self.move_type in REVERSE_TYPES
+        if reverse:
+            errors += self._ke_etims_validate_reverse(document)
+        errors += document._ke_etims_check_pin(
+            self.commercial_partner_id.vat, whose=_("seller") if reverse else None)
         lines = self._ke_etims_product_lines()
         if not lines:
             errors.append(_("There are no invoice lines to send."))
@@ -367,7 +420,7 @@ class AccountMove(models.Model):
             errors += document._ke_etims_check_line(
                 line.product_id, self._ke_etims_line_tax(line),
                 line.name or line.product_id.display_name or _("A line"),
-                line.quantity, line.price_unit)
+                line.quantity, line.price_unit, allow_untaxed=reverse)
         if self.move_type in CREDIT_TYPES:
             original = document.original_document_id or \
                 self.reversed_entry_id.sudo().ke_etims_document_ids.filtered(
@@ -387,11 +440,23 @@ class AccountMove(models.Model):
                 errors.append(_("Choose the KRA credit note reason."))
         return errors
 
-    def _ke_etims_prepare(self, document):
-        """The invoice as a ``Sale``, in shillings, VAT included."""
-        self.ensure_one()
+    def _ke_etims_validate_reverse(self, document):
         device = document.device_id
-        credit = self.move_type in CREDIT_TYPES
+        if not REGISTRY[device.backend].supports("sign_reverse_invoice"):
+            return [_("%(device)s cannot issue reverse invoices: its backend does not "
+                      "offer them (DigiTax does). Untick \"eTIMS Reverse Invoice\" and "
+                      "get the seller's own eTIMS invoice instead.",
+                      device=device.display_name)]
+        seller = self.commercial_partner_id
+        if seller.country_id and seller.country_id.code != "KE":
+            return [_("A reverse invoice is for a seller in Kenya; %s is not. An "
+                      "import is backed by its customs entry.", seller.display_name)]
+        return []
+
+    def _ke_etims_lines(self, document):
+        """The product lines in shillings, VAT included. On a reverse
+        invoice a line with no VAT is the unregistered seller's."""
+        self.ensure_one()
         rate = _decimal(self.invoice_currency_rate or 1.0)
         company_currency = self.company_id.currency_id
 
@@ -401,15 +466,37 @@ class AccountMove(models.Model):
                 amount = amount / rate
             return money(amount)
 
-        lines = [
+        return [
             document._ke_etims_build_line(
                 seq, line.product_id, self._ke_etims_line_tax(line),
                 price_unit=line.price_unit, quantity=line.quantity, discount=line.discount,
                 name=line.name, currency=line.currency_id, partner=self.partner_id,
-                is_refund=credit, to_company=to_kes)
+                is_refund=self.move_type in CREDIT_TYPES, to_company=to_kes,
+                tax_type=NON_VAT if self.move_type in REVERSE_TYPES else None)
             for seq, line in enumerate(self._ke_etims_product_lines(), start=1)
         ]
+
+    def _ke_etims_prepare(self, document):
+        """The invoice as a ``Sale``, in shillings, VAT included; a reverse
+        invoice as the ``Purchase`` we invoice ourselves."""
+        self.ensure_one()
+        device = document.device_id
+        credit = self.move_type in CREDIT_TYPES
+        lines = self._ke_etims_lines(document)
         partner = self.commercial_partner_id
+        if self.move_type in REVERSE_TYPES:
+            return Purchase(
+                invoice_no=document.kra_invoice_no,
+                lines=lines,
+                purchase_date=self.invoice_date or fields.Date.context_today(self),
+                tax_rates=device._ke_etims_tax_rates(),
+                operator=self._ke_etims_operator(device),
+                payment_type=self.ke_etims_payment_type_id.code or "01",
+                supplier_pin=(partner.vat or "").strip().upper() or None,
+                supplier_name=partner.name,
+                confirmed_at=document.confirmed_at,
+                remark=self.ref or self.name,
+            )
         original = document.original_document_id
         return Sale(
             invoice_no=document.kra_invoice_no,
@@ -440,6 +527,10 @@ class AccountMove(models.Model):
 
     def _ke_etims_on_signed(self, document):
         self.ensure_one()
+        if document.kind == "reverse_invoice" and document.scu_id:
+            # Our own eTIMS invoice backs the expense, as a supplier's would.
+            self.ke_etims_supplier_invoice_ref = "%s/%s" % (
+                document.scu_id, document.receipt_no or document.kra_invoice_no)
         self.message_post(body=_(
             "Signed by eTIMS: KRA invoice %(number)s, receipt %(receipt)s/%(total)s %(label)s, "
             "SCU %(scu)s.",

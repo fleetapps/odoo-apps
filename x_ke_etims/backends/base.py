@@ -555,8 +555,9 @@ class Adapter:
     def sign_credit_note(self, sale):
         self._unsupported("sign_credit_note")
 
-    def get_status(self, provider_ref, kra_invoice_no=None):
-        """Re-read a sale the provider accepted but had not signed yet."""
+    def get_status(self, provider_ref, kra_invoice_no=None, kind="sale"):
+        """Re-read a sale (or a reverse invoice) the provider accepted but had
+        not signed yet."""
         self._unsupported("get_status")
 
     def fetch_purchases(self, since=None):

@@ -34,6 +34,10 @@ Four interchangeable backends, chosen per device (one device per KRA branch):
 * **Demo** -- deterministic fake receipts for demos and tests, watermarked
   "DEMO - NOT A TAX INVOICE".
 
+A vendor bill from a seller who cannot issue eTIMS invoices -- a small-scale
+farmer -- can be signed as a reverse invoice instead, where the backend offers
+it (DigiTax).
+
 Built on Kenya Tax Base, so the KRA tax type an invoice line transmits under is
 the one its VAT3 box is derived from. See README.md.
 """,

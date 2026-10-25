@@ -62,6 +62,10 @@ STALE_SENDING = timedelta(minutes=10)
 #: Seconds, for a send someone is waiting on.
 INTERACTIVE_TIMEOUT = 15.0
 
+#: What an invoice carries to eTIMS. Each takes a number from the device's
+#: sales sequence: a reverse invoice is our invoice, issued for the seller.
+INVOICE_KINDS = ("sale", "credit_note", "reverse_invoice")
+
 STATES = [
     ("to_send", "To Send"),
     ("sending", "Sending"),
@@ -87,7 +91,8 @@ class KeEtimsDocument(models.Model):
     device_id = fields.Many2one("ke.etims.device", index=True, ondelete="restrict")
     environment = fields.Selection(related="device_id.environment")
     kind = fields.Selection(
-        [("sale", "Sale"), ("credit_note", "Credit Note")],
+        [("sale", "Sale"), ("credit_note", "Credit Note"),
+         ("reverse_invoice", "Reverse Invoice")],
         required=True, index=True)
     res_model = fields.Char(required=True, index=True)
     res_id = fields.Many2oneReference(model_field="res_model", required=True, index=True)
@@ -134,9 +139,11 @@ class KeEtimsDocument(models.Model):
     log_ids = fields.One2many("ke.etims.log", "document_id",
                               groups="x_ke_etims.group_ke_etims_manager")
 
+    # Per device: a product's stock level is one document on each branch it
+    # is stocked in. An invoice only ever has one device.
     _active_document_unique = models.UniqueIndex(
-        "(res_model, res_id, kind) WHERE state != 'cancelled'",
-        "This record already has an eTIMS document of this kind.")
+        "(res_model, res_id, kind, device_id) WHERE state != 'cancelled'",
+        "This record already has an eTIMS document of this kind on this device.")
 
     # ------------------------------------------------------------ computes
 
@@ -170,7 +177,7 @@ class KeEtimsDocument(models.Model):
 
     def _ke_etims_needs_number(self):
         """Whether this kind takes a number from the device's sales sequence."""
-        return self.kind in ("sale", "credit_note")
+        return self.kind in INVOICE_KINDS
 
     def _ke_etims_lock(self):
         self.ensure_one()
@@ -403,6 +410,14 @@ class KeEtimsDocument(models.Model):
                     name=blocking.display_name, number=blocking.kra_invoice_no))
                 return
 
+        # A source may have to wait for something else to reach KRA first (a
+        # delivery for its sale): not a failure, and not an attempt.
+        wait_reason = getattr(source, "_ke_etims_wait_reason", None)
+        reason = wait_reason(document) if wait_reason else None
+        if reason:
+            document._ke_etims_wait(reason)
+            return
+
         errors = source._ke_etims_validate(document)
         if errors:
             document._ke_etims_fail("\n".join(errors), release=True)
@@ -441,6 +456,8 @@ class KeEtimsDocument(models.Model):
             return adapter.sign_sale(data)
         if self.kind == "credit_note":
             return adapter.sign_credit_note(data)
+        if self.kind == "reverse_invoice":
+            return adapter.sign_reverse_invoice(data)
         raise UserError(_("eTIMS does not know how to send a %s.", self.kind))
 
     def _ke_etims_store_payload(self, data):
@@ -465,7 +482,8 @@ class KeEtimsDocument(models.Model):
             return
         try:
             adapter = document.device_id._ke_etims_adapter(document=document, timeout=timeout)
-            receipt = adapter.get_status(document.provider_ref, document.kra_invoice_no)
+            receipt = adapter.get_status(document.provider_ref, document.kra_invoice_no,
+                                         kind=document.kind)
         except NotSupported as exc:
             document.write({"last_error": str(exc), "next_try": False})
             return
@@ -491,8 +509,12 @@ class KeEtimsDocument(models.Model):
         """A provider says a record changed. Find ours and ask the provider."""
         adapter = device._ke_etims_adapter()
         event = adapter.handle_callback(payload)
-        if event["kind"] == "sale":
+        if event["kind"] in ("sale", "reverse_invoice"):
+            # A provider may number its sales and reverse invoices apart.
+            kinds = ["reverse_invoice"] if event["kind"] == "reverse_invoice" \
+                else ["sale", "credit_note"]
             document = self.sudo().search([("device_id", "=", device.id),
+                                           ("kind", "in", kinds),
                                            ("provider_ref", "=", event["provider_ref"])],
                                           limit=1)
             if document:
@@ -611,15 +633,17 @@ class KeEtimsDocument(models.Model):
 
     # ------------------------------------------------ shared by every source
 
-    def _ke_etims_check_line(self, product, taxes, label, quantity, price_unit):
+    def _ke_etims_check_line(self, product, taxes, label, quantity, price_unit,
+                             allow_untaxed=False):
         """What stops one sold line from going to eTIMS, as messages. Registers
         the product on the document's device on the way, if KRA has everything
-        it needs to know about it."""
+        it needs to know about it. ``allow_untaxed`` lets a line carry no VAT
+        tax at all, for a seller who is not registered for VAT."""
         self.ensure_one()
         if not product:
             return [_("%s has no product; eTIMS only accepts registered items.", label)]
         errors = []
-        if len(taxes) != 1:
+        if len(taxes) > 1 or (not taxes and not allow_untaxed):
             errors.append(_(
                 "%(line)s needs exactly one VAT tax with a KRA tax type "
                 "(it has %(count)s).", line=label, count=len(taxes)))
@@ -640,11 +664,12 @@ class KeEtimsDocument(models.Model):
         return errors
 
     def _ke_etims_build_line(self, seq, product, tax, *, price_unit, quantity, discount,
-                             name, currency, partner, is_refund, to_company):
+                             name, currency, partner, is_refund, to_company, tax_type=None):
         """One ``Line``, VAT included, from Odoo's own tax computation.
 
         ``to_company`` converts an amount of the document's currency into
-        shillings and rounds it to the cent.
+        shillings and rounds it to the cent. ``tax_type`` stands in for the
+        tax's own on a line that has none.
         """
         self.ensure_one()
         template = product.product_tmpl_id
@@ -664,7 +689,7 @@ class KeEtimsDocument(models.Model):
             name=(name or template.name).split("\n")[0],
             quantity=qty,
             unit_price=money(supply / Decimal(str(quantity))) if quantity else supply,
-            tax_type=tax.ke_etims_tax_type_id.code,
+            tax_type=tax.ke_etims_tax_type_id.code or tax_type,
             supply_amount=supply,
             discount_amount=money(supply - taxable),
             taxable_amount=taxable,
@@ -678,11 +703,12 @@ class KeEtimsDocument(models.Model):
         )
 
     @api.model
-    def _ke_etims_check_pin(self, pin):
+    def _ke_etims_check_pin(self, pin, whose=None):
         pin = (pin or "").strip().upper()
         if pin and not PIN_RE.match(pin):
-            return [_("The customer's PIN %s is not a KRA PIN (a letter, nine digits "
-                      "and a letter). Correct it or remove it.", pin)]
+            return [_("The %(whose)s's PIN %(pin)s is not a KRA PIN (a letter, nine "
+                      "digits and a letter). Correct it or remove it.",
+                      whose=whose or _("customer"), pin=pin)]
         return []
 
     def _ke_etims_schedule_activity(self, user=None):

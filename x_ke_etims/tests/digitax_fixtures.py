@@ -102,7 +102,14 @@ class FakeDigiTax:
                 return FakeResponse(404, {"message": "Not found"})
             return FakeResponse(200, self.sale_answer(match.group(1)))
         if (method, path) == ("POST", "/reverse-invoices"):
-            return FakeResponse(201, {"id": "rev_1", "status": "COMPLETED", **SALE_SIGNED})
+            reverse_id = "rev_%s" % (len(self.sales) + 1)
+            self.sales[reverse_id] = {"request": body, "status": self.sale_outcome}
+            return FakeResponse(201, self.sale_answer(reverse_id))
+        match = re.match(r"^/reverse-invoices/(\w+)$", path)
+        if match and method == "GET":
+            if not match.group(1).startswith("rev_") or match.group(1) not in self.sales:
+                return FakeResponse(404, {"message": "Not found"})
+            return FakeResponse(200, self.sale_answer(match.group(1)))
         return FakeResponse(404, {"message": "No route %s %s" % (method, path)})
 
     def sale_answer(self, sale_id):

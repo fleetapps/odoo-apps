@@ -408,6 +408,11 @@ class KraDirectAdapter(Adapter):
                 "provider_ref": "%s/%s/%s" % (first(row, "spplrTin"),
                                               first(row, "spplrBhfId"),
                                               first(row, "spplrInvcNo")),
+                # The CU invoice number on the supplier's own invoice, where
+                # KRA sends the supplier's SCU ID with it.
+                "supplier_cu_invoice": "%s/%s" % (first(row, "spplrSdcId"),
+                                                  first(row, "spplrInvcNo"))
+                if first(row, "spplrSdcId") else None,
                 "lines": [_purchase_line(line) for line in row.get("itemList") or []
                           if isinstance(line, dict)],
                 "raw": row,
