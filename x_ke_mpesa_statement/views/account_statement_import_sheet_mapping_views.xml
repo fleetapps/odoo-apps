@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- account_statement_import_sheet_file's form view carries the "tree" id. -->
+    <record id="account_statement_import_sheet_mapping_form_mpesa" model="ir.ui.view">
+        <field name="name">account.statement.import.sheet.mapping.form.mpesa</field>
+        <field name="model">account.statement.import.sheet.mapping</field>
+        <field name="inherit_id" ref="account_statement_import_sheet_file.account_statement_import_sheet_mapping_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='no_header']" position="before">
+                <field name="mpesa_org_portal"/>
+            </xpath>
+            <xpath expr="//field[@name='bank_account_column']" position="after">
+                <field name="mpesa_status_column" invisible="not mpesa_org_portal"/>
+                <field name="mpesa_reason_column" invisible="not mpesa_org_portal"/>
+                <field name="mpesa_account_column" invisible="not mpesa_org_portal"/>
+                <field name="mpesa_linked_column" invisible="not mpesa_org_portal"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mpesa_report_settlement_list" model="ir.ui.view">
+        <field name="name">mpesa.report.settlement.list</field>
+        <field name="model">mpesa.report.settlement</field>
+        <field name="arch" type="xml">
+            <list decoration-warning="unbooked_count > 0">
+                <field name="month"/>
+                <field name="shortcode_id"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="receipt_count" sum="Receipts"/>
+                <field name="received" sum="Received"/>
+                <field name="charge_count" optional="hide" sum="Charges"/>
+                <field name="charges" sum="Charges"/>
+                <field name="swept" sum="Swept"/>
+                <field name="reversed_amount" optional="hide" sum="Reversed"/>
+                <field name="other" sum="Other"/>
+                <field name="net" sum="Net"/>
+                <field name="unbooked_count" sum="To look at"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_settlement_pivot" model="ir.ui.view">
+        <field name="name">mpesa.report.settlement.pivot</field>
+        <field name="model">mpesa.report.settlement</field>
+        <field name="arch" type="xml">
+            <pivot string="M-Pesa settlements and charges">
+                <field name="shortcode_id" type="row"/>
+                <field name="month" interval="month" type="col"/>
+                <field name="received" type="measure"/>
+                <field name="charges" type="measure"/>
+                <field name="swept" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_settlement_graph" model="ir.ui.view">
+        <field name="name">mpesa.report.settlement.graph</field>
+        <field name="model">mpesa.report.settlement</field>
+        <field name="arch" type="xml">
+            <graph string="M-Pesa charges per till" type="bar">
+                <field name="month" interval="month"/>
+                <field name="shortcode_id"/>
+                <field name="charges" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_mpesa_report_settlement_search" model="ir.ui.view">
+        <field name="name">mpesa.report.settlement.search</field>
+        <field name="model">mpesa.report.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="shortcode_id"/>
+                <field name="journal_id"/>
+                <filter name="to_look_at" string="Lines to look at" domain="[('unbooked_count', '>', 0)]"/>
+                <filter name="month" string="Month" date="month"/>
+                <group>
+                    <filter name="group_shortcode" string="Till" context="{'group_by': 'shortcode_id'}"/>
+                    <filter name="group_month" string="Month" context="{'group_by': 'month:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mpesa_report_settlement" model="ir.actions.act_window">
+        <field name="name">Settlements and Charges</field>
+        <field name="res_model">mpesa.report.settlement</field>
+        <field name="view_mode">list,pivot,graph</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No M-PESA statement lines yet</p>
+            <p>Import an M-PESA Org Portal statement on a till (Statements tab of the
+                shortcode) to see its charges and sweeps next to what it received.</p>
+        </field>
+    </record>
+
+    <!-- Daily statements with M-PESA's own closing balance, against Odoo's -->
+    <record id="view_bank_statement_mpesa_balance_list" model="ir.ui.view">
+        <field name="name">account.bank.statement.mpesa.balance.list</field>
+        <field name="model">account.bank.statement</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list create="0" decoration-danger="mpesa_balance_gap != 0">
+                <field name="date"/>
+                <field name="journal_id"/>
+                <field name="name"/>
+                <field name="balance_end" string="Day's lines"/>
+                <field name="mpesa_balance_reported_at"/>
+                <field name="mpesa_balance_reported"/>
+                <field name="mpesa_balance_odoo"/>
+                <field name="mpesa_balance_gap"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mpesa_balance_check" model="ir.actions.act_window">
+        <field name="name">M-PESA Balance Check</field>
+        <field name="res_model">account.bank.statement</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_bank_statement_mpesa_balance_list"/>
+        <field name="domain">[('journal_id.is_mpesa', '=', True), ('mpesa_balance_reported_at', '!=', False)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No M-PESA balances yet</p>
+            <p>Each import of an Org Portal statement records M-PESA's balance at the end
+                of each day, next to what Odoo holds for the till.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_mpesa_report_settlement" action="action_mpesa_report_settlement"
+              parent="x_ke_mpesa.menu_mpesa_reports" sequence="80"/>
+    <menuitem id="menu_mpesa_balance_check" action="action_mpesa_balance_check"
+              parent="x_ke_mpesa.menu_mpesa_reports" sequence="81"/>
+</odoo>
