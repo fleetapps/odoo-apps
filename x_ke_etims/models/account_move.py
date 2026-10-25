@@ -42,6 +42,9 @@ CREDIT_TYPES = ("out_refund",)
 REVERSE_TYPES = ("in_invoice",)
 #: KRA tax type of a line with no VAT on it: the seller is not registered.
 NON_VAT = "D"
+#: KRA payment types (code class 07).
+PAYMENT_CASH = "01"
+PAYMENT_CREDIT = "02"
 
 
 def _decimal(value):
@@ -156,7 +159,15 @@ class AccountMove(models.Model):
     def _compute_ke_etims_payment_type_id(self):
         for move in self:
             if not move.ke_etims_payment_type_id and move.country_code == "KE":
-                move.ke_etims_payment_type_id = move.company_id.ke_etims_default_payment_type_id
+                move.ke_etims_payment_type_id = self.env["ke.etims.code"]._ke_etims_find(
+                    CODE_CLASS_PAYMENT_TYPE, move._ke_etims_default_payment_type())
+
+    def _ke_etims_default_payment_type(self):
+        """The company's default, else what the document is: a sales receipt is
+        paid there and then (cash), an invoice is paid later (credit)."""
+        self.ensure_one()
+        return self.company_id.ke_etims_default_payment_type_id.code or (
+            PAYMENT_CASH if self.move_type == "out_receipt" else PAYMENT_CREDIT)
 
     @api.depends("ke_etims_document_id.state", "ke_etims_document_id.scu_id",
                  "ke_etims_document_id.receipt_no")
@@ -358,8 +369,30 @@ class AccountMove(models.Model):
 
     # ------------------------------------------------------------- alerts
 
+    @api.depends("partner_id", "ke_etims_reason_code_id", "reversed_entry_id",
+                 "ke_etims_reverse_invoice", "invoice_cash_rounding_id",
+                 "invoice_line_ids.product_id", "invoice_line_ids.tax_ids",
+                 "invoice_line_ids.price_unit", "invoice_line_ids.quantity",
+                 "invoice_line_ids.discount")
+    def _compute_alerts(self):
+        super()._compute_alerts()
+
     def _get_alerts(self):
         alerts = super()._get_alerts()
+        if self.state == "draft" and self.ke_etims_applicable:
+            for index, problem in enumerate(self._ke_etims_preflight()[:6]):
+                alerts["ke_etims_preflight_%s" % index] = {
+                    "level": "warning",
+                    "message": _("eTIMS will not accept this as it is. %s", problem),
+                }
+            if self.invoice_cash_rounding_id.strategy == "biggest_tax":
+                alerts["ke_etims_rounding"] = {
+                    "level": "warning",
+                    "message": _("This cash rounding changes the VAT amount, but KRA works "
+                                 "VAT out from the lines, so the two will differ. Use a "
+                                 "cash rounding that adds a rounding line instead."),
+                }
+            return alerts
         if self.state != "posted" or not self.ke_etims_applicable:
             return alerts
         state = self.ke_etims_state
@@ -408,37 +441,83 @@ class AccountMove(models.Model):
         if not device._ke_etims_tax_rates():
             errors.append(_("KRA's tax types have not been synced on %s yet; "
                             "use \"Sync KRA codes\" on the device.", device.display_name))
+        errors += self._ke_etims_check_document(document)
+        if self.move_type in CREDIT_TYPES:
+            credit_errors, original = self._ke_etims_check_credit(device, document.reason_code)
+            errors += credit_errors
+            if original and not credit_errors and not document.original_document_id:
+                document.original_document_id = original
+        return errors
+
+    def _ke_etims_check_credit(self, device, reason_code=None):
+        """A credit note names the signed invoice it corrects, and KRA's reason."""
+        self.ensure_one()
+        errors = []
+        original = self.reversed_entry_id.sudo().ke_etims_document_ids.filtered(
+            lambda d: d.kind == "sale" and d.state != "cancelled")[-1:]
+        if not self.reversed_entry_id:
+            errors.append(_("eTIMS needs the invoice this credit note corrects: choose it "
+                            "under \"Credits Invoice\" on the eTIMS tab (reset to draft "
+                            "first if it is posted), or credit the invoice from its "
+                            "\"Credit Note\" button."))
+        elif not original or original.state != "sent":
+            errors.append(_("%s has not been signed by eTIMS, so it cannot be "
+                            "credited yet.", self.reversed_entry_id.display_name))
+        elif device and original.device_id != device:
+            errors.append(_("The original invoice was signed by another eTIMS "
+                            "device (branch %s).", original.device_id.bhf_id))
+        if not (reason_code or self.ke_etims_reason_code_id):
+            errors.append(_("Choose the KRA credit note reason on the eTIMS tab."))
+        return errors, original
+
+    def _ke_etims_preflight(self):
+        """What eTIMS would refuse if this draft were posted now, found
+        without asking KRA anything, so it can be put right first."""
+        self.ensure_one()
+        if not self._ke_etims_product_lines():
+            return []
+        device = self.company_id._ke_etims_device()
+        if device.state != "initialised":
+            # Not a refusal: the queue holds it until the device is ready.
+            return []
+        document = self.env["ke.etims.document"].new({"device_id": device.id})
+        problems = self._ke_etims_check_document(document, register=False)
+        if self.move_type in CREDIT_TYPES:
+            problems += self._ke_etims_check_credit(device)[0]
+        return problems
+
+    def _ke_etims_check_document(self, document, register=True):
+        """The checks that need no answer from KRA: the reverse invoice, the
+        PIN, and every line, with the negative ones folded."""
         reverse = self.move_type in REVERSE_TYPES
-        if reverse:
-            errors += self._ke_etims_validate_reverse(document)
+        errors = self._ke_etims_validate_reverse(document) if reverse else []
         errors += document._ke_etims_check_pin(
             self.commercial_partner_id.vat, whose=_("seller") if reverse else None)
-        lines = self._ke_etims_product_lines()
-        if not lines:
-            errors.append(_("There are no invoice lines to send."))
-        for line in lines:
-            errors += document._ke_etims_check_line(
-                line.product_id, self._ke_etims_line_tax(line),
-                line.name or line.product_id.display_name or _("A line"),
-                line.quantity, line.price_unit, allow_untaxed=reverse)
-        if self.move_type in CREDIT_TYPES:
-            original = document.original_document_id or \
-                self.reversed_entry_id.sudo().ke_etims_document_ids.filtered(
-                    lambda d: d.kind == "sale" and d.state != "cancelled")[-1:]
-            if not self.reversed_entry_id:
-                errors.append(_("A credit note sent to eTIMS must reverse a signed "
-                                "invoice; this one reverses nothing."))
-            elif not original or original.state != "sent":
-                errors.append(_("%s has not been signed by eTIMS, so it cannot be "
-                                "credited yet.", self.reversed_entry_id.display_name))
-            elif original.device_id != device:
-                errors.append(_("The original invoice was signed by another eTIMS "
-                                "device (branch %s).", original.device_id.bhf_id))
-            elif not document.original_document_id:
-                document.original_document_id = original
-            if not (document.reason_code or self.ke_etims_reason_code_id):
-                errors.append(_("Choose the KRA credit note reason."))
+        errors += document._ke_etims_check_lines(
+            self._ke_etims_raw_lines(), currency=self.currency_id, partner=self.partner_id,
+            is_refund=self.move_type in CREDIT_TYPES, untaxed_type=self._ke_etims_untaxed_type(),
+            register=register,
+            refuse_vat=not reverse and not self.company_id.ke_etims_vat_registered)
         return errors
+
+    def _ke_etims_raw_lines(self):
+        return [{
+            "product": line.product_id,
+            "taxes": self._ke_etims_line_tax(line),
+            "price_unit": line.price_unit,
+            "quantity": line.quantity,
+            "discount": line.discount,
+            "name": line.name or line.product_id.display_name or _("A line"),
+        } for line in self._ke_etims_product_lines()]
+
+    def _ke_etims_untaxed_type(self):
+        """What a line without VAT goes to KRA as: Non-VAT for a reverse
+        invoice, and for every line of a seller not registered for VAT;
+        otherwise nothing, and such a line is refused."""
+        self.ensure_one()
+        if self.move_type in REVERSE_TYPES or not self.company_id.ke_etims_vat_registered:
+            return NON_VAT
+        return None
 
     def _ke_etims_validate_reverse(self, document):
         device = document.device_id
@@ -454,8 +533,8 @@ class AccountMove(models.Model):
         return []
 
     def _ke_etims_lines(self, document):
-        """The product lines in shillings, VAT included. On a reverse
-        invoice a line with no VAT is the unregistered seller's."""
+        """The product lines in shillings, VAT included, with the negative
+        ones folded in as discount."""
         self.ensure_one()
         rate = _decimal(self.invoice_currency_rate or 1.0)
         company_currency = self.company_id.currency_id
@@ -466,15 +545,10 @@ class AccountMove(models.Model):
                 amount = amount / rate
             return money(amount)
 
-        return [
-            document._ke_etims_build_line(
-                seq, line.product_id, self._ke_etims_line_tax(line),
-                price_unit=line.price_unit, quantity=line.quantity, discount=line.discount,
-                name=line.name, currency=line.currency_id, partner=self.partner_id,
-                is_refund=self.move_type in CREDIT_TYPES, to_company=to_kes,
-                tax_type=NON_VAT if self.move_type in REVERSE_TYPES else None)
-            for seq, line in enumerate(self._ke_etims_product_lines(), start=1)
-        ]
+        return document._ke_etims_build_lines(
+            self._ke_etims_raw_lines(), currency=self.currency_id, partner=self.partner_id,
+            is_refund=self.move_type in CREDIT_TYPES, to_company=to_kes,
+            untaxed_type=self._ke_etims_untaxed_type())
 
     def _ke_etims_prepare(self, document):
         """The invoice as a ``Sale``, in shillings, VAT included; a reverse
@@ -491,7 +565,7 @@ class AccountMove(models.Model):
                 purchase_date=self.invoice_date or fields.Date.context_today(self),
                 tax_rates=device._ke_etims_tax_rates(),
                 operator=self._ke_etims_operator(device),
-                payment_type=self.ke_etims_payment_type_id.code or "01",
+                payment_type=self.ke_etims_payment_type_id.code or PAYMENT_CASH,
                 supplier_pin=(partner.vat or "").strip().upper() or None,
                 supplier_name=partner.name,
                 confirmed_at=document.confirmed_at,
@@ -510,7 +584,7 @@ class AccountMove(models.Model):
             customer_pin=(partner.vat or "").strip().upper() or None,
             customer_name=partner.name,
             customer_phone=partner.phone or self.partner_id.phone or None,
-            payment_type=self.ke_etims_payment_type_id.code or None,
+            payment_type=self.ke_etims_payment_type_id.code or self._ke_etims_default_payment_type(),
             original_invoice_no=original.kra_invoice_no if credit else None,
             original_provider_ref=original.provider_ref if credit else None,
             reason_code=(document.reason_code or self.ke_etims_reason_code_id.code)

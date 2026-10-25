@@ -16,6 +16,8 @@ class ResConfigSettings(models.TransientModel):
     ke_etims_bhf_id = fields.Char(related="company_id.ke_etims_bhf_id", readonly=False)
     ke_etims_default_payment_type_id = fields.Many2one(
         related="company_id.ke_etims_default_payment_type_id", readonly=False)
+    ke_etims_vat_registered = fields.Boolean(
+        related="company_id.ke_etims_vat_registered", readonly=False)
     ke_etims_active = fields.Boolean(related="company_id.ke_etims_active")
 
     def action_ke_etims_devices(self):

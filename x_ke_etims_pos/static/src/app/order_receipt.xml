@@ -33,8 +33,9 @@
                     <div class="font-monospace"><t t-esc="etims.internalData"/></div>
                     <div>Receipt Signature:</div>
                     <div class="font-monospace"><t t-esc="etims.signature"/></div>
-                    <img t-if="etims.qr" t-att-src="etims.qr" class="ke-etims-qr my-2"
+                    <img t-if="etims.qr" t-att-src="etims.qr" class="ke-etims-qr mt-2"
                          style="width: 45%; max-width: 160px;" alt="eTIMS QR code"/>
+                    <div t-if="etims.qr" class="mb-2">Scan to verify with KRA</div>
                     <div>KRA Invoice No.: <t t-esc="etims.kraInvoiceNo"/></div>
                 </t>
                 <t t-else="">
