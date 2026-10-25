@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ke_etims_purchase_map_form" model="ir.ui.view">
+        <field name="name">ke.etims.purchase.map.form</field>
+        <field name="model">ke.etims.purchase.map</field>
+        <field name="arch" type="xml">
+            <form string="Link supplier items to products">
+                <p>Say which of your products each item is. The choice is remembered for this
+                    supplier's next invoices.</p>
+                <field name="purchase_id" invisible="1"/>
+                <field name="line_ids">
+                    <list editable="bottom" create="0" delete="0">
+                        <field name="purchase_line_id" column_invisible="1"/>
+                        <field name="item_code"/>
+                        <field name="name"/>
+                        <field name="quantity"/>
+                        <field name="product_id" options="{'no_create': True}"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_apply" type="object" string="Apply" class="btn-primary"/>
+                    <button string="Cancel" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
