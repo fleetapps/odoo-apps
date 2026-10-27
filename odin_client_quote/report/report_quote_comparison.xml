@@ -85,8 +85,9 @@
                         t-attf-class="oq-#{row['kind']} #{'oq-alt' if row.get('alt') else ''}">
                         <td class="oq-first" t-out="row['label']">Benefit</td>
                         <td t-foreach="row['cells']" t-as="cell"
-                            t-att-class="'oq-pick' if plans[cell_index].highlight else None"
-                            t-out="cell" t-options="money">0.00</td>
+                            t-att-class="'oq-pick' if plans[cell_index].highlight else None">
+                            <t t-if="cell is not None" t-out="cell" t-options="money">0.00</t>
+                        </td>
                     </tr>
                 </t>
             </tbody>

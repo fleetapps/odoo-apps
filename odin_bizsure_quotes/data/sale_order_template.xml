@@ -600,7 +600,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -1203,7 +1203,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -1806,7 +1806,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -2409,7 +2409,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -3012,7 +3012,7 @@ Principal and spouse can join this limit up to age 75 (not available from age 76
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -3615,7 +3615,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4218,7 +4218,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
         <field name="sequence">610</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4436,7 +4436,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
         <field name="sequence">240</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4666,7 +4666,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_1_kes_200_000_below_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4896,7 +4896,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_2_kes_300_000_below_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -5126,7 +5126,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_3_kes_500_000_below_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -5356,7 +5356,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_4_kes_750_000_below_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -5586,7 +5586,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_1_kes_200_000_above_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -5816,7 +5816,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_2_kes_300_000_above_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -6046,7 +6046,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_3_kes_500_000_above_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -6276,7 +6276,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_birdview_bizsure_afya_plan_4_kes_750_000_above_70"/>
         <field name="sequence">230</field>
         <field name="display_type">line_note</field>
-        <field name="name">Pay the annual premium in full, or pay a 25% deposit and the balance in 3, 6 or 10 monthly instalments. Instalments carry interest of 3% per month on the financed 75% balance. Cover starts once the insurer has received the premium.</field>
+        <field name="name">Pay the annual premium in full, or in 4, 6 or 10 equal monthly instalments through NCBA Insurance Premium Financing, the first paid when cover starts. Instalments include NCBA's charge: a fixed facility fee set by the premium band for premiums of KES 25,000 to 299,999, or 1.84%, 3.08% or 5.59% of the premium (for 4, 6 or 10 instalments) for premiums of KES 300,000 or more. Instalments are not available for premiums under KES 25,000. Cover starts once the insurer has received the premium.</field>
         <field name="product_uom_qty">0</field>
     </record>
 

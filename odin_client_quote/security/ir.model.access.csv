@@ -5,6 +5,8 @@ access_quote_comparison_plan_user,odin.quote.comparison.plan user,model_odin_quo
 access_quote_comparison_detail_user,odin.quote.comparison.detail user,model_odin_quote_comparison_detail,sales_team.group_sale_salesman,1,1,1,1
 access_quote_instalment_plan_user,odin.quote.instalment.plan user,model_odin_quote_instalment_plan,sales_team.group_sale_salesman,1,0,0,0
 access_quote_instalment_plan_manager,odin.quote.instalment.plan manager,model_odin_quote_instalment_plan,sales_team.group_sale_manager,1,1,1,1
+access_quote_instalment_band_user,odin.quote.instalment.band user,model_odin_quote_instalment_band,sales_team.group_sale_salesman,1,0,0,0
+access_quote_instalment_band_manager,odin.quote.instalment.band manager,model_odin_quote_instalment_band,sales_team.group_sale_manager,1,1,1,1
 access_quote_addon_salesman,quote addon wizard,model_odin_quote_addon,sales_team.group_sale_salesman,1,1,1,1
 access_quote_addon_line_salesman,quote addon line,model_odin_quote_addon_line,sales_team.group_sale_salesman,1,1,1,1
 access_quote_member_salesman,comparison member,model_odin_quote_comparison_member,sales_team.group_sale_salesman,1,1,1,1

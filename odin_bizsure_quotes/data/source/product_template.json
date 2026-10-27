@@ -233,7 +233,7 @@
  {
   "id": 103,
   "default_code": "IPF-10M",
-  "name": "Instalment Plan Interest – 10 Months (22.5% of Total Payable)",
+  "name": "Instalment Financing – 10 Instalments (NCBA IPF)",
   "list_price": 0,
   "categ_id": [
    12,
@@ -243,7 +243,7 @@
   "taxes_id": [],
   "sale_ok": false,
   "purchase_ok": false,
-  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 10 monthly instalments, interest 3% per month on the financed balance.",
+  "description_sale": "Cost of paying in 10 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.",
   "uom_id": [
    1,
    "Units"
@@ -254,7 +254,7 @@
  {
   "id": 101,
   "default_code": "IPF-3M",
-  "name": "Instalment Plan Interest – 3 Months (6.75% of Total Payable)",
+  "name": "Instalment Financing – 4 Instalments (NCBA IPF)",
   "list_price": 0,
   "categ_id": [
    12,
@@ -264,7 +264,7 @@
   "taxes_id": [],
   "sale_ok": false,
   "purchase_ok": false,
-  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 3 monthly instalments, interest 3% per month on the financed balance.",
+  "description_sale": "Cost of paying in 4 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.",
   "uom_id": [
    1,
    "Units"
@@ -275,7 +275,7 @@
  {
   "id": 102,
   "default_code": "IPF-6M",
-  "name": "Instalment Plan Interest – 6 Months (13.5% of Total Payable)",
+  "name": "Instalment Financing – 6 Instalments (NCBA IPF)",
   "list_price": 0,
   "categ_id": [
    12,
@@ -285,7 +285,7 @@
   "taxes_id": [],
   "sale_ok": false,
   "purchase_ok": false,
-  "description_sale": "Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 6 monthly instalments, interest 3% per month on the financed balance.",
+  "description_sale": "Cost of paying in 6 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.",
   "uom_id": [
    1,
    "Units"

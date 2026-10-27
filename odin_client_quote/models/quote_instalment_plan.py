@@ -32,6 +32,24 @@ class QuoteInstalmentPlan(models.Model):
         help="Flat financing charge for each month of the plan, whatever the "
         "premium, spread equally over all the instalments.",
     )
+    term_rate = fields.Float(
+        string="Interest for the whole plan (%)",
+        digits=(16, 4),
+        help="One flat rate on the premium for the whole plan, the way premium "
+        "financiers quote it -- NCBA charges 3.08 for 6 instalments, not 3.08 "
+        "a month. Used for premiums no fixed fee below covers.",
+    )
+    min_premium = fields.Monetary(
+        string="Smallest premium financed",
+        currency_field="currency_id",
+        help="Below this the plan is not offered: the financier will not lend "
+        "less (NCBA: KES 25,000).",
+    )
+    fee_band_ids = fields.One2many(
+        "odin.quote.instalment.band", "plan_id", string="Fixed fees by premium",
+        help="A fixed facility fee for premiums in a range, charged in place "
+        "of any interest or monthly fee.",
+    )
     payment_term_id = fields.Many2one(
         "account.payment.term", string="Payment terms", readonly=True, copy=False,
         help="The invoice's due dates when a client pays this way: one equal "
@@ -46,17 +64,36 @@ class QuoteInstalmentPlan(models.Model):
         "An instalment plan needs at least one instalment.",
     )
 
+    def _odin_available(self, total):
+        """Whether this plan can finance a premium of ``total`` at all."""
+        self.ensure_one()
+        currency = self.currency_id or self.env.company.currency_id
+        return not self.min_premium or currency.compare_amounts(total, self.min_premium) >= 0
+
+    def _odin_financing(self, total):
+        """What paying ``total`` this way costs: the fixed fee of the band the
+        premium falls in, otherwise interest for the whole plan, interest per
+        month and any monthly fee."""
+        self.ensure_one()
+        band = self.fee_band_ids.filtered(
+            lambda b: b.amount_from <= total and (not b.amount_to or total < b.amount_to))[:1]
+        if band:
+            return band.fee
+        months = self.months
+        return (total * (self.term_rate or 0.0) / 100.0
+                + total * (self.monthly_rate or 0.0) / 100.0 * months
+                + (self.monthly_fee or 0.0) * months)
+
     def schedule(self, total):
         """``total`` paid like a loan: ``months`` equal payments, the first
-        one now (it is the deposit), the financing -- interest on the whole
-        premium for every month, plus any monthly fee -- spread over all of
-        them. ``deposit`` is kept as the first payment for the reports that
-        print one."""
+        one now (it is the deposit), the financing (see ``_odin_financing``)
+        spread over all of them. ``deposit`` is kept as the first payment for
+        the reports that print one. Check ``_odin_available`` first: a plan
+        is not offered below its smallest premium."""
         self.ensure_one()
         currency = self.currency_id or self.env.company.currency_id
         months = self.months
-        financing = (total * (self.monthly_rate or 0.0) / 100.0 * months
-                     + (self.monthly_fee or 0.0) * months)
+        financing = self._odin_financing(total)
         instalment = currency.round((total + financing) / months)
         payable = currency.round(instalment * months)
         return {
@@ -90,3 +127,25 @@ class QuoteInstalmentPlan(models.Model):
         })
         self.sudo().payment_term_id = term
         return term
+
+
+class QuoteInstalmentBand(models.Model):
+    _name = "odin.quote.instalment.band"
+    _description = "Fixed instalment fee for a range of premiums"
+    _order = "plan_id, amount_from, id"
+
+    plan_id = fields.Many2one(
+        "odin.quote.instalment.plan", required=True, ondelete="cascade", index=True
+    )
+    amount_from = fields.Monetary(
+        string="Premium from", required=True, currency_field="currency_id"
+    )
+    amount_to = fields.Monetary(
+        string="Premium below", currency_field="currency_id",
+        help="Up to, but not including, this premium. Empty: no upper limit.",
+    )
+    fee = fields.Monetary(
+        string="Fee", required=True, currency_field="currency_id",
+        help="Charged once for the whole plan and spread over its instalments.",
+    )
+    currency_id = fields.Many2one(related="plan_id.currency_id")

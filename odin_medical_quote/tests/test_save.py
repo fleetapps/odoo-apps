@@ -40,6 +40,7 @@ class TestSave(MedicalQuoteCase):
         self.assertAlmostEqual(afya["total"], afya["premium"] + afya["taxes"] + 40)
         plans = self.env["odin.quote.instalment.plan"].search(
             [("company_id", "=", self.company.id)])
+        plans = plans.filtered(lambda plan: plan._odin_available(afya["total"]))
         self.assertEqual([i["months"] for i in afya["instalments"]], plans.mapped("months"))
         for instalment in afya["instalments"]:
             self.assertGreaterEqual(instalment["payable"], afya["total"],
@@ -266,6 +267,26 @@ class TestInstalmentPlans(MedicalQuoteCase):
             "name": "3 months", "months": 3, "monthly_rate": 3})
         self.assertAlmostEqual(interest.schedule(10000)["payable"], 10900, delta=0.02,
                                msg="3% a month on the whole premium, from the first instalment")
+
+    def test_fee_bands_rate_and_minimum(self):
+        """A premium financier's card: a fixed fee by premium band, a flat
+        rate for the whole plan above the bands, nothing below a minimum."""
+        plan = self.env["odin.quote.instalment.plan"].create({
+            "name": "6 instalments", "months": 6, "term_rate": 3.08, "min_premium": 25000,
+            "fee_band_ids": [
+                Command.create({"amount_from": 25000, "amount_to": 150000, "fee": 5000}),
+                Command.create({"amount_from": 150000, "amount_to": 300000, "fee": 6000}),
+            ]})
+        self.assertFalse(plan._odin_available(24999.99))
+        self.assertTrue(plan._odin_available(25000))
+        self.assertEqual(plan._odin_financing(25000), 5000)
+        self.assertEqual(plan._odin_financing(149999.99), 5000)
+        self.assertEqual(plan._odin_financing(150000), 6000, "a band's upper bound is not in it")
+        self.assertAlmostEqual(plan._odin_financing(300000), 9240,
+                               msg="3.08% once for the whole plan, not per month")
+        schedule = plan.schedule(46026.01)
+        self.assertEqual(schedule["instalment"], round((46026.01 + 5000) / 6, 2))
+        self.assertAlmostEqual(schedule["payable"], schedule["instalment"] * 6)
 
     def test_payment_terms(self):
         plan = self.env["odin.quote.instalment.plan"].create({"name": "3 months", "months": 3})

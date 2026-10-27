@@ -146,7 +146,7 @@
     </record>
 
     <record id="prod_ipf_10m" model="product.product">
-        <field name="name">Instalment Plan Interest – 10 Months (22.5% of Total Payable)</field>
+        <field name="name">Instalment Financing – 10 Instalments (NCBA IPF)</field>
         <field name="default_code">IPF-10M</field>
         <field name="type">service</field>
         <field name="list_price">0</field>
@@ -156,12 +156,12 @@
         <field name="odin_instalment_interest" eval="True"/>
         <field name="uom_id" ref="uom.product_uom_unit"/>
         <field name="categ_id" ref="categ_ins_fees_instalment_charges"/>
-        <field name="description_sale">Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 10 monthly instalments, interest 3% per month on the financed balance.</field>
+        <field name="description_sale">Cost of paying in 10 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.</field>
         <field name="taxes_id" eval="[(5, 0, 0)]"/>
     </record>
 
     <record id="prod_ipf_3m" model="product.product">
-        <field name="name">Instalment Plan Interest – 3 Months (6.75% of Total Payable)</field>
+        <field name="name">Instalment Financing – 4 Instalments (NCBA IPF)</field>
         <field name="default_code">IPF-3M</field>
         <field name="type">service</field>
         <field name="list_price">0</field>
@@ -171,12 +171,12 @@
         <field name="odin_instalment_interest" eval="True"/>
         <field name="uom_id" ref="uom.product_uom_unit"/>
         <field name="categ_id" ref="categ_ins_fees_instalment_charges"/>
-        <field name="description_sale">Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 3 monthly instalments, interest 3% per month on the financed balance.</field>
+        <field name="description_sale">Cost of paying in 4 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.</field>
         <field name="taxes_id" eval="[(5, 0, 0)]"/>
     </record>
 
     <record id="prod_ipf_6m" model="product.product">
-        <field name="name">Instalment Plan Interest – 6 Months (13.5% of Total Payable)</field>
+        <field name="name">Instalment Financing – 6 Instalments (NCBA IPF)</field>
         <field name="default_code">IPF-6M</field>
         <field name="type">service</field>
         <field name="list_price">0</field>
@@ -186,7 +186,7 @@
         <field name="odin_instalment_interest" eval="True"/>
         <field name="uom_id" ref="uom.product_uom_unit"/>
         <field name="categ_id" ref="categ_ins_fees_instalment_charges"/>
-        <field name="description_sale">Priced automatically by Actions ▸ Apply instalment plan on the quotation. 25% deposit before cover starts, balance in 6 monthly instalments, interest 3% per month on the financed balance.</field>
+        <field name="description_sale">Cost of paying in 6 equal monthly instalments through NCBA Insurance Premium Financing, the first when cover starts: a fixed fee by premium band from KES 25,000 to 299,999, a flat rate on the premium from KES 300,000. Worked out from the instalment plan.</field>
         <field name="taxes_id" eval="[(5, 0, 0)]"/>
     </record>
 
