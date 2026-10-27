@@ -1,36 +1,163 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The instalment schemes the quotation templates describe in their terms:
-    "a 25% deposit and the balance in 3, 6 or 10 monthly instalments, carrying
-    interest of 3% per month on the financed 75% balance".
+    NCBA Insurance Premium Financing, rate card effective 4 March 2026.
 
-    Note: the Insurance Cloud quotations Bizsure issued before this build used
-    a different Birdview scheme - no deposit, a flat KES 1,000 per month over
-    4 or 10 months. If Birdview still offers that, add it as:
-    months 4, deposit 0, rate 0, fee 1000.
+    * Premiums of KES 25,000 to 299,999 (Category A): a fixed facility fee by
+      premium band, one fee_band per row of the card.
+    * Premiums of KES 300,000 and over (Category B): one flat rate on the
+      premium for the whole plan (term_rate). It is NOT a monthly rate:
+      6 instalments cost 3.08% of the premium, not 6 x 3.08%.
+    * Below KES 25,000 NCBA does not lend, so no instalment option is offered.
+
+    Payments are equal, the first paid when cover starts. The card offers 4 to
+    10 instalments; 4, 6 and 10 are offered here. NCBA has no 3-instalment
+    plan, so the record that was "3 monthly instalments" (instalment_3m) now
+    carries 4: its XML id is kept so quotations already linked to it follow.
+    Category A bands are "from" inclusive, "below" exclusive: 25,000-149,999.99
+    is the first band, exactly 300,000 is Category B.
+
+    The bank may vary the fees and rates without notice: check against the
+    current card before relying on these.
 -->
 <odoo>
     <record id="instalment_3m" model="odin.quote.instalment.plan">
-        <field name="name">3 monthly instalments</field>
+        <field name="name">4 monthly instalments</field>
         <field name="sequence">10</field>
-        <field name="months">3</field>
-        <field name="deposit_percent">25</field>
-        <field name="monthly_rate">3</field>
+        <field name="months">4</field>
+        <field name="deposit_percent">0</field>
+        <field name="monthly_rate">0</field>
+        <field name="monthly_fee">0</field>
+        <field name="term_rate">1.84</field>
+        <field name="min_premium">25000</field>
+    </record>
+    <record id="instalment_3m_band1" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">25000</field>
+        <field name="amount_to">150000</field>
+        <field name="fee">3500</field>
+    </record>
+    <record id="instalment_3m_band2" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">150000</field>
+        <field name="amount_to">170000</field>
+        <field name="fee">3585</field>
+    </record>
+    <record id="instalment_3m_band3" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">170000</field>
+        <field name="amount_to">200000</field>
+        <field name="fee">4150</field>
+    </record>
+    <record id="instalment_3m_band4" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">200000</field>
+        <field name="amount_to">250000</field>
+        <field name="fee">5047</field>
+    </record>
+    <record id="instalment_3m_band5" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">250000</field>
+        <field name="amount_to">270000</field>
+        <field name="fee">5836</field>
+    </record>
+    <record id="instalment_3m_band6" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_3m"/>
+        <field name="amount_from">270000</field>
+        <field name="amount_to">300000</field>
+        <field name="fee">6398</field>
     </record>
 
     <record id="instalment_6m" model="odin.quote.instalment.plan">
         <field name="name">6 monthly instalments</field>
         <field name="sequence">20</field>
         <field name="months">6</field>
-        <field name="deposit_percent">25</field>
-        <field name="monthly_rate">3</field>
+        <field name="deposit_percent">0</field>
+        <field name="monthly_rate">0</field>
+        <field name="monthly_fee">0</field>
+        <field name="term_rate">3.08</field>
+        <field name="min_premium">25000</field>
+    </record>
+    <record id="instalment_6m_band1" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">25000</field>
+        <field name="amount_to">150000</field>
+        <field name="fee">5000</field>
+    </record>
+    <record id="instalment_6m_band2" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">150000</field>
+        <field name="amount_to">170000</field>
+        <field name="fee">6000</field>
+    </record>
+    <record id="instalment_6m_band3" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">170000</field>
+        <field name="amount_to">200000</field>
+        <field name="fee">6938</field>
+    </record>
+    <record id="instalment_6m_band4" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">200000</field>
+        <field name="amount_to">250000</field>
+        <field name="fee">8437</field>
+    </record>
+    <record id="instalment_6m_band5" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">250000</field>
+        <field name="amount_to">270000</field>
+        <field name="fee">9750</field>
+    </record>
+    <record id="instalment_6m_band6" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_6m"/>
+        <field name="amount_from">270000</field>
+        <field name="amount_to">300000</field>
+        <field name="fee">10727</field>
     </record>
 
     <record id="instalment_10m" model="odin.quote.instalment.plan">
         <field name="name">10 monthly instalments</field>
         <field name="sequence">30</field>
         <field name="months">10</field>
-        <field name="deposit_percent">25</field>
-        <field name="monthly_rate">3</field>
+        <field name="deposit_percent">0</field>
+        <field name="monthly_rate">0</field>
+        <field name="monthly_fee">0</field>
+        <field name="term_rate">5.59</field>
+        <field name="min_premium">25000</field>
+    </record>
+    <record id="instalment_10m_band1" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">25000</field>
+        <field name="amount_to">150000</field>
+        <field name="fee">7000</field>
+    </record>
+    <record id="instalment_10m_band2" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">150000</field>
+        <field name="amount_to">170000</field>
+        <field name="fee">10906</field>
+    </record>
+    <record id="instalment_10m_band3" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">170000</field>
+        <field name="amount_to">200000</field>
+        <field name="fee">12600</field>
+    </record>
+    <record id="instalment_10m_band4" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">200000</field>
+        <field name="amount_to">250000</field>
+        <field name="fee">15336</field>
+    </record>
+    <record id="instalment_10m_band5" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">250000</field>
+        <field name="amount_to">270000</field>
+        <field name="fee">17712</field>
+    </record>
+    <record id="instalment_10m_band6" model="odin.quote.instalment.band">
+        <field name="plan_id" ref="instalment_10m"/>
+        <field name="amount_from">270000</field>
+        <field name="amount_to">300000</field>
+        <field name="fee">19416</field>
     </record>
 </odoo>

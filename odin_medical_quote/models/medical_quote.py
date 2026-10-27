@@ -522,6 +522,7 @@ class MedicalQuote(models.AbstractModel):
                 "payable": schedule["payable"],
             } for plan in self.env["odin.quote.instalment.plan"].search(
                 [("company_id", "=", self.env.company.id)])
+              if plan._odin_available(total)
               for schedule in [plan.schedule(total)]],
         }
 

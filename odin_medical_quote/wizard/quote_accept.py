@@ -72,14 +72,18 @@ class MedicalQuoteAccept(models.TransientModel):
             return False
         return comparison.odin_handler_id or comparison._odin_default_handler()
 
-    @api.depends("comparison_id")
+    @api.depends("comparison_id", "order_id")
     def _compute_available_order_ids(self):
         for wizard in self:
             wizard.available_order_ids = wizard.comparison_id.plan_ids.order_id.filtered(
                 lambda o: o.state in ("draft", "sent", "sale"))
-            wizard.available_instalment_plan_ids = wizard.comparison_id.instalment_plan_ids or \
+            plans = wizard.comparison_id.instalment_plan_ids or \
                 wizard.env["odin.quote.instalment.plan"].search(
                     [("company_id", "=", wizard.env.company.id)])
+            if wizard.order_id:
+                premium = wizard._odin_premium()
+                plans = plans.filtered(lambda plan: plan._odin_available(premium))
+            wizard.available_instalment_plan_ids = plans
 
     @api.depends("comparison_id", "order_id")
     def _compute_other_order_ids(self):
@@ -160,6 +164,10 @@ class MedicalQuoteAccept(models.TransientModel):
             raise UserError(_("Pick one of the plans on this quote."))
         if self.payment == "instalments" and not self.instalment_plan_id:
             raise UserError(_("Choose the instalment plan the client is paying by."))
+        if self.payment == "instalments" and not self.instalment_plan_id._odin_available(
+                self._odin_premium()):
+            raise UserError(_("This premium is too small to pay by %s.",
+                              self.instalment_plan_id.display_name))
 
         if self.payment == "instalments":
             self._odin_finance(order)

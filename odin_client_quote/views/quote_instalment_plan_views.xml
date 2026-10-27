@@ -4,11 +4,13 @@
         <field name="name">odin.quote.instalment.plan.list</field>
         <field name="model">odin.quote.instalment.plan</field>
         <field name="arch" type="xml">
-            <list string="Instalment plans" editable="bottom">
+            <list string="Instalment plans">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="months"/>
-                <field name="monthly_rate"/>
+                <field name="min_premium"/>
+                <field name="term_rate"/>
+                <field name="monthly_rate" optional="hide"/>
                 <field name="monthly_fee"/>
                 <field name="currency_id" column_invisible="True"/>
                 <field name="company_id" groups="base.group_multi_company"/>
@@ -29,13 +31,24 @@
                     <group>
                         <group string="Schedule">
                             <field name="months"/>
-                                    </group>
+                            <field name="min_premium"/>
+                        </group>
                         <group string="Cost of paying monthly">
+                            <field name="term_rate"/>
                             <field name="monthly_rate"/>
                             <field name="monthly_fee"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>
+                    <separator string="Fixed fees by premium"/>
+                    <field name="fee_band_ids">
+                        <list editable="bottom">
+                            <field name="amount_from"/>
+                            <field name="amount_to"/>
+                            <field name="fee"/>
+                            <field name="currency_id" column_invisible="True"/>
+                        </list>
+                    </field>
                     <group>
                         <field name="active" widget="boolean_toggle"/>
                         <field name="company_id" groups="base.group_multi_company"/>

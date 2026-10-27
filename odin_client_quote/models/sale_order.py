@@ -27,7 +27,8 @@ class SaleOrder(models.Model):
         """Each instalment option worked out on this quotation's cash premium."""
         self.ensure_one()
         total = self._client_amounts()["total"]
-        return [plan.schedule(total) for plan in self.odin_instalment_plan_ids]
+        return [plan.schedule(total) for plan in self.odin_instalment_plan_ids
+                if plan._odin_available(total)]
 
     # -- amounts ----------------------------------------------------------
 

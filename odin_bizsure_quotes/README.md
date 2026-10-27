@@ -15,7 +15,7 @@ comparison.
 | Quotation templates | 16 — APA Jamii Plus ×8, Birdview Bizsure Afya ×8 |
 | Template lines | 691 |
 | Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans) |
-| Instalment plans | 3, 6 and 10 months at 25% deposit + 3%/month |
+| Instalment plans | 4, 6 and 10 instalments on the NCBA IPF rate card of 4 March 2026 (band fees, flat rate from KES 300,000, none under 25,000) |
 
 The 16 templates are the refined ones. The Motor, generic Health and
 Family/Life templates that exist on the demo are **deliberately excluded** —

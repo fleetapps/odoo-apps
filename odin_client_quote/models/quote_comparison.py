@@ -173,20 +173,27 @@ class QuoteComparison(models.Model):
                 "cells": cells(lambda _p, _s, amounts: amounts["total"]),
             })
             for instalment in self.instalment_plan_ids:
+                # Leave out a plan no column can use; a cell is blank (None) where
+                # that plan's premium is too small to finance.
+                if not any(instalment._odin_available(amounts["total"])
+                           for _p, _s, amounts in columns):
+                    continue
                 rows.append({"kind": "group", "label": instalment.display_name, "cells": []})
                 rows.append({
                     "kind": "instalment",
                     "label": _("%s equal monthly payments of, the first now", instalment.months),
                     "cells": cells(
                         lambda _p, _s, amounts, plan=instalment: plan.schedule(
-                            amounts["total"])["instalment"]),
+                            amounts["total"])["instalment"]
+                        if plan._odin_available(amounts["total"]) else None),
                 })
                 rows.append({
                     "kind": "total",
                     "label": _("Total paid this way"),
                     "cells": cells(
                         lambda _p, _s, amounts, plan=instalment: plan.schedule(
-                            amounts["total"])["payable"]),
+                            amounts["total"])["payable"]
+                        if plan._odin_available(amounts["total"]) else None),
                 })
 
         stripe = False
