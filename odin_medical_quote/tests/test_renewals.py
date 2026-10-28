@@ -39,7 +39,17 @@ class TestRenewals(MedicalQuoteCase):
         return comparison
 
     def reminders(self, renewal):
-        return self.env["mail.mail"].search([("model", "=", "odin.renewal"), ("res_id", "=", renewal.id)])
+        """The reminders emailed for ``renewal``: their subject is "Renewal
+        in 30 days: ...", "Renewal due today: ...", "Renewal overdue: ..."."""
+        return self.env["mail.mail"].search([
+            ("model", "=", "odin.renewal"), ("res_id", "=", renewal.id),
+            ("subject", "=ilike", "renewal%"),
+        ])
+
+    def assignment_mails(self, record):
+        return self.env["mail.mail"].search([
+            ("model", "=", record._name), ("res_id", "=", record.id),
+            ("subject", "ilike", "assigned")])
 
     def test_sold_policy_renews_a_year_on(self):
         comparison = self.sell()
@@ -54,6 +64,8 @@ class TestRenewals(MedicalQuoteCase):
         self.assertFalse(renewal.start_to_confirm)
         self.assertEqual(renewal.state, "upcoming")
         self.assertFalse(renewal.lead_id, "no opportunity a year early")
+        self.assertFalse(self.assignment_mails(renewal),
+                         "made by the system: no 'you have been assigned' email")
 
     def test_cover_placed(self):
         comparison = self.sell()
@@ -98,8 +110,10 @@ class TestRenewals(MedicalQuoteCase):
         self.assertTrue(renewal.source_lead_id.active, "the sale it came from is not")
 
     def test_sender(self):
-        self.company.alias_domain_id = self.env["mail.alias.domain"].create({
-            "name": "odin.ist", "default_from": "noreply"})
+        Domain = self.env["mail.alias.domain"]
+        self.company.alias_domain_id = Domain.search([("name", "=", "odin.ist")], limit=1) \
+            or Domain.create({"name": "odin.ist", "default_from": "noreply"})
+        self.company.alias_domain_id.default_from = "noreply"
         self.assertEqual(self.Renewal._odin_mail_from(self.company),
                          formataddr((self.company.name, "noreply@odin.ist")))
 

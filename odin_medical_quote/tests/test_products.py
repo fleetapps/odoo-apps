@@ -121,8 +121,8 @@ class TestMedicalProducts(MedicalQuoteCase):
         self.assertTrue(template.odin_medical)
         self.assertEqual(template.odin_inpatient_limit, 300000)
         self.assertEqual(template.odin_insurer_id, self.insurer_afya)
-        keys = [line.benefit_key for line in template.sale_order_template_line_ids
-                if line.display_type == "line_section"]
+        ordered = template.sale_order_template_line_ids.sorted(lambda l: (l.sequence, l.id))
+        keys = [line.benefit_key for line in ordered if line.display_type == "line_section"]
         self.assertEqual(keys[:2], ["inpatient", "outpatient"])
         self.assertIn("statutory_charges", keys, "charges copied from the latest plan")
         result = self.Quote.search_plans({"cover": self.family()})
@@ -134,6 +134,7 @@ class TestMedicalProducts(MedicalQuoteCase):
 
         product.table_ids = [Command.unlink(product.table_ids.filtered(
             lambda t: t.cover == "outpatient").id)]
+        template.invalidate_recordset(["sale_order_template_line_ids"])
         self.assertNotIn("outpatient", [line.benefit_key for line in
                                         template.sale_order_template_line_ids
                                         if line.display_type == "line_section"])

@@ -174,7 +174,9 @@ class Renewal(models.Model):
             if not lead.date_deadline or lead.date_deadline > self.renewal_date:
                 lead.date_deadline = self.renewal_date
             return lead
-        Lead = self.env["crm.lead"].sudo()
+        # Made by the system: the reminder email says it all, not also
+        # Odoo's "you have been assigned" (mail_thread, user_id tracked).
+        Lead = self.env["crm.lead"].sudo().with_context(mail_auto_subscribe_no_notify=True)
         user = self._odin_responsible()
         source = self.source_lead_id
         lines = dict(self._selection_line())
@@ -405,7 +407,7 @@ class Renewal(models.Model):
         period on."""
         for renewal in self.filtered(lambda r: r.state in OPEN_STATES):
             months = renewal.period_months or 12
-            following = renewal.copy({
+            following = renewal.with_context(mail_auto_subscribe_no_notify=True).copy({
                 "renewal_date": renewal.renewal_date + relativedelta(months=months),
                 "cover_start": renewal.renewal_date,
                 "state": "upcoming",
@@ -452,7 +454,7 @@ class Renewal(models.Model):
         if months >= 12 and not self.search_count([("order_id", "=", order.id)]):
             given = self.env.context.get("odin_cover_start")
             start = fields.Date.to_date(given) if given else fields.Date.context_today(self)
-            renewal = self.create({
+            renewal = self.with_context(mail_auto_subscribe_no_notify=True).create({
                 "partner_id": order.partner_id.commercial_partner_id.id
                 if order.partner_id.commercial_partner_id.is_company else order.partner_id.id,
                 "line": comparison.odin_quote_type or "medical",
