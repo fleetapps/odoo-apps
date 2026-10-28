@@ -5,3 +5,5 @@ from . import test_accept
 from . import test_tour
 from . import test_export
 from . import test_register
+from . import test_products
+from . import test_renewals

@@ -21,9 +21,13 @@
          file, and a menu cannot name a parent that does not exist yet. -->
 
 
+    <!-- Instalment plans, templates, raw motor rates: kept for whoever
+         supports the office (developer mode), out of everyone else's way.
+         Staff keep what they sell in Products. -->
     <menuitem id="menu_quote_configuration"
               name="Configuration"
               parent="menu_quote_root"
+              groups="base.group_no_one"
               sequence="90"/>
 
     <menuitem id="menu_quote_instalment_app"

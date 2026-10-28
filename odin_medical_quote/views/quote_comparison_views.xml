@@ -22,6 +22,9 @@
                 <button name="action_odin_send_email" type="object" string="Send by email"
                         invisible="not plan_ids"
                         help="Email the quotation to the client, the PDF attached."/>
+                <button name="action_odin_cover_placed" type="object" string="Cover placed"
+                        class="btn-primary" invisible="state != 'accepted' or not odin_placement_pending"
+                        help="The insurer has confirmed: record the policy number and the day cover starts."/>
             </xpath>
             <!-- A quote made in Add Medical Quote is changed there: these build
                  and re-price the quotations another way, and would undo it. -->
@@ -92,6 +95,16 @@
                             class="oe_stat_button" icon="fa-pencil-square-o"
                             invisible="not odin_invoice_count">
                         <field name="odin_invoice_count" widget="statinfo" string="Invoices"/>
+                    </button>
+                    <field name="odin_renewal_id" invisible="1"/>
+                    <field name="odin_next_renewal_id" invisible="1"/>
+                    <field name="odin_placement_pending" invisible="1"/>
+                    <button name="action_odin_view_renewal" type="object"
+                            class="oe_stat_button" icon="fa-refresh"
+                            invisible="not odin_next_renewal_id and not odin_renewal_id">
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Renewal</span>
+                        </div>
                     </button>
                 </div>
                 <widget name="web_ribbon" title="Accepted" bg_color="text-bg-success"

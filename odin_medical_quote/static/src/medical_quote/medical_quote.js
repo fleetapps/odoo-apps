@@ -223,6 +223,8 @@ export class MedicalQuote extends Component {
         }
         if (params.comparison_id) {
             await this.reopen(params.comparison_id);
+        } else if (params.prefill_comparison_id) {
+            await this.prefill(params.prefill_comparison_id);
         }
     }
 
@@ -754,7 +756,25 @@ export class MedicalQuote extends Component {
         });
         Object.assign(this.state.cover, params.cover || {});
         await this.search();
-        for (const plan of params.plans || []) {
+        this.applyPlans(params.plans || []);
+    }
+
+    /**
+     * A renewal: last year's quote as a new one, for the renewal's
+     * opportunity (picked from the action's lead), everyone a year older.
+     */
+    async prefill(comparisonId) {
+        const params = await this.orm.call(this.model, "load_prefill", [comparisonId]);
+        if (!params) {
+            return;
+        }
+        Object.assign(this.state.cover, params.cover || {});
+        await this.search();
+        this.applyPlans(params.plans || []);
+    }
+
+    applyPlans(plans) {
+        for (const plan of plans) {
             const offered = this.plan(plan[this.constructor.planKey]);
             if (!offered) {
                 continue;

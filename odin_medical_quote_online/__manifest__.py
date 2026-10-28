@@ -22,7 +22,7 @@ link for an ad.
 
 No Website app needed. See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -36,6 +36,7 @@ No Website app needed. See README.md.
         "views/quote_comparison_views.xml",
         "wizard/share_link_views.xml",
         "views/crm_lead_views.xml",
+        "views/cover_product_views.xml",
         "views/menus.xml",
     ],
     "assets": {

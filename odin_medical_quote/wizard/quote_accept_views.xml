@@ -24,6 +24,7 @@
                            invisible="not can_post or payment == 'later'"/>
                     <field name="handler_id" widget="many2one_avatar_user"
                            options="{'no_create': True}"/>
+                    <field name="cover_start"/>
                 </group>
                 <div class="alert alert-light border mb-3" role="status"
                      invisible="payment != 'instalments' or not instalment_plan_id">
@@ -45,6 +46,7 @@
                     a to-do to place the cover with the insurer.</span>
                     <span invisible="payment == 'later'">&#160;The invoice opens next, in draft
                     unless you post it here.</span>
+                    <span>&#160;Annual cover is put in Renewals, a year from the day it starts.</span>
                 </div>
                 <footer>
                     <button name="action_accept" type="object" class="btn-primary"

@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_renewal_list" model="ir.ui.view">
+        <field name="name">odin.renewal.list</field>
+        <field name="model">odin.renewal</field>
+        <field name="arch" type="xml">
+            <list string="Renewals" decoration-danger="state in ('upcoming', 'in_progress') and days_left &lt; 0"
+                  decoration-warning="state in ('upcoming', 'in_progress') and days_left &gt;= 0 and days_left &lt;= 7"
+                  decoration-muted="state in ('lost', 'lapsed', 'cancelled')">
+                <field name="renewal_date"/>
+                <field name="days_left" string="Days" optional="show"/>
+                <field name="client_name" string="Client"/>
+                <field name="line" widget="badge"/>
+                <field name="insurer_id"/>
+                <field name="policy_number" optional="show"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="premium" sum="Premium" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="origin" optional="hide"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'upcoming'" decoration-warning="state == 'in_progress'"
+                       decoration-success="state == 'renewed'" decoration-danger="state in ('lost', 'lapsed')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_renewal_calendar" model="ir.ui.view">
+        <field name="name">odin.renewal.calendar</field>
+        <field name="model">odin.renewal</field>
+        <field name="arch" type="xml">
+            <calendar string="Renewals" date_start="renewal_date" mode="month" color="user_id"
+                      quick_create="0" event_open_popup="1">
+                <field name="client_name"/>
+                <field name="line"/>
+                <field name="insurer_id"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <record id="view_renewal_form" model="ir.ui.view">
+        <field name="name">odin.renewal.form</field>
+        <field name="model">odin.renewal</field>
+        <field name="arch" type="xml">
+            <form string="Renewal">
+                <header>
+                    <button name="action_odin_start_quote" type="object" string="Start renewal quote"
+                            class="btn-primary" invisible="state not in ('upcoming', 'in_progress')"
+                            data-hotkey="q"/>
+                    <button name="action_odin_renewed" type="object" string="Renewed"
+                            invisible="state not in ('upcoming', 'in_progress')"
+                            help="Renewed outside a quote: closes it, and puts next year's renewal in."/>
+                    <button name="action_odin_lost" type="object" string="Not renewing"
+                            invisible="state not in ('upcoming', 'in_progress')"
+                            confirm="Mark this renewal lost? Its opportunity is marked lost too."/>
+                    <button name="action_odin_reopen" type="object" string="Reopen"
+                            invisible="state not in ('lost', 'lapsed', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="upcoming,in_progress,renewed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_odin_open_lead" type="object" class="oe_stat_button"
+                                icon="fa-star" invisible="not lead_id">
+                            <div class="o_stat_info"><span class="o_stat_text">Opportunity</span></div>
+                        </button>
+                        <button name="action_odin_view_quotes" type="object" class="oe_stat_button"
+                                icon="fa-shield" invisible="not quote_count">
+                            <field name="quote_count" widget="statinfo" string="Renewal quotes"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1" placeholder="New renewal"/></h1>
+                    </div>
+                    <group>
+                        <group string="Client">
+                            <field name="partner_id" placeholder="Pick or create the contact"/>
+                            <field name="lead_id" invisible="not lead_id" readonly="1"/>
+                            <field name="line" widget="radio" options="{'horizontal': true}"/>
+                            <field name="user_id" widget="many2one_avatar_user" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Policy">
+                            <field name="insurer_id" context="{'default_is_company': True}"/>
+                            <field name="policy_number"/>
+                            <field name="cover_start"/>
+                            <field name="renewal_date"/>
+                            <field name="days_left" string="Days to go"
+                                   invisible="state not in ('upcoming', 'in_progress')"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="premium"/>
+                            <field name="origin" widget="radio"/>
+                        </group>
+                    </group>
+                    <div class="alert alert-warning" role="alert" invisible="not start_to_confirm">
+                        <field name="start_to_confirm" invisible="1"/>
+                        Dated from the day the order was confirmed. Use <b>Cover placed</b> on the quote,
+                        or put the cover start date here, once the insurer confirms.
+                    </div>
+                    <notebook>
+                        <page name="note" string="Notes">
+                            <field name="note" placeholder="Anything to remember for the renewal..."/>
+                        </page>
+                        <page name="history" string="Where it came from">
+                            <group>
+                                <field name="product_id"/>
+                                <field name="comparison_id"/>
+                                <field name="order_id"/>
+                                <field name="source_lead_id"/>
+                                <field name="next_renewal_id"/>
+                                <field name="reminders_sent" string="Reminders sent (days before)"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- From a lead: the date the client's policy renews, in three fields. -->
+    <record id="view_renewal_form_quick" model="ir.ui.view">
+        <field name="name">odin.renewal.form.quick</field>
+        <field name="model">odin.renewal</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <form string="Set renewal date">
+                <group>
+                    <field name="lead_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="origin" invisible="1"/>
+                    <field name="renewal_date" string="Policy renews on"/>
+                    <field name="line" widget="radio" options="{'horizontal': true}"/>
+                    <field name="insurer_id" string="Insured with" context="{'default_is_company': True}"/>
+                    <field name="premium" string="Premium paid now"/>
+                    <field name="user_id" string="Remind" widget="many2one_avatar_user"
+                           options="{'no_create': True}"/>
+                </group>
+                <div class="text-muted">
+                    The person to remind gets an email 30 days before, a week before and on the day,
+                    with the renewal opportunity ready to quote.
+                </div>
+                <footer>
+                    <button string="Save" special="save" class="btn-primary" data-hotkey="q"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_renewal_search" model="ir.ui.view">
+        <field name="name">odin.renewal.search</field>
+        <field name="model">odin.renewal</field>
+        <field name="arch" type="xml">
+            <search string="Renewals">
+                <field name="name" string="Client or policy"/>
+                <field name="partner_id"/>
+                <field name="insurer_id"/>
+                <field name="user_id"/>
+                <filter name="filter_next_30" string="Next 30 days"
+                        domain="[('state', 'in', ('upcoming', 'in_progress')),
+                                 ('renewal_date', '&gt;=', context_today().strftime('%Y-%m-%d')),
+                                 ('renewal_date', '&lt;=', (context_today() + relativedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_overdue" string="Overdue"
+                        domain="[('state', 'in', ('upcoming', 'in_progress')),
+                                 ('renewal_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="filter_in_progress" string="In progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter name="filter_open" string="Open" domain="[('state', 'in', ('upcoming', 'in_progress'))]"/>
+                <filter name="filter_renewed" string="Renewed" domain="[('state', '=', 'renewed')]"/>
+                <filter name="filter_closed" string="Lost or lapsed" domain="[('state', 'in', ('lost', 'lapsed'))]"/>
+                <separator/>
+                <filter name="filter_mine" string="Mine" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="filter_medical" string="Medical" domain="[('line', '=', 'medical')]"/>
+                <filter name="filter_motor" string="Motor" domain="[('line', '=', 'motor')]"/>
+                <group>
+                    <filter name="group_month" string="Month" context="{'group_by': 'renewal_date:month'}"/>
+                    <filter name="group_user" string="Responsible" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_insurer" string="Insurer" context="{'group_by': 'insurer_id'}"/>
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_renewal" model="ir.actions.act_window">
+        <field name="name">Renewals</field>
+        <field name="res_model">odin.renewal</field>
+        <field name="view_mode">list,calendar,form</field>
+        <field name="context">{'search_default_filter_open': 1, 'search_default_group_month': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No renewals coming up</p>
+            <p>A policy sold here is added when the client accepts the quote. For a client insured
+               elsewhere, use <b>Set renewal date</b> on their lead, or New here.</p>
+        </field>
+    </record>
+
+    <!-- CRM: set a renewal date from any lead, and see its renewals. -->
+    <record id="crm_lead_view_form_renewal" model="ir.ui.view">
+        <field name="name">crm.lead.form.renewal</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_set_won_rainbowman']" position="before">
+                <button string="Set renewal date" name="action_odin_set_renewal" type="object"
+                        class="btn-secondary" invisible="not active"
+                        title="The date the client's policy renews: you are reminded in time to quote it"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object" icon="fa-refresh"
+                        name="action_odin_view_renewals" invisible="odin_renewal_count == 0">
+                    <field name="odin_renewal_count" widget="statinfo" string="Renewals"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="res_partner_view_form_renewal" model="ir.ui.view">
+        <field name="name">res.partner.form.renewal</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object" icon="fa-refresh"
+                        name="action_odin_view_renewals" invisible="odin_renewal_count == 0"
+                        groups="sales_team.group_sale_salesman">
+                    <field name="odin_renewal_count" widget="statinfo" string="Renewals"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

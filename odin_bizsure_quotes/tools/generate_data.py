@@ -151,10 +151,15 @@ def write_taxes():
 
 # ------------------------------------------------------------------ products
 
+#: The catalogue is the office's once installed: staff keep rates in Cover
+#: Quotes > Products, and an upgrade must never put the shipped ones back.
+CATALOGUE_HEADER = HEADER.replace("<odoo>", '<odoo noupdate="1">')
+
+
 def write_products(products, cat_xmlids):
     """Written as product.product: it delegates to product.template via
     _inherits, so one record creates both, and template lines can point at it."""
-    body = HEADER
+    body = CATALOGUE_HEADER
     seen = {}
     for prod in products:
         xmlid = "prod_%s" % slug(prod["default_code"])
@@ -222,7 +227,7 @@ def write_templates(templates, lines, prod_xmlids):
     for line in lines:
         by_template.setdefault(line["sale_order_template_id"][0], []).append(line)
 
-    body = HEADER
+    body = CATALOGUE_HEADER
     for tmpl in sorted(templates, key=lambda t: t["sequence"]):
         xmlid = "sot_%s" % slug(tmpl["name"])
         body += '    <record id="%s" model="sale.order.template">\n' % xmlid

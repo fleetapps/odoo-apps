@@ -38,6 +38,33 @@ class SaleOrder(models.Model):
         template = self.sale_order_template_id
         return (template._odin_heading()[1] or template.name) if template else ""
 
+    # -- what a renewal needs to know about what was sold ----------------------
+
+    def _odin_policy_months(self):
+        """How long the cover sold runs: medical plans are annual."""
+        self.ensure_one()
+        return 12
+
+    def _odin_insurer_partner(self):
+        self.ensure_one()
+        return self.sale_order_template_id.odin_insurer_id
+
+    def _odin_cover_product(self):
+        self.ensure_one()
+        template = self.sale_order_template_id
+        if not template:
+            return self.env["odin.cover.product"]
+        return self.env["odin.cover.product"].with_context(active_test=False).search(
+            [("template_id", "=", template.id)], limit=1)
+
+    def _action_cancel(self):
+        """A cancelled order renews nothing."""
+        result = super()._action_cancel()
+        self.env["odin.renewal"].sudo().search([
+            ("order_id", "in", self.ids), ("state", "in", ("upcoming", "in_progress")),
+        ]).write({"state": "cancelled"})
+        return result
+
     def _action_confirm(self):
         """A plan of a medical quote confirmed is the client's choice, however
         it was confirmed -- Client accepted, Confirm here, or signed on the

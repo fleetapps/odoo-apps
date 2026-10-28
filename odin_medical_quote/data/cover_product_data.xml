@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Every medical plan made before Products existed gets its product.
+         Runs on every update and only picks up plans not yet adopted. -->
+    <function model="odin.cover.product" name="_odin_adopt_templates"/>
+</odoo>

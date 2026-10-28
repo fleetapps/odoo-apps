@@ -43,20 +43,16 @@ Then check two things Odoo cannot infer:
 
 ## Changing a rate
 
-The XML in `data/` is **generated**. Editing it by hand is lost on the next
-regeneration; editing a price in Odoo is lost on the next module update,
-because these records are module-managed and not marked `noupdate`.
+Rates are kept in **Cover Quotes ▸ Products** by the office (Sales
+Administrators). Every plan and motor rate this module installs appears
+there as a product with its rate tables; a change made there is what New
+quote prices from the next quote on.
 
-The rate card is `data/source/*.json`. To change a premium:
-
-```bash
-# edit data/source/product_template.json
-python3 tools/generate_data.py
-# then upgrade the module
-```
-
-That keeps the rate card in git, with a diff per rate change, and lets the
-same module rebuild a second environment identically.
+The products and plans are installed `noupdate`: an upgrade of this module
+never puts the shipped rates back over the office's. `data/source/*.json`
+and `tools/generate_data.py` remain the record of the card as first loaded,
+and still build a fresh database identically, but regenerating them does
+not change a database the module is already installed on.
 
 ## The insurers
 

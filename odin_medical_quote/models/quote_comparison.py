@@ -41,6 +41,12 @@ class QuoteComparison(models.Model):
     odin_accepted_order_id = fields.Many2one(
         "sale.order", string="Accepted quotation", readonly=True, copy=False,
     )
+    odin_renewal_id = fields.Many2one(
+        "odin.renewal", string="Renewal of", copy=False, index="btree_not_null",
+        ondelete="set null", help="The policy this quote renews.")
+    odin_next_renewal_id = fields.Many2one(
+        "odin.renewal", string="Renews", compute="_compute_odin_next_renewal_id",
+        help="When what was accepted on this quote comes up for renewal.")
     odin_invoice_count = fields.Integer(compute="_compute_odin_invoice_count")
 
     # -- the register: what the list shows, searches and groups on ----------
@@ -225,6 +231,36 @@ class QuoteComparison(models.Model):
             },
         }
 
+    def _compute_odin_next_renewal_id(self):
+        Renewal = self.env["odin.renewal"]
+        for comparison in self:
+            comparison.odin_next_renewal_id = Renewal.search(
+                [("comparison_id", "=", comparison.id)], order="id desc", limit=1) \
+                if comparison.id else Renewal
+
+    def action_odin_cover_placed(self):
+        """The insurer has confirmed: the policy number and the date cover
+        starts, which the renewal is dated from."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Cover placed"),
+            "res_model": "odin.renewal.placed",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_comparison_id": self.id},
+        }
+
+    def action_odin_view_renewal(self):
+        self.ensure_one()
+        renewal = self.odin_next_renewal_id or self.odin_renewal_id
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "odin.renewal",
+            "res_id": renewal.id,
+            "views": [(False, "form")],
+        }
+
     def _odin_accept(self, order):
         """Record that the client chose ``order``.
 
@@ -257,6 +293,8 @@ class QuoteComparison(models.Model):
             handler = self.env["res.users"].browse(
                 self.env.context.get("odin_handler_id") or []).exists()
             comparison._odin_hand_over(handler or None)
+            # Sold: its renewal is remembered, and a renewal it closes is renewed.
+            self.env["odin.renewal"].sudo()._odin_from_accept(comparison, order)
 
     def action_odin_decline(self):
         """The client said no: mark the opportunity lost, with CRM's own lost
@@ -527,8 +565,12 @@ class QuoteComparison(models.Model):
         rows.append({"kind": "total", "label": _("Total premium"),
                      "cells": cells(lambda column: column["amounts"]["total"])})
         for instalment in self.instalment_plan_ids:
+            # None where the premium is too small to finance: printed as a dash.
             schedules = cells(lambda column, plan=instalment: plan.schedule(
-                column["amounts"]["total"]))
+                column["amounts"]["total"])
+                if plan._odin_available(column["amounts"]["total"]) else None)
+            if not any(schedules):
+                continue
             label = _("%s monthly instalments", instalment.months)
             rows.append({"kind": "instalment", "label": label, "cells": schedules})
         return {"columns": columns, "rows": rows}
