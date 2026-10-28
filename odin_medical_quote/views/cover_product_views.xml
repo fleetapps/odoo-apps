@@ -66,7 +66,9 @@
                                     Each cover is one table of the insurer's rate card. Open a cover to
                                     type its rates. A table used by several plans is changed for all of them.
                                 </p>
-                                <field name="table_ids" context="{'default_company_id': company_id}">
+                                <!-- Offered to pick from: this insurer's tables. New makes one. -->
+                                <field name="table_ids" context="{'default_company_id': company_id}"
+                                       domain="[('product_ids.insurer_id', '=', insurer_id)]">
                                     <list>
                                         <field name="sequence" widget="handle"/>
                                         <field name="cover"/>

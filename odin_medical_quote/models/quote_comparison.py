@@ -280,7 +280,8 @@ class QuoteComparison(models.Model):
                     # Declined, then confirmed after all: a sale, not a loss.
                     lead.action_restore()
                 lead.expected_revenue = order.amount_untaxed
-                lead.action_set_won()
+                # The renewal it closes is renewed below, with what was sold.
+                lead.with_context(odin_accepting=True).action_set_won()
             comparison.write({"state": "accepted", "odin_accepted_order_id": order.id})
             comparison.message_post(body=_(
                 "Client accepted %(plan)s (%(order)s). %(others)s",

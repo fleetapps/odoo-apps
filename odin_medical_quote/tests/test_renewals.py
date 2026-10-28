@@ -157,3 +157,29 @@ class TestRenewals(MedicalQuoteCase):
         mail = self.env["mail.mail"].search([("subject", "like", "Renewals:")], limit=1)
         self.assertIn(self.manager.partner_id, mail.recipient_ids)
         self.assertIn("Henry", mail.body_html)
+
+    def test_won_by_hand_in_crm(self):
+        renewal = self.sell().odin_next_renewal_id
+        self.Renewal._cron_remind(today=date(2027, 1, 30))
+        renewal.lead_id.action_set_won()
+        self.assertEqual(renewal.state, "renewed")
+        self.assertEqual(renewal.next_renewal_id.renewal_date, date(2028, 3, 1))
+        self.assertEqual(renewal.next_renewal_id.state, "upcoming")
+
+    def test_new_date_new_reminders(self):
+        renewal = self.sell().odin_next_renewal_id
+        self.Renewal._cron_remind(today=date(2027, 1, 30))
+        self.assertTrue(renewal.reminders_sent)
+        renewal.renewal_date = date(2027, 6, 1)
+        self.assertFalse(renewal.reminders_sent, "the moved date gets its own reminders")
+
+    def test_backfill_sold_before(self):
+        comparison = self.sell()
+        comparison.odin_next_renewal_id.unlink()
+        self.Renewal._odin_backfill_sold()
+        renewal = comparison.odin_next_renewal_id
+        order = comparison.odin_accepted_order_id
+        self.assertEqual(renewal.cover_start, order.date_order.date())
+        self.assertTrue(renewal.start_to_confirm)
+        self.Renewal._odin_backfill_sold()
+        self.assertEqual(self.Renewal.search_count([("order_id", "=", order.id)]), 1)

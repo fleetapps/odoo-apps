@@ -135,6 +135,12 @@ class Renewal(models.Model):
         for renewal in self:
             renewal.days_left = (renewal.renewal_date - today).days if renewal.renewal_date else 0
 
+    def write(self, vals):
+        if "renewal_date" in vals and "reminders_sent" not in vals:
+            # A new date: its reminders are still to come.
+            vals = dict(vals, reminders_sent=False)
+        return super().write(vals)
+
     @api.onchange("cover_start", "period_months")
     def _onchange_cover_start(self):
         if self.cover_start and self.period_months:
@@ -253,10 +259,10 @@ class Renewal(models.Model):
             key = str(min(t for t in REMINDER_DAYS if days <= t))
         if key in sent:
             return
+        lead = self._odin_ensure_opportunity()
         if self.state == "upcoming":
-            lead = self._odin_ensure_opportunity()
             self.state = "in_progress"
-            self._odin_schedule_todo(lead)
+        self._odin_schedule_todo(lead)
         self._odin_send_reminder(key, days, today)
         # Later reminders only: one missed is not sent late on top of the next.
         sent |= {str(t) for t in REMINDER_DAYS if key == "overdue" or t >= int(key)} | {key}
@@ -403,7 +409,6 @@ class Renewal(models.Model):
                 "renewal_date": renewal.renewal_date + relativedelta(months=months),
                 "cover_start": renewal.renewal_date,
                 "state": "upcoming",
-                "origin": "ours",
                 "lead_id": False,
                 "source_lead_id": renewal.lead_id.id or renewal.source_lead_id.id,
             })
@@ -457,7 +462,8 @@ class Renewal(models.Model):
                 "period_months": months,
                 "start_to_confirm": not given,
                 "renewal_date": start + relativedelta(months=months),
-                "premium": order.amount_total,
+                # The cash premium: financing for paying monthly is not renewed.
+                "premium": order._client_amounts()["total"],
                 "user_id": (comparison.user_id or comparison.opportunity_id.user_id
                             or self.env.user).id,
                 "origin": "ours",
@@ -473,6 +479,23 @@ class Renewal(models.Model):
         if previous and previous.state in OPEN_STATES:
             previous.write({"state": "renewed", "next_renewal_id": renewal.id or False})
         return renewal
+
+    @api.model
+    def _odin_backfill_sold(self):
+        """Policies sold before Renewals existed: each gets its renewal,
+        dated a year from when its order was confirmed and flagged for the
+        real start date to be put in."""
+        Comparison = self.env["odin.quote.comparison"].sudo()
+        for comparison in Comparison.search([("state", "=", "accepted"),
+                                             ("odin_accepted_order_id.state", "=", "sale")]):
+            order = comparison.odin_accepted_order_id
+            if self.sudo().search_count([("order_id", "=", order.id)]):
+                continue
+            start = fields.Date.to_date(order.date_order)
+            renewal = self.sudo().with_context(odin_cover_start=start)._odin_from_accept(
+                comparison, order)
+            renewal.start_to_confirm = True
+        return True
 
     @api.model
     def _odin_link_quote(self, comparison):
@@ -528,6 +551,16 @@ class CrmLead(models.Model):
             "domain": [("lead_id", "=", self.id)],
             "context": {"default_lead_id": self.id, "default_partner_id": self.partner_id.id},
         }
+
+    def action_set_won(self):
+        """Won by hand in CRM (renewed some other way): its renewal is
+        renewed, and next year's put in. Won by Client accepted, the quote
+        does that itself, with what was sold."""
+        result = super().action_set_won()
+        if not self.env.context.get("odin_accepting"):
+            self.env["odin.renewal"].search(
+                [("lead_id", "in", self.ids), ("state", "in", OPEN_STATES)]).action_odin_renewed()
+        return result
 
     def action_set_lost(self, **additional_values):
         result = super().action_set_lost(**additional_values)

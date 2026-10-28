@@ -68,6 +68,19 @@ class MedicalQuoteAccept(models.TransientModel):
     )
 
     @api.model
+    def default_get(self, fields_list):
+        values = super().default_get(fields_list)
+        if "cover_start" in fields_list:
+            # A renewal runs on from the day the old cover ends.
+            comparison = self.env["odin.quote.comparison"].browse(
+                self.env.context.get("default_comparison_id") or []).exists()
+            renewal = comparison.odin_renewal_id
+            today = fields.Date.context_today(self)
+            if renewal and renewal.renewal_date and renewal.renewal_date >= today:
+                values["cover_start"] = renewal.renewal_date
+        return values
+
+    @api.model
     def _default_handler_id(self):
         comparison = self.env["odin.quote.comparison"].browse(
             self.env.context.get("default_comparison_id") or []).exists()

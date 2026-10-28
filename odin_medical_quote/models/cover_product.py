@@ -185,10 +185,11 @@ class CoverProduct(models.Model):
             return Markup("<p class='text-muted'>%s</p>") % _(
                 "Save the product, with its inpatient rates, to try it.")
         child_only = self.plan_type == "child_only"
+        children = max(self.try_children, 0)
         household = Household(
             principal_age=None if child_only else max(self.try_principal_age, 0),
-            spouse_age=self.try_spouse_age or None if not child_only else None,
-            children=max(self.try_children, 0))
+            spouse_age=None if child_only else (self.try_spouse_age or None),
+            children=max(children, 1) if child_only else children)
         offer = template._odin_offer(household, RateBook(self.env, self.company_id))
         if not offer["available"]:
             return Markup("<p class='text-danger'>%s</p>") % offer["reason"]
@@ -261,12 +262,15 @@ class CoverProduct(models.Model):
         for product, vals in zip(self, vals_list):
             if "name" not in default:
                 vals["name"] = _("%s (copy)", product.name)
+            if "active" not in default:
+                # Off until edited and switched on: never quoted twice by accident.
+                vals["active"] = False
         return vals_list
 
     def _odin_copy_medical(self, default=None):
         self.ensure_one()
         vals = self.with_context(odin_adopting=True).copy_data(default)[0]
-        template = self.template_id.copy({"name": vals["name"]})
+        template = self.template_id.copy({"name": vals["name"], "active": vals.get("active", False)})
         variants = {}
         tables = self.env["odin.cover.table"]
         for table in self.table_ids:

@@ -3,4 +3,6 @@
     <!-- Every medical plan made before Products existed gets its product.
          Runs on every update and only picks up plans not yet adopted. -->
     <function model="odin.cover.product" name="_odin_adopt_templates"/>
+    <!-- Policies sold before Renewals existed get their renewal. -->
+    <function model="odin.renewal" name="_odin_backfill_sold"/>
 </odoo>

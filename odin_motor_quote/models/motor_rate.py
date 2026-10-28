@@ -120,6 +120,8 @@ class MotorRate(models.Model):
             if product:
                 # A band added on its product's form: the product says the rest.
                 vals.update(product._odin_shared_values())
+                if not product.active:
+                    vals["active"] = False
             else:
                 values = dict(defaults, **{k: vals[k] for k in shared if k in vals})
                 values.setdefault("company_id", self.env.company.id)

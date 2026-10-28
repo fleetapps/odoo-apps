@@ -155,6 +155,10 @@ class TestMedicalProducts(MedicalQuoteCase):
     def test_copy_is_independent(self):
         afya = self.product(self.afya)
         copy = afya.copy()
+        self.assertFalse(copy.active, "a copy starts off: never quoted twice by accident")
+        self.assertFalse(copy.template_id.active)
+        copy.active = True
+        self.assertTrue(copy.template_id.active, "switched on, it is quoted")
         self.assertNotEqual(copy.template_id, afya.template_id)
         self.assertFalse(copy.table_ids & afya.table_ids)
         row = copy.table_ids.filtered(lambda t: t.cover == "inpatient").row_ids.filtered(
