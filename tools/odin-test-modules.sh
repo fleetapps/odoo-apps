@@ -121,8 +121,11 @@ env.ref("base.main_company").with_context(install_mode=True).write(
     {"country_id": env.ref("base.ke").id, "currency_id": kes.id})
 env.cr.commit()
 PY
-  COUNTRY="$(sudo -u postgres psql -tAc "SELECT c.code FROM res_company r JOIN res_country c ON c.id = r.country_id WHERE r.id = 1" "$TEST_DB")"
-  [ "$COUNTRY" = KE ] || { echo "!! the company is not in Kenya ('$COUNTRY'); see $WORK/setup.log"; exit 1; }
+  # The company's country is its partner's address; its currency its own.
+  SETUP="$(sudo -u postgres psql -tA -F ' ' -c "SELECT c.code, cur.name FROM res_company r
+    JOIN res_partner p ON p.id = r.partner_id LEFT JOIN res_country c ON c.id = p.country_id
+    JOIN res_currency cur ON cur.id = r.currency_id WHERE r.id = 1" "$TEST_DB")"
+  [ "$SETUP" = "KE KES" ] || { echo "!! the company is not set up in Kenya, KES ('$SETUP'); see $WORK/setup.log"; exit 1; }
   "${RUN[@]}" "${ODOO[@]}" -i l10n_ke --stop-after-init >> "$WORK/setup.log" 2>&1 \
     || { echo "!! l10n_ke did not install: $(tail -3 "$WORK/setup.log")"; exit 1; }
   CHART="$(sudo -u postgres psql -tAc "SELECT chart_template FROM res_company WHERE id = 1" "$TEST_DB")"
