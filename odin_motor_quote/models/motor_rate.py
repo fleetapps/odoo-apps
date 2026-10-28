@@ -3,6 +3,9 @@ from odoo.tools import formatLang
 
 COVERS = [("comprehensive", "Comprehensive"), ("tpo", "Third party only")]
 OFFERED = [("na", "Not offered"), ("included", "Included"), ("optional", "Optional")]
+#: what differs between the bands of one product
+BAND_FIELDS = ("value_min", "value_max", "tonnage_min", "tonnage_max", "seats_min",
+               "seats_max", "rate", "min_premium", "flat_premium")
 
 
 class MotorRate(models.Model):
@@ -72,6 +75,102 @@ class MotorRate(models.Model):
     extra_amount = fields.Monetary(string="Other charge amount")
     note = fields.Text(
         string="Notes", help="Printed with the quote: conditions, excess, what is included.")
+    product_id = fields.Many2one(
+        "odin.cover.product", string="Product", index=True, ondelete="cascade",
+        help="Cover Quotes ▸ Products: the insurer's cover this band belongs to. What every "
+        "band of a product shares is kept on the product.")
+    odin_removed = fields.Boolean(
+        copy=False, help="Taken off its product after being quoted: kept for the quotes "
+        "that used it, never offered again.")
+
+    # -- belonging to a product ---------------------------------------------
+
+    @api.model
+    def _odin_shared_fields(self):
+        return self.env["odin.cover.product"]._odin_motor_shared()
+
+    def _odin_rate_shared_values(self):
+        self.ensure_one()
+        values = {}
+        for name in self._odin_shared_fields():
+            value = self[name]
+            values[name] = value.id if isinstance(value, models.BaseModel) else value
+        return values
+
+    @api.model
+    def _odin_product_for(self, values):
+        """The product a band with these shared values belongs to: the one
+        that already has them, or a new one."""
+        Product = self.env["odin.cover.product"].with_context(active_test=False)
+        domain = [("line", "=", "motor")]
+        for name, value in values.items():
+            domain.append((name, "=", value if value not in (None,) else False))
+        product = Product.search(domain, order="active desc, id", limit=1)
+        if product:
+            return product
+        return Product.with_context(odin_adopting=True, mail_create_nolog=True).create(
+            dict(values, line="motor", active=True))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        shared = self._odin_shared_fields()
+        defaults = self.default_get(shared)
+        for vals in vals_list:
+            product = self.env["odin.cover.product"].browse(vals.get("product_id") or [])
+            if product:
+                # A band added on its product's form: the product says the rest.
+                vals.update(product._odin_shared_values())
+            else:
+                values = dict(defaults, **{k: vals[k] for k in shared if k in vals})
+                values.setdefault("company_id", self.env.company.id)
+                vals.update(values)
+                vals["product_id"] = self._odin_product_for(values).id
+        rates = super().create(vals_list)
+        if not self.env.context.get("odin_adopting"):
+            for rate in rates:
+                rate.product_id._odin_log_rate(_("Band added: %s", rate._odin_band_summary()))
+        return rates
+
+    def write(self, vals):
+        shared = set(self._odin_shared_fields()) & set(vals)
+        logged = {}
+        if set(BAND_FIELDS) & set(vals):
+            logged = {rate.id: rate._odin_band_summary() for rate in self}
+        result = super().write(vals)
+        if shared and not self.env.context.get("odin_from_product"):
+            # Edited band by band (the old Motor rates list): the band moves
+            # to the product that has its new values.
+            for rate in self:
+                product = rate._odin_product_for(rate._odin_rate_shared_values())
+                if product != rate.product_id:
+                    super(MotorRate, rate).write({"product_id": product.id})
+        for rate in self.filtered(lambda r: r.id in logged):
+            after = rate._odin_band_summary()
+            if after != logged[rate.id]:
+                rate.product_id._odin_log_rate(_("Band changed: %(old)s → %(new)s",
+                                                 old=logged[rate.id], new=after))
+        return result
+
+    def unlink(self):
+        """A band already quoted is archived, not deleted: the quotations
+        made from it keep pointing at it."""
+        quoted = self.env["sale.order"].sudo().with_context(active_test=False).search(
+            [("odin_motor_rate_id", "in", self.ids)]).odin_motor_rate_id
+        for rate in self:
+            rate.product_id._odin_log_rate(_("Band removed: %s", rate._odin_band_summary()))
+        if quoted:
+            quoted.write({"active": False, "odin_removed": True})
+        return super(MotorRate, self - quoted).unlink()
+
+    def _odin_band_summary(self):
+        """``800,000 to 1,499,999: 4.5%, minimum 40,000`` / ``up to 3 t: 5,000``."""
+        self.ensure_one()
+        band = self._odin_band_text() or _("Any vehicle")
+        if self.rate:
+            price = self._odin_rate_text()
+        else:
+            price = self._odin_number(self.flat_premium)
+        return "%s: %s" % (band, price)
 
     @api.depends("insurer_id", "class_id", "cover", "value_min", "value_max",
                  "tonnage_min", "tonnage_max", "seats_min", "seats_max", "period_months")

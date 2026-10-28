@@ -51,6 +51,9 @@ class MedicalQuoteAccept(models.TransientModel):
     instalment_payable = fields.Monetary(compute="_compute_schedule", string="Total payable")
     instalment_financing = fields.Monetary(compute="_compute_schedule", string="Financing")
     instalment_months = fields.Integer(compute="_compute_schedule")
+    cover_start = fields.Date(
+        string="Cover starts", required=True, default=fields.Date.context_today,
+        help="The renewal is dated from it: a year on for annual cover.")
     post_invoice = fields.Boolean(
         string="Post the invoice now",
         help="Leave it unticked to have accounts check and post the draft.",
@@ -174,7 +177,8 @@ class MedicalQuoteAccept(models.TransientModel):
         if order.state in ("draft", "sent"):
             # Confirming closes out the quote (see sale.order._action_confirm):
             # the other plans cancelled, the opportunity won.
-            result = order.with_context(odin_handler_id=self.handler_id.id).action_confirm()
+            result = order.with_context(odin_handler_id=self.handler_id.id,
+                                        odin_cover_start=self.cover_start).action_confirm()
             if order.state != "sale":
                 # Something on the order stopped it -- an exception rule or a
                 # credit limit asking for approval. Its own dialog says what;
@@ -183,7 +187,8 @@ class MedicalQuoteAccept(models.TransientModel):
                     return result
                 raise UserError(_("%s could not be confirmed.", order.name))
         # Confirmed already, from the order itself: close the quote out now.
-        comparison.with_context(odin_handler_id=self.handler_id.id)._odin_accept(order)
+        comparison.with_context(odin_handler_id=self.handler_id.id,
+                                odin_cover_start=self.cover_start)._odin_accept(order)
         if self.handler_id and comparison.odin_handler_id != self.handler_id:
             # Accepted before (on the portal, say): the to-do moves to who
             # was picked here.

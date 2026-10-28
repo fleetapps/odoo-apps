@@ -206,7 +206,7 @@
                     <td class="mq-first" t-out="row['label']">Benefit</td>
                     <t t-foreach="row['cells']" t-as="cell">
                         <td t-att-class="'mq-pick' if columns[cell_index]['highlight'] else None">
-                            <t t-if="row['kind'] == 'instalment'">
+                            <t t-if="row['kind'] == 'instalment' and cell is not None">
                                 <div><t t-out="cell['months']"/> × <t t-out="cell['instalment']" t-options="number"/></div>
                                 <div class="mq-muted">first now · total <t t-out="cell['payable']" t-options="number"/></div>
                             </t>

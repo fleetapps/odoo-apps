@@ -101,23 +101,37 @@ class MotorQuote(models.AbstractModel):
 
     @api.model
     def _odin_cards(self, vehicle):
-        """Each insurer's line of the card for this vehicle, or why there is none."""
+        """Each product's line of the card for this vehicle, or why there is
+        none. An insurer with two products for the vehicle is quoted on both;
+        an insurer none of whose products takes the vehicle is listed once,
+        with the reason."""
         rates = self.env["odin.motor.rate"].search(self._odin_rate_domain(vehicle))
-        cards = []
-        for insurer in rates.insurer_id.sorted("name"):
-            mine = rates.filtered(lambda r: r.insurer_id == insurer)
-            fitting = mine.filtered(lambda r: r._odin_fits(vehicle))
-            # The band the value falls in: the highest that starts at or below it.
-            within = fitting.filtered(lambda r: r.value_min <= vehicle["value"])
-            rate = (within.sorted("value_min")[-1:] or fitting.sorted("value_min")[:1])
-            if not rate:
-                periods = sorted(set(mine.mapped("period_months")))
-                reason = (_("Not for this period.") if vehicle["period"] not in periods
-                          else _("No rate for these details."))
-                cards.append((mine[:1], reason))
-                continue
-            cards.append((rate, rate._odin_refusal(vehicle)))
-        return cards
+        quoted, refused = [], {}
+        for product in rates.product_id.sorted(lambda p: (p.insurer_id.name or "", p.sequence, p.id)):
+            rate, reason = self._odin_pick_rate(
+                rates.filtered(lambda r, product=product: r.product_id == product), vehicle)
+            if reason:
+                refused.setdefault(rate.insurer_id, (rate, reason))
+            else:
+                quoted.append((rate, ""))
+        insurers = {rate.insurer_id for rate, _reason in quoted}
+        cards = quoted + [card for insurer, card in refused.items() if insurer not in insurers]
+        return sorted(cards, key=lambda card: (card[0].insurer_id.name or "", card[0].id))
+
+    @api.model
+    def _odin_pick_rate(self, rates, vehicle):
+        """The band of ``rates`` (one product's) for ``vehicle``, and why
+        it cannot be quoted, or ''."""
+        fitting = rates.filtered(lambda r: r._odin_fits(vehicle))
+        # The band the value falls in: the highest that starts at or below it.
+        within = fitting.filtered(lambda r: r.value_min <= vehicle["value"])
+        rate = (within.sorted("value_min")[-1:] or fitting.sorted("value_min")[:1])
+        if not rate:
+            periods = sorted(set(rates.mapped("period_months")))
+            reason = (_("Not for this period.") if vehicle["period"] not in periods
+                      else _("No rate for these details."))
+            return rates[:1], reason
+        return rate, rate._odin_refusal(vehicle)
 
     @api.model
     def _odin_rate_domain(self, vehicle):
@@ -254,6 +268,16 @@ class MotorQuote(models.AbstractModel):
         }
 
     @api.model
+    def _odin_name_products(self, plans):
+        """Two products of one insurer side by side: each card says which."""
+        Rate = self.env["odin.motor.rate"]
+        insurers = [plan["insurer"] for plan in plans]
+        for plan in plans:
+            if insurers.count(plan["insurer"]) > 1:
+                product = Rate.browse(plan["id"]).product_id
+                plan["name"] = "%s · %s" % (plan["name"], product.quote_label or product.name)
+
+    @api.model
     def _odin_part(self, line):
         part = super()._odin_part(line)
         if isinstance(line, MotorLine):
@@ -298,6 +322,7 @@ class MotorQuote(models.AbstractModel):
                 unavailable.append({"id": rate.id, "title": rate.insurer_id.name, "reason": reason})
                 continue
             plans.append(self._odin_motor_plan_json(self._odin_motor_offer(rate, vehicle), vehicle))
+        self._odin_name_products(plans)
         plans.sort(key=lambda plan: plan["core"]["amount"])
         return {
             "vehicle": {
@@ -456,3 +481,10 @@ class MotorQuote(models.AbstractModel):
     @api.model
     def _odin_current_params(self, params):
         return params or False
+
+    @api.model
+    def _odin_prefill_params(self, params):
+        """The same vehicle a year on: the value is the agent's to update."""
+        params = dict(params)
+        params.pop("customer", None)
+        return params

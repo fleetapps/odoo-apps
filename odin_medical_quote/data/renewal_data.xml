@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 07:00 in Nairobi is 04:00 UTC: reminders are in the inbox before work. -->
+    <record id="ir_cron_renewal_remind" model="ir.cron">
+        <field name="name">Renewals: send reminders</field>
+        <field name="model_id" ref="model_odin_renewal"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_remind()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).strftime('%Y-%m-%d 04:00:00')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="ir_cron_renewal_digest" model="ir.cron">
+        <field name="name">Renewals: weekly summary</field>
+        <field name="model_id" ref="model_odin_renewal"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_digest()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1, weekday=0)).strftime('%Y-%m-%d 04:00:00')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- The weekly summary's body. -->
+    <template id="renewal_digest">
+        <div style="font-family: Arial, sans-serif; font-size: 13px; color: #333;">
+            <p>Renewals for <t t-out="company.name"/>.</p>
+            <t t-foreach="[('Overdue', overdue), ('Due in the next %s days' % ahead, due), ('Closed in the last 7 days', closed)]" t-as="block">
+                <t t-if="block[1]">
+                    <h3 style="font-size: 15px; margin: 18px 0 6px;" t-out="block[0]"/>
+                    <table style="border-collapse: collapse; width: 100%;">
+                        <tr style="background: #f2f4f7; text-align: left;">
+                            <th style="padding: 6px;">Date</th>
+                            <th style="padding: 6px;">Client</th>
+                            <th style="padding: 6px;">Class</th>
+                            <th style="padding: 6px;">Insurer</th>
+                            <th style="padding: 6px; text-align: right;">Premium</th>
+                            <th style="padding: 6px;">Responsible</th>
+                            <th style="padding: 6px;">Status</th>
+                        </tr>
+                        <tr t-foreach="block[1]" t-as="renewal" style="border-top: 1px solid #e3e6ea;">
+                            <td style="padding: 6px;" t-out="format_date(renewal.renewal_date)"/>
+                            <td style="padding: 6px;">
+                                <a t-att-href="'%s/odoo/action-odin_medical_quote.action_renewal/%s' % (base_url, renewal.id)"
+                                   t-out="renewal.client_name"/>
+                            </td>
+                            <td style="padding: 6px;" t-out="renewal.line_label"/>
+                            <td style="padding: 6px;" t-out="renewal.insurer_id.name or ''"/>
+                            <td style="padding: 6px; text-align: right;" t-out="money(renewal)"/>
+                            <td style="padding: 6px;" t-out="renewal.user_id.name or ''"/>
+                            <td style="padding: 6px;" t-out="renewal.state_label"/>
+                        </tr>
+                    </table>
+                </t>
+            </t>
+        </div>
+    </template>
+
+    <!-- noupdate: the wording is the broker's to adapt. -->
+    <data noupdate="1">
+        <record id="mail_template_renewal_reminder" model="mail.template">
+            <field name="name">Renewal: reminder to staff</field>
+            <field name="model_id" ref="model_odin_renewal"/>
+            <field name="subject">{{ 'Renewal overdue' if ctx.get('odin_reminder') == 'overdue' else ('Renewal due today' if ctx.get('odin_reminder') == '0' else 'Renewal in %s days' % object.days_left) }}: {{ object.client_name }} – {{ object.insurer_id.name or '' }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="description">Sent to the person responsible 30 days, 7 days and on the day of a renewal, and once if it is missed</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-size: 13px;">
+    <p>
+        <t t-if="ctx.get('odin_reminder') == 'overdue'">
+            This renewal is overdue: it was due on
+            <strong t-out="format_date(object.renewal_date, date_format='d MMM y') or ''">20 Dec 2026</strong>.
+        </t>
+        <t t-elif="ctx.get('odin_reminder') == '0'">This renewal is due <strong>today</strong>.</t>
+        <t t-else="">
+            This renewal is due in <strong t-out="object.days_left">30</strong> days, on
+            <strong t-out="format_date(object.renewal_date, date_format='d MMM y') or ''">20 Dec 2026</strong>.
+        </t>
+    </p>
+    <table style="border-collapse: collapse;">
+        <tr><td style="padding: 2px 12px 2px 0; color: #666;">Client</td><td t-out="object.client_name or ''">Jane Doe</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #666;">Phone</td><td t-out="object.partner_id.phone or object.lead_id.phone or ''">+254 700 000000</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #666;">Class</td><td t-out="object.line_label or ''">Medical</td></tr>
+        <tr><td style="padding: 2px 12px 2px 0; color: #666;">Insurer</td><td t-out="object.insurer_id.name or ''">APA</td></tr>
+        <tr t-if="object.policy_number"><td style="padding: 2px 12px 2px 0; color: #666;">Policy</td><td t-out="object.policy_number or ''">P123</td></tr>
+        <tr t-if="object.premium"><td style="padding: 2px 12px 2px 0; color: #666;">Current premium</td><td t-out="format_amount(object.premium, object.currency_id) or ''">KES 50,000</td></tr>
+    </table>
+    <p style="margin-top: 16px;">
+        <a t-att-href="'%s/odoo/action-odin_medical_quote.action_renewal/%s' % (object.get_base_url(), object.id)"
+           style="background: #714B67; color: #fff; padding: 8px 14px; border-radius: 4px; text-decoration: none;">
+            Open the renewal
+        </a>
+    </p>
+    <p style="color: #666;">Start renewal quote, on the renewal, reopens last year's quote for this client.</p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

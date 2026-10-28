@@ -66,9 +66,36 @@ class ProductTemplate(models.Model):
         "picks the row for each person from the group.",
     )
 
-    @api.depends("name")
+    # A row of a rate table (Cover Quotes ▸ Products): the table says how the
+    # rows are priced and what the cover pays out, each row says who it is
+    # for. Rows are priced from these, not from their name, so renaming one
+    # can never change a premium.
+    odin_cover_table_id = fields.Many2one(
+        "odin.cover.table", string="Rate table", index=True, ondelete="set null",
+        copy=False)
+    odin_row_role = fields.Selection(RATE_ROLE, string="Who", default="any")
+    odin_row_age_min = fields.Integer(string="Age from")
+    odin_row_age_max = fields.Integer(string="Age to", help="0 means no upper age.")
+    odin_row_family_size = fields.Integer(
+        string="Family size", help="People covered: Member only is 1, Member + 4 is 5.")
+
+    @api.depends("name", "odin_cover_table_id.basis", "odin_cover_table_id.rate_group",
+                 "odin_cover_table_id.limit", "odin_row_role", "odin_row_age_min",
+                 "odin_row_age_max", "odin_row_family_size")
     def _compute_odin_rate(self):
         for template in self:
+            table = template.odin_cover_table_id
+            if table:
+                template.odin_rate_basis = table.basis
+                # Kept whatever the basis: a children-only plan is told by it.
+                template.odin_rate_role = template.odin_row_role or "any"
+                template.odin_rate_age_min = template.odin_row_age_min
+                template.odin_rate_age_max = template.odin_row_age_max
+                template.odin_rate_family_size = (
+                    template.odin_row_family_size if table.basis == "family_size" else 0)
+                template.odin_rate_limit = table.limit
+                template.odin_rate_group = table.rate_group
+                continue
             # Parsed in English: the patterns are the rate card's wording,
             # and a translated name would read differently per user.
             rate = parse_rate(template.with_context(lang="en_US").name)

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The plans and motor rates above, on Cover Quotes > Products. -->
+    <function model="odin.cover.product" name="_odin_adopt_templates"/>
+    <function model="odin.cover.product" name="_odin_adopt_rates"/>
+</odoo>

@@ -17,6 +17,11 @@
                          help="Who places the cover with the insurer when a client accepts. They get a Place cover to-do with the checklist (CRM ▸ Configuration ▸ Activity Types). Left empty, the salesperson does.">
                     <field name="odin_quote_handler_id" options="{'no_create': True}"/>
                 </setting>
+                <setting id="odin_renewal_digest_user_id" company_dependent="1"
+                         string="Weekly renewals summary to"
+                         help="Mondays at 7:00: what renews in the next two weeks, what is overdue, what was renewed or lost. Overdue renewal reminders are copied to them too.">
+                    <field name="odin_renewal_digest_user_id" options="{'no_create': True}"/>
+                </setting>
             </setting>
         </field>
     </record>

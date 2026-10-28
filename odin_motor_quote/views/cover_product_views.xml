@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A motor product: the vehicle and cover it is for, its bands, its extras. -->
+    <record id="view_cover_product_form_motor" model="ir.ui.view">
+        <field name="name">odin.cover.product.form.motor</field>
+        <field name="model">odin.cover.product</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_cover_product_form"/>
+        <field name="arch" type="xml">
+            <group name="covers" position="inside">
+                <field name="class_id" invisible="line != 'motor'" required="line == 'motor'"
+                       options="{'no_open': True}"
+                       placeholder="e.g. Pick-up (commercial)"/>
+                <field name="cover" widget="radio" options="{'horizontal': true}"
+                       invisible="line != 'motor'" required="line == 'motor'"/>
+                <field name="period_months" invisible="line != 'motor'" required="line == 'motor'"/>
+                <field name="max_age" invisible="line != 'motor'"/>
+                <field name="quote_label" invisible="line != 'motor'" placeholder="Only if the insurer has two products for this vehicle"/>
+                <field name="ask_tonnage" invisible="1"/>
+                <field name="ask_seats" invisible="1"/>
+            </group>
+            <page name="rates" position="inside">
+                <div invisible="line != 'motor'">
+                    <p class="text-muted" invisible="cover != 'comprehensive'">
+                        One row per value band: a rate on the vehicle's value and the minimum premium.
+                        A single row with no values applies to every vehicle.
+                    </p>
+                    <p class="text-muted" invisible="cover != 'tpo'">
+                        One row per band, each with its fixed premium. A single row with no bands
+                        applies to every vehicle.
+                    </p>
+                    <field name="rate_ids">
+                        <list editable="bottom">
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="value_min" string="Value from"
+                                   column_invisible="parent.cover != 'comprehensive'"/>
+                            <field name="value_max" string="Value to"
+                                   column_invisible="parent.cover != 'comprehensive'"/>
+                            <field name="tonnage_min" string="Tonnes from"
+                                   column_invisible="not parent.ask_tonnage"/>
+                            <field name="tonnage_max" string="Tonnes to"
+                                   column_invisible="not parent.ask_tonnage"/>
+                            <field name="seats_min" string="Passengers from"
+                                   column_invisible="not parent.ask_seats"/>
+                            <field name="seats_max" string="Passengers to"
+                                   column_invisible="not parent.ask_seats"/>
+                            <field name="rate" string="Rate %"
+                                   column_invisible="parent.cover != 'comprehensive'"/>
+                            <field name="min_premium" string="Minimum premium"
+                                   column_invisible="parent.cover != 'comprehensive'"/>
+                            <field name="flat_premium" string="Premium"
+                                   column_invisible="parent.cover == 'comprehensive'"/>
+                        </list>
+                    </field>
+                </div>
+            </page>
+            <page name="rates" position="after">
+                <page name="extras" string="Extras" invisible="line != 'motor'">
+                    <group>
+                        <group string="Political violence and excess">
+                            <field name="pvt"/>
+                            <field name="pvt_rate" invisible="pvt != 'optional'"/>
+                            <field name="pvt_min" invisible="pvt != 'optional' or not pvt_rate"/>
+                            <field name="pvt_amount" invisible="pvt != 'optional' or pvt_rate"/>
+                            <field name="excess"/>
+                            <field name="excess_rate" invisible="excess != 'optional'"/>
+                            <field name="excess_min" invisible="excess != 'optional' or not excess_rate"/>
+                            <field name="excess_amount" invisible="excess != 'optional' or excess_rate"/>
+                        </group>
+                        <group string="Passengers and more">
+                            <field name="pll_amount"/>
+                            <field name="pll_required" invisible="not pll_amount"/>
+                            <field name="courtesy_10"/>
+                            <field name="courtesy_20"/>
+                            <field name="extra_label"/>
+                            <field name="extra_amount" invisible="not extra_label"/>
+                        </group>
+                    </group>
+                </page>
+            </page>
+            <group name="try_inputs" position="inside">
+                <group invisible="line != 'motor'">
+                    <field name="try_value" invisible="cover != 'comprehensive'"/>
+                    <field name="try_tonnage" invisible="not ask_tonnage"/>
+                    <field name="try_seats" invisible="not ask_seats"/>
+                    <field name="try_year"/>
+                </group>
+            </group>
+        </field>
+    </record>
+
+    <record id="view_cover_product_search_motor" model="ir.ui.view">
+        <field name="name">odin.cover.product.search.motor</field>
+        <field name="model">odin.cover.product</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_cover_product_search"/>
+        <field name="arch" type="xml">
+            <field name="insurer_id" position="after">
+                <field name="class_id"/>
+            </field>
+            <filter name="group_line" position="after">
+                <filter name="group_class" string="Vehicle type" context="{'group_by': 'class_id'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <!-- A new vehicle type from the product form: name, and what to ask. -->
+    <record id="view_motor_class_form" model="ir.ui.view">
+        <field name="name">odin.motor.class.form</field>
+        <field name="model">odin.motor.class</field>
+        <field name="arch" type="xml">
+            <form string="Vehicle type">
+                <sheet>
+                    <group>
+                        <field name="name" placeholder="e.g. Pick-up (commercial)"/>
+                        <field name="ask_tonnage"/>
+                        <field name="ask_seats"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

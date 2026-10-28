@@ -17,7 +17,7 @@ opportunity, to-do or team pool, and Quotes register entry.
 Share it from Cover Quotes ▸ Share quote link (Motor), or from a lead
 tagged Motor. See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",

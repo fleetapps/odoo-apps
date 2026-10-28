@@ -1,2 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_medical_quote_accept_salesman,client accepted wizard,model_odin_medical_quote_accept,sales_team.group_sale_salesman,1,1,1,1
+access_cover_product_user,odin.cover.product user,model_odin_cover_product,sales_team.group_sale_salesman,1,0,0,0
+access_cover_product_manager,odin.cover.product manager,model_odin_cover_product,sales_team.group_sale_manager,1,1,1,1
+access_cover_table_user,odin.cover.table user,model_odin_cover_table,sales_team.group_sale_salesman,1,0,0,0
+access_cover_table_manager,odin.cover.table manager,model_odin_cover_table,sales_team.group_sale_manager,1,1,1,1
+access_renewal_user,odin.renewal user,model_odin_renewal,sales_team.group_sale_salesman,1,1,1,0
+access_renewal_manager,odin.renewal manager,model_odin_renewal,sales_team.group_sale_manager,1,1,1,1
+access_renewal_placed_user,odin.renewal.placed user,model_odin_renewal_placed,sales_team.group_sale_salesman,1,1,1,1

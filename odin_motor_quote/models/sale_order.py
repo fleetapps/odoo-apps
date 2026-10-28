@@ -20,6 +20,19 @@ class SaleOrder(models.Model):
         self.ensure_one()
         return self.odin_motor_rate_id.insurer_id.name or super()._odin_insurer_label()
 
+    def _odin_policy_months(self):
+        self.ensure_one()
+        rate = self.odin_motor_rate_id
+        return rate.period_months if rate else super()._odin_policy_months()
+
+    def _odin_insurer_partner(self):
+        self.ensure_one()
+        return self.odin_motor_rate_id.insurer_id or super()._odin_insurer_partner()
+
+    def _odin_cover_product(self):
+        self.ensure_one()
+        return self.odin_motor_rate_id.product_id or super()._odin_cover_product()
+
     def _odin_plan_name(self):
         self.ensure_one()
         rate = self.odin_motor_rate_id

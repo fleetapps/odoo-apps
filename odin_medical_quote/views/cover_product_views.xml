@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Cover Quotes ▸ Products. One screen for everything the office sells:
+        staff add an insurer's cover and its rates here, and New quote offers
+        it as soon as it is saved. Sales Administrators edit; everyone else
+        reads (access rules, not hidden buttons, decide).
+    -->
+    <record id="view_cover_product_list" model="ir.ui.view">
+        <field name="name">odin.cover.product.list</field>
+        <field name="model">odin.cover.product</field>
+        <field name="arch" type="xml">
+            <list string="Products" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="line" widget="badge"/>
+                <field name="insurer_id"/>
+                <field name="name"/>
+                <field name="summary"/>
+                <field name="rate_count" string="Rates"/>
+                <field name="active" widget="boolean_toggle" string="On"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_cover_product_form" model="ir.ui.view">
+        <field name="name">odin.cover.product.form</field>
+        <field name="model">odin.cover.product</field>
+        <field name="arch" type="xml">
+            <form string="Product">
+                <sheet>
+                    <widget name="web_ribbon" title="Off" bg_color="text-bg-secondary" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_odin_open_template" type="object" icon="fa-file-text-o"
+                                class="oe_stat_button" string="Template" invisible="not template_id"
+                                groups="base.group_no_one"/>
+                    </div>
+                    <field name="line" widget="radio" options="{'horizontal': true}"
+                           readonly="id" class="mb-2"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. APA Jamii Plus – Family KES 1,000,000"/></h1>
+                    </div>
+                    <group>
+                        <group name="basics">
+                            <field name="insurer_id" context="{'default_is_company': True}"
+                                   options="{'no_open': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group name="covers" string="What it covers">
+                            <field name="plan_type" widget="radio" invisible="line != 'medical'"
+                                   required="line == 'medical'"/>
+                            <field name="summary" invisible="line != 'medical'" string="Summary"/>
+                        </group>
+                    </group>
+                    <div name="checks" class="alert alert-warning" role="alert" invisible="not warning_html">
+                        <strong>Check before quoting:</strong>
+                        <field name="warning_html" nolabel="1"/>
+                    </div>
+                    <notebook>
+                        <page name="rates" string="Rates">
+                            <div invisible="line != 'medical'">
+                                <p class="text-muted">
+                                    Each cover is one table of the insurer's rate card. Open a cover to
+                                    type its rates. A table used by several plans is changed for all of them.
+                                </p>
+                                <field name="table_ids" context="{'default_company_id': company_id}">
+                                    <list>
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="cover"/>
+                                        <field name="name"/>
+                                        <field name="basis"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="limit"/>
+                                        <field name="used_count" string="Plans using it"/>
+                                    </list>
+                                </field>
+                            </div>
+                        </page>
+                        <page name="try" string="Try it">
+                            <p class="text-muted">
+                                Priced exactly as New quote prices it, on the saved rates: save to see a change.
+                            </p>
+                            <group invisible="line != 'medical'">
+                                <group>
+                                    <field name="try_principal_age" invisible="plan_type == 'child_only'"/>
+                                    <field name="try_spouse_age" invisible="plan_type == 'child_only'"/>
+                                    <field name="try_children"/>
+                                </group>
+                            </group>
+                            <group name="try_inputs"/>
+                            <field name="try_html" nolabel="1"/>
+                        </page>
+                        <page name="terms" string="Benefits and terms">
+                            <field name="terms" invisible="line != 'medical'"
+                                   placeholder="Terms printed on the quotation: waiting periods, eligibility, exclusions, how to pay..."/>
+                            <field name="note" invisible="line == 'medical'"
+                                   placeholder="Printed with the quote: excess, conditions, what is included..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_cover_product_search" model="ir.ui.view">
+        <field name="name">odin.cover.product.search</field>
+        <field name="model">odin.cover.product</field>
+        <field name="arch" type="xml">
+            <search string="Products">
+                <field name="name"/>
+                <field name="insurer_id"/>
+                <filter name="filter_medical" string="Medical" domain="[('line', '=', 'medical')]"/>
+                <filter name="filter_motor" string="Motor" domain="[('line', '=', 'motor')]"/>
+                <separator/>
+                <filter name="filter_off" string="Off" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_insurer" string="Insurer" context="{'group_by': 'insurer_id'}"/>
+                    <filter name="group_line" string="Class" context="{'group_by': 'line'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_cover_product" model="ir.actions.act_window">
+        <field name="name">Products</field>
+        <field name="res_model">odin.cover.product</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add an insurer's cover</p>
+            <p>Choose Medical or Motor, the insurer, and type the rates as the insurer's sheet
+               prints them. Once saved, it is offered in New quote.</p>
+        </field>
+    </record>
+
+    <!-- A table of the rate card: its rows, as the card prints them. -->
+    <record id="view_cover_table_form" model="ir.ui.view">
+        <field name="name">odin.cover.table.form</field>
+        <field name="model">odin.cover.table</field>
+        <field name="arch" type="xml">
+            <form string="Cover">
+                <sheet>
+                    <field name="currency_id" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name" string="Name on the rate card"/>
+                        <h2><field name="name" placeholder="e.g. Jamii Plus Outpatient – KES 100,000"/></h2>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="used_count &lt; 2">
+                        Used by <field name="used_count" class="oe_inline"/> plans: a change here changes all of them.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="cover"/>
+                            <field name="cover_label" invisible="cover != 'other'" required="cover == 'other'"/>
+                            <field name="basis" widget="radio"/>
+                            <field name="limit"/>
+                            <field name="requires_outpatient" invisible="cover not in ('dental', 'optical', 'other')"/>
+                        </group>
+                        <group string="New rows">
+                            <label for="new_age_min" string="Ages"/>
+                            <div class="o_row">
+                                <field name="new_age_min" nolabel="1"/> <span>to</span>
+                                <field name="new_age_max" nolabel="1"/>
+                            </div>
+                            <field name="section_title" placeholder="Made from the cover"/>
+                        </group>
+                    </group>
+                    <field name="row_ids" context="{'default_list_price': 0}">
+                        <list editable="bottom" create="1" delete="1">
+                            <field name="odin_row_role" column_invisible="parent.basis != 'person'"/>
+                            <field name="odin_row_family_size" string="People"
+                                   column_invisible="parent.basis != 'family_size'"/>
+                            <field name="odin_row_age_min"/>
+                            <field name="odin_row_age_max"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="list_price" string="Premium" widget="monetary"/>
+                            <field name="name" readonly="1" optional="hide" string="Shown on quotes as"/>
+                        </list>
+                    </field>
+                    <field name="benefits" placeholder="Benefits printed under this cover on the quotation, one per line..."/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

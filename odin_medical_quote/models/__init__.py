@@ -1,5 +1,7 @@
 from . import product_template
 from . import sale_order_template
+from . import cover_product
+from . import renewal
 from . import quote_comparison
 from . import medical_quote
 from . import crm_lead

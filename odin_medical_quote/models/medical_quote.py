@@ -941,6 +941,8 @@ class MedicalQuote(models.AbstractModel):
                     [("company_id", "=", self.env.company.id)]).ids)],
             ))
             orders.filtered(lambda o: not o.origin).origin = comparison.name
+        # Quoted for a renewal's opportunity: the renewal's quote.
+        self.env["odin.renewal"]._odin_link_quote(comparison)
 
         created = not params.get("comparison_id")
         if lead:
@@ -1003,6 +1005,32 @@ class MedicalQuote(models.AbstractModel):
             if not cover.get("%s_age" % key) and cover.get("%s_dob" % key):
                 cover["%s_age" % key] = self._odin_age(cover["%s_dob" % key], who)
         cover.pop("template_id", None)
+        return params
+
+    @api.model
+    def load_prefill(self, comparison_id):
+        """Last year's quote as the start of the renewal quote: the same
+        cover and plans, everyone a year older. A new quote, not an edit of
+        the old one."""
+        comparison = self.env["odin.quote.comparison"].browse(int(comparison_id)).exists()
+        if not comparison:
+            return False
+        comparison.check_access("read")
+        params = self._odin_current_params(comparison.odin_builder_params)
+        if not params:
+            return False
+        return self._odin_prefill_params(params)
+
+    @api.model
+    def _odin_prefill_params(self, params):
+        cover = params.get("cover") or {}
+        for key in ("principal_age", "spouse_age"):
+            try:
+                if cover.get(key) not in (None, "", False):
+                    cover[key] = int(cover[key]) + 1
+            except (TypeError, ValueError):
+                pass
+        params.pop("customer", None)
         return params
 
     @api.model

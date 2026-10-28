@@ -4,3 +4,4 @@ from . import medical_quote
 from . import quote_comparison
 from . import online_quote
 from . import crm_lead
+from . import cover_product

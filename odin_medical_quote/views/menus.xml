@@ -8,6 +8,19 @@
               action="action_quote_new"
               sequence="11"/>
 
+    <!-- What the office sells, and what is coming up for renewal. -->
+    <menuitem id="menu_cover_products"
+              name="Products"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_cover_product"
+              sequence="20"/>
+
+    <menuitem id="menu_renewals"
+              name="Renewals"
+              parent="odin_client_quote.menu_quote_root"
+              action="action_renewal"
+              sequence="30"/>
+
     <!-- In CRM, beside My Quotations, for salespeople who live in the pipeline. -->
     <menuitem id="menu_medical_quote_crm"
               name="Insurance quotes"

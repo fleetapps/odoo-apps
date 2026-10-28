@@ -34,7 +34,7 @@ their products. How each product is priced (by family size, per person by
 role and age band, or once per policy) is read from its name and can be
 corrected on the product. See README.md.
 """,
-    "version": "19.0.1.1.1",
+    "version": "19.0.1.2.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -53,6 +53,11 @@ corrected on the product. See README.md.
         "views/quote_comparison_views.xml",
         "views/crm_lead_views.xml",
         "views/res_config_settings_views.xml",
+        "views/cover_product_views.xml",
+        "wizard/cover_placed_views.xml",
+        "views/renewal_views.xml",
+        "data/renewal_data.xml",
+        "data/cover_product_data.xml",
         "views/menus.xml",
     ],
     "assets": {

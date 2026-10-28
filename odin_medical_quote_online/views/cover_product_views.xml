@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cover_product_form_online" model="ir.ui.view">
+        <field name="name">odin.cover.product.form.online</field>
+        <field name="model">odin.cover.product</field>
+        <field name="inherit_id" ref="odin_medical_quote.view_cover_product_form"/>
+        <field name="arch" type="xml">
+            <group name="basics" position="inside">
+                <field name="odin_online"/>
+            </group>
+        </field>
+    </record>
+</odoo>
