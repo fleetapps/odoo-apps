@@ -26,13 +26,17 @@ class MedicalQuoteCase(TransactionCase):
         cls.company.country_id = cls.env.ref("base.ke")
         cls.currency = cls.company.currency_id
         Tax = cls.env["account.tax"]
+        # Excluded from the price whatever the company's default, as Bizsure's
+        # real levies are (its company default is tax-included).
         cls.levy = Tax.create({
             "name": "Test levy 0.2%", "amount": 0.2, "amount_type": "percent",
             "type_tax_use": "sale", "company_id": cls.company.id,
+            "price_include_override": "tax_excluded",
         })
         cls.phcf = Tax.create({
             "name": "Test PHCF 0.25%", "amount": 0.25, "amount_type": "percent",
             "type_tax_use": "sale", "company_id": cls.company.id,
+            "price_include_override": "tax_excluded",
         })
         cls.levies = cls.levy | cls.phcf
         cls.stamp = cls._product("Stamp Duty", 40, code="FEE-STAMP", taxes=False)
