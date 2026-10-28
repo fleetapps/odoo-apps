@@ -47,7 +47,7 @@
                     <button name="action_odin_start_quote" type="object" string="Start renewal quote"
                             class="btn-primary" invisible="state not in ('upcoming', 'in_progress')"
                             data-hotkey="q"/>
-                    <button name="action_odin_renewed" type="object" string="Renewed"
+                    <button name="action_odin_renewed" type="object" string="Mark renewed"
                             invisible="state not in ('upcoming', 'in_progress')"
                             help="Renewed outside a quote: closes it, and puts next year's renewal in."/>
                     <button name="action_odin_lost" type="object" string="Not renewing"
