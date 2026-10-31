@@ -14,6 +14,8 @@
                     <field name="odin_rate_basis"/>
                     <field name="odin_rate_group"/>
                     <field name="odin_rate_role" invisible="odin_rate_basis != 'person'"/>
+                    <field name="odin_rate_on_eldest" invisible="odin_rate_basis != 'person'"/>
+                    <field name="odin_rate_partial" invisible="odin_rate_basis != 'person'"/>
                     <field name="odin_rate_family_size" invisible="odin_rate_basis != 'family_size'"/>
                     <label for="odin_rate_age_min" string="Ages"/>
                     <div class="o_row">

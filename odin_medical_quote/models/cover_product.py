@@ -360,6 +360,10 @@ class CoverProduct(models.Model):
             ("odin_medical", "=", True), ("id", "!=", template.id),
             ("company_id", "in", [False, self.company_id.id]),
         ], order="id desc", limit=1)
+        if reference.number_of_days and not template.number_of_days:
+            # Quoted for as long as the company's other plans: without it a
+            # quote of only this plan would have no valid-until date.
+            template.number_of_days = reference.number_of_days
         lines = []
         if reference:
             copying = False
@@ -541,6 +545,20 @@ class CoverTable(models.Model):
     cover_label = fields.Char(
         string="Cover name", help="For another kind of cover: what the quote calls it.")
     basis = fields.Selection(RATE_BASIS, string="Priced", required=True, default="person")
+    age_basis = fields.Selection(
+        [("own", "Each person's own age"), ("eldest", "The eldest's age")],
+        string="Age bands read at", required=True, default="own",
+        help="Per person. Each person's own age: a person is priced on the band "
+        "of their own age. The eldest's age: everyone is priced on the band of "
+        "the oldest person on the policy, for a card that says the premium is "
+        "based on the age of the oldest applicant. A child rate, where the table "
+        "has one, stays the child's own.")
+    partial = fields.Boolean(
+        string="Only some people",
+        help="Per person. Priced for the people the table has a rate for; the "
+        "others are left off instead of the cover being refused. For a cover "
+        "free for the principal (last expense) or only for adults (personal "
+        "accident).")
     limit = fields.Monetary(string="Cover limit", currency_field="currency_id")
     requires_outpatient = fields.Boolean(
         string="Only with outpatient",
@@ -580,7 +598,7 @@ class CoverTable(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if {"name", "basis", "limit"} & set(vals):
+        if {"name", "basis", "limit", "age_basis"} & set(vals):
             self.row_ids._odin_rename_rows()
         if not self.env.context.get("odin_adopting"):
             self.product_ids._odin_sync_template()
@@ -777,7 +795,8 @@ class ProductTemplate(models.Model):
             self.env, self.list_price, currency_obj=self.currency_id))
 
     def _odin_row_label(self):
-        """``Principal, 21–40`` / ``Member + 2`` / ``Per policy``."""
+        """``Principal, 21–40`` / ``Member + 2`` / ``Per policy``; on a table
+        rated on the eldest's age, ``Spouse, eldest aged 31–40``."""
         self.ensure_one()
         table = self.odin_cover_table_id
         if table.basis == "family_size":
@@ -790,7 +809,12 @@ class ProductTemplate(models.Model):
         low, high = self.odin_row_age_min, self.odin_row_age_max
         if low or high:
             ages = ("%s–%s" % (low, high)) if high else _("%s and over", low)
-            label = "%s, %s" % (label, _("aged %s", ages))
+            # The band is the family's, not this person's: a spouse of 28 on
+            # the 31-40 row reads "eldest aged 31-40" on the quotation.
+            by_eldest = (table.basis == "person" and table.age_basis == "eldest"
+                         and self.odin_row_role != "child")
+            label = "%s, %s" % (label, _("eldest aged %s", ages) if by_eldest
+                                else _("aged %s", ages))
         return label
 
     def _odin_rename_rows(self):
