@@ -28,8 +28,9 @@ class TestNewCards(TransactionCase):
         return group, [option["amount"] for option in group["options"]]
 
     def test_plans_installed(self):
+        # GA Insurance is also the motor insurer: its motor products are not these.
         products = self.env["odin.cover.product"].search(
-            [("insurer_id", "in", (self.jubilee | self.ga).ids)])
+            [("insurer_id", "in", (self.jubilee | self.ga).ids), ("line", "=", "medical")])
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.ga)), 26)
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.jubilee)), 17)
         birdview = self.env.ref(
