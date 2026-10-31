@@ -118,12 +118,28 @@ class RateBook:
 
         # Per person: the most specific rate for each of them -- their own
         # role before "anyone but the principal" before "anyone".
+        #
+        # A table rated on the eldest's age reads every band at the age of
+        # the oldest person on the policy ("premium will be based on the age
+        # of the oldest applicant"). A child is the exception where the table
+        # has a child rate: that rate is the child's own, by the child's age.
+        on_eldest = first.odin_rate_on_eldest
+        eldest = max((m.age for m in members), default=0)
+        child_rates = siblings.filtered(lambda p: p.odin_rate_role == "child")
         lines = OrderedDict()
         for member in members:
+            by_eldest = on_eldest and not (member.role == "child" and child_rates)
+            age = eldest if by_eldest else member.age
             fitting = siblings.filtered(
-                lambda p, m=member: role_fits(p.odin_rate_role or "any", m)
-                and age_fits(p.odin_rate_age_min, p.odin_rate_age_max, m.age))
+                lambda p, m=member, a=age: role_fits(p.odin_rate_role or "any", m)
+                and age_fits(p.odin_rate_age_min, p.odin_rate_age_max, a))
             if not fitting:
+                if first.odin_rate_partial:
+                    # Not for this person (a principal's free last expense, a
+                    # child's personal accident): left off, not refused.
+                    continue
+                if by_eldest:
+                    return [], _("No rate for a family whose eldest is %s.", eldest)
                 if member.role == "child":
                     return [], _("No rate for children on this cover.")
                 return [], _("No rate for the %(who)s at age %(age)s.",

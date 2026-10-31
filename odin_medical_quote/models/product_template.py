@@ -65,6 +65,21 @@ class ProductTemplate(models.Model):
         "rate card -- the same cover for different people. The quote builder "
         "picks the row for each person from the group.",
     )
+    odin_rate_on_eldest = fields.Boolean(
+        string="Rated on the eldest's age", compute="_compute_odin_rate_flags", store=True,
+        readonly=False,
+        help="Per person: each person's row is the one for the age of the oldest "
+        "person on the policy, not their own -- the card says the premium is "
+        "based on the age of the oldest applicant. A child is priced on the "
+        "child rate where the table has one.",
+    )
+    odin_rate_partial = fields.Boolean(
+        string="Only some people", compute="_compute_odin_rate_flags", store=True,
+        readonly=False,
+        help="Per person: priced for the people the table has a rate for, and "
+        "the others left off rather than the cover refused -- last expense free "
+        "for the principal, personal accident for adults only.",
+    )
 
     # A row of a rate table (Cover Quotes ▸ Products): the table says how the
     # rows are priced and what the cover pays out, each row says who it is
@@ -78,6 +93,16 @@ class ProductTemplate(models.Model):
     odin_row_age_max = fields.Integer(string="Age to", help="0 means no upper age.")
     odin_row_family_size = fields.Integer(
         string="Family size", help="People covered: Member only is 1, Member + 4 is 5.")
+
+    @api.depends("odin_cover_table_id.age_basis", "odin_cover_table_id.partial")
+    def _compute_odin_rate_flags(self):
+        # Their own compute, so adding them computes only them: the rate
+        # fields above, some put right by hand, are left as they are.
+        for template in self:
+            table = template.odin_cover_table_id
+            # A name says neither: rows that need them belong to a rate table.
+            template.odin_rate_on_eldest = table.age_basis == "eldest"
+            template.odin_rate_partial = table.partial
 
     @api.depends("name", "odin_cover_table_id.basis", "odin_cover_table_id.rate_group",
                  "odin_cover_table_id.limit", "odin_row_role", "odin_row_age_min",

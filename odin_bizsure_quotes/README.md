@@ -14,7 +14,8 @@ comparison.
 | Products | 278, each at its real annual premium |
 | Quotation templates | 16 — APA Jamii Plus ×8, Birdview Bizsure Afya ×8 |
 | Template lines | 691 |
-| Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans) |
+| Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans); Jubilee Health Insurance, with GA Insurance from the motor rates |
+| Cover Quotes products | 43 more plans, with 138 rate tables and 451 rates: GA Community Health ×26, Jubilee J Care ×6, J Care Junior ×6, J Senior ×5 (see below) |
 | Instalment plans | 4, 6 and 10 instalments on the NCBA IPF rate card of 4 March 2026 (band fees, flat rate from KES 300,000, none under 25,000) |
 
 The 16 templates are the refined ones. The Motor, generic Health and
@@ -103,6 +104,54 @@ the derivation handles deliberately, both of which bite a naive reading:
 Sections of add-ons are flagged `is_optional`, which is Odoo 19's own
 section-level flag — a line is optional because its parent section is.
 
+## GA Community Health, Jubilee J Care, J Care Junior and J Senior
+
+Added as Cover Quotes products (Cover Quotes ▸ Products), each with its rate
+tables, the way the office adds a plan: saving a product makes its quotation
+template, with the statutory charges and payment options of the latest plan.
+`tools/rate_cards.py` is the cards transcribed row for row, as printed;
+`tools/generate_cover_products.py` writes `data/cover_product_ga.xml` and
+`data/cover_product_jubilee.xml` from it. Both load once (noupdate): the rates
+are the office's after that.
+
+| Card | Plans | Priced |
+| --- | --- | --- |
+| GA *Community/Retail Health – Inpatient Only*, effective 1 Jan 2022 | 26: limits 250,000 to 10M, each excluding or including pandemic | By family size, M to M + 6; maternity 50,000 to 300,000 per family |
+| Jubilee *J Care*, effective 1 Dec 2023 | 6: Classic to Prestige | Per person on the eldest's age band; options: outpatient (per person, and shared per family on Royal and Prestige), maternity, dental, optical, last expense, personal accident, enhanced Covid-19 |
+| Jubilee *J Care Junior* (children 0–17 as main member) | 6: Classic to Prestige | Per child; outpatient, dental, optical |
+| Jubilee *J Senior*, effective 1 Dec 2023 | 5: Copper to Diamond | Per person on the eldest's age band, children on their own rates; outpatient, dental, optical, last expense, personal accident, enhanced Covid-19 |
+
+How the cards were read, where they leave room:
+
+* **"Premium will be based on the age of the oldest applicant"** (Jubilee,
+  General Conditions 6). The inpatient, outpatient and J Senior last expense
+  tables are rated on the eldest's age (`age_basis = eldest`): a principal of
+  35 with a spouse of 42 both pay the 41–50 rates, and J Care children pay
+  the family's outpatient band, as there is no child row. A child row (J Care
+  and J Senior inpatient, J Senior outpatient) is the child's own rate.
+* **Free for the principal, optional for dependants.** Last expense is sold
+  for dependants and personal accident for dependants of 18 and over; the
+  others are left off (`partial`), and a family with nobody to sell it to is
+  not offered it. Children are quoted by number, not age, so a dependent child
+  of 18 to 25 is not offered personal accident.
+* **Jubilee maternity** says "premium per principal/spouse" with the limit per
+  family: one premium per policy.
+* **Shared outpatient per family** (Royal and Prestige) is a second outpatient
+  option; the card's "--" sizes are not quoted ("Rated for families of up to
+  3 people").
+* **Dental and optical** need outpatient, on both Jubilee cards.
+* **Enhanced Covid-19** is offered on J Care and J Senior, not J Care Junior:
+  the Junior table lists only inpatient, outpatient, dental and optical.
+* **GA ages.** The family-size rates carry ages 19 to 60, the adults' last
+  joining age: a family whose eldest is 61 or over is told so (GA sends
+  seniors to its Hadhi Plan). A renewal of a member aged 61 to 65 is not
+  re-quoted on these rates.
+* **GA including pandemic** is its own plan at each limit, priced as the
+  card prints it, not a loading on the excluding-pandemic rate.
+* **J Senior day case admission**: the card prints "covered under applicable
+  sub-limit" under Bronze, Silver and Gold only; the Copper and Diamond notes
+  leave it out, as the card does.
+
 ## Motor rates
 
 `data/motor_rate.xml` is Bizsure's motor rate card from
@@ -137,6 +186,13 @@ and levies, 91,061.76 total (Odoo rounds the two levies to the cent each, so
 the total can be one cent above a single 0.45% figure) -- and checks the
 export shows it that way. It also checks the insurers and the five APA
 outpatient tiers.
+
+`tests/test_new_cards.py` prices GA, J Care, J Care Junior and J Senior plans
+for families read off the cards: J Care Classic for a principal of 35, a
+spouse of 42 and three children is 73,514 inpatient (23,215 + 19,453 +
+3 × 10,282, the 41–50 rates), outpatient 5 × 30,315; GA KES 1M for five is
+72,915 excluding and 87,498 including pandemic; and the age limits, the
+shared outpatient sizes, and the covers free for the principal.
 
 ## Known issue: the Motor templates are not shipped
 

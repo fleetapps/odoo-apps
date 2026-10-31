@@ -252,6 +252,22 @@ and the right row is found for each person. Where the rate card has no row
 The fields are on the product, under **Sales ▸ Medical quotes**, editable for
 a product whose name does not follow the pattern.
 
+Two settings on a per-person rate table (Cover Quotes ▸ Products ▸ a cover)
+cover what some cards print in their conditions rather than their rows:
+
+* **Age bands read at: the eldest's age.** For a card that says *"Premium
+  will be based on the age of the oldest applicant"* (Jubilee J Care and
+  J Senior). Everyone is priced on the band of the oldest person on the
+  policy: a principal of 35 with a spouse of 42 both pay the 41-50 rates. A
+  child rate, where the table has one, stays the child's own; where it has
+  none (J Care outpatient), children pay the family's band like everyone
+  else. The row reads *Spouse, eldest aged 41–50* on the quotation. The
+  default, each person's own age, is how APA's bands work.
+* **Only some people.** The people the table has no rate for are left off
+  instead of the cover being refused: last expense free for the principal
+  and sold for dependants, personal accident sold only for dependants of 18
+  and over. With nobody to price, the option is not offered.
+
 On the **quotation template** (Sales ▸ Configuration ▸ Quotation templates):
 
 * **Offer in medical quotes** -- ticked on its own for a template with an

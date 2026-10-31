@@ -158,6 +158,8 @@
                             <field name="cover"/>
                             <field name="cover_label" invisible="cover != 'other'" required="cover == 'other'"/>
                             <field name="basis" widget="radio"/>
+                            <field name="age_basis" widget="radio" invisible="basis != 'person'"/>
+                            <field name="partial" invisible="basis != 'person'"/>
                             <field name="limit"/>
                             <field name="requires_outpatient" invisible="cover not in ('dental', 'optical', 'other')"/>
                         </group>

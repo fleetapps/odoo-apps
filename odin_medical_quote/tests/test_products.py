@@ -95,6 +95,7 @@ class TestMedicalProducts(MedicalQuoteCase):
         self.assertFalse(row.active)
 
     def test_new_plan_from_the_form(self):
+        self.env["sale.order.template"].search([("odin_medical", "=", True)]).number_of_days = 30
         product = self.Product.create({
             "name": "Test Insurer – Family KES 300,000",
             "line": "medical",
@@ -125,6 +126,7 @@ class TestMedicalProducts(MedicalQuoteCase):
         keys = [line.benefit_key for line in ordered if line.display_type == "line_section"]
         self.assertEqual(keys[:2], ["inpatient", "outpatient"])
         self.assertIn("statutory_charges", keys, "charges copied from the latest plan")
+        self.assertEqual(template.number_of_days, 30, "valid as long as the other plans")
         result = self.Quote.search_plans({"cover": self.family()})
         plan = next(p for p in result["plans"] if p["id"] == template.id)
         self.assertEqual(plan["core"]["amount"], 27000, "a family of five: Member + 4")
@@ -181,3 +183,88 @@ class TestMedicalProducts(MedicalQuoteCase):
         jamii.write({"try_principal_age": 35, "try_spouse_age": 28, "try_children": 3})
         self.assertIn("21,286", jamii.try_html)
         self.assertIn("Hosi Cash", jamii.try_html)
+
+    def _eldest_plan(self):
+        """J Care's shape: inpatient and outpatient rated on the eldest's age,
+        a child rate on inpatient only; personal accident for adult
+        dependants and last expense for dependants, the principal's free."""
+        def rows(*values):
+            return [Command.create(dict(zip(
+                ("odin_row_role", "odin_row_age_min", "odin_row_age_max", "list_price"), row)))
+                for row in values]
+        product = self.Product.create({
+            "name": "Eldest – Classic (KES 500,000)",
+            "line": "medical",
+            "insurer_id": self.insurer_jamii.id,
+            "table_ids": [
+                Command.create({
+                    "name": "Eldest Inpatient – KES 500,000", "cover": "inpatient",
+                    "basis": "person", "age_basis": "eldest", "limit": 500000,
+                    "row_ids": rows(("principal", 18, 30, 21316), ("spouse", 18, 30, 15673),
+                                    ("principal", 31, 40, 22569), ("spouse", 31, 40, 18808),
+                                    ("principal", 41, 50, 23215), ("spouse", 41, 50, 19453),
+                                    ("child", 0, 17, 10282)),
+                }),
+                Command.create({
+                    "name": "Eldest Outpatient – KES 50,000 per Person", "cover": "outpatient",
+                    "basis": "person", "age_basis": "eldest", "limit": 50000,
+                    "row_ids": rows(("any", 0, 40, 26555), ("any", 41, 50, 30315)),
+                }),
+                Command.create({
+                    "name": "Eldest Personal Accident – KES 500,000", "cover": "other",
+                    "cover_label": "Personal accident", "basis": "person", "partial": True,
+                    "limit": 500000, "row_ids": rows(("dependant", 18, 0, 586)),
+                }),
+                Command.create({
+                    "name": "Eldest Last Expense – KES 50,000", "cover": "other",
+                    "cover_label": "Last expense", "basis": "person", "partial": True,
+                    "limit": 50000, "row_ids": rows(("dependant", 0, 0, 1007)),
+                }),
+            ],
+        })
+        return product
+
+    def eldest_quote(self, product, **cover):
+        result = self.Quote.search_plans({"cover": dict(
+            {"principal_age": 35, "include_spouse": True, "spouse_age": 42, "children": 2,
+             "template_id": product.template_id.id}, **cover)})
+        return (result["plans"] or result["unavailable"])[0]
+
+    def test_rated_on_the_eldest(self):
+        """"Premium will be based on the age of the oldest applicant": a
+        principal of 35 with a spouse of 42 are both on the 41-50 rates."""
+        product = self._eldest_plan()
+        plan = self.eldest_quote(product)
+        self.assertTrue(plan["available"], plan["reason"])
+        self.assertEqual(plan["core"]["amount"], 23215 + 19453 + 2 * 10282,
+                         "both adults at 41-50, each child on the child rate")
+        outpatient = self.group(plan, "outpatient")["options"][0]
+        self.assertEqual(outpatient["amount"], 4 * 30315,
+                         "no child rate on outpatient: everyone at the eldest's band")
+        younger = self.eldest_quote(product, spouse_age=28)
+        self.assertEqual(younger["core"]["amount"], 22569 + 18808 + 2 * 10282,
+                         "the principal of 35 is the eldest: 31-40")
+        too_old = self.eldest_quote(product, spouse_age=55)
+        self.assertFalse(too_old["available"])
+        self.assertIn("eldest is 55", too_old["reason"])
+        inpatient = product.table_ids.filtered(lambda t: t.cover == "inpatient")
+        names = inpatient.row_ids.mapped("name")
+        self.assertIn("Eldest Inpatient – KES 500,000 – Spouse, eldest aged 41–50", names)
+        self.assertIn("Eldest Inpatient – KES 500,000 – Child, aged 0–17", names,
+                      "a child rate is the child's own age")
+        self.assertFalse(product.warning_html)
+
+    def test_only_some_people(self):
+        """Personal accident only for adult dependants, last expense only for
+        dependants: the others are left off, not the cover refused."""
+        product = self._eldest_plan()
+        plan = self.eldest_quote(product)
+        accident = self.group(plan, "personal_accident")["options"][0]
+        self.assertTrue(accident["available"], accident["reason"])
+        self.assertEqual(accident["amount"], 586, "the spouse only")
+        self.assertEqual(accident["parts"][0]["who"], "Spouse")
+        expense = self.group(plan, "last_expense")["options"][0]
+        self.assertEqual(expense["amount"], 3 * 1007, "the spouse and two children")
+        single = self.eldest_quote(product, include_spouse=False)
+        accident = self.group(single, "personal_accident")["options"][0]
+        self.assertFalse(accident["available"], "nobody to cover: not offered at 0")
