@@ -15,6 +15,8 @@ import os
 import re
 from xml.sax.saxutils import escape, quoteattr
 
+import key_terms
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODULE = os.path.dirname(HERE)
 SOURCE = os.path.join(MODULE, "data", "source")
@@ -215,6 +217,17 @@ def write_insurers():
     open(os.path.join(OUT, "insurer.xml"), "w", encoding="utf-8").write(body)
 
 
+def key_terms_of(template_name):
+    """Which key terms (tools/key_terms.py) a catalogue plan prints."""
+    if template_name.startswith("APA Jamii Plus – Child-Only"):
+        return "apa_child_only"
+    if template_name.startswith("APA Jamii Plus"):
+        return "apa_family"
+    if template_name.startswith("Birdview Bizsure Afya"):
+        return "birdview"
+    raise SystemExit("no key terms for %s: add them to tools/key_terms.py" % template_name)
+
+
 def insurer_of(template_name):
     return next((xmlid for prefix, xmlid, _name in INSURERS
                  if template_name.startswith(prefix)), None)
@@ -236,8 +249,9 @@ def write_templates(templates, lines, prod_xmlids):
         body += field("number_of_days", tmpl["number_of_days"])
         body += field("require_signature", eval_="True" if tmpl["require_signature"] else "False")
         body += field("require_payment", eval_="True" if tmpl["require_payment"] else "False")
-        if tmpl.get("note"):
-            body += field("note", as_xml_html(tmpl["note"]), type_="html")
+        # The quotation prints the plan's key terms, not the long terms the
+        # catalogue was first loaded with (data/source keeps those).
+        body += field("note", key_terms.html(key_terms_of(tmpl["name"])), type_="html")
         body += field("odin_medical", eval_="True")
         insurer = insurer_of(tmpl["name"])
         if insurer:

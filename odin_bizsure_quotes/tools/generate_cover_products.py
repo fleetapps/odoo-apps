@@ -23,6 +23,7 @@ from xml.sax.saxutils import escape, quoteattr
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+import key_terms  # noqa: E402
 import rate_cards as rc  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(HERE), "data")
@@ -99,26 +100,9 @@ class Html:
         self.markup = markup
 
 
-def html_terms(title, sections):
-    """``sections``: (heading, paragraph text, list of items, or a table as
-    ``{"head": [...], "rows": [[...], ...]}``)."""
-    parts = ["<h3>%s</h3>" % escape(title)]
-    for heading, content in sections:
-        if isinstance(content, dict):
-            head = "".join("<th>%s</th>" % escape(str(cell)) for cell in content["head"])
-            body = "".join("<tr>%s</tr>" % "".join(
-                "<td>%s</td>" % escape(str(cell)) for cell in row) for row in content["rows"])
-            parts.append("<p><strong>%s</strong></p><table class=\"table table-sm table-bordered\">"
-                         "<thead><tr>%s</tr></thead><tbody>%s</tbody></table>" % (
-                             escape(heading), head, body))
-        elif isinstance(content, list):
-            parts.append("<p><strong>%s</strong></p><ul>%s</ul>" % (
-                escape(heading), "".join("<li>%s</li>" % escape(item) for item in content)))
-        elif heading:
-            parts.append("<p><strong>%s</strong> %s</p>" % (escape(heading), escape(content)))
-        else:
-            parts.append("<p>%s</p>" % escape(content))
-    return Html("".join(parts))
+def terms(key):
+    """The product's key terms (tools/key_terms.py), as its quotations print them."""
+    return Html(key_terms.html(key))
 
 
 class Catalogue:
@@ -208,109 +192,6 @@ def ga_inpatient_benefits(index, pandemic):
     return bullets("Inpatient benefits (sub-limits within the overall limit)", items)
 
 
-GA_TERMS = html_terms("GA Community/Retail Health Insurance (inpatient only) – quotation terms", [
-    ("Premiums.",
-     "Annual premiums in Kenya Shillings from GA Insurance's Community/Retail Health "
-     "Insurance rate card, effective 1 January 2022, priced per family by the number of "
-     "people covered (member only, member + 1 ... member + 6). Plans are offered with rates "
-     "excluding or including pandemic cover. Maternity is at an additional premium per "
-     "family, for a female principal or spouse. The quotation adds the Training Levy "
-     "(0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty."),
-    ("Scope of cover.",
-     "Hospitalisation necessitating medical and/or surgical intervention to the insured as "
-     "a result of accidental bodily injury and/or illness and/or a disease within the period "
-     "of insurance, subject to the policy terms and conditions."),
-    ("Eligibility.", [
-        "Adults: 19 to 65 years; last joining age 60.",
-        "Children: from birth (a term baby of 38 weeks) up to 18 years.",
-        "Seniors (61 to 100 years): refer to GA's Hadhi Plan (last joining age 75; not "
-        "applicable to existing members).",
-    ]),
-    ("Waiting periods from policy inception.", [
-        "Illness admission: 30 days. Covid-19, if purchased: 30 days.",
-        "Accident-related admission: no waiting period.",
-        "Non-accidental major/minor surgeries/admissions: 12 months.",
-        "Neo-natal, prematurity and congenital conditions: 12 months.",
-        "Newly diagnosed chronic conditions, declared pre-existing and/or chronic "
-        "conditions, organ transplant, HIV/AIDS and related conditions, cataract "
-        "operation: 12 months.",
-        "Maternity complications/normal delivery: 10 months.",
-    ]),
-    ("Territorial limits.",
-     "Kenya only, extended to worldwide (excluding the UK, USA and Canada) while on "
-     "business or holiday, up to 8 weeks from the date of travel."),
-    ("Important notes.", [
-        "Pre-authorisation is required for all admissions, including treatment outside "
-        "Kenya.",
-        "Private doctors are paid as per GA panel rates.",
-        "Claims incurred outside the GA panel are payable on a reimbursement basis.",
-    ]),
-    ("Admission procedure.", [
-        "Scheduled admissions: advise GA 48 hours before admission by sharing the "
-        "pre-authorisation form; GA issues a letter of undertaking; on admission present the "
-        "letter of undertaking, NHIF card and GA membership card.",
-        "Emergency admissions: identify yourself to the hospital with the GA membership "
-        "card; the hospital shares a pre-authorisation form within 24 hours; GA issues a "
-        "letter of undertaking; on discharge, fill and sign the claim form/invoice.",
-    ]),
-    ("Overseas treatment.",
-     "Notify GA before any overseas treatment. Expenses are settled on a reimbursement "
-     "basis; the economy air ticket is refunded for treatment not locally available in "
-     "Kenya; claims are reimbursed in Kenya Shillings at the exchange rate on the date of "
-     "the claim."),
-    ("Reimbursement.",
-     "Send GA, within 60 days of discharge, a fully filled and signed inpatient claim form, "
-     "original receipts as proof of payment, the discharge summary, a medical report and "
-     "the final itemised hospital bill."),
-    ("How to sign up.",
-     "A fully filled application form, copies of ID/passport, KRA PIN and next of kin's ID, "
-     "and proof of premium payment."),
-    ("Main exclusions.", [
-        "Non-declared pre-existing conditions.",
-        "War and kindred risks (whether war be declared or not); naval, military or air "
-        "force operations; participation in riots, strikes and civil commotion.",
-        "Self-referred or self-prescribed treatment.",
-        "Intentional self-injury, suicide or attempted suicide, or any bodily injury or "
-        "illness wilfully self-inflicted or due to negligence.",
-        "Alcohol and substance abuse.",
-        "Cosmetic or beauty treatment in nature cure clinics or health hydros.",
-        "Cost of providing, maintaining or fitting an external prosthesis or appliance or "
-        "other equipment, except wheelchairs, walking frames and crutches.",
-        "Alternative medicine, excluding Ayurvedic.",
-        "Diagnostic equipment and/or specialised surgical devices and gadgets.",
-        "Treatment other than by a registered (KMPDU) medical practitioner.",
-        "Participation in professional and hazardous sports, e.g. bungee jumping, "
-        "paragliding.",
-        "Nutritional supplements, unless prescribed as part of treatment of specified "
-        "medical conditions.",
-        "Family planning and fertility treatment, any form of assisted conception and "
-        "complications, e.g. treatment related to infertility and impotence, hormonal "
-        "imbalance, hormone replacement therapy (HRT).",
-        "All expenses related to donor screening and treatment, including surgery to remove "
-        "organs from a donor.",
-        "Claims arising from or associated with epidemics/pandemics or unknown diseases, "
-        "unless purchased.",
-        "Expenses recoverable under any other insurance, e.g. GPA, WIBA, NHIF.",
-        "Outpatient-related expenses, including maternity, dental and optical.",
-        "Expenses related to weight loss/gain, including obesity.",
-        "Treatment arising from contamination by radioactivity from nuclear fuel, waste or "
-        "fission.",
-        "Expenses incurred as a result of natural calamities such as volcanic eruptions, "
-        "earthquakes and typhoons.",
-        "Expenses/claims incurred in the USA, UK and Canada.",
-    ]),
-    ("Paying GA Insurance.",
-     "No cash is accepted. Pay GA Insurance Limited by EFT, RTGS, internal transfer or "
-     "direct deposit to I&M Bank Ltd, 2nd Ngong Avenue branch, account 00200208651202 "
-     "(SWIFT IMBLKENA, branch code 57001); by cheque in favour of GA Insurance Limited; by "
-     "debit or credit card; or by M-Pesa Paybill 870250, account: the GA client or "
-     "intermediary account number."),
-    ("", "This quotation is subject to GA Insurance's underwriting and acceptance. Benefits "
-         "are a summary; refer to the policy document for detailed policy terms and "
-         "conditions."),
-])
-
-
 def generate_ga():
     w = Writer()
     w.comment("GA Insurance: insurer_ga is the contact the motor rates installed.")
@@ -355,7 +236,7 @@ def generate_ga():
             cat.product(
                 key.replace("ga_ip_", "ga_"),
                 "GA Community Health – %s – %s" % (kes(limit), variant), "insurer_ga",
-                [table] + maternity, GA_TERMS)
+                [table] + maternity, terms("ga_community"))
     generate_hadhi(w)
     w.write("cover_product_ga.xml")
     return w
@@ -364,78 +245,6 @@ def generate_ga():
 # =============================================================================
 # GA Insurance -- Hadhi Health Plan
 # =============================================================================
-
-HADHI_TERMS = html_terms("GA Hadhi Health Plan – quotation terms", [
-    ("Premiums.",
-     "Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated "
-     "October 2022), for a member (M) or a couple (M+1), by age group, rated on the older "
-     "member. The inpatient limit is per person or couple. Standard premiums exclude "
-     "pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 "
-     "members and above. The quotation adds the Training Levy (0.2%), the Policyholders' "
-     "Compensation Fund levy (0.25%) and KES 40 stamp duty."),
-    ("Eligibility.", [
-        "Retirees and senior members of society.",
-        "Individual members aged 65 years and below can access all plans (A, B, C and D).",
-        "Individual members aged 66 to 70 years can only access Plans B, C and D.",
-        "Individual members aged 71 to 75 years can only access Plans C and D.",
-        "Maximum joining age for a group of 5 or more members is 75 years, with access to all "
-        "plans.",
-    ]),
-    ("Cover features.", [
-        "Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for "
-        "those with combined inpatient and funded outpatient benefit.",
-        "Management by GA selected providers, based on the average fee guidelines of the Kenya "
-        "Medical Practitioners and Dentists Board.",
-        "Emergency helpline under the TraumaCare Plan at no extra cost.",
-        "Worldwide cover while on business or holiday for 8 weeks from the date of travel "
-        "(excluding the USA and Canada).",
-        "Cancellation notice of 30 days by either party.",
-    ]),
-    ("Waiting periods.", [
-        "General: 30 days for all claims, except claims arising from an accident.",
-        "9 months for all pre-existing conditions declared and/or accepted at the time of "
-        "application.",
-        "2 months for all surgical cases, except pre-existing conditions.",
-        "Organ transplant: 2 years.",
-    ]),
-    ("Claims procedure.", [
-        "The member identifies themselves to the hospital with the Hadhi branded medical "
-        "identification card, or a guardian may identify the member.",
-        "On receipt of the pre-authorisation form, GA gives an undertaking letter stating the "
-        "nature of the illness and estimated charges. Before or at discharge the member fills "
-        "in and signs the GA claim form; the attending doctor completes it.",
-        "The member presents their NHIF card to the hospital before discharge, or settles the "
-        "NHIF amount with the hospital.",
-        "The hospital forwards the completed claim form with the detailed bill(s) to GA.",
-    ]),
-    ("Reimbursement claims.",
-     "Settle the bills with the hospital and send GA, within 60 days, the original receipts, "
-     "a duly completed claim form, the medical report, the itemised hospital bill(s) and the "
-     "discharge summary. GA verifies and settles valid bills within 10 days."),
-    ("Overseas procedures (India, South Africa and Pakistan only).",
-     "All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is "
-     "sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when "
-     "the expenses were incurred, subject to the policy limits."),
-    ("Main exclusions.", [
-        "Cosmetic treatments and plastic surgery, unless reconstructive surgery following an "
-        "accident.",
-        "Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, "
-        "reflexology, aromatherapy, patent medicines and household remedies.",
-        "Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, "
-        "hospice, private nursing/homecare (unless pre-authorised by GA), frail care or "
-        "long-term care facility that is not a hospital as defined.",
-        "Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol "
-        "and drug addiction or abuse.",
-        "Laser eye surgery.",
-        "Naval, military and air force operations.",
-        "Participation in extreme sports.",
-        "Treatment other than by a registered medical practitioner.",
-        "Expenses related to pandemic/epidemic and/or unknown diseases.",
-    ]),
-    ("", "This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA "
-         "on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 "
-         "and 0709 626 400."),
-])
 
 
 def hadhi_benefits(index, enhanced):
@@ -482,104 +291,12 @@ def generate_hadhi(w):
             cat.product(key.replace("ga_hadhi_", "hadhi_"),
                         "GA Hadhi Health – Plan %s (%s)%s%s" % (
                             plan, kes(limit), variant, " (min. 10 members)" if enhanced else ""),
-                        "insurer_ga", [table], HADHI_TERMS, active=not enhanced)
+                        "insurer_ga", [table], terms("ga_hadhi"), active=not enhanced)
 
 
 # =============================================================================
 # Heritage Insurance -- HeriAfya
 # =============================================================================
-
-HA_TERMS = html_terms("Heritage HeriAfya Medical Cover – quotation terms", [
-    ("Premiums.",
-     "Annual premiums in Kenya Shillings from the Heritage HeriAfya brochure (10 December "
-     "2024), priced as Heritage's HeriAfya quotation tool prices them: inpatient is shared "
-     "by the family, each adult on the rate for their own age group, the first child on the "
-     "child rate and every other child on the extra rate. Outpatient is per person (by each "
-     "person's age) or shared by the family (by family size). Maternity is per family. "
-     "Dental and optical are twin benefits, taken together with equal limits and "
-     "distribution, or as the combined solution. Premium quoted is subject to taxes: stamp "
-     "duty KES 40, Training Levy and PHCF of 0.45%."),
-    ("Eligibility.", [
-        "Principal and spouse: cover from 18 to 65 years, extended to 70 years. Only one "
-        "principal member and one spouse per family quote.",
-        "Child dependants: from 38 weeks (1 day old) to 18 years, extended to 23 years and "
-        "above with proof of full-time study.",
-        "Pre-cover medical tests are required for all new applicants above 55 years of age; "
-        "an applicant of any other age may be asked to undergo the tests for further "
-        "underwriting.",
-    ]),
-    ("Outpatient benefits by limit.", {
-        "head": ["Outpatient limit"] + ["{:,}".format(l) for l in rc.HA_OUTPATIENT_LIMITS],
-        "rows": [[label] + ["{:,}".format(v) for v in values]
-                 for label, values in rc.HA_OUTPATIENT_BY_LIMIT],
-    }),
-    ("Waiting periods.", [
-        "Accidents: no waiting period. General: 30 days from inception for new joiners.",
-        "Non-accidental dental surgery and optical surgery: 6 months.",
-        "Maternity: 10 months.",
-        "Gynaecological surgery: 12 months. Pre-existing and chronic conditions: 12 months.",
-        "Major diseases (cancer, kidney dialysis and organ transplants): 24 months.",
-        "Illness-related reconstructive/plastic surgery: 36 months.",
-    ]),
-    ("Co-payments.",
-     "KES 1,000 per visit to Aga Khan Nairobi, Kisumu and Mombasa; Nairobi Hospital; "
-     "Gertrude's; MP Shah; Mater; Karen Hospital, at all their branches. KES 500 per visit "
-     "to all other providers."),
-    ("Important notes.", [
-        "Flexible payment through Insurance Premium Financing from reputable banks (4 equal "
-        "instalments).",
-        "Benefits and premium rates may change at any time; a plan already purchased does not "
-        "change mid-term.",
-        "The Heritage Insurance Company reserves the right to decline any application.",
-        "All admissions must be reported to Heritage immediately, and within 48 hours for "
-        "emergency admissions.",
-        "Members must use the HeriAfya provider panel. Where members pay cash, Heritage "
-        "refunds at standard reasonable and customary rates, up to 80% of the claim.",
-        "Cover is in Kenya and East Africa, with referral to India only. Emergency treatment "
-        "outside the region while travelling is covered for up to 6 weeks per policy year; "
-        "notify Heritage before travel.",
-    ]),
-    ("Main exclusions (see the policy document for all).", [
-        "Cosmetic treatments and plastic surgery.",
-        "Prescribed alternative medicines, including homeopathy, acupuncture, Chinese medicine, "
-        "reflexology, aromatherapy, patent medicines and household remedies.",
-        "Services or treatment in any home, spa, hydro-clinic, sanatorium, step-down facility, "
-        "hospice, private nursing/home care (unless pre-authorised), frail care or long-term "
-        "care facility that is not a hospital as defined.",
-        "Tests or treatment related to infertility, contraception, impotence or sexual "
-        "dysfunction.",
-        "Termination of pregnancy, unless authorised by a registered medical practitioner when "
-        "the life of the mother is at risk.",
-        "Treatment by the insured person themselves, a family member or spouse.",
-        "Costs of cornea, muscular, skeletal or human organ or tissue transplant from a donor, "
-        "and related expenses (except under the organ transplant benefit).",
-        "Self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug "
-        "addiction, unless related to mental illness.",
-        "Experimental or pioneering medical and surgical techniques.",
-        "Injury or illness while serving full-time in a police or military unit.",
-        "Travel or non-medical costs (except where stated in the benefit table).",
-        "Vaccinations such as travel and flu vaccinations; epidemics and pandemics.",
-        "Dentures, inlays, crowns, bridges, periodontal and orthodontic treatment; dental "
-        "implants.",
-        "Replacement or repair of eye glasses; refractive eye surgery or laser eye treatment; "
-        "photophobia and photochromatic lenses; sunglasses, readers, contact lenses.",
-        "Food and nutritional supplements, including baby food and special milk preparations; "
-        "multivitamins and tonics; treatment for obesity; slimming preparations.",
-        "Anti-smoking preparations; hearing aids, glucometers and blood pressure machines.",
-        "Professional and dangerous sports, including motorcycling, rugby, football, "
-        "skydiving, mountaineering and water sports.",
-        "Treatment for learning difficulties, development and behavioural problems in "
-        "children.",
-    ]),
-    ("Paying Heritage Insurance.",
-     "Strictly to: The Heritage Insurance Company Kenya Ltd, Stanbic Bank, Chiromo branch, "
-     "account 0100012567965 (bank/branch code 31007, SWIFT SBICKENX); or M-Pesa Paybill "
-     "8779000, account: policy number or name."),
-    ("", "Heritage reserves the right to onboard members. Information given by the insured "
-         "forms the basis of the contract; false declaration or non-disclosure may lead to "
-         "waiting periods, premium loading, exclusions, termination of cover and recovery of "
-         "costs."),
-])
 
 
 def generate_heritage():
@@ -690,7 +407,8 @@ def generate_heritage():
             benefits=bullets("Inpatient benefits (sub-limits within the overall benefit)", items))
         cat.product("ha_option_%s" % (i + 1),
                     "Heritage HeriAfya – %s (%s)" % (option, kes(limit)), "insurer_heritage",
-                    [table] + outpatient + maternity + dental, HA_TERMS, sequence=10 + i)
+                    [table] + outpatient + maternity + dental, terms("heritage_heriafya"),
+                    sequence=10 + i)
     w.write("cover_product_heritage.xml")
     return w
 
@@ -701,78 +419,6 @@ def generate_heritage():
 
 JC_CODE = dict(zip(rc.JC_LEVELS, ["CL", "PR", "AD", "EX", "RO", "PS"]))
 JS_CODE = dict(zip(rc.JS_LEVELS, ["CO", "BR", "SI", "GO", "DI"]))
-
-
-def copay_text():
-    return ("KES 2,000 per visit at %s; KES 1,000 at %s; no outpatient co-payment at all "
-            "other hospitals." % (", ".join(rc.JUBILEE_COPAY_2000), ", ".join(rc.JUBILEE_COPAY_1000)))
-
-
-def jubilee_terms(title, card, premiums, eligibility, exclusions, payment=None):
-    sections = [
-        ("Premiums.", premiums),
-        ("Eligibility.", eligibility),
-        ("Outpatient co-payments.", copay_text()),
-        ("General conditions.", rc.JUBILEE_CONDITIONS),
-        ("Main exclusions (see the policy document for all).",
-         [item[0].upper() + item[1:] + "." for item in exclusions]),
-    ]
-    if payment:
-        sections.append(("Paying Jubilee Health Insurance.", payment))
-    sections.append(("", "This quotation is subject to Jubilee Health Insurance's medical "
-                         "underwriting and acceptance. Benefits are a summary of the %s; "
-                         "the policy document prevails." % card))
-    return html_terms(title, sections)
-
-
-JC_TERMS = jubilee_terms(
-    "Jubilee J Care – quotation terms", "J Care brochure",
-    "Annual premiums in Kenya Shillings from the Jubilee J Care rate card effective "
-    "1 December 2023. Premiums are based on the age of the oldest applicant: the principal "
-    "and spouse are rated on the oldest person's age band, and outpatient is priced per "
-    "person at that band, children included; children are on the inpatient child rate. "
-    "Inpatient is the core benefit; "
-    "outpatient, maternity, dental, optical, last expense, personal accident and enhanced "
-    "Covid-19 cover are optional. Dental and optical are available only with outpatient. "
-    "Premiums exclude the Training Levy and Policyholders' Compensation Fund levy (0.45% "
-    "together) and KES 40 stamp duty, which the quotation adds.",
-    ["Main member and dependants from birth (a term baby of 38 weeks) to 64 years.",
-     "Existing members of 65 years and above are transitioned to J Senior and covered for "
-     "life without age restrictions, subject to annual renewal and underwriting review.",
-     "Dependent children over 18 years are covered up to 25 years with proof of schooling.",
-     "Children below 18 years can be principal members under the J Care Junior plan, at "
-     "its rates."],
-    rc.JUBILEE_EXCLUSIONS + rc.JC_EXTRA_EXCLUSIONS)
-
-JCJ_TERMS = jubilee_terms(
-    "Jubilee J Care Junior – quotation terms", "J Care brochure",
-    "Annual premiums per child in Kenya Shillings from the J Care Junior rates (children "
-    "0 to 17 years as main member) of the Jubilee J Care rate card effective 1 December "
-    "2023. Inpatient is the core benefit; outpatient, dental and optical are optional, and "
-    "dental and optical are available only with outpatient. Premiums exclude the Training "
-    "Levy and Policyholders' Compensation Fund levy (0.45% together) and KES 40 stamp duty, "
-    "which the quotation adds.",
-    ["Children below 18 years as principal members, from birth (a term baby of 38 weeks)."],
-    rc.JUBILEE_EXCLUSIONS + rc.JC_EXTRA_EXCLUSIONS)
-
-JS_TERMS = jubilee_terms(
-    "Jubilee J Senior – quotation terms", "J Senior brochure",
-    "Annual premiums in Kenya Shillings from the Jubilee J Senior rate card effective "
-    "1 December 2023. Premiums are based on the age of the oldest applicant: the principal "
-    "and spouse are rated on the oldest person's age band, as are outpatient and last "
-    "expense; children are on the inpatient and outpatient child rates, and last expense "
-    "for a child is at the oldest person's band. Inpatient is the core benefit; outpatient, "
-    "dental, optical, last expense, personal accident and enhanced Covid-19 cover are "
-    "optional. Dental and optical are available only with outpatient. Premiums exclude the "
-    "Training Levy and Policyholders' Compensation Fund levy (0.45% together) and KES 40 "
-    "stamp duty, which the quotation adds.",
-    ["From 65 years to a maximum entry age of 79 years, extended for life, subject to "
-     "annual renewal terms."],
-    rc.JUBILEE_EXCLUSIONS,
-    payment="Pay Jubilee Health Insurance directly, by cheque made out to Jubilee Health "
-            "Insurance Ltd, M-Pesa Paybill 7195247, or direct deposit to the Jubilee Health "
-            "Insurance bank account, and get an official Jubilee Health Insurance receipt. "
-            "Jubilee is not liable for premiums paid to other parties and not received.")
 
 
 def level_benefits(title, limit_line, rows, index):
@@ -905,7 +551,7 @@ def generate_jubilee():
             cover_label="Personal accident", partial=True, sequence=70))
         cat.product("jc_%s" % slug(level),
                     "Jubilee J Care – %s (%s)" % (level, kes(limit)), "insurer_jubilee",
-                    tables + covid, JC_TERMS, sequence=10 + i)
+                    tables + covid, terms("jubilee_j_care"), sequence=10 + i)
 
     # -- J Care Junior ------------------------------------------------------------
     for i, level in enumerate(rc.JC_LEVELS):
@@ -949,7 +595,7 @@ def generate_jubilee():
                 requires_outpatient=True))
         cat.product("jcj_%s" % slug(level),
                     "Jubilee J Care Junior – %s (%s per child)" % (level, kes(limit)),
-                    "insurer_jubilee", tables, JCJ_TERMS, plan_type="child_only",
+                    "insurer_jubilee", tables, terms("jubilee_j_care_junior"), plan_type="child_only",
                     sequence=20 + i)
 
     # -- J Senior -----------------------------------------------------------------
@@ -1037,7 +683,7 @@ def generate_jubilee():
             cover_label="Personal accident", partial=True, sequence=70))
         cat.product("js_%s" % slug(level),
                     "Jubilee J Senior – %s (%s)" % (level, kes(limit)), "insurer_jubilee",
-                    tables + covid, JS_TERMS, sequence=30 + i)
+                    tables + covid, terms("jubilee_j_senior"), sequence=30 + i)
     w.write("cover_product_jubilee.xml")
     return w
 
