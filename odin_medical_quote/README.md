@@ -114,11 +114,14 @@ out like the broker's own quotations:
 * **Member details**: the dates of birth, children and limit range exactly
   as entered (dates written `21 Jan 1984`, never `01/21/1984`);
 * **Cover and premium comparison**: one column per plan (only the accepted
-  one once a plan is accepted), insurer and plan at the top, the recommended
-  plan marked; the limit of each benefit, then each premium, the discount,
-  *Taxes and levies* (levies and stamp duty together, as the client pays
-  them), the policy charge, the **total premium** and each instalment plan's
-  equal monthly payment (the first one now) and total;
+  one once a plan is accepted), headed by the insurer, then product and
+  plan -- *J Care · Premier (KES 1,000,000)*, without the "Below 70" the
+  engine rates on -- the recommended plan marked; the limit of each benefit
+  (outpatient, dental, optical and maternity saying *per person* or *per
+  family*: 50,000 per person is not 50,000 per family), then each premium,
+  the discount, *Taxes and levies* (levies and stamp duty together, as the
+  client pays them), the policy charge, the **total premium** and each
+  instalment plan's equal monthly payment (the first one now) and total;
 * the plans' **terms**, once each even when several plans share them;
 * the validity, *Quotation by* the salesperson and their phone, and the
   **payment options** box;

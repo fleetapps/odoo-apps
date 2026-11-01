@@ -46,7 +46,7 @@ into the XML. A rate change is an edit to the JSON and one run of the script.
 Do not edit the generated XML, and see README.md before editing prices in
 Odoo itself.
 """,
-    "version": "19.0.1.6.0",
+    "version": "19.0.1.7.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",

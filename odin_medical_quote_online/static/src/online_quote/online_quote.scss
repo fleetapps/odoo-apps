@@ -428,6 +428,15 @@
     color: var(--oq-muted);
 }
 
+// "Add pandemic cover": the same amount, another version of the plan.
+.o_oq_variant {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
 .o_oq_price {
     display: flex;
     align-items: baseline;

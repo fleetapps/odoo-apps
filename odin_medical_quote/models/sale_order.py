@@ -25,7 +25,8 @@ class SaleOrder(models.Model):
     def _odin_plan_label(self):
         """``APA Jamii Plus – Family Cover (KES 500,000)``: the plan quoted."""
         self.ensure_one()
-        return self.sale_order_template_id.name or ""
+        template = self.sale_order_template_id
+        return template._odin_client_title() if template else ""
 
     def _odin_insurer_label(self):
         self.ensure_one()
@@ -33,10 +34,14 @@ class SaleOrder(models.Model):
         return template._odin_insurer_name() if template else ""
 
     def _odin_plan_name(self):
-        """The plan without its insurer, as a column of the quotation heads it."""
+        """``J Care · Premier (KES 1,000,000)``: the product and plan, as a
+        column of the quotation heads them under the insurer's name."""
         self.ensure_one()
         template = self.sale_order_template_id
-        return (template._odin_heading()[1] or template.name) if template else ""
+        if not template:
+            return ""
+        _insurer, product, plan = template._odin_display_names()
+        return " · ".join(part for part in (product, plan) if part) or template.name
 
     # -- what a renewal needs to know about what was sold ----------------------
 

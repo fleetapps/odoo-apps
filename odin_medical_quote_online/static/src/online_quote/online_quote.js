@@ -19,6 +19,12 @@ const BANDS = [
     { key: "high", label: _t("Over 1M"), test: (limit) => limit > 1000000 },
 ];
 
+/**
+ * Where the cards start: each insurer's card opens on its plan nearest this
+ * hospital cover, so the cards compare like with like.
+ */
+const TARGET_LIMIT = 500000;
+
 const STEPS = [
     { key: "who", label: _t("You") },
     { key: "options", label: _t("Plans") },
@@ -53,6 +59,8 @@ export class OnlineQuote extends Component {
             },
             wants: prefill.wants || [],
             band: "any",
+            // The plan picked on each insurer's card, by card.
+            picks: {},
             tiers: {},
             plans: [],
             offered: this.props.benefits.map((b) => b.key),
@@ -183,6 +191,7 @@ export class OnlineQuote extends Component {
         this.state.step = "options";
         this.state.chosen = [];
         this.state.tiers = {};
+        this.state.picks = {};
         window.scrollTo(0, 0);
         this.loadPlans();
     }
@@ -245,14 +254,125 @@ export class OnlineQuote extends Component {
         );
     }
 
-    get shownPlans() {
+    pickBand(key) {
+        // Each card goes back to its plan for that much cover.
+        this.state.band = key;
+        this.state.picks = {};
+    }
+
+    /**
+     * One card per insurer's product: the plans in it differ only by how
+     * much hospital cover they give. A card shows the plan picked on it, the
+     * one on the quote, or else its plan for the cover asked for: nearest to
+     * 500,000, or the cheapest in the band tapped. Cards are ordered by that
+     * starting price, so they do not jump when a visitor changes one.
+     */
+    get cards() {
         const band = BANDS.find((b) => b.key === this.state.band) || BANDS[0];
-        return this.state.plans.filter((p) => band.test(p.limit));
+        const groups = new Map();
+        for (const plan of this.state.plans) {
+            if (!groups.has(plan.group)) {
+                groups.set(plan.group, []);
+            }
+            groups.get(plan.group).push(plan);
+        }
+        const cards = [];
+        for (const [key, plans] of groups) {
+            plans.sort((a, b) => a.limit - b.limit || a.name.length - b.name.length);
+            const start = band.key === "any" ? nearest(plans) : cheapest(plans.filter((p) => band.test(p.limit)));
+            const plan =
+                plans.find((p) => p.id === this.state.picks[key]) ||
+                plans.find((p) => this.isChosen(p)) ||
+                start;
+            if (plan) {
+                cards.push({ key, plans, plan, rank: (start || plan).total });
+            }
+        }
+        return cards.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key));
+    }
+
+    get lowestCard() {
+        return cheapest(this.cards.map((card) => card.plan));
+    }
+
+    /** The hospital cover amounts a card offers, each with its plain plan. */
+    amounts(card) {
+        const seen = new Map();
+        for (const plan of card.plans) {
+            if (!seen.has(plan.limit)) {
+                seen.set(plan.limit, plan);
+            }
+        }
+        return [...seen.values()];
+    }
+
+    /**
+     * Plans of the card at the amount shown, the plain one first: GA sells
+     * each amount with or without pandemic cover.
+     */
+    variants(card) {
+        return card.plans.filter((p) => p.limit === card.plan.limit);
+    }
+
+    variantLabel(plain, plan) {
+        // "KES 1,000,000, with pandemic cover" after "KES 1,000,000".
+        const extra = plan.name.startsWith(plain.name)
+            ? plan.name.slice(plain.name.length).replace(/^[\s,–-]+/, "")
+            : plan.name;
+        return _t("Add %s", extra.replace(/^with\s+/i, ""));
+    }
+
+    pickAmount(card, limit) {
+        const current = this.variants(card);
+        const suffix = card.plan.name.slice(current[0].name.length);
+        const atLimit = card.plans.filter((p) => p.limit === Number(limit));
+        const same = atLimit.find((p) => suffix && p.name.endsWith(suffix) && p !== atLimit[0]);
+        this.pickPlan(card, same || atLimit[0]);
+    }
+
+    toggleVariant(card) {
+        const [plain, other] = this.variants(card);
+        this.pickPlan(card, card.plan.id === plain.id ? other : plain);
+    }
+
+    /**
+     * Put ``target`` on the card in place of its plan: on the quote too if
+     * the card's plan was, and with the same doctor-visit, dental or optical
+     * choices where the target offers them.
+     */
+    async pickPlan(card, target) {
+        const from = card.plan;
+        if (!target || target.id === from.id) {
+            return;
+        }
+        if (this.isChosen(from)) {
+            this.state.chosen = this.state.chosen.map((id) => (id === from.id ? target.id : id));
+        }
+        this.state.picks[card.key] = target.id;
+        const tiers = {};
+        for (const [key, optionKey] of Object.entries(this.state.tiers[from.id] || {})) {
+            const had = from.benefits.find((b) => b.key === key)?.options.find((o) => o.key === optionKey);
+            const offer = target.benefits.find((b) => b.key === key);
+            const same = had && offer?.options.find((o) =>
+                had.label ? o.label === had.label : o.limit === had.limit);
+            if (same) {
+                tiers[key] = same.key;
+            }
+        }
+        if (Object.keys(tiers).length) {
+            this.state.tiers[target.id] = tiers;
+            await this.refreshPlan(target);
+        }
     }
 
     async setTier(plan, benefit, optionKey) {
         const tiers = { ...(this.state.tiers[plan.id] || {}), [benefit.key]: optionKey };
         this.state.tiers[plan.id] = tiers;
+        await this.refreshPlan(plan);
+    }
+
+    /** Price one plan again, with the choices made on it. */
+    async refreshPlan(plan) {
         this.state.refreshing[plan.id] = true;
         const result = await rpc("/medical-quote/options", {
             family: this.familyParams(),
@@ -340,6 +460,19 @@ export class OnlineQuote extends Component {
         this.state.step = step;
         window.scrollTo(0, 0);
     }
+}
+
+/** The plan whose cover is nearest 500,000, the smaller and cheaper on a tie. */
+function nearest(plans) {
+    return [...plans].sort((a, b) =>
+        Math.abs(a.limit - TARGET_LIMIT) - Math.abs(b.limit - TARGET_LIMIT) ||
+        a.limit - b.limit ||
+        a.total - b.total
+    )[0];
+}
+
+function cheapest(plans) {
+    return [...plans].sort((a, b) => a.total - b.total)[0];
 }
 
 registry.category("public_components").add("odin_medical_quote_online.OnlineQuote", OnlineQuote);

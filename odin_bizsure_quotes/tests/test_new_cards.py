@@ -40,7 +40,7 @@ class TestNewCards(TransactionCase):
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.heritage)), 10)
         off = products.filtered(lambda p: not p.active)
         self.assertEqual(sorted(off.mapped("name")), sorted(
-            "GA Hadhi Health – Plan %s (KES %s) – Enhanced with Covid-19 (min. 10 members)" % pair
+            "GA Hadhi Health – Plan %s (KES %s), with Covid-19 cover (groups of 10 or more)" % pair
             for pair in (("A", "5,000,000"), ("B", "2,500,000"), ("C", "1,000,000"), ("D", "500,000"))),
             "Covid-enhanced Hadhi is for 10 members and above: off until the office says")
         self.assertFalse(any(off.template_id.mapped("active")))
@@ -142,11 +142,10 @@ class TestNewCards(TransactionCase):
             "principal_age": 35, "include_spouse": True, "spouse_age": 30, "children": 3,
             "limit_min": 1000000, "limit_max": 1000000, "insurer": self.ga.name}})
         plans = {plan["name"]: plan for plan in result["plans"]}
-        self.assertEqual(sorted(plans), ["KES 1,000,000 – Excluding Pandemic",
-                                         "KES 1,000,000 – Including Pandemic"])
-        self.assertEqual(plans["KES 1,000,000 – Excluding Pandemic"]["core"]["amount"], 72915)
-        self.assertEqual(plans["KES 1,000,000 – Including Pandemic"]["core"]["amount"], 87498)
-        self.assertEqual(self.options(plans["KES 1,000,000 – Excluding Pandemic"], "maternity")[1],
+        self.assertEqual(sorted(plans), ["KES 1,000,000", "KES 1,000,000, with pandemic cover"])
+        self.assertEqual(plans["KES 1,000,000"]["core"]["amount"], 72915)
+        self.assertEqual(plans["KES 1,000,000, with pandemic cover"]["core"]["amount"], 87498)
+        self.assertEqual(self.options(plans["KES 1,000,000"], "maternity")[1],
                          [13283, 17078, 18975, 20873, 22770, 34085])
         older = self.plan("ga_250k_excl", principal_age=61)
         self.assertFalse(older["available"], "last joining age 60")

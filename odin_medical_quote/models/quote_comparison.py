@@ -522,6 +522,7 @@ class QuoteComparison(models.Model):
                 "highlight": plan.highlight,
                 "sections": sections,
                 "amounts": order._client_amounts(),
+                "medical": bool(order.sale_order_template_id.odin_medical),
             })
 
         keys, labels = [], {}
@@ -545,11 +546,29 @@ class QuoteComparison(models.Model):
                 return value if field == "amount" else (value or None)
             return get
 
+        def section_basis(key):
+            """"per person" or "per family" beside an optional benefit's limit:
+            50,000 per person and 50,000 per family are not the same cover.
+            Inpatient is the plan's own limit, as its name says."""
+            def get(column):
+                section = column["sections"].get(key)
+                if key == "inpatient" or not section or not column["medical"]:
+                    return ""
+                bases = {entry["line"].product_id.odin_rate_basis
+                         for entry in section["included"] if entry.get("line")}
+                if bases == {"person"}:
+                    return _("per person")
+                if bases and bases <= {"family_size", "policy"}:
+                    return _("per family")
+                return ""
+            return get
+
         rows = []
         for key in keys:
             limits = cells(section_value(key, "limit"))
             if any(limits):
-                rows.append({"kind": "limit", "label": _("%s limit", labels[key]), "cells": limits})
+                rows.append({"kind": "limit", "label": _("%s limit", labels[key]), "cells": limits,
+                             "basis": cells(section_basis(key))})
         for key in keys:
             rows.append({"kind": "premium", "label": labels[key],
                          "cells": cells(section_value(key, "amount"))})

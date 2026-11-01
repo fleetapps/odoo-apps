@@ -22,7 +22,7 @@ link for an ad.
 
 No Website app needed. See README.md.
 """,
-    "version": "19.0.1.1.1",
+    "version": "19.0.1.1.2",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",

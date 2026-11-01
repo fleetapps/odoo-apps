@@ -47,6 +47,9 @@ class TestOnlinePlans(OnlineCase):
         self.assertEqual(totals, sorted(totals), "cheapest first")
         afya = result["plans"][ids.index(self.afya.id)]
         self.assertEqual(afya["name"], "Plan 1 (KES 200,000)", "no 'Below 70'")
+        self.assertEqual(afya["product"], "Afya")
+        self.assertEqual(afya["group"], "Test Afya Insurer|Afya",
+                         "one card per insurer's product: its plans differ by cover")
         self.assertEqual(afya["hospital"], 15822)
         self.assertEqual(afya["benefits"], [])
         self.assertAlmostEqual(afya["total"], 15822 * 1.0045 + 40, delta=0.02,
@@ -64,6 +67,9 @@ class TestOnlinePlans(OnlineCase):
                          "added, and the visitor is told why")
         self.assertEqual(benefits["outpatient"]["amount"], 22130)
         self.assertEqual(benefits["dental"]["amount"], 5 * 1210, "the cheaper tier first")
+        self.assertEqual(benefits["outpatient"]["basis"], "per family")
+        self.assertEqual(benefits["dental"]["basis"], "per person",
+                         "50,000 per person is not 50,000 per family")
 
     def test_tier_picked(self):
         dental = {b["key"]: b for b in self.plans(wants=["outpatient", "dental"])[

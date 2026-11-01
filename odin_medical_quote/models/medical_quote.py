@@ -199,6 +199,7 @@ class MedicalQuote(models.AbstractModel):
                     "label": option["label"],
                     "name": option["name"],
                     "limit": option["limit"],
+                    "basis": option["basis"],
                     "amount": option["amount"],
                     "available": option["available"],
                     "reason": option["reason"],

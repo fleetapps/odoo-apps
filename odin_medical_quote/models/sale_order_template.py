@@ -13,6 +13,9 @@ CHARGES = frozenset({"statutory_charges", "payment_options"})
 REQUIRES_OUTPATIENT = re.compile(r"\bwith\s+outpatient\b", re.I)
 #: where a shared prefix may be cut: between the parts of a product name
 SEPARATOR = re.compile(r"\s[–—-]\s")
+#: "– Below 70" / "– Above 70": which rate card the family is on, the
+#: engine's business rather than the client's
+AGE_VARIANT = re.compile(r"\s*[–—-]\s*(?:Below|Above)\s+\d+\s*$", re.I)
 
 
 def distinguishing_labels(names):
@@ -105,6 +108,27 @@ class SaleOrderTemplate(models.Model):
     def _odin_insurer_name(self):
         self.ensure_one()
         return self.odin_insurer_id.name or self._odin_heading()[0]
+
+    def _odin_display_names(self):
+        """(insurer, product, plan) as a client reads them: ``Jubilee Health
+        Insurance``, ``J Care``, ``Premier (KES 1,000,000)``. The product
+        does not repeat the insurer's name, and the plan drops its age
+        variant ("Below 70")."""
+        self.ensure_one()
+        insurer = self._odin_insurer_name()
+        product, plan = self._odin_heading()
+        words = product.split()
+        if len(words) > 1 and insurer and words[0].lower() == insurer.split()[0].lower():
+            product = " ".join(words[1:])
+        if product == insurer:
+            product = ""
+        return insurer, product, AGE_VARIANT.sub("", plan).strip()
+
+    def _odin_client_title(self):
+        """``Jubilee J Care – Premier (KES 1,000,000)``: the plan's whole name,
+        without its age variant."""
+        self.ensure_one()
+        return AGE_VARIANT.sub("", self.name or "").strip()
 
     # -- structure --------------------------------------------------------
 

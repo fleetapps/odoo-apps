@@ -60,6 +60,26 @@ class TestExport(MedicalQuoteCase):
                                    msg="levies and stamp duty together, as the client pays them")
         self.assertEqual(rows["Total premium"], orders.mapped("amount_total"))
 
+    def test_columns_name_product_and_plan(self):
+        """Insurer on top, then product · plan with its cover; the age
+        variant ("Below 70") is the engine's business, not the client's.
+        Outpatient and dental limits say whom they cover."""
+        matrix = self.comparison._odin_export_matrix()
+        self.assertEqual([c["name"] for c in matrix["columns"]],
+                         ["Afya · Plan 1 (KES 200,000)", "Jamii · Family Cover (KES 500,000)"])
+        basis = {row["label"]: row.get("basis") for row in matrix["rows"]}
+        self.assertEqual(basis["Outpatient limit"], ["per family", ""],
+                         "Afya's outpatient is shared by the family")
+        self.assertEqual(basis["Dental limit"], ["per person", ""])
+        self.assertEqual(basis["Inpatient limit"], ["", ""], "the plan's own limit")
+        text = self.html()
+        self.assertIn("Afya · Plan 1 (KES 200,000)", text)
+        self.assertNotIn("Below 70", text)
+        self.assertIn("per family", text)
+        order = self.comparison.plan_ids.order_id.filtered(
+            lambda o: o.sale_order_template_id == self.afya)
+        self.assertEqual(order._odin_plan_label(), "Afya – Plan 1 (KES 200,000)")
+
     def test_report_renders(self):
         self.company.odin_quote_payment_note = "<p>PAYBILL: 880100</p>"
         text = self.html()

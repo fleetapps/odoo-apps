@@ -13,16 +13,28 @@ reuses everything below.
      only my children.
    * Then their ages, not dates of birth.
 2. **Plans:**
-   * The plans that fit, cheapest first, priced in full (levies and stamp
-     duty included), with the monthly option. The cheapest is marked
+   * **One card per insurer's product** -- *Jubilee · J Care · Premier (KES
+     1,000,000)* -- not one per plan: a family that fits 53 plans sees 5
+     cards. The hospital cover is the card's first line, a dropdown of every
+     amount the product sells, and the price follows it. Where a product
+     sells an amount in two versions (GA: with or without pandemic cover),
+     a switch adds the other: *Add pandemic cover*.
+   * Each card opens on its plan nearest KES 500,000, so the cards compare
+     like with like; cards are cheapest first, priced in full (levies and
+     stamp duty included), with the monthly option. The cheapest is marked
      *Lowest price*.
+   * Changing the amount keeps the doctor-visit, dental or optical choice
+     where the new plan has it, and a card already on the quote stays on
+     it with the new amount.
    * A summary card, *Prices for you (36), your partner (34), 2 children*,
      with **Edit**. Finished steps at the top go back too.
    * **Add to your cover**: *Every plan pays for hospital stays. Tap
      anything else you want covered.* The choices are doctor visits &
      medicines, dental, eyes & glasses, and pregnancy & birth.
    * **How much hospital cover?**: any amount, up to 300K, 300K to 1M, or
-     over 1M.
+     over 1M: each card shows its cheapest plan in the band, and a product
+     with none there is left out.
+   * Limits say whom they cover: *up to 50,000 per person*, *per family*.
    * A benefit a plan only sells with another is added, marked *Added:
      this plan needs it for Dental care*.
    * Up to 3 plans go on the quote.
