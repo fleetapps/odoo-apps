@@ -9,7 +9,9 @@ from odoo.tools import (
 #: sections that are money in or out, not a benefit with a row of its own
 NOT_A_BENEFIT = frozenset({"statutory_charges", "payment_options", "discount", "policy_charge"})
 #: characters of terms that fit in about half a page, kept on one page
-SHORT_TERMS = 1800
+#: About half a page of terms: kept whole on one page with its heading. The
+#: insurers' key terms (odin_bizsure_quotes/tools/key_terms.py) are written to fit.
+SHORT_TERMS = 2000
 
 
 class QuoteComparison(models.Model):

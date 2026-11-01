@@ -184,6 +184,50 @@ How the cards were read, where they leave room:
 * **HeriAfya pre-cover medical tests**: the brochure says above 55, the tool
   above 50; the terms follow the brochure.
 
+## Key terms
+
+Every plan prints **key terms**: about half a page per product instead of
+the one and a half pages a full set of terms took, so a three-insurer
+quotation is no longer four pages of small print. Each product says the same
+things in the same order:
+
+1. **Your premium** -- how it is worked out (levies and stamp duty are in the
+   quotation's table and footnote)
+2. **Who can join** -- ages, medical exams, who goes on a separate policy
+3. **Waiting periods**
+4. **Co-payments** -- where the insurer has them
+5. **Before treatment** -- pre-authorisation, the panel, refunds
+6. **Not covered** -- the main exclusions, and "the insurer's other
+   exclusions"
+7. **How to pay** -- the insurer's own accounts and paybill
+8. **Please note** -- a quotation, not cover, until the insurer accepts it
+   and has the full premium; declare all health conditions, or claims can be
+   refused and cover cancelled; the insurer's policy document prevails
+
+They are written in `tools/key_terms.py`, from each insurer's terms,
+brochure or rate card, and are under the quotation's half-page limit
+(`SHORT_TERMS`, 2,000 characters) so each prints whole on one page.
+`tests/test_key_terms.py` checks every plan: length, sections, order, the
+protective clauses, and that the template prints what the product says.
+
+On a database already installed, the upgrade to 19.0.1.6.0 writes them once
+on the APA Jamii Plus and Birdview Bizsure Afya products
+(`migrations/19.0.1.6.0`); after that they are the office's to edit, in
+Cover Quotes ▸ Products ▸ the plan ▸ Benefits and terms. Quotations already
+sent keep the terms they went out with.
+
+Put right on the way, from the terms as they were on BizSure:
+
+* Birdview's said "Validity – 90 days" while the quotation printed "Valid
+  for 30 days", and printed "Quotation by Caroline Chege - 0721766749" on
+  every Birdview quote, whoever made it. The quotation prints the validity
+  and who prepared it itself.
+* APA's family terms left out the lower joining ages of its larger plans (75
+  on KES 5M, 70 on 7.5M and 10M), which only the child-only terms had.
+* Birdview's terms give no payment details: its key terms say the advisor
+  gives them. Set *Payment details on medical quotations* (Sales settings)
+  to print Bizsure's own.
+
 ## Motor rates
 
 `data/motor_rate.xml` is Bizsure's motor rate card from
