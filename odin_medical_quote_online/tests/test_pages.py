@@ -32,8 +32,10 @@ class TestOnlinePages(OnlineCase, HttpCase):
 
         page = self.url_open(path)
         self.assertEqual(page.status_code, 200)
+        # The cover as the page writes money: "200,000 KSh" for Kenya shillings.
+        cover = self.Online._whole_money(200000, comparison.plan_ids.order_id[:1].currency_id)
         for text in ("Hi Grace, here is your quote", comparison.name, "Test Afya Insurer",
-                     '200,000 <span class="o_oq_cover_what">hospital cover', "Afya · Plan 1",
+                     '%s <span class="o_oq_cover_what">hospital cover' % cover, "Afya · Plan 1",
                      "Doctor visits &amp; medicines", "Talk to an advisor"):
             self.assertIn(text, page.text)
         self.assertNotIn("Below 70", page.text)
