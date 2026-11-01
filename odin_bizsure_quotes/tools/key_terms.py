@@ -34,7 +34,7 @@ SECTIONS = ("Your premium", "Who can join", "Waiting periods", "Co-payments",
 
 APA_COPAY = (
     "KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP "
-    "Shah, AAR, Gertrude's, Premier, Mombasa, Diani Beach, Pandya, Jocham, Palm Beach, "
+    "Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, "
     "Eldoret Hospital, Oasis and Mediheal; none elsewhere.")
 APA_COMMON = {
     "Waiting periods": (
@@ -44,12 +44,12 @@ APA_COMMON = {
         "over 30 days restarts them."),
     "Co-payments": APA_COPAY,
     "Before treatment": (
-        "Use APA's panel (elsewhere: refunds up to 85% of APA rates, claimed within 90 "
-        "days). Planned admissions: 48 hours' notice."),
+        "Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 "
+        "days. Tell APA 48 hours before a planned admission."),
     "Not covered": (
-        "Costs SHIF, WIBA or GPA pays, cosmetic surgery unless after an accident, "
-        "infertility, self-injury, drunkenness, war, riots, weight management, herbal "
-        "treatment, glasses and dental unless bought, and APA's other exclusions."),
+        "Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, "
+        "infertility, self-injury, drunkenness, war, riots, weight management, glasses and "
+        "dental unless bought, and APA's other exclusions."),
     "How to pay": (
         "Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill "
         "511600, account: the principal member's name (policy number for renewals). Keep "
@@ -99,7 +99,7 @@ KEY_TERMS = {
             "with outpatient); maternity per family."),
         "Who can join": (
             "From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; "
-            "7.5M and 10M: 70); medical exam from 60, at own cost. A spouse, or a child over "
+            "7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over "
             "3 months, added later goes on a separate policy."),
     })),
     "apa_child_only": ("APA Jamii Plus Child-Only – key terms", dict(APA_COMMON, **{
@@ -129,8 +129,8 @@ KEY_TERMS = {
             "pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, "
             "refunded."),
         "Not covered": (
-            "Not following medical advice, alternative treatment, beauty and massage, homes and "
-            "sanatoria, genetic conditions, cosmetic surgery unless after an accident, "
+            "Not following medical advice, alternative treatment, beauty and massage, old-age "
+            "homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, "
             "non-ambulance transport, supplements, war, military action, riots and terrorism, "
             "alcohol and drug addiction, weight loss, epidemics, pandemics and unknown "
             "diseases, and Birdview's other exclusions."),
@@ -146,7 +146,7 @@ KEY_TERMS = {
             "is extra, per family."),
         "Who can join": (
             "Adults 19 to 65, joining up to 60. Children from birth (38-week term baby) to 18. "
-            "From 61: GA's Hadhi plan."),
+            "Over 60: GA's Hadhi plan."),
         "Waiting periods": (
             "Accidents: none. Illness: 30 days, and Covid-19 30 days where bought. Non-accident "
             "surgery and admissions, newborn, premature and congenital conditions, chronic and "
@@ -194,7 +194,7 @@ KEY_TERMS = {
             "rate. Dental and optical only with outpatient."),
         "Who can join": (
             "From birth (term baby) to 64; members move to J Senior at 65. Children over 18 "
-            "up to 25 if in school. Medical exam from 50, at the applicant's cost."),
+            "up to 25 if in school. Medical exam for new applicants from 50, at their cost."),
         "Not covered": JUBILEE_NOT_COVERED % "fertility treatment, ",
     })),
     "jubilee_j_care_junior": ("Jubilee J Care Junior – key terms", dict(JUBILEE_COMMON, **{
@@ -211,7 +211,7 @@ KEY_TERMS = {
             "rates. Dental and optical only with outpatient."),
         "Who can join": (
             "From 65, joining up to 79; cover continues for life, subject to annual renewal. "
-            "Medical exam at the applicant's cost."),
+            "New applicants have a medical exam, at their own cost."),
         "Not covered": JUBILEE_NOT_COVERED % "",
     })),
     "heritage_heriafya": ("Heritage HeriAfya – key terms", {
@@ -221,7 +221,7 @@ KEY_TERMS = {
             "person or shared; maternity per family."),
         "Who can join": (
             "Principal and spouse 18 to 65 (cover continues to 70). Children from 1 day to 18, "
-            "or 23 and over in full-time study. Medical tests over 55."),
+            "or 23 and over in full-time study. Medical tests for new applicants over 55."),
         "Waiting periods": (
             "Accidents: none. Illness: 30 days. Non-accident dental and optical surgery: 6 "
             "months. "
@@ -232,8 +232,9 @@ KEY_TERMS = {
             "KES 1,000 per outpatient visit at Aga Khan (Nairobi, Kisumu, Mombasa), Nairobi "
             "Hospital, Gertrude's, MP Shah, Mater and Karen, all branches; KES 500 elsewhere."),
         "Before treatment": (
-            "Use the HeriAfya panel; cash paid is refunded up to 80%. Report admissions at "
-            "once, emergencies within 48 hours. Cover: Kenya, East Africa, referral to India."),
+            "Use the HeriAfya panel; if you pay cash, Heritage refunds up to 80%. Report "
+            "admissions at once, emergencies within 48 hours. Cover: Kenya and East Africa, "
+            "with referral to India."),
         "Not covered": (
             "Cosmetic surgery, alternative medicine, long-term care, infertility, self-injury, "
             "alcohol and drugs, experimental treatment, pandemics, dentures and implants, "

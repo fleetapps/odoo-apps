@@ -52,7 +52,7 @@
             </p>
             <ul class="o_oq_summary">
                 <li t-foreach="chosenPlans" t-as="plan" t-key="plan.id">
-                    <span><b t-esc="plan.insurer"/> · <t t-esc="plan.name"/></span>
+                    <span><b t-esc="plan.insurer"/> · <t t-if="plan.product"><t t-esc="plan.product"/> · </t><t t-esc="plan.name"/></span>
                     <b t-esc="money(plan.total)"/>
                 </li>
             </ul>
@@ -190,22 +190,23 @@
                     <button t-foreach="bands" t-as="band" t-key="band.key" type="button"
                             class="o_oq_chip" t-att-class="{'o_on': state.band === band.key}"
                             t-att-aria-pressed="state.band === band.key ? 'true' : 'false'"
-                            t-on-click="() => state.band = band.key">
+                            t-on-click="() => this.pickBand(band.key)">
                         <t t-esc="band.label"/>
                     </button>
                 </div>
             </div>
 
-            <p t-if="state.loaded and shownPlans.length" class="o_oq_count">
-                <t t-esc="shownPlans.length"/> <t t-if="shownPlans.length === 1">plan</t><t t-else="">plans</t>,
-                cheapest first. Add up to <t t-esc="props.maxPlans"/> to your quote to compare them.
+            <p t-if="state.loaded and cards.length" class="o_oq_count">
+                <t t-esc="cards.length"/> <t t-if="cards.length === 1">plan</t><t t-else="">plans</t>,
+                cheapest first. Change the hospital cover on any of them, and add up to
+                <t t-esc="props.maxPlans"/> to your quote to compare.
             </p>
 
             <div t-if="state.error" class="o_oq_error" role="alert" t-esc="state.error"/>
             <div t-if="state.loading" class="o_oq_loading">
                 <i class="fa fa-circle-o-notch fa-spin me-2"/>Finding plans for you…
             </div>
-            <div t-elif="state.loaded and !shownPlans.length" class="o_oq_card o_oq_empty">
+            <div t-elif="state.loaded and !cards.length" class="o_oq_card o_oq_empty">
                 <h2>No plan to show yet</h2>
                 <p t-if="state.plans.length">No plan has that much hospital cover with what you picked.
                     Choose another amount, or talk to us.</p>
@@ -217,20 +218,41 @@
             </div>
 
             <div class="o_oq_cards">
-                <article t-foreach="shownPlans" t-as="plan" t-key="plan.id" class="o_oq_card o_oq_plan"
-                         t-att-class="{'o_oq_pick': isChosen(plan), 'o_oq_busy': state.refreshing[plan.id]}">
+                <article t-foreach="cards" t-as="card" t-key="card.key" class="o_oq_card o_oq_plan"
+                         t-att-class="{'o_oq_pick': isChosen(card.plan), 'o_oq_busy': state.refreshing[card.plan.id]}">
+                    <t t-set="plan" t-value="card.plan"/>
+                    <t t-set="cardAmounts" t-value="amounts(card)"/>
+                    <t t-set="cardVariants" t-value="variants(card)"/>
                     <div class="o_oq_kicker">
                         <t t-esc="plan.insurer"/>
-                        <span t-if="plan_first and shownPlans.length > 1" class="o_oq_badge o_oq_badge_low">Lowest price</span>
+                        <span t-if="cards.length > 1 and plan === lowestCard" class="o_oq_badge o_oq_badge_low">Lowest price</span>
                     </div>
                     <h2 class="o_oq_plan_name">
-                        <t t-esc="plan.name"/>
-                        <small t-if="plan.product" t-esc="plan.product"/>
+                        <t t-if="plan.product"><t t-esc="plan.product"/> · </t><t t-esc="plan.name"/>
                     </h2>
                     <ul class="o_oq_covers">
                         <li>
                             <i class="fa fa-check" role="img" aria-label="Included"/>
-                            <span><b>Hospital stays</b>: up to <t t-esc="money(plan.limit, 0)"/> a year</span>
+                            <span>
+                                <b>Hospital stays</b>: up to
+                                <t t-if="cardAmounts.length > 1">
+                                    <select class="o_oq_tier o_oq_cover" aria-label="Hospital cover"
+                                            t-on-change="(ev) => this.pickAmount(card, ev.target.value)">
+                                        <option t-foreach="cardAmounts" t-as="amount" t-key="amount.id"
+                                                t-att-value="amount.limit" t-att-selected="amount.limit === plan.limit">
+                                            <t t-esc="money(amount.limit, 0)"/>
+                                        </option>
+                                    </select>
+                                </t>
+                                <t t-else="" t-esc="money(plan.limit, 0)"/>
+                                a year
+                                <label t-if="cardVariants.length === 2" class="o_oq_variant">
+                                    <input type="checkbox" class="form-check-input me-1"
+                                           t-att-checked="plan.id !== cardVariants[0].id"
+                                           t-on-change="() => this.toggleVariant(card)"/>
+                                    <t t-esc="variantLabel(cardVariants[0], cardVariants[1])"/>
+                                </label>
+                            </span>
                         </li>
                         <li t-foreach="plan.benefits" t-as="benefit" t-key="benefit.key">
                             <i class="fa fa-check" role="img" aria-label="Included"/>
@@ -250,6 +272,7 @@
                                 </t>
                                 <t t-elif="benefit.limit">up to <t t-esc="money(benefit.limit, 0)"/></t>
                                 <t t-else="">included</t>
+                                <t t-if="benefit.basis and benefit.limit"> <t t-esc="benefit.basis"/></t>
                                 <small t-if="benefit.for" class="o_oq_needed">
                                     Added: this plan needs it for <t t-esc="benefit.for"/>.
                                 </small>

@@ -219,23 +219,25 @@ def generate_ga():
         short = "%sK" % (limit // 1000) if limit < 1000000 else "%gM" % (limit / 1000000)
         for pandemic, rates in ((False, rc.GA_EXCLUDING_PANDEMIC),
                                 (True, rc.GA_INCLUDING_PANDEMIC)):
-            variant = "Including Pandemic" if pandemic else "Excluding Pandemic"
+            # The plain plan is named by its cover alone; the other says what
+            # it adds, which the online card offers as a switch.
+            variant = ", with pandemic cover" if pandemic else ""
             flag = "P" if pandemic else "X"
             key = "ga_ip_%s_%s" % (slug(short), "incl" if pandemic else "excl")
-            w.comment("GA Community Health, IP limit %s, %s" % (kes(limit), variant.lower()))
+            w.comment("GA Community Health, IP limit %s%s" % (kes(limit), variant))
             rows = [("GA-IP-%s-%s-M%s" % (short, flag, size), "any", rc.GA_AGE_MIN,
                      rc.GA_AGE_MAX, size, rates[row][index])
                     for row, size in enumerate(rc.GA_SIZES)]
             table = cat.table(
-                key, "GA Community Inpatient – %s – %s" % (kes(limit), variant), "inpatient",
+                key, "GA Community Inpatient – %s%s" % (
+                    kes(limit), " – with Pandemic Cover" if pandemic else ""), "inpatient",
                 "family_size", rows, limit,
-                "Inpatient – %s per family per year, %s" % (
-                    kes(limit), "including pandemic (Covid-19) cover" if pandemic
-                    else "excluding pandemic cover"),
+                "Inpatient – %s per family per year%s" % (
+                    kes(limit), ", with pandemic (Covid-19) cover" if pandemic else ""),
                 benefits=ga_inpatient_benefits(index, pandemic))
             cat.product(
                 key.replace("ga_ip_", "ga_"),
-                "GA Community Health – %s – %s" % (kes(limit), variant), "insurer_ga",
+                "GA Community Health – %s%s" % (kes(limit), variant), "insurer_ga",
                 [table] + maternity, terms("ga_community"))
     generate_hadhi(w)
     w.write("cover_product_ga.xml")
@@ -280,7 +282,7 @@ def generate_hadhi(w):
                 for size, premium in zip((1, 2), pair):
                     rows.append(("GA-HADHI-%s-%s-%02d-M%s" % (plan, flag, low, size), "any",
                                  low, high, size, premium))
-            variant = " – Enhanced with Covid-19" if enhanced else ""
+            variant = " – with Covid-19 Cover" if enhanced else ""
             key = "ga_hadhi_%s%s" % (plan.lower(), "_covid" if enhanced else "")
             table = cat.table(
                 key, "GA Hadhi Inpatient – Plan %s – %s per Person or Couple%s" % (
@@ -289,8 +291,9 @@ def generate_hadhi(w):
                     plan, kes(limit), ", with Covid-19 cover" if enhanced else ""),
                 benefits=hadhi_benefits(index, enhanced))
             cat.product(key.replace("ga_hadhi_", "hadhi_"),
-                        "GA Hadhi Health – Plan %s (%s)%s%s" % (
-                            plan, kes(limit), variant, " (min. 10 members)" if enhanced else ""),
+                        "GA Hadhi Health – Plan %s (%s)%s" % (
+                            plan, kes(limit), ", with Covid-19 cover (groups of 10 or more)"
+                            if enhanced else ""),
                         "insurer_ga", [table], terms("ga_hadhi"), active=not enhanced)
 
 

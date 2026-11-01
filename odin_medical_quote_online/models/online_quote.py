@@ -215,20 +215,25 @@ class MedicalQuoteOnline(models.AbstractModel):
         return picks
 
     @api.model
-    def _plan_name(self, plan):
-        # "Plan 2 (KES 300,000) – Below 70": the age variant is the
-        # engine's business, not the visitor's.
-        return re.sub(r"\s*[–-]\s*(Below|Above)\s+70\s*$", "", plan["name"] or "", flags=re.I)
+    def _basis_text(self, basis):
+        """What a limit is for: 50,000 per person is not 50,000 per family."""
+        if basis == "person":
+            return _("per person")
+        return _("per family") if basis in ("family_size", "policy") else ""
 
     @api.model
     def _public_plan(self, plan, picks, totals):
         instalments = sorted(totals.get("instalments") or [], key=lambda i: i["months"])
         monthly = instalments[-1] if instalments else None
+        template = self.env["sale.order.template"].sudo().browse(plan["id"])
+        insurer, product, name = template._odin_display_names()
         return {
             "id": plan["id"],
-            "insurer": plan["insurer"],
-            "name": self._plan_name(plan),
-            "product": plan["product"] if plan["product"] != plan["insurer"] else "",
+            # One card per product: its plans differ by hospital cover.
+            "group": "%s|%s" % (insurer, template._odin_heading()[0]),
+            "insurer": insurer,
+            "name": name or template.name,
+            "product": product,
             "limit": plan["limit"],
             "hospital": plan["core"]["amount"],
             "benefits": [{
@@ -238,6 +243,10 @@ class MedicalQuoteOnline(models.AbstractModel):
                 "for": str(BENEFITS[pick["for"]][0]) if pick["for"] else "",
                 "option": pick["option"]["key"],
                 "limit": pick["option"]["limit"],
+                # Said once: an option the engine labels ("KES 150,000 Shared
+                # per Family") says it already.
+                "basis": "" if pick["option"]["label"] else self._basis_text(
+                    pick["option"].get("basis")),
                 "amount": pick["option"]["amount"],
                 # The engine labels options only when their limits do not tell
                 # them apart: 150,000 per person or 150,000 shared per family.
@@ -673,8 +682,7 @@ class MedicalQuoteOnline(models.AbstractModel):
         template = order.sale_order_template_id
         if not template:
             return plan.name, plan.subtitle or order.name
-        return template._odin_insurer_name(), self._plan_name(
-            {"name": template._odin_heading()[1] or template.name})
+        return template._odin_insurer_name(), order._odin_plan_name()
 
     @api.model
     def _quote_texts(self, comparison):

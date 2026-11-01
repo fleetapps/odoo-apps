@@ -149,7 +149,9 @@ How the cards were read, where they leave room:
   seniors to its Hadhi Plan). A renewal of a member aged 61 to 65 is not
   re-quoted on these rates.
 * **GA including pandemic** is its own plan at each limit, priced as the
-  card prints it, not a loading on the excluding-pandemic rate.
+  card prints it, not a loading on the excluding-pandemic rate. The plain
+  plan is named by its cover alone (*KES 1,000,000*), the other *KES
+  1,000,000, with pandemic cover*; the online card offers it as a switch.
 * **J Senior day case admission**: the card prints "covered under applicable
   sub-limit" under Bronze, Silver and Gold only; the Copper and Diamond notes
   leave it out, as the card does.
@@ -159,7 +161,8 @@ How the cards were read, where they leave room:
   rated on the older member. The card's group rule (joining to 75 on every
   plan for 5 or more members) is not a family quote.
 * **Hadhi enhanced with Covid-19** carries "*Minimum of 10 members and
-  above" on the card: the four plans are installed **off**. Switch one on in
+  above" on the card: the four plans (*Plan A (KES 5,000,000), with Covid-19
+  cover (groups of 10 or more)*) are installed **off**. Switch one on in
   Cover Quotes ▸ Products for a qualifying group.
 * **HeriAfya ages.** Heritage's quotation tool prices each adult on their
   own age group (the brochure heads the column "Principal Age"), with the
@@ -215,6 +218,11 @@ on the APA Jamii Plus and Birdview Bizsure Afya products
 (`migrations/19.0.1.6.0`); after that they are the office's to edit, in
 Cover Quotes ▸ Products ▸ the plan ▸ Benefits and terms. Quotations already
 sent keep the terms they went out with.
+
+The upgrade to 19.0.1.7.0 (`migrations/19.0.1.7.0`) writes the reworded key
+terms on every plan, and the GA Community Health names (*KES 1,000,000*,
+*KES 1,000,000, with pandemic cover*) on its plans, rate tables and inpatient
+headings, where an earlier version installed them.
 
 Put right on the way, from the terms as they were on BizSure:
 

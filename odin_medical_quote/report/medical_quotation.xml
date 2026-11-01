@@ -212,7 +212,11 @@
                             </t>
                             <t t-elif="cell is None">—</t>
                             <t t-elif="row['kind'] == 'premium' and not cell">Included</t>
-                            <t t-elif="row['kind'] == 'limit'" t-out="cell" t-options="whole"/>
+                            <t t-elif="row['kind'] == 'limit'">
+                                <t t-out="cell" t-options="whole"/>
+                                <div t-if="row.get('basis') and row['basis'][cell_index]" class="mq-muted"
+                                     t-out="row['basis'][cell_index]"/>
+                            </t>
                             <t t-else="" t-out="cell" t-options="number"/>
                         </td>
                     </t>
