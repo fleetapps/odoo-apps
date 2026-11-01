@@ -593,3 +593,234 @@ JS_OPTICAL_BENEFITS = (
     "1 eye test a year by an ophthalmologist; the first prescription must be from an "
     "ophthalmologist. Frames and prescription lenses every 2 years (subject to "
     "pre-authorisation).")
+
+
+# =============================================================================
+# GA Insurance -- Hadhi Health Plan (senior citizens), updated October 2022
+# =============================================================================
+
+#: Cover Plans: (plan, "In Patient Limit per Person/Couple", maximum joining
+#: age from the "AGE" row: 65, 70, 75 and 75 years)
+HADHI_PLANS = [
+    ("A", 5000000, 65),
+    ("B", 2500000, 70),
+    ("C", 1000000, 75),
+    ("D", 500000, 75),
+]
+
+#: "Age Group" rows of both premium tables
+HADHI_BANDS = [(50, 60), (61, 65), (66, 70), (71, 75), (76, 80), (81, 100)]
+
+#: HADHI STANDARD PREMIUMS: per age group, (M, M+1) for plans A, B, C, D;
+#: None where the card prints "-"
+HADHI_STANDARD = [
+    [(83545, 167090), (62097, 124195), (51879, 103757), (42457, 84913)],
+    [(92828, 185656), (68997, 137994), (57643, 115286), (47174, 94348)],
+    [(125063, 250126), (92957, 185914), (77660, 155320), (63556, 127112)],
+    [(169486, 338972), (125975, 251950), (105245, 210490), (77280, 154560)],
+    [(211984, 423968), (157563, 315126), (131635, 263270), (86131, 172262)],
+    [None, None, None, (96658, 193316)],
+]
+
+#: HADHI ENHANCED PREMIUMS WITH COVID-19 COVERAGE, same layout. The card
+#: prints "*Minimum of 10 members and above." under this table.
+HADHI_ENHANCED = [
+    [(100254, 200508), (74517, 149034), (62254, 124509), (50948, 101896)],
+    [(111394, 222787), (82796, 165593), (69172, 138343), (56609, 113218)],
+    [(150076, 300151), (111548, 223097), (93192, 186384), (76267, 152534)],
+    [(203383, 406766), (151170, 302340), (126294, 252588), (92736, 185472)],
+    [(254381, 508762), (189076, 378151), (157962, 315924), (103357, 206714)],
+    [None, None, None, (115990, 231979)],
+]
+
+#: PARTICULARS, per plan A, B, C, D
+HADHI_BENEFITS = [
+    ("Bed capacity (charges net of NHIF)", [20000, 16500, 14500, 10500]),
+    ("Newly diagnosed conditions including HIV/AIDS", ["full limit"] * 4),
+    ("Pre-existing, chronic and HIV/AIDS cover", [1000000, 600000, 400000, 250000]),
+    ("Organ transplant (2 years waiting period), within the chronic limit",
+     [1000000, 500000, 300000, 250000]),
+    ("Prematurity and congenital conditions", [250000, 150000, 100000, 75000]),
+    ("Psychiatric and psychotherapy illness", [600000, 400000, 250000, 100000]),
+    ("Inpatient accidental optical and dental expenses", ["full limit"] * 4),
+    ("Inpatient non-accidental dental cover", [200000, 150000, 100000, 75000]),
+    ("Inpatient non-accidental optical cover, including cataract operation but excluding "
+     "laser eye surgery", [200000, 150000, 100000, 75000]),
+    ("Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, "
+     "whichever comes first (accident cases)", [50000, 40000, 30000, 25000]),
+    ("Day case surgery under general anaesthesia", ["covered"] * 4),
+    ("Home care for 1 month", ["covered"] * 4),
+    ("Emergency air evacuation within Kenya", ["covered"] * 4),
+    ("Emergency local road ambulance service leading to an admission", ["covered"] * 4),
+    ("Overseas evacuation, to the specified limit", ["covered"] * 4),
+    ("Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks",
+     ["covered"] * 4),
+    ("Pathology, X-ray, ultrasound, MRI scans and other radiological procedures",
+     ["covered"] * 4),
+    ("Economy air ticket for treatment not locally available", ["covered"] * 4),
+    ("Radiotherapy and chemotherapy", ["covered"] * 4),
+    ("Prescription drugs", ["covered"] * 4),
+    ("External appliances on prescription (wheelchairs, corsets, walking frames, crutches "
+     "and all assistive devices for PWDs)", [150000, 100000, 80000, 50000]),
+    ("Internal appliances on prescription, to the specified limit", ["covered"] * 4),
+    ("Terrorism and political violence", ["covered"] * 4),
+    ("Last expense per family", [100000, 100000, 100000, 50000]),
+    ("Traumacare extended to cover illness emergencies", ["covered"] * 4),
+]
+
+#: "Optional COVID-19 hospitalization cover -- Within Chronic limit"
+HADHI_COVID = [1000000, 500000, 300000, 250000]
+
+
+# =============================================================================
+# Heritage Insurance -- HeriAfya Medical Cover (brochure 10.12.2024) and the
+# HeriAfya quotation tool (HERIAFYA QUOTATION TOOL - HERITAGE INSURANCE.xlsm)
+# =============================================================================
+
+#: A: INPATIENT COVER SHARED PER FAMILY, Option 1 to Option 10
+HA_LIMITS = [500000, 750000, 1000000, 1500000, 2000000, 2500000, 3000000, 5000000,
+             7500000, 10000000]
+
+#: Age groups of the principal and spouse rows: the brochure prints 0-30 and
+#: 61-65, the quotation tool 18-30 and 61-70 (to 70 for members renewing);
+#: entry is 18 to 65 ("Simple Eligibility").
+HA_BANDS = [(18, 30), (31, 40), (41, 50), (51, 60), (61, 65)]
+
+#: per option: ([principal by band], [spouse by band], child, extra). The
+#: quotation tool prices each adult on their own age group, a first child on
+#: "Child" and every other child on "Extra" (its "Additional Child").
+HA_INPATIENT = [
+    ([13500, 20250, 23625, 27000, 40500], [11475, 17213, 20081, 22950, 34425], 8438, 6750),
+    ([18225, 27338, 31894, 36450, 54675], [15491, 23237, 27110, 30983, 46474], 11391, 9113),
+    ([21600, 32400, 37800, 43200, 64800], [18360, 27540, 32130, 36720, 55080], 13500, 10800),
+    ([26325, 34020, 39690, 46251, 68040], [22376, 28917, 33737, 39313, 57834], 16453, 13163),
+    ([29700, 35640, 41580, 49302, 71280], [25245, 30294, 35343, 41907, 60588], 18563, 14850),
+    ([32063, 39204, 45738, 57051, 79380], [27253, 33323, 38877, 48493, 67473], 20039, 16031),
+    ([32400, 42768, 49896, 64800, 87480], [27540, 36353, 42412, 55080, 74358], 20250, 16200),
+    ([40500, 53460, 62370, 79380, 121500], [34425, 45441, 53015, 67473, 103275], 25313, 20250),
+    ([47250, 58725, 66623, 85050, 133650], [40163, 49916, 56629, 72293, 113603], 31641, 25313),
+    ([54000, 63990, 70875, 90720, 145800], [45900, 54392, 60244, 77112, 123930], 33750, 27000),
+]
+
+#: B1/B2 outpatient limits
+HA_OUTPATIENT_LIMITS = [50000, 75000, 100000, 150000, 200000, 250000, 300000, 350000]
+
+#: B1: OUTPATIENT COVER PER-PERSON BENEFIT, "Per-Person Rates/ M Rates", by
+#: each person's own age ("1-30"; the tool prices 0-17 on the same rates)
+HA_OUTPATIENT_PER_PERSON = [
+    (0, 30, [21600, 27000, 32400, 37800, 47520, 56038, 59535, 65927]),
+    (31, 40, [30375, 36450, 42525, 48600, 71685, 82080, 86400, 95040]),
+    (41, 50, [40500, 47250, 54000, 60750, 95850, 106542, 112860, 122905]),
+    (51, 60, [47250, 54000, 60750, 67500, 118800, 133515, 139320, 150930]),
+    (61, 65, [49275, 73913, 98550, 131625, 175500, 219375, 263250, 307125]),   # "61-65*"
+]
+
+#: B2: OUTPATIENT COVER SHARED PER FAMILY, "Per-Family Shared Benefit": the
+#: M row, then M+1 to M+5, then "Extra" (each person after M+5 -- the tool's
+#: M+6 to M+8 rows are M+5 plus one, two and three Extras).
+HA_OUTPATIENT_SHARED_M = [35438, 41850, 48263, 54675, 83768, 94311, 99630, 108973]
+HA_OUTPATIENT_SHARED = [
+    [45849, 55308, 59636, 71820, 75026, 95040, 109350, 119273],     # M+1
+    [46996, 59456, 68582, 82593, 86569, 113400, 131220, 142358],    # M+2
+    [48170, 63915, 78869, 94982, 100035, 135000, 155520, 168008],   # M+3
+    [49375, 68709, 90699, 109229, 114464, 158760, 183465, 198788],  # M+4
+    [49700, 73862, 99000, 125614, 131777, 186840, 216270, 233415],  # M+5
+]
+HA_OUTPATIENT_SHARED_EXTRA = [1485, 4658, 13770, 16065, 18225, 28080, 32805, 34628]
+#: the tool rates families up to M+8
+HA_OUTPATIENT_SHARED_EXTRAS = 3
+
+#: C: MATERNITY COVER PER FAMILY: (cover benefit, premium)
+HA_MATERNITY = [
+    (50000, 16875), (75000, 25313), (100000, 33750), (150000, 50625),
+    (200000, 67500), (250000, 84375), (300000, 101250), (350000, 118125),
+]
+
+#: D: DENTAL/OPTICAL COVER: (cover limit, premium per person = per family).
+#: "Optical and dental limits are twin benefits and should be taken together
+#: with equal limits and distribution" (the tool's notes).
+HA_DENTAL_OPTICAL = [
+    (10000, 3780), (15000, 5670), (20000, 7560), (25000, 9450),
+    (30000, 11340), (40000, 15120), (50000, 18900), (60000, 22680),
+]
+
+#: E: DENTAL & OPTICAL COMBINED SOLUTION: (cover limit, premium)
+HA_DENTAL_OPTICAL_COMBINED = [
+    (10000, 6048), (15000, 9072), (20000, 12096), (25000, 15120),
+    (30000, 18144), (40000, 24192), (50000, 30240), (60000, 36288),
+]
+
+#: SUB-LIMITS WITHIN THE OVERALL BENEFIT, per inpatient option
+HA_INPATIENT_BENEFITS = [
+    ("Ward", ["general ward bed"] * 4 + ["standard private room (SPR) up to KES 13,500",
+     "standard private room (SPR) up to KES 15,000", "private room up to KES 18,500",
+     "private room up to KES 22,500", "private room up to KES 27,500",
+     "private room up to KES 30,000"]),
+    ("Acute conditions or accidents", ["covered"] * 10),
+    ("Pre-existing and chronic conditions (1-year waiting period)",
+     [300000, 350000, 400000, 450000, 500000, 600000, 750000, 1200000, 1500000, 2000000]),
+    ("Congenital, pre-maturity and neonatal conditions treatment (for members with an "
+     "active maternity benefit)",
+     [100000, 125000, 150000, 175000, 200000, 225000, 250000, 300000, 500000, 650000]),
+    ("Newly diagnosed chronic conditions after inception of cover",
+     [350000, 450000, 750000, 900000, 1200000, 1800000, 2000000, 2500000, 3000000, 3500000]),
+    ("Cancer treatment (2-year waiting period)",
+     [250000, 300000, 350000, 500000, 750000, 1000000, 1500000, 2000000, 2500000, 3000000]),
+    ("HIV/AIDS and related conditions (1-year waiting period)",
+     [200000, 200000, 200000, 200000, 300000, 300000, 500000, 750000, 1000000, 1500000]),
+    ("Post-hospitalisation treatment related to the cause of pre-authorisation, limited to "
+     "3 weeks from the date of discharge",
+     [15000, 15000, 20000, 25000, 30000, 30000, 30000, 40000, 50000, 60000]),
+    ("Non-accident-related dental surgery/treatment (6-month waiting period)",
+     [75000, 75000, 75000, 75000, 75000, 100000, 100000, 100000, 150000, 200000]),
+    ("Non-accident-related eye treatments, excluding surgery for refractive errors and laser "
+     "treatment (6-month waiting period)",
+     [75000, 75000, 75000, 75000, 75000, 100000, 100000, 100000, 150000, 200000]),
+    ("Diagnostic tests", ["covered"] * 10),
+    ("Inpatient MRI/CT and PET scans (subject to pre-authorisation)", ["covered"] * 10),
+    ("Theatre charges, HDU and ICU", ["covered"] * 10),
+    ("Gynaecological surgery (1-year waiting period)",
+     [150000, 150000, 200000, 250000, 300000, 300000, 300000, 350000, 400000, 500000]),
+    ("Organ transplantation, excluding the cost of the donor or securing the organ (2-year "
+     "waiting period)",
+     [250000, 250000, 300000, 350000, 400000, 450000, 450000, 500000, 550000, 600000]),
+    ("Psychiatry and psychotherapy",
+     [100000, 150000, 150000, 200000, 250000, 250000, 250000, 300000, 400000, 450000]),
+    ("Illness-related reconstructive/plastic surgery (3-year waiting period)",
+     [150000] * 8 + [200000, 300000]),
+    ("Covid treatment on inpatient",
+     [250000, 250000, 300000, 350000, 400000, 450000, 450000, 500000, 550000, 600000]),
+    ("Funeral expenses per member (death as a result of covered conditions)",
+     [50000, 50000] + [100000] * 8),
+    ("Lodger fee for an accompanying parent/guardian", ["for a child up to 12 years"] * 10),
+    ("Passive war/terrorism and political violence",
+     [200000, 200000, 200000, 200000, 300000, 300000, 500000, 750000, 1000000, 1500000]),
+    ("External appliances", [75000] * 4 + [100000] * 3 + [150000] * 3),
+    ("Emergency evacuation", ["covered"] * 10),
+    ("Internal appliances and prostheses",
+     ["covered within the applicable sub-limits and waiting periods"] * 10),
+    ("Home nursing, for a maximum of 30 days", ["covered within the applicable sub-limits"] * 10),
+]
+
+#: Outpatient, the same at every outpatient limit
+HA_OUTPATIENT_BENEFITS = [
+    "Consultation fees: covered",
+    "COVID-19 testing: KES 15,000",
+    "Cancer treatment (2-year waiting period): covered",
+    "Prescribed drugs and dressings: covered",
+    "Specialist's fees, strictly on referral by a GP: covered",
+    "Pathology, X-rays, MRI, CT scan and other necessary diagnostic tests (pre-authorisation "
+    "required): covered",
+    "Pre-existing and/or chronic conditions (1-year waiting period): covered",
+    "Pain management, subject to the pre-existing and chronic sub-benefit: covered",
+    "Family planning limited to long-acting methods: KES 2,500",
+    "Pre-natal and post-natal care, for members with the maternity benefit: covered under "
+    "outpatient",
+]
+#: and by outpatient limit
+HA_OUTPATIENT_BY_LIMIT = [
+    ("Annual medical check-up (main member and/or spouse)",
+     [5000, 7500, 10000, 15000, 20000, 20000, 20000, 20000]),
+    ("KEPI/baby-friendly and private vaccinations (5 years and below)",
+     [5000, 7500, 10000, 15000, 20000, 20000, 20000, 20000]),
+]

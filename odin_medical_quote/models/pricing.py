@@ -9,7 +9,7 @@ quoting the nearest one.
 
 from collections import OrderedDict
 
-from .rating import age_fits, role_fits
+from .rating import age_fits, rate_specificity, role_fits
 
 
 def role_label(env, role, count=1):
@@ -101,12 +101,15 @@ class RateBook:
             fitting = siblings.filtered(lambda p: age_fits(
                 p.odin_rate_age_min, p.odin_rate_age_max, eldest))
             if not fitting:
-                if first.odin_rate_age_min and eldest < first.odin_rate_age_min:
-                    return [], _("For families with a member aged %s or over.",
-                                 first.odin_rate_age_min)
-                if first.odin_rate_age_max and eldest > first.odin_rate_age_max:
-                    return [], _("For families where everyone is under %s.",
-                                 first.odin_rate_age_max + 1)
+                # The ages of the whole table, not of the row the template
+                # names: a table can have a row per age band (GA Hadhi).
+                youngest = min(siblings.mapped("odin_rate_age_min") or [0])
+                highs = siblings.mapped("odin_rate_age_max")
+                oldest = 0 if not highs or not all(highs) else max(highs)
+                if youngest and eldest < youngest:
+                    return [], _("For families with a member aged %s or over.", youngest)
+                if oldest and eldest > oldest:
+                    return [], _("For families where everyone is under %s.", oldest + 1)
                 return [], _("No rate for a member aged %s.", eldest)
             exact = fitting.filtered(lambda p: p.odin_rate_family_size == size)[:1]
             if exact:
@@ -116,8 +119,9 @@ class RateBook:
                 return [], _("Rated for families of up to %s people.", largest)
             return [], _("No rate for a family of %s.", size)
 
-        # Per person: the most specific rate for each of them -- their own
-        # role before "anyone but the principal" before "anyone".
+        # Per person: the most specific rate for each of them -- an extra
+        # child's own rate, then their role's, then "anyone but the
+        # principal", then "anyone".
         #
         # A table rated on the eldest's age reads every band at the age of
         # the oldest person on the policy ("premium will be based on the age
@@ -125,7 +129,7 @@ class RateBook:
         # has a child rate: that rate is the child's own, by the child's age.
         on_eldest = first.odin_rate_on_eldest
         eldest = max((m.age for m in members), default=0)
-        child_rates = siblings.filtered(lambda p: p.odin_rate_role == "child")
+        child_rates = siblings.filtered(lambda p: p.odin_rate_role in ("child", "child_extra"))
         lines = OrderedDict()
         for member in members:
             by_eldest = on_eldest and not (member.role == "child" and child_rates)
@@ -146,10 +150,7 @@ class RateBook:
                              who=role_label(self.env, member.role).lower(),
                              age=member.age)
             best = fitting.sorted(lambda p, m=member: (
-                p.odin_rate_role != m.role,
-                (p.odin_rate_role or "any") == "any",
-                p.id,
-            ))[:1]
+                rate_specificity(p.odin_rate_role, m), p.id))[:1]
             if best.id not in lines:
                 lines[best.id] = PricedLine(best, 0, self.price_unit(best))
             lines[best.id].qty += 1

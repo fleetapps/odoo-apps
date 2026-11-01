@@ -812,7 +812,7 @@ class ProductTemplate(models.Model):
             # The band is the family's, not this person's: a spouse of 28 on
             # the 31-40 row reads "eldest aged 31-40" on the quotation.
             by_eldest = (table.basis == "person" and table.age_basis == "eldest"
-                         and self.odin_row_role != "child")
+                         and self.odin_row_role not in ("child", "child_extra"))
             label = "%s, %s" % (label, _("eldest aged %s", ages) if by_eldest
                                 else _("aged %s", ages))
         return label

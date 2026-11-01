@@ -134,14 +134,16 @@ CHILD_AGE = 20
 
 
 class Member:
-    """One person on the policy: who they are and how old."""
+    """One person on the policy: who they are and how old. ``rank`` counts
+    the children: 1 for the first, 2 for the second; 0 for the adults."""
 
-    __slots__ = ("role", "age", "label")
+    __slots__ = ("role", "age", "label", "rank")
 
-    def __init__(self, role, age, label):
+    def __init__(self, role, age, label, rank=0):
         self.role = role
         self.age = age
         self.label = label
+        self.rank = rank
 
     def __repr__(self):
         return "Member(%s, %s)" % (self.role, self.age)
@@ -162,7 +164,7 @@ class Household:
         if spouse_age is not None:
             self.members.append(Member("spouse", spouse_age, "Spouse"))
         for index in range(max(int(children or 0), 0)):
-            self.members.append(Member("child", 0, "Child %s" % (index + 1)))
+            self.members.append(Member("child", 0, "Child %s" % (index + 1), rank=index + 1))
 
     @property
     def headcount(self):
@@ -190,7 +192,22 @@ def role_fits(rate_role, member):
         return True
     if rate_role == "dependant":
         return member.role != "principal"
+    if rate_role == "child_extra":
+        # HeriAfya's "Extra": the second child on, the first is on "Child".
+        return member.role == "child" and member.rank > 1
     return rate_role == member.role
+
+
+def rate_specificity(rate_role, member):
+    """How closely a rate that fits ``member`` is meant for them: lower is
+    closer. An extra child's own rate, then their role's, then "anyone but
+    the principal", then "anyone"."""
+    rate_role = rate_role or "any"
+    if rate_role == "child_extra":
+        return 0
+    if rate_role == member.role:
+        return 1
+    return 3 if rate_role == "any" else 2
 
 
 def age_fits(age_min, age_max, age):

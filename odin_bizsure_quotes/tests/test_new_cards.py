@@ -3,8 +3,9 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged("post_install", "-at_install")
 class TestNewCards(TransactionCase):
-    """GA Community Health, Jubilee J Care, J Care Junior and J Senior as
-    New quote prices them, each figure read off the insurer's own card.
+    """GA Community Health and Hadhi, Jubilee J Care, J Care Junior and J
+    Senior, and Heritage HeriAfya as New quote prices them, each figure read
+    off the insurer's own card (HeriAfya: and its quotation tool).
 
     Jubilee rates the family on the age of the oldest applicant: a principal
     of 35 with a spouse of 42 are both on the 41-50 rates.
@@ -16,6 +17,7 @@ class TestNewCards(TransactionCase):
         cls.Quote = cls.env["odin.medical.quote"]
         cls.jubilee = cls.env.ref("odin_bizsure_quotes.insurer_jubilee")
         cls.ga = cls.env.ref("odin_bizsure_quotes.insurer_ga")
+        cls.heritage = cls.env.ref("odin_bizsure_quotes.insurer_heritage")
 
     def plan(self, key, **cover):
         product = self.env.ref("odin_bizsure_quotes.cover_%s" % key)
@@ -29,17 +31,33 @@ class TestNewCards(TransactionCase):
 
     def test_plans_installed(self):
         # GA Insurance is also the motor insurer: its motor products are not these.
-        products = self.env["odin.cover.product"].search(
-            [("insurer_id", "in", (self.jubilee | self.ga).ids), ("line", "=", "medical")])
-        self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.ga)), 26)
+        Product = self.env["odin.cover.product"].with_context(active_test=False)
+        products = Product.search([("insurer_id", "in", (self.jubilee | self.ga | self.heritage).ids),
+                                   ("line", "=", "medical")])
+        self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.ga)), 34,
+                         "26 Community Health, 8 Hadhi")
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.jubilee)), 17)
+        self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.heritage)), 10)
+        off = products.filtered(lambda p: not p.active)
+        self.assertEqual(sorted(off.mapped("name")), sorted(
+            "GA Hadhi Health – Plan %s (KES %s) – Enhanced with Covid-19 (min. 10 members)" % pair
+            for pair in (("A", "5,000,000"), ("B", "2,500,000"), ("C", "1,000,000"), ("D", "500,000"))),
+            "Covid-enhanced Hadhi is for 10 members and above: off until the office says")
+        self.assertFalse(any(off.template_id.mapped("active")))
         birdview = self.env.ref(
             "odin_bizsure_quotes.sot_birdview_bizsure_afya_plan_1_kes_200_000_below_70")
         for product in products:
             template = product.template_id
             self.assertTrue(template.odin_medical, product.name)
             self.assertEqual(template.odin_insurer_id, product.insurer_id, product.name)
-            self.assertFalse(product.warning_html, product.name)
+            if product.insurer_id == self.heritage:
+                # HeriAfya prints a member-only shared outpatient rate its own
+                # quotation tool does not use: left out until Heritage says.
+                self.assertIn("Shared per Family: no premium for a family of 1",
+                              product.warning_html, product.name)
+                self.assertNotIn("Inpatient", product.warning_html, product.name)
+            else:
+                self.assertFalse(product.warning_html, product.name)
             self.assertEqual(template.number_of_days, birdview.number_of_days, product.name)
             self.assertIn("statutory_charges", template.sale_order_template_line_ids.mapped(
                 "benefit_key"), product.name)
@@ -135,3 +153,49 @@ class TestNewCards(TransactionCase):
         large = self.plan("ga_10m_incl", principal_age=50, include_spouse=True, spouse_age=45,
                           children=5)
         self.assertEqual(large["core"]["amount"], 236437, "M + 6")
+
+    def test_heriafya(self):
+        """As Heritage's quotation tool prices it: each adult on their own age
+        group, the first child on Child, every other child on Extra."""
+        family = {"principal_age": 35, "include_spouse": True, "spouse_age": 28, "children": 3}
+        plan = self.plan("ha_option_3", **family)
+        self.assertTrue(plan["available"], plan["reason"])
+        self.assertEqual(plan["core"]["amount"], 32400 + 18360 + 13500 + 2 * 10800)
+        extra = next(part for part in plan["core"]["parts"] if part["price"] == 10800)
+        self.assertEqual(extra["qty"], 2)
+        outpatient = self.options(plan, "outpatient")[1]
+        self.assertEqual(len(outpatient), 16, "8 limits per person, 8 shared per family")
+        self.assertEqual(outpatient[2], 42525 + 4 * 32400, "100,000 per person")
+        self.assertEqual(outpatient[10], 90699, "100,000 shared, M + 4")
+        self.assertEqual(self.options(plan, "maternity")[1],
+                         [16875, 25313, 33750, 50625, 67500, 84375, 101250, 118125])
+        dental = self.options(plan, "dental_and_optical")[1]
+        self.assertEqual(len(dental), 32)
+        self.assertEqual(dental[0], 2 * 3780, "twin, 10,000 each, per family")
+        self.assertEqual(dental[8], 5 * 2 * 3780, "twin, 10,000 each, per person")
+        self.assertEqual(dental[16], 6048, "combined 10,000, per family")
+        self.assertEqual(dental[24], 5 * 6048, "combined 10,000, per person")
+
+        single = self.plan("ha_option_3", principal_age=35)
+        group = self.options(single, "outpatient")[0]
+        self.assertTrue(group["options"][0]["available"], "per person")
+        self.assertFalse(group["options"][8]["available"], "shared: no member-only rate")
+        older = self.plan("ha_option_1", principal_age=66)
+        self.assertFalse(older["available"], "principal and spouse join from 18 to 65")
+
+    def test_hadhi(self):
+        result = self.Quote.search_plans({"cover": {
+            "principal_age": 62, "include_spouse": True, "spouse_age": 58,
+            "limit_min": 5000000, "limit_max": 5000000, "insurer": self.ga.name}})
+        plans = {plan["name"]: plan for plan in result["plans"]}
+        self.assertEqual(list(plans), ["Plan A (KES 5,000,000)"],
+                         "the Covid-enhanced plans are off; Community Health is to 60")
+        self.assertEqual(plans["Plan A (KES 5,000,000)"]["core"]["amount"], 185656,
+                         "a couple, on the older member's age group (61-65)")
+        self.assertEqual(self.plan("hadhi_d", principal_age=74)["core"]["amount"], 77280)
+        too_old = self.plan("hadhi_a", principal_age=66)
+        self.assertFalse(too_old["available"])
+        self.assertEqual(too_old["reason"], "For families where everyone is under 66.")
+        family = self.plan("hadhi_c", principal_age=70, include_spouse=True, spouse_age=68,
+                           children=1)
+        self.assertFalse(family["available"], "a member or a couple")

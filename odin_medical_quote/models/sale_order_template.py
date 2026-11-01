@@ -83,7 +83,7 @@ class SaleOrderTemplate(models.Model):
             template.odin_medical = any(block["key"] == "inpatient" for block in blocks)
             template.odin_plan_type = (
                 "child_only" if products and all(
-                    p.odin_rate_role == "child" for p in products)
+                    p.odin_rate_role in ("child", "child_extra") for p in products)
                 else "family")
             template.odin_inpatient_limit = next(
                 (block["limit"] for block in core if block["limit"]), 0.0

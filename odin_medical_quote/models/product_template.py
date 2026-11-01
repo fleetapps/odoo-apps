@@ -12,6 +12,7 @@ RATE_ROLE = [
     ("principal", "Principal"),
     ("spouse", "Spouse"),
     ("child", "Child"),
+    ("child_extra", "Child after the first"),
     ("dependant", "Anyone but the principal"),
 ]
 
