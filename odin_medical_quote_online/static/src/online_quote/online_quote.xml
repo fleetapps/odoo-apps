@@ -242,8 +242,9 @@
                                             t-on-change="(ev) => this.setTier(plan, benefit, ev.target.value)">
                                         <option t-foreach="benefit.options" t-as="option" t-key="option.key"
                                                 t-att-value="option.key" t-att-selected="option.key === benefit.option">
-                                            <t t-if="option.limit"><t t-esc="whole(option.limit)"/></t>
-                                            <t t-else="" t-esc="option.label"/>
+                                            <t t-if="option.label" t-esc="option.label"/>
+                                            <t t-elif="option.limit"><t t-esc="whole(option.limit)"/></t>
+                                            <t t-else="" t-esc="option.name"/>
                                         </option>
                                     </select>
                                 </t>

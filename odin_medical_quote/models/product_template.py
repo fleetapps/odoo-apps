@@ -98,10 +98,10 @@ class ProductTemplate(models.Model):
     @api.depends("odin_cover_table_id.age_basis", "odin_cover_table_id.partial")
     def _compute_odin_rate_flags(self):
         # Their own compute, so adding them computes only them: the rate
-        # fields above, some put right by hand, are left as they are.
+        # fields above, some put right by hand, are left as they are. Read
+        # from the rate table only: no product name says either.
         for template in self:
             table = template.odin_cover_table_id
-            # A name says neither: rows that need them belong to a rate table.
             template.odin_rate_on_eldest = table.age_basis == "eldest"
             template.odin_rate_partial = table.partial
 

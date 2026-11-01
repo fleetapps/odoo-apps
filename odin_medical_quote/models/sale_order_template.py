@@ -277,7 +277,10 @@ class SaleOrderTemplate(models.Model):
             "label": group["label"],
             "benefit_key": block["key"],
             "requires": block["requires"],
-            "basis": options[0]["basis"] if options else "policy",
+            # One basis for the group only when every option has it: outpatient
+            # per person or shared per family says it option by option.
+            "basis": options[0]["basis"] if options and len(
+                {option["basis"] for option in options}) == 1 else "policy",
             "block": block,
             "group": group,
             "options": options,
