@@ -72,6 +72,9 @@
                       text-align: center; vertical-align: bottom; word-wrap: break-word;
                       border: 0.6pt solid <t t-out="brand"/>; }
         .mq-grid th.mq-first { text-align: left; }
+        .mq-grid th .mq-insurer { display: block; font-size: 7.2pt; }
+        .mq-grid th .mq-cover { display: block; font-size: 10pt; letter-spacing: 0;
+                                text-transform: none; padding-top: 2pt; }
         .mq-grid th .mq-plan { display: block; font-size: 6.5pt; letter-spacing: 0;
                                text-transform: none; font-weight: normal; color: #dbe6f3;
                                padding-top: 1.5pt; }
@@ -98,6 +101,14 @@
         .mq-terms table { margin: 4pt 0 6pt 0; }
         .mq-terms table td, .mq-terms table th { border: 0.6pt solid #dfe7ee; padding: 2.5pt 4pt;
                                                  font-size: 7pt; }
+        .mq-cov-head { font-size: 8.4pt; color: #1f3b57; margin: 9pt 0 2pt 0;
+                       padding-bottom: 2pt; border-bottom: 0.6pt solid #dfe7ee;
+                       page-break-after: avoid; }
+        .mq-cov-title { font-weight: bold; font-size: 7.4pt; margin: 4pt 0 1pt 0;
+                        page-break-after: avoid; }
+        .mq-cov { margin: 0 0 2pt 11pt; padding: 0; font-size: 7.2pt; line-height: 1.28; }
+        .mq-cov li { margin: 0; page-break-inside: avoid; }
+        .mq-cov li.mq-cov-note { list-style: none; margin-left: -11pt; }
         .mq-closing, .mq-keep { page-break-inside: avoid; }
         .mq-closing { margin-top: 12pt; }
         .mq-by { font-weight: bold; text-decoration: underline; margin-top: 4pt; }
@@ -194,10 +205,17 @@
             <thead>
                 <tr>
                     <th class="mq-first" t-attf-style="width: #{benefit_width}%;">Benefit</th>
+                    <!-- What a client compares first: who insures them and for
+                         how much; the insurer's own product names after. -->
                     <th t-foreach="columns" t-as="column">
                         <span t-if="column['highlight']" class="mq-flag">Recommended</span>
-                        <t t-out="column['insurer']">Insurer</t>
-                        <span class="mq-plan" t-out="column['name']">Plan</span>
+                        <span class="mq-insurer" t-out="column['insurer']">Insurer</span>
+                        <t t-if="column['cover']">
+                            <span class="mq-cover"><t t-out="doc.currency_id.name"/>
+                                <t t-out="column['cover']" t-options="whole"/></span>
+                            <span t-if="column['product']" class="mq-plan" t-out="column['product']"/>
+                        </t>
+                        <span t-else="" class="mq-plan" t-out="column['name']">Plan</span>
                     </th>
                 </tr>
             </thead>
@@ -228,6 +246,28 @@
             training levy and policyholders' compensation fund levy on the premium, with
             stamp duty. Cover starts once the insurer has received the premium.
         </div>
+
+        <!-- Each quoted plan's own benefits, at the level quoted. -->
+        <t t-foreach="doc._odin_export_covered(columns)" t-as="covered">
+            <t t-set="column" t-value="covered['column']"/>
+            <div t-if="covered_first" class="mq-h">What's covered</div>
+            <div class="mq-cov-head">
+                <b t-out="column['insurer']"/>
+                <t t-if="column['cover']"> · <b><t t-out="doc.currency_id.name"/>
+                    <t t-out="column['cover']" t-options="whole"/></b></t>
+                <t t-set="product" t-value="column['product'] if column['cover'] else column['name']"/>
+                <span t-if="product" class="mq-muted"> · <t t-out="product"/></span>
+            </div>
+            <t t-foreach="covered['groups']" t-as="group">
+                <div t-if="group['title']" class="mq-cov-title" t-out="group['title']"/>
+                <ul class="mq-cov">
+                    <t t-foreach="group['items']" t-as="item">
+                        <li t-if="item['bullet']" t-out="item['text']"/>
+                        <li t-else="" class="mq-cov-note" t-out="item['text']"/>
+                    </t>
+                </ul>
+            </t>
+        </t>
 
         <!-- A heading never ends a page on its own: it travels with its terms.
              Short terms are kept whole; long ones (pages of them) flow, since

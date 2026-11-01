@@ -48,6 +48,8 @@ class TestOnlinePlans(OnlineCase):
         afya = result["plans"][ids.index(self.afya.id)]
         self.assertEqual(afya["name"], "Plan 1 (KES 200,000)", "no 'Below 70'")
         self.assertEqual(afya["product"], "Afya")
+        self.assertEqual(afya["short"], "Afya · Plan 1",
+                         "under the insurer and the cover, without the amount again")
         self.assertEqual(afya["group"], "Test Afya Insurer|Afya",
                          "one card per insurer's product: its plans differ by cover")
         self.assertEqual(afya["hospital"], 15822)

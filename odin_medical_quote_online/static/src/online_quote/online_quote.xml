@@ -52,7 +52,10 @@
             </p>
             <ul class="o_oq_summary">
                 <li t-foreach="chosenPlans" t-as="plan" t-key="plan.id">
-                    <span><b t-esc="plan.insurer"/> · <t t-if="plan.product"><t t-esc="plan.product"/> · </t><t t-esc="plan.name"/></span>
+                    <span>
+                        <b t-esc="plan.insurer"/> · <b t-esc="money(plan.limit, 0)"/> hospital cover
+                        <small t-if="plan.short" class="d-block text-muted" t-esc="plan.short"/>
+                    </span>
                     <b t-esc="money(plan.total)"/>
                 </li>
             </ul>
@@ -223,37 +226,31 @@
                     <t t-set="plan" t-value="card.plan"/>
                     <t t-set="cardAmounts" t-value="amounts(card)"/>
                     <t t-set="cardVariants" t-value="variants(card)"/>
+                    <!-- Who insures you and for how much first; the insurer's own
+                         name for the product under them. -->
                     <div class="o_oq_kicker">
-                        <t t-esc="plan.insurer"/>
+                        <span class="o_oq_insurer" t-esc="plan.insurer"/>
                         <span t-if="cards.length > 1 and plan === lowestCard" class="o_oq_badge o_oq_badge_low">Lowest price</span>
                     </div>
                     <h2 class="o_oq_plan_name">
-                        <t t-if="plan.product"><t t-esc="plan.product"/> · </t><t t-esc="plan.name"/>
+                        <select t-if="cardAmounts.length > 1" class="o_oq_cover" aria-label="Hospital cover"
+                                t-on-change="(ev) => this.pickAmount(card, ev.target.value)">
+                            <option t-foreach="cardAmounts" t-as="amount" t-key="amount.id"
+                                    t-att-value="amount.limit" t-att-selected="amount.limit === plan.limit">
+                                <t t-esc="money(amount.limit, 0)"/>
+                            </option>
+                        </select>
+                        <t t-else="" t-esc="money(plan.limit, 0)"/>
+                        <span class="o_oq_cover_what">hospital cover</span>
+                        <small t-if="plan.short" t-esc="plan.short"/>
                     </h2>
-                    <ul class="o_oq_covers">
-                        <li>
-                            <i class="fa fa-check" role="img" aria-label="Included"/>
-                            <span>
-                                <b>Hospital stays</b>: up to
-                                <t t-if="cardAmounts.length > 1">
-                                    <select class="o_oq_tier o_oq_cover" aria-label="Hospital cover"
-                                            t-on-change="(ev) => this.pickAmount(card, ev.target.value)">
-                                        <option t-foreach="cardAmounts" t-as="amount" t-key="amount.id"
-                                                t-att-value="amount.limit" t-att-selected="amount.limit === plan.limit">
-                                            <t t-esc="money(amount.limit, 0)"/>
-                                        </option>
-                                    </select>
-                                </t>
-                                <t t-else="" t-esc="money(plan.limit, 0)"/>
-                                a year
-                                <label t-if="cardVariants.length === 2" class="o_oq_variant">
-                                    <input type="checkbox" class="form-check-input me-1"
-                                           t-att-checked="plan.id !== cardVariants[0].id"
-                                           t-on-change="() => this.toggleVariant(card)"/>
-                                    <t t-esc="variantLabel(cardVariants[0], cardVariants[1])"/>
-                                </label>
-                            </span>
-                        </li>
+                    <label t-if="cardVariants.length === 2" class="o_oq_variant">
+                        <input type="checkbox" class="form-check-input me-1"
+                               t-att-checked="plan.id !== cardVariants[0].id"
+                               t-on-change="() => this.toggleVariant(card)"/>
+                        <t t-esc="variantLabel(cardVariants[0], cardVariants[1])"/>
+                    </label>
+                    <ul t-if="plan.benefits.length" class="o_oq_covers">
                         <li t-foreach="plan.benefits" t-as="benefit" t-key="benefit.key">
                             <i class="fa fa-check" role="img" aria-label="Included"/>
                             <span>

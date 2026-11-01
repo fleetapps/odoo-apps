@@ -78,10 +78,14 @@
                     <article t-foreach="plans" t-as="plan"
                              t-attf-class="o_oq_card o_oq_quote_card #{'o_oq_pick' if plan['highlight'] else ''}">
                         <div class="o_oq_kicker">
-                            <t t-out="plan['insurer']"/>
+                            <span class="o_oq_insurer" t-out="plan['insurer']"/>
                             <span t-if="plan['highlight']" class="o_oq_badge">Recommended</span>
                         </div>
-                        <h2 class="o_oq_plan_name" t-out="plan['name']"/>
+                        <h2 t-if="plan['cover']" class="o_oq_plan_name">
+                            <t t-out="plan['cover']"/> <span class="o_oq_cover_what">hospital cover</span>
+                            <small t-if="plan['name']" t-out="plan['name']"/>
+                        </h2>
+                        <h2 t-else="" class="o_oq_plan_name" t-out="plan['name']"/>
                         <ul class="o_oq_covers">
                             <li t-foreach="plan['sections']" t-as="section">
                                 <i class="fa fa-check" role="img" aria-label="Included"/>

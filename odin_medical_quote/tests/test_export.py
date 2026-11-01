@@ -60,11 +60,15 @@ class TestExport(MedicalQuoteCase):
                                    msg="levies and stamp duty together, as the client pays them")
         self.assertEqual(rows["Total premium"], orders.mapped("amount_total"))
 
-    def test_columns_name_product_and_plan(self):
-        """Insurer on top, then product · plan with its cover; the age
-        variant ("Below 70") is the engine's business, not the client's.
-        Outpatient and dental limits say whom they cover."""
+    def test_columns_insurer_cover_then_product(self):
+        """Insurer on top, then the hospital cover, then the insurer's own
+        name for the product and plan, without the amount the cover says or
+        the age variant ("Below 70") the engine rates on. Outpatient and
+        dental limits say whom they cover."""
         matrix = self.comparison._odin_export_matrix()
+        self.assertEqual([(c["insurer"], c["cover"], c["product"]) for c in matrix["columns"]],
+                         [("Test Afya Insurer", 200000, "Afya · Plan 1"),
+                          ("Test Jamii Insurer", 500000, "Jamii · Family Cover")])
         self.assertEqual([c["name"] for c in matrix["columns"]],
                          ["Afya · Plan 1 (KES 200,000)", "Jamii · Family Cover (KES 500,000)"])
         basis = {row["label"]: row.get("basis") for row in matrix["rows"]}
@@ -73,12 +77,53 @@ class TestExport(MedicalQuoteCase):
         self.assertEqual(basis["Dental limit"], ["per person", ""])
         self.assertEqual(basis["Inpatient limit"], ["", ""], "the plan's own limit")
         text = self.html()
-        self.assertIn("Afya · Plan 1 (KES 200,000)", text)
+        self.assertIn("Afya · Plan 1", text)
         self.assertNotIn("Below 70", text)
         self.assertIn("per family", text)
         order = self.comparison.plan_ids.order_id.filtered(
             lambda o: o.sale_order_template_id == self.afya)
-        self.assertEqual(order._odin_plan_label(), "Afya – Plan 1 (KES 200,000)")
+        self.assertEqual(order._odin_plan_label(), "Afya – Plan 1 (KES 200,000)",
+                         "the staff's name for it: the whole name, no age variant")
+        self.assertEqual(order._odin_plan_text(),
+                         "Test Afya Insurer – %s 200,000 hospital cover (Afya · Plan 1)"
+                         % order.currency_id.name)
+        self.assertIn(order._odin_plan_text(), self.comparison._whatsapp_message(),
+                      "the client's message names it the same way")
+
+    def test_display_parts(self):
+        """The amount leaves the plan's name only where the cover says it."""
+        Template = self.env["sale.order.template"]
+        cases = [
+            ("GA Community Health – KES 1,000,000", 1000000, "Community Health"),
+            ("GA Community Health – KES 1,000,000, with pandemic cover", 1000000,
+             "Community Health, with pandemic cover"),
+            ("GA Hadhi Health – Plan A (KES 5,000,000), with Covid-19 cover (groups of 10 or more)",
+             5000000, "Hadhi Health · Plan A, with Covid-19 cover (groups of 10 or more)"),
+            ("Jubilee J Care – Premier (KES 1,000,000) – Below 70", 1000000, "J Care · Premier"),
+            ("Jubilee J Care – Premier (KES 1,000,000)", 500000, "J Care · Premier (KES 1,000,000)"),
+            ("Jubilee J Care Junior – Classic (KES 500,000 per child)", 500000,
+             "J Care Junior · Classic (per child)"),
+        ]
+        for name, cover, product in cases:
+            insurer = self.env["res.partner"].create({"name": name.split()[0] + " Insurance",
+                                                      "is_company": True})
+            template = Template.new({"name": name, "odin_insurer_id": insurer.id})
+            self.assertEqual(template._odin_display_parts(cover), (insurer.name, product), name)
+
+    def test_whats_covered(self):
+        """Each plan's own benefit notes, at the level quoted; a plan without
+        any is left out, and payment terms are not cover."""
+        matrix = self.comparison._odin_export_matrix()
+        covered = self.comparison._odin_export_covered(matrix["columns"])
+        self.assertEqual([plan["column"]["insurer"] for plan in covered], ["Test Afya Insurer"])
+        self.assertEqual(covered[0]["groups"], [{
+            "title": "Inpatient benefits",
+            "items": [{"bullet": True, "text": "Overall limit: KES 200,000"}],
+        }])
+        text = self.html()
+        self.assertIn("What's covered", text)
+        self.assertIn("Overall limit: KES 200,000", text)
+        self.assertNotIn("25% deposit", text, "payment terms are not cover")
 
     def test_report_renders(self):
         self.company.odin_quote_payment_note = "<p>PAYBILL: 880100</p>"
@@ -123,7 +168,12 @@ class TestExport(MedicalQuoteCase):
         composer = self.env["mail.compose.message"].with_user(self.agent).with_context(
             **action["context"]).create({})
         self.assertIn(self.comparison.name, composer.subject)
-        self.assertIn(self.afya.name, composer.body)
+        afya = self.comparison.plan_ids.order_id.filtered(
+            lambda o: o.sale_order_template_id == self.afya)
+        self.assertIn("Test Afya Insurer – %s 200,000 hospital cover (Afya · Plan 1)"
+                      % afya.currency_id.name, composer.body,
+                      "the insurer and the cover first, as on the quotation")
+        self.assertNotIn("Below 70", composer.body)
         self.assertIn(format_date(self.env, self.comparison.validity_date, date_format="d MMM y"),
                       composer.body, "the date as the PDF prints it")
         composer._action_send_mail()

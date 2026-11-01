@@ -234,6 +234,8 @@ class MedicalQuoteOnline(models.AbstractModel):
             "insurer": insurer,
             "name": name or template.name,
             "product": product,
+            # Under the insurer and the cover: "J Care · Premier".
+            "short": template._odin_display_parts(plan["limit"])[1],
             "limit": plan["limit"],
             "hospital": plan["core"]["amount"],
             "benefits": [{
@@ -665,7 +667,7 @@ class MedicalQuoteOnline(models.AbstractModel):
                 BENEFITS[section["key"]][0] if section["key"] in BENEFITS else section["label"])
             text = _("up to %s a year", self._whole_money(section["limit"], currency)) \
                 if section["limit"] else ""
-            rows.append({"label": str(label), "text": text})
+            rows.append({"key": section["key"], "label": str(label), "text": text})
         return rows
 
     @api.model
@@ -678,11 +680,13 @@ class MedicalQuoteOnline(models.AbstractModel):
 
     @api.model
     def _plan_heading(self, order, plan):
-        """(insurer, plan name) for the client's page."""
+        """(insurer, plan name) for the client's page; the name is the
+        product's, under the cover, where the plan has a hospital cover."""
         template = order.sale_order_template_id
         if not template:
             return plan.name, plan.subtitle or order.name
-        return template._odin_insurer_name(), order._odin_plan_name()
+        insurer, cover, product = order._odin_client_heading()
+        return insurer, product if cover else order._odin_plan_name()
 
     @api.model
     def _quote_texts(self, comparison):
@@ -790,11 +794,15 @@ class MedicalQuoteOnline(models.AbstractModel):
         for plan in plans:
             order = plan.order_id
             insurer, name = self._plan_heading(order, plan)
+            # The hospital cover heads the card, so it is not listed again.
+            cover = order._odin_client_heading()[1]
             quote_plans.append({
                 "insurer": insurer,
+                "cover": self._whole_money(cover, order.currency_id) if cover else "",
                 "name": name,
                 "highlight": plan.highlight,
-                "sections": self._plain_sections(order, comparison),
+                "sections": [row for row in self._plain_sections(order, comparison)
+                             if not (cover and row.get("key") == "inpatient")],
                 "total": order.amount_total,
                 "levies": order.amount_tax + sum(
                     s["amount"] for s in order._client_sections() if s["key"] == "statutory_charges"),

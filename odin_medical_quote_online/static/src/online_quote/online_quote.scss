@@ -385,17 +385,45 @@
     color: var(--oq-green);
 }
 
+// The insurer, then the cover, then the product: what a client compares
+// first is who insures them and for how much.
+.o_oq_insurer {
+    font-size: 0.98rem;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--oq-ink);
+}
+
 .o_oq_plan_name {
     margin: 4px 0 12px;
-    font-size: 1.2rem;
-    font-weight: 700;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--oq-navy);
 
     small {
         display: block;
+        margin-top: 2px;
         font-size: 0.85rem;
         font-weight: 400;
         color: var(--oq-muted);
     }
+}
+
+.o_oq_cover_what {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--oq-ink);
+}
+
+// The cover amount is the card's headline, and its dropdown.
+.o_oq_cover {
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1.5px solid var(--oq-line);
+    border-radius: 8px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
 }
 
 .o_oq_covers {
@@ -432,7 +460,7 @@
 .o_oq_variant {
     display: flex;
     align-items: center;
-    margin-top: 4px;
+    margin: -6px 0 10px;
     font-weight: normal;
     cursor: pointer;
 }

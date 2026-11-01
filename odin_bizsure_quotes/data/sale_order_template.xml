@@ -7,7 +7,7 @@
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -168,7 +168,94 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_500_000_line_430_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_500_000_line_430_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_500_000_line_430_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_500_000_line_430_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -610,7 +697,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -771,7 +858,94 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_1_000_000_line_491_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_1_000_000_line_491_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_1_000_000_line_491_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_1_000_000_line_491_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_1_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -1213,7 +1387,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -1374,7 +1548,94 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_2_000_000_line_552_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_2_000_000_line_552_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_2_000_000_line_552_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_2_000_000_line_552_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_2_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -1816,7 +2077,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -1977,7 +2238,94 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_3_000_000_line_613_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_3_000_000_line_613_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_3_000_000_line_613_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_3_000_000_line_613_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_3_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -2419,7 +2767,7 @@ Principal and spouse can join this limit up to age 80.</field>
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -2580,7 +2928,94 @@ Principal and spouse can join this limit up to age 75 (not available from age 76
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_5_000_000_line_674_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_5_000_000_line_674_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_5_000_000_line_674_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_5_000_000_line_674_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_5_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -3022,7 +3457,7 @@ Principal and spouse can join this limit up to age 75 (not available from age 76
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -3183,7 +3618,94 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_7_500_000_line_735_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_7_500_000_line_735_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_7_500_000_line_735_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_7_500_000_line_735_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_7_500_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -3625,7 +4147,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, from APA's rates (May 2026): inpatient per member by age, limit shared by the family; outpatient, dental and optical per person (the last two only with outpatient); maternity per family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus – key terms</h3><p><strong>Your premium.</strong> Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for the family.</p><p><strong>Who can join.</strong> From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; 7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over 3 months, added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -3786,7 +4308,94 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
         <field name="sequence">90</field>
         <field name="display_type">line_note</field>
-        <field name="name">Outpatient cover is priced per person by age, and the same limit applies to every member. Benefits for each outpatient limit and the hospitals where co-payments apply are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_10_000_000_line_796_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_10_000_000_line_796_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_10_000_000_line_796_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_family_cover_kes_10_000_000_line_796_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_family_cover_kes_10_000_000"/>
+        <field name="sequence">90</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4228,7 +4837,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>APA Jamii Plus Child-Only – key terms</h3><p><strong>Your premium.</strong> Annual, per child, from APA's child-only rates (May 2026). Dental and optical only with outpatient.</p><p><strong>Who can join.</strong> Children only, from day 1 (full-term baby). A child over 3 months added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal member's name (policy number for renewals). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when APA accepts the application and receives the full premium. Declare all health conditions: an undeclared one stays excluded for life and can lead to refused claims or cancelled cover. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. This is a summary; APA's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>APA Jamii Plus Child-Only – key terms</h3><p><strong>Your premium.</strong> Annual, per child, at APA's child-only rates (May 2026).</p><p><strong>Who can join.</strong> Children only, from day 1 (full-term baby). A child over 3 months added later goes on a separate policy.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. New chronic conditions: 3 months. Other surgery: 90 days. Pre-existing, chronic, congenital, palliative care, fibroids, hernia, tonsils and similar: 12 months. Maternity: 10 months. Transplants: 2 years. A gap over 30 days restarts them.</p><p><strong>Co-payments.</strong> KES 1,000 per outpatient visit at Aga Khan and Nairobi Hospital; KES 500 at Mater, MP Shah, AAR, Gertrude's, Premier, Mombasa Hospital, Diani Beach, Pandya, Jocham, Palm Beach, Eldoret Hospital, Oasis and Mediheal; none elsewhere.</p><p><strong>Before treatment.</strong> Use APA's panel; elsewhere APA refunds up to 85% of its rates, claimed within 90 days. Tell APA 48 hours before a planned admission.</p><p><strong>Not covered.</strong> Costs that SHIF, WIBA or GPA pay, cosmetic surgery unless after an accident, infertility, self-injury, drunkenness, war, riots, weight management, glasses and dental unless bought, and APA's other exclusions.</p><p><strong>How to pay.</strong> Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill 511600, account: the principal's name (renewals: policy number). Keep APA's receipt.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once APA accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled; an undeclared one stays excluded for life. Either side may cancel on 14 days' notice; no refund after 6 months or once a claim is made. APA's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_apa"/>
     </record>
@@ -4255,7 +4864,174 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
         <field name="sequence">30</field>
         <field name="display_type">line_note</field>
-        <field name="name">Child-only cover is available for inpatient limits from KES 500,000 to KES 10,000,000. Inpatient benefits for each limit are listed in the terms below.</field>
+        <field name="name">Inpatient benefits on the KES 500,000 limit
+• Overall limit: KES 500,000 per family per year
+• Hospital accommodation (net of SHIF): General ward bed
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 200,000
+• Newly diagnosed chronic conditions (after 3 months): KES 250,000
+• Prematurity and neonatal conditions (after 12 months): KES 200,000
+• Organ transplant (after 2 years, excluding donor costs): KES 100,000
+• Psychiatry and psychotherapy (after 12 months): KES 100,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 15,000
+• First emergency C-section or maternity complications (after 10 months): KES 50,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 50,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 50,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 50,000
+• Drug addiction and alcoholism (after 12 months): KES 50,000
+• Funeral expenses: KES 50,000 per person
+• Covid-19 treatment: KES 200,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip1000k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 1,000,000 limit
+• Overall limit: KES 1,000,000 per family per year
+• Hospital accommodation (net of SHIF): General ward bed
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 300,000
+• Newly diagnosed chronic conditions (after 3 months): KES 500,000
+• Prematurity and neonatal conditions (after 12 months): KES 300,000
+• Organ transplant (after 2 years, excluding donor costs): KES 200,000
+• Psychiatry and psychotherapy (after 12 months): KES 150,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 20,000
+• First emergency C-section or maternity complications (after 10 months): KES 50,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 75,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 75,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 50,000
+• Drug addiction and alcoholism (after 12 months): KES 50,000
+• Funeral expenses: KES 75,000 per person
+• Covid-19 treatment: KES 300,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip2000k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 2,000,000 limit
+• Overall limit: KES 2,000,000 per family per year
+• Hospital accommodation (net of SHIF): Standard private room up to KES 12,500
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 500,000
+• Newly diagnosed chronic conditions (after 3 months): KES 750,000
+• Prematurity and neonatal conditions (after 12 months): KES 400,000
+• Organ transplant (after 2 years, excluding donor costs): KES 300,000
+• Psychiatry and psychotherapy (after 12 months): KES 200,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 30,000
+• First emergency C-section or maternity complications (after 10 months): KES 75,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 75,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 75,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 75,000
+• Drug addiction and alcoholism (after 12 months): KES 75,000
+• Funeral expenses: KES 75,000 per person
+• Covid-19 treatment: KES 500,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip3000k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 3,000,000 limit
+• Overall limit: KES 3,000,000 per family per year
+• Hospital accommodation (net of SHIF): Standard private room up to KES 15,000
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 700,000
+• Newly diagnosed chronic conditions (after 3 months): KES 1,000,000
+• Prematurity and neonatal conditions (after 12 months): KES 400,000
+• Organ transplant (after 2 years, excluding donor costs): KES 300,000
+• Psychiatry and psychotherapy (after 12 months): KES 200,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 30,000
+• First emergency C-section or maternity complications (after 10 months): KES 75,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 100,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 100,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 75,000
+• Drug addiction and alcoholism (after 12 months): KES 75,000
+• Funeral expenses: KES 100,000 per person
+• Covid-19 treatment: KES 500,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip5000k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 5,000,000 limit
+• Overall limit: KES 5,000,000 per family per year
+• Hospital accommodation (net of SHIF): Ensuite room up to KES 18,000
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 1,000,000
+• Newly diagnosed chronic conditions (after 3 months): KES 1,500,000
+• Prematurity and neonatal conditions (after 12 months): KES 500,000
+• Organ transplant (after 2 years, excluding donor costs): KES 500,000
+• Psychiatry and psychotherapy (after 12 months): KES 250,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 40,000
+• First emergency C-section or maternity complications (after 10 months): KES 100,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 100,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 100,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 75,000
+• Drug addiction and alcoholism (after 12 months): KES 75,000
+• Funeral expenses: KES 100,000 per person
+• Covid-19 treatment: KES 500,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip7500k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 7,500,000 limit
+• Overall limit: KES 7,500,000 per family per year
+• Hospital accommodation (net of SHIF): Ensuite room up to KES 20,000
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 1,000,000
+• Newly diagnosed chronic conditions (after 3 months): KES 2,000,000
+• Prematurity and neonatal conditions (after 12 months): KES 500,000
+• Organ transplant (after 2 years, excluding donor costs): KES 500,000
+• Psychiatry and psychotherapy (after 12 months): KES 300,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 40,000
+• First emergency C-section or maternity complications (after 10 months): KES 100,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 100,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 100,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 75,000
+• Drug addiction and alcoholism (after 12 months): KES 75,000
+• Funeral expenses: KES 100,000 per person
+• Covid-19 treatment: KES 500,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_851_ip10000k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">30</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Inpatient benefits on the KES 10,000,000 limit
+• Overall limit: KES 10,000,000 per family per year
+• Hospital accommodation (net of SHIF): Private ensuite room up to KES 25,000
+• Pre-existing, chronic, congenital and HIV/AIDS-related conditions (after 12 months, on full disclosure): KES 1,250,000
+• Newly diagnosed chronic conditions (after 3 months): KES 2,500,000
+• Prematurity and neonatal conditions (after 12 months): KES 500,000
+• Organ transplant (after 2 years, excluding donor costs): KES 500,000
+• Psychiatry and psychotherapy (after 12 months): KES 500,000
+• Post-hospitalisation treatment (first 30 days after discharge, reimbursement): KES 50,000
+• First emergency C-section or maternity complications (after 10 months): KES 150,000
+• Non-accidental eye treatment or surgery (after 12 months): KES 150,000
+• Non-accidental dental treatment or surgery (after 12 months): KES 150,000
+• External appliances (wheelchairs, crutches, walking frames, hearing aids and tests): KES 100,000
+• Drug addiction and alcoholism (after 12 months): KES 100,000
+• Funeral expenses: KES 150,000 per person
+• Covid-19 treatment: KES 500,000
+• Nursing at home on a doctor's recommendation: up to 30 days
+• Covered in full: accident treatment; acute illness (after 30 days); drugs and dressings including up to 30 days of discharge drugs; doctors', specialists', surgical and anaesthetist fees at APA panel rates; theatre, HDU and ICU; diagnostic tests; physiotherapy; gynaecological surgery (after 12 months, within the pre-existing limit); lodger fees for a parent with a child under 12; day-care surgery; local ambulance and emergency air evacuation; emergency dental or optical treatment after an accident; reconstructive surgery after an accident; treatment in India on reimbursement where not available locally (pre-authorised, patient's economy airfare)</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4314,7 +5090,94 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
         <field name="sequence">100</field>
         <field name="display_type">line_note</field>
-        <field name="name">Benefits for each outpatient limit are listed in the terms below.</field>
+        <field name="name">Outpatient benefits on the KES 50,000 limit
+• Limit: KES 50,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,000
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 5,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 5,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 5,000
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_858_op75k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">100</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 75,000 limit
+• Limit: KES 75,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 2,500
+• Specialist fees (on GP referral): KES 3,000
+• Family planning and related complications (selected facilities): KES 7,500
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 7,500
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 15,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 15,000
+• General health check-up (age 21 and above): KES 7,500
+• External appliances, hearing aids and hearing tests: KES 15,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_858_op100k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">100</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 100,000 limit
+• Limit: KES 100,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): KES 3,500
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 20,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 20,000
+• General health check-up (age 21 and above): KES 10,000
+• External appliances, hearing aids and hearing tests: KES 20,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_858_op150k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">100</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 150,000 limit
+• Limit: KES 150,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 15,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
+        <field name="product_uom_qty">0</field>
+    </record>
+
+    <record id="sot_apa_jamii_plus_child_only_cover_line_858_op200k" model="sale.order.template.line">
+        <field name="sale_order_template_id" ref="sot_apa_jamii_plus_child_only_cover"/>
+        <field name="sequence">100</field>
+        <field name="display_type">line_note</field>
+        <field name="name">Outpatient benefits on the KES 200,000 limit
+• Limit: KES 200,000 per person per year, the same for every member
+• GP consultation limit per visit: KES 3,000
+• Specialist fees (on GP referral): up to KES 4,000
+• Family planning and related complications (selected facilities): KES 10,000
+• Prescribed emollients and pharmaceutical creams (Oilatum, Epimax, Epimol, Oatveen Eczema): KES 10,000
+• Occupational and speech therapy, delayed milestones (after 12 months): KES 25,000
+• KEPI and baby-friendly vaccines (children up to 18 months): KES 25,000
+• General health check-up (age 21 and above): KES 20,000
+• External appliances, hearing aids and hearing tests: KES 25,000
+• Also covered: prescription drugs (up to 30 days), X-ray, MRI, CT scan and other diagnostic tests, prescribed physiotherapy, chiropractors and osteopaths on GP referral, pre-existing and chronic conditions including HIV/AIDS (after 12 months), congenital and prematurity conditions (after 12 months), newly diagnosed chronic conditions (after 3 months), prenatal and postnatal consultations with up to 2 obstetric scans (after 10 months, where maternity is bought), HPV and flu vaccination, yellow fever and polio travel vaccines, and prescribed nutritional supplements
+• Co-payments at some hospitals: see Co-payments in the terms</field>
         <field name="product_uom_qty">0</field>
     </record>
 
@@ -4446,7 +5309,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -4676,7 +5539,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -4906,7 +5769,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -5136,7 +5999,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -5366,7 +6229,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -5596,7 +6459,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -5826,7 +6689,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>
@@ -6056,7 +6919,7 @@ Principal and spouse can join this limit up to age 70 (not available from age 71
         <field name="number_of_days">30</field>
         <field name="require_signature" eval="True"/>
         <field name="require_payment" eval="False"/>
-        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, for the family by the number of people covered, on separate rates for families with a member aged 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical examination.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Not following medical advice, alternative treatment, beauty and massage, old-age homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, non-ambulance transport, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In advance and in full, before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts when Birdview accepts the application and receives the full premium. Declare all health conditions: an undeclared one can lead to refused claims or cancelled cover. This is a summary; Birdview's policy document prevails.</p></field>
+        <field name="note" type="html"><h3>Birdview Bizsure Afya – key terms</h3><p><strong>Your premium.</strong> Annual, by the number of people covered; separate rates where a member is 70 or over.</p><p><strong>Who can join.</strong> Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 if living with their parents and in full-time post-secondary study. No medical exam.</p><p><strong>Waiting periods.</strong> Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, prematurity and congenital conditions, and non-accident inpatient dental and optical: 6 months. Maternity and pregnancy complications: 10 months. Waived like-for-like when moving from another insurer.</p><p><strong>Co-payments.</strong> None on outpatient.</p><p><strong>Before treatment.</strong> MRI, CT and PET scans and planned admissions (48 hours ahead) need pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, refunded.</p><p><strong>Not covered.</strong> Cosmetic surgery unless after an accident, alternative treatment, beauty treatment, old-age homes, genetic conditions, supplements, war, military action, riots and terrorism, alcohol and drug addiction, weight loss, epidemics, pandemics and unknown diseases, and Birdview's other exclusions.</p><p><strong>How to pay.</strong> In full before cover starts; your Bizsure advisor gives you Birdview's payment details.</p><p><strong>Please note.</strong> This is a quotation, not cover: cover starts once Birdview accepts the application and has the full premium. Declare all health conditions, or claims can be refused and cover cancelled. Birdview's policy document prevails over this summary.</p></field>
         <field name="odin_medical" eval="True"/>
         <field name="odin_insurer_id" ref="insurer_birdview"/>
     </record>

@@ -20,11 +20,13 @@ checks every product.
 
 from xml.sax.saxutils import escape
 
-def please_note(insurer, extra="", undeclared="can lead to refused claims or cancelled cover"):
-    return ("This is a quotation, not cover: cover starts when %(i)s accepts the application "
-            "and receives the full premium. Declare all health conditions: an undeclared one "
-            "%(u)s.%(extra)s This is a summary; %(i)s's policy document prevails."
-            % {"i": insurer, "u": undeclared, "extra": (" " + extra) if extra else ""})
+def please_note(insurer, extra="", for_life=False):
+    return ("This is a quotation, not cover: cover starts once %(i)s accepts the application "
+            "and has the full premium. Declare all health conditions, or claims can be refused "
+            "and cover cancelled%(life)s.%(extra)s %(i)s's policy document prevails over this "
+            "summary."
+            % {"i": insurer, "extra": (" " + extra) if extra else "",
+               "life": "; an undeclared one stays excluded for life" if for_life else ""})
 
 
 #: The sections every product's key terms has, in this order. "Co-payments"
@@ -52,12 +54,11 @@ APA_COMMON = {
         "dental unless bought, and APA's other exclusions."),
     "How to pay": (
         "Pay APA directly: NCBA Bank account 6447560039 (Westlands) or M-Pesa Paybill "
-        "511600, account: the principal member's name (policy number for renewals). Keep "
-        "APA's receipt."),
+        "511600, account: the principal's name (renewals: policy number). Keep APA's "
+        "receipt."),
     "Please note": please_note(
         "APA", "Either side may cancel on 14 days' notice; no refund after 6 months or once "
-        "a claim is made.",
-        undeclared="stays excluded for life and can lead to refused claims or cancelled cover"),
+        "a claim is made.", for_life=True),
 }
 
 JUBILEE_COMMON = {
@@ -87,16 +88,14 @@ JUBILEE_NOT_COVERED = (
 
 GA_HOW_TO_PAY = (
     "No cash. Pay GA Insurance Limited: I&M Bank account 00200208651202 (2nd Ngong Avenue), "
-    "M-Pesa Paybill 870250 with the GA account number your Bizsure advisor gives you, a "
-    "cheque or a card.")
+    "M-Pesa Paybill 870250 (account number from your Bizsure advisor), a cheque or a card.")
 
 #: product -> (heading, {section: text})
 KEY_TERMS = {
     "apa_family": ("APA Jamii Plus – key terms", dict(APA_COMMON, **{
         "Your premium": (
-            "Annual, from APA's rates (May 2026): inpatient per member by age, limit shared "
-            "by the family; outpatient, dental and optical per person (the last two only "
-            "with outpatient); maternity per family."),
+            "Annual, at APA's May 2026 rates, by each member's age; one inpatient limit for "
+            "the family."),
         "Who can join": (
             "From day 1 (full-term baby). Principal and spouse join up to 80 (KES 5M plan: 75; "
             "7.5M and 10M: 70); medical exam from 60, at their cost. A spouse, or a child over "
@@ -104,20 +103,19 @@ KEY_TERMS = {
     })),
     "apa_child_only": ("APA Jamii Plus Child-Only – key terms", dict(APA_COMMON, **{
         "Your premium": (
-            "Annual, per child, from APA's child-only rates (May 2026). Dental and optical "
-            "only with outpatient."),
+            "Annual, per child, at APA's child-only rates (May 2026)."),
         "Who can join": (
             "Children only, from day 1 (full-term baby). A child over 3 months added later "
             "goes on a separate policy."),
     })),
     "birdview": ("Birdview Bizsure Afya – key terms", {
         "Your premium": (
-            "Annual, for the family by the number of people covered, on separate rates for "
-            "families with a member aged 70 or over."),
+            "Annual, by the number of people covered; separate rates where a member is 70 "
+            "or over."),
         "Who can join": (
             "Adults 18 to 90 at entry. Children from birth (37-week term baby), and up to 25 "
             "if living with their parents and in full-time post-secondary study. No medical "
-            "examination."),
+            "exam."),
         "Waiting periods": (
             "Accidents: none. Illness: 30 days. Pre-existing, chronic and related conditions, "
             "prematurity and congenital conditions, and non-accident inpatient dental and "
@@ -129,21 +127,19 @@ KEY_TERMS = {
             "pre-authorisation. Abroad: accident and emergency treatment for 6 weeks a trip, "
             "refunded."),
         "Not covered": (
-            "Not following medical advice, alternative treatment, beauty and massage, old-age "
-            "homes and sanatoria, genetic conditions, cosmetic surgery unless after an accident, "
-            "non-ambulance transport, supplements, war, military action, riots and terrorism, "
-            "alcohol and drug addiction, weight loss, epidemics, pandemics and unknown "
-            "diseases, and Birdview's other exclusions."),
+            "Cosmetic surgery unless after an accident, alternative treatment, beauty "
+            "treatment, old-age homes, genetic conditions, supplements, war, military action, "
+            "riots and terrorism, alcohol and drug addiction, weight loss, epidemics, "
+            "pandemics and unknown diseases, and Birdview's other exclusions."),
         "How to pay": (
-            "In advance and in full, before cover starts; your Bizsure advisor gives you "
-            "Birdview's payment details."),
+            "In full before cover starts; your Bizsure advisor gives you Birdview's payment "
+            "details."),
         "Please note": please_note("Birdview"),
     }),
     "ga_community": ("GA Community Health – key terms", {
         "Your premium": (
-            "Annual, for the family by the number of people covered (up to 7), for hospital "
-            "(inpatient) cover only. Pandemic cover only on the rates including it. Maternity "
-            "is extra, per family."),
+            "Annual, by the number of people covered (up to 7), for hospital cover only; "
+            "pandemic cover only where bought."),
         "Who can join": (
             "Adults 19 to 65, joining up to 60. Children from birth (38-week term baby) to 18. "
             "Over 60: GA's Hadhi plan."),
@@ -154,8 +150,8 @@ KEY_TERMS = {
             "months. Maternity: 10 months."),
         "Before treatment": (
             "Every admission needs GA's pre-authorisation, 48 hours ahead when planned. "
-            "Outside GA's panel, refunds only, claimed within 60 days. Covered in Kenya, and "
-            "for 8 weeks of travel (not UK, USA or Canada)."),
+            "Outside GA's panel: refunds only, claimed within 60 days. Cover: Kenya, and 8 "
+            "weeks of travel (not UK, USA or Canada)."),
         "Not covered": (
             "Undeclared pre-existing conditions, outpatient care (including outpatient "
             "maternity, dental and optical), pandemics unless bought, cosmetic treatment, "
@@ -167,8 +163,8 @@ KEY_TERMS = {
     }),
     "ga_hadhi": ("GA Hadhi Health – key terms", {
         "Your premium": (
-            "Annual, for one member or a couple, by the older member's age group. The "
-            "standard rates do not cover pandemics."),
+            "Annual, for one member or a couple, by the older member's age group; the "
+            "standard rates exclude pandemics."),
         "Who can join": (
             "Retirees and seniors from 50. Joining age: Plan A up to 65, Plan B up to 70, "
             "Plans C and D up to 75 (75 on any plan for groups of 5 or more)."),
@@ -176,9 +172,9 @@ KEY_TERMS = {
             "Accidents: none. Illness: 30 days. Surgery: 2 months (pre-existing conditions "
             "excepted). Declared pre-existing conditions: 9 months. Organ transplant: 2 years."),
         "Before treatment": (
-            "Show your Hadhi card; GA issues an undertaking after pre-authorisation. Present "
-            "your NHIF card before discharge. Refund claims within 60 days. Overseas treatment "
-            "in India, South Africa or Pakistan only, pre-authorised."),
+            "Show your Hadhi card; GA issues an undertaking after pre-authorisation. Show "
+            "your NHIF card before discharge. Refund claims within 60 days. Overseas: India, "
+            "South Africa or Pakistan only, pre-authorised."),
         "Not covered": (
             "Cosmetic treatment unless after an accident, alternative medicine, homes, spas, "
             "hospices and long-term care, self-injury, alcohol and drug abuse, laser eye "
@@ -189,9 +185,8 @@ KEY_TERMS = {
     }),
     "jubilee_j_care": ("Jubilee J Care – key terms", dict(JUBILEE_COMMON, **{
         "Your premium": (
-            "Annual, on the oldest applicant's age: principal and spouse pay that age group's "
-            "rates and outpatient is per person at that rate; inpatient has a separate child "
-            "rate. Dental and optical only with outpatient."),
+            "Annual, on the oldest applicant's age group; children have their own inpatient "
+            "rate."),
         "Who can join": (
             "From birth (term baby) to 64; members move to J Senior at 65. Children over 18 "
             "up to 25 if in school. Medical exam for new applicants from 50, at their cost."),
@@ -199,29 +194,26 @@ KEY_TERMS = {
     })),
     "jubilee_j_care_junior": ("Jubilee J Care Junior – key terms", dict(JUBILEE_COMMON, **{
         "Your premium": (
-            "Annual, per child, for children under 18 covered as main members. Dental and "
-            "optical only with outpatient."),
+            "Annual, per child."),
         "Who can join": "Children under 18 as main members, from birth (38-week term baby).",
         "Not covered": JUBILEE_NOT_COVERED % "",
     })),
     "jubilee_j_senior": ("Jubilee J Senior – key terms", dict(JUBILEE_COMMON, **{
         "Your premium": (
-            "Annual, on the oldest applicant's age: principal and spouse pay that age group's "
-            "rates, as do outpatient and last expense per person; children have their own "
-            "rates. Dental and optical only with outpatient."),
+            "Annual, on the oldest applicant's age group; children have their own rates."),
         "Who can join": (
-            "From 65, joining up to 79; cover continues for life, subject to annual renewal. "
-            "New applicants have a medical exam, at their own cost."),
+            "From 65, joining up to 79; cover for life, renewed yearly. New applicants have "
+            "a medical exam, at their own cost."),
         "Not covered": JUBILEE_NOT_COVERED % "",
     })),
     "heritage_heriafya": ("Heritage HeriAfya – key terms", {
         "Your premium": (
-            "Annual. Hospital cover is shared by the family: each adult pays their age's rate, "
-            "the first child the child rate, other children a lower rate. Outpatient per "
-            "person or shared; maternity per family."),
+            "Annual; one hospital limit for the family: adults pay by age, the first child "
+            "the child rate, other children less."),
         "Who can join": (
-            "Principal and spouse 18 to 65 (cover continues to 70). Children from 1 day to 18, "
-            "or 23 and over in full-time study. Medical tests for new applicants over 55."),
+            "Principal and spouse 18 to 65 (cover continues to 70). Children from 1 day to "
+            "18, extended to 23 and over with proof of full-time study. Medical tests for new "
+            "applicants aged 55 and over."),
         "Waiting periods": (
             "Accidents: none. Illness: 30 days. Non-accident dental and optical surgery: 6 "
             "months. "

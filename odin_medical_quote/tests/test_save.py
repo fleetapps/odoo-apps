@@ -75,6 +75,27 @@ class TestSave(MedicalQuoteCase):
             self.Quote.save_quote(self.params([{
                 "template_id": self.afya.id, "options": [self.option(afya, "dental")]}]))
 
+    def test_notes_of_the_limit_quoted(self):
+        """A note titled for one limit -- APA's "Outpatient benefits on the
+        KES 50,000 limit" -- goes on the quotation only with that limit; the
+        plan's other notes always do."""
+        dental = self.afya.sale_order_template_line_ids.filtered(
+            lambda line: line.display_type == "line_section" and line.benefit_key == "dental")
+        self.env["sale.order.template.line"].create([{
+            "sale_order_template_id": self.afya.id,
+            "sequence": dental.sequence - 1,
+            "display_type": "line_note",
+            "name": "Outpatient benefits on the KES %s limit\n• GP visit: KES %s" % (limit, visit),
+        } for limit, visit in (("50,000", "2,000"), ("75,000", "2,500"))])
+        saved = self.Quote.save_quote(self.params([self.afya_selection(self.search())]))
+        comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
+        notes = comparison.plan_ids.order_id.order_line.filtered(
+            lambda line: line.display_type == "line_note").mapped("name")
+        self.assertIn("Outpatient benefits on the KES 50,000 limit\n• GP visit: KES 2,000", notes,
+                      "Afya's outpatient is the 50,000 limit")
+        self.assertFalse([note for note in notes if "75,000 limit" in note])
+        self.assertIn("Inpatient benefits\n• Overall limit: KES 200,000", notes)
+
     # -- saving -------------------------------------------------------------
 
     def test_new_prospect(self):

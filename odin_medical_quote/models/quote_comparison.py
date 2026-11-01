@@ -8,7 +8,6 @@ from odoo.tools import (
 
 #: sections that are money in or out, not a benefit with a row of its own
 NOT_A_BENEFIT = frozenset({"statutory_charges", "payment_options", "discount", "policy_charge"})
-#: characters of terms that fit in about half a page, kept on one page
 #: About half a page of terms: kept whole on one page with its heading. The
 #: insurers' key terms (odin_bizsure_quotes/tools/key_terms.py) are written to fit.
 SHORT_TERMS = 2000
@@ -376,7 +375,7 @@ class QuoteComparison(models.Model):
         for plan in self._odin_export_plans():
             order = plan.order_id
             lines.append("• %s: %s%s" % (
-                order._odin_plan_label() or plan.name,
+                order._odin_plan_text() or plan.name,
                 format_amount(self.env, order.amount_total, order.currency_id),
                 _(" (our recommendation)") if plan.highlight else ""))
         if self.validity_date:
@@ -502,7 +501,8 @@ class QuoteComparison(models.Model):
     def _odin_export_matrix(self):
         """The comparison table of the medical quotation.
 
-        One column per plan, headed by its insurer and plan. Rows, in the
+        One column per plan, headed by its insurer, its hospital cover and
+        then the product and plan. Rows, in the
         order the client reads them: what each benefit pays out, what it
         costs, any discount, taxes and levies (the levies and stamp duty
         together, as the client pays them), any policy charge, the total, and
@@ -515,9 +515,14 @@ class QuoteComparison(models.Model):
         for plan in plans:
             order = plan.order_id
             sections = {s["key"]: s for s in order._client_sections() if s["included"]}
+            insurer, cover, product = order._odin_client_heading()
             columns.append({
                 "plan": plan,
-                "insurer": order._odin_insurer_label() or plan.name or "",
+                "insurer": insurer or plan.name or "",
+                # The hospital cover under the insurer, then the insurer's
+                # own name for it; a plan without one keeps its name.
+                "cover": cover,
+                "product": product,
                 "name": order._odin_plan_name() or plan.subtitle or order.name,
                 "highlight": plan.highlight,
                 "sections": sections,
@@ -597,6 +602,43 @@ class QuoteComparison(models.Model):
             rows.append({"kind": "instalment", "label": label, "cells": schedules})
         return {"columns": columns, "rows": rows}
 
+    def _odin_export_covered(self, columns):
+        """What's covered: for each plan quoted, its benefits at the level
+        quoted -- the inpatient sub-limits and those of each benefit added --
+        from the plan's benefit notes, in the order the quotation lists them.
+        Only the plans quoted, so the client reads their own cover rather
+        than the insurer's whole brochure. Plans without notes are left out.
+        """
+        self.ensure_one()
+        plans = []
+        for column in columns:
+            groups, seen = [], set()
+            for section in column["plan"].order_id._client_sections():
+                if not section["included"] or section["key"] in NOT_A_BENEFIT:
+                    continue
+                for note in section["notes"]:
+                    text = (note or "").strip()
+                    if text and text not in seen:
+                        seen.add(text)
+                        groups.append(self._odin_covered_group(text))
+            if groups:
+                plans.append({"column": column, "groups": groups})
+        return plans
+
+    @api.model
+    def _odin_covered_group(self, text):
+        """A benefit note as a titled list: ``Inpatient benefits`` over its
+        ``•`` lines; any other line (who can join) printed as it is."""
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        title = ""
+        if len(lines) > 1 and not lines[0].startswith("•"):
+            title = lines.pop(0)
+        return {
+            "title": title,
+            "items": [{"bullet": line.startswith("•"), "text": line.lstrip("•").strip()}
+                      for line in lines],
+        }
+
     def _odin_export_terms(self):
         """The terms of the plans quoted, each once.
 
@@ -612,11 +654,16 @@ class QuoteComparison(models.Model):
                 continue
             seen.add(str(note))
             template = plan.order_id.sale_order_template_id
+            title = template._odin_heading()[0] if template else ""
+            text = html2plaintext(note)
+            if title and text.lstrip("* ").startswith(title):
+                # "APA Jamii Plus – key terms" names its product already.
+                title = ""
             terms.append({
-                "title": template._odin_heading()[0] if template else "",
+                "title": title,
                 "note": note,
                 # Under about half a page: kept whole with its heading.
-                "short": len(html2plaintext(note)) < SHORT_TERMS,
+                "short": len(text) < SHORT_TERMS,
             })
         if len(terms) == 1:
             terms[0]["title"] = ""
@@ -661,9 +708,14 @@ class QuoteComparisonPlan(models.Model):
     odin_template_id = fields.Many2one(
         related="order_id.sale_order_template_id", string="Plan template")
     odin_plan_label = fields.Char(string="Plan", compute="_compute_odin_plan_label")
+    odin_plan_text = fields.Char(
+        string="Plan for the client", compute="_compute_odin_plan_label",
+        help="The plan as the client's email names it: the insurer and the hospital "
+        "cover first, then the product.")
 
     @api.depends("order_id")
     def _compute_odin_plan_label(self):
         # Medical: the plan; motor: the insurer and the cover.
         for plan in self:
             plan.odin_plan_label = plan.order_id._odin_plan_label() if plan.order_id else False
+            plan.odin_plan_text = plan.order_id._odin_plan_text() if plan.order_id else False
