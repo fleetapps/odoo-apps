@@ -48,12 +48,14 @@ class TestRegister(MedicalQuoteCase):
 
     def test_summaries(self):
         self.assertEqual(self.comparison.odin_cover_summary, "2 adults, 3 children")
-        self.assertIn(self.afya.name, self.comparison.odin_plan_summary)
-        self.assertIn(self.jamii.name, self.comparison.odin_plan_summary)
+        # Each plan's whole name, without the rate card's age variant.
+        self.assertEqual(self.comparison.odin_plan_summary,
+                         "Afya – Plan 1 (KES 200,000) · Jamii – Family Cover (KES 500,000)")
         self.assertEqual(self.comparison.odin_amount_total, self.jamii_order.amount_total,
                          "the recommended plan's premium")
         self.accept(self.afya_order)
-        self.assertEqual(self.comparison.odin_plan_summary, self.afya.name, "only the plan taken")
+        self.assertEqual(self.comparison.odin_plan_summary, "Afya – Plan 1 (KES 200,000)",
+                         "only the plan taken")
         self.assertEqual(self.comparison.odin_amount_total, self.afya_order.amount_total)
 
     def test_declined_still_says_what_was_offered(self):
