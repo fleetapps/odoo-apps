@@ -72,6 +72,13 @@ class TestRating(BaseCase):
 
     def test_fits(self):
         principal, spouse, child = Household(35, 28, 1).members
+        self.assertEqual(child.rank, 1)
+        self.assertFalse(role_fits("child_extra", child), "the first child is on 'Child'")
+        second = Household(35, 28, 2).members[-1]
+        self.assertEqual(second.rank, 2)
+        self.assertTrue(role_fits("child_extra", second))
+        self.assertTrue(role_fits("child", second))
+        self.assertFalse(role_fits("child_extra", spouse))
         self.assertTrue(role_fits("dependant", spouse))
         self.assertTrue(role_fits("dependant", child))
         self.assertFalse(role_fits("dependant", principal))

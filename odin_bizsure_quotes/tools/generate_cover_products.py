@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Turn tools/rate_cards.py into Cover Quotes products.
 
-Writes ``data/cover_product_ga.xml`` and ``data/cover_product_jubilee.xml``:
+Writes ``data/cover_product_ga.xml`` (Community Health and Hadhi),
+``data/cover_product_jubilee.xml`` and ``data/cover_product_heritage.xml``:
 the insurer, product categories, one rate table (``odin.cover.table``) per
 table of the card with one row per person, band or family size, and one
 product (``odin.cover.product``) per plan. Saving a product makes its
@@ -99,10 +100,18 @@ class Html:
 
 
 def html_terms(title, sections):
-    """``sections``: (heading, paragraph text or list of items)."""
+    """``sections``: (heading, paragraph text, list of items, or a table as
+    ``{"head": [...], "rows": [[...], ...]}``)."""
     parts = ["<h3>%s</h3>" % escape(title)]
     for heading, content in sections:
-        if isinstance(content, list):
+        if isinstance(content, dict):
+            head = "".join("<th>%s</th>" % escape(str(cell)) for cell in content["head"])
+            body = "".join("<tr>%s</tr>" % "".join(
+                "<td>%s</td>" % escape(str(cell)) for cell in row) for row in content["rows"])
+            parts.append("<p><strong>%s</strong></p><table class=\"table table-sm table-bordered\">"
+                         "<thead><tr>%s</tr></thead><tbody>%s</tbody></table>" % (
+                             escape(heading), head, body))
+        elif isinstance(content, list):
             parts.append("<p><strong>%s</strong></p><ul>%s</ul>" % (
                 escape(heading), "".join("<li>%s</li>" % escape(item) for item in content)))
         elif heading:
@@ -162,8 +171,9 @@ class Catalogue:
         self.tables[key] = xmlid
         return xmlid
 
-    def product(self, key, name, insurer, tables, terms, plan_type="family", sequence=10):
-        self.w.record("cover_%s" % key, "odin.cover.product", [
+    def product(self, key, name, insurer, tables, terms, plan_type="family", sequence=10,
+                active=True):
+        fields = [
             ("name", name),
             ("line", "medical"),
             ("insurer_id", Ref(insurer)),
@@ -171,7 +181,11 @@ class Catalogue:
             ("sequence", sequence),
             ("terms", terms),
             ("table_ids", Eval("[(6, 0, [%s])]" % ", ".join("ref('%s')" % t for t in tables))),
-        ])
+        ]
+        if not active:
+            # Off: in Cover Quotes > Products, not offered in New quote.
+            fields.append(("active", Eval("False")))
+        self.w.record("cover_%s" % key, "odin.cover.product", fields)
 
 
 # =============================================================================
@@ -342,7 +356,342 @@ def generate_ga():
                 key.replace("ga_ip_", "ga_"),
                 "GA Community Health – %s – %s" % (kes(limit), variant), "insurer_ga",
                 [table] + maternity, GA_TERMS)
+    generate_hadhi(w)
     w.write("cover_product_ga.xml")
+    return w
+
+
+# =============================================================================
+# GA Insurance -- Hadhi Health Plan
+# =============================================================================
+
+HADHI_TERMS = html_terms("GA Hadhi Health Plan – quotation terms", [
+    ("Premiums.",
+     "Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated "
+     "October 2022), for a member (M) or a couple (M+1), by age group, rated on the older "
+     "member. The inpatient limit is per person or couple. Standard premiums exclude "
+     "pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 "
+     "members and above. The quotation adds the Training Levy (0.2%), the Policyholders' "
+     "Compensation Fund levy (0.25%) and KES 40 stamp duty."),
+    ("Eligibility.", [
+        "Retirees and senior members of society.",
+        "Individual members aged 65 years and below can access all plans (A, B, C and D).",
+        "Individual members aged 66 to 70 years can only access Plans B, C and D.",
+        "Individual members aged 71 to 75 years can only access Plans C and D.",
+        "Maximum joining age for a group of 5 or more members is 75 years, with access to all "
+        "plans.",
+    ]),
+    ("Cover features.", [
+        "Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for "
+        "those with combined inpatient and funded outpatient benefit.",
+        "Management by GA selected providers, based on the average fee guidelines of the Kenya "
+        "Medical Practitioners and Dentists Board.",
+        "Emergency helpline under the TraumaCare Plan at no extra cost.",
+        "Worldwide cover while on business or holiday for 8 weeks from the date of travel "
+        "(excluding the USA and Canada).",
+        "Cancellation notice of 30 days by either party.",
+    ]),
+    ("Waiting periods.", [
+        "General: 30 days for all claims, except claims arising from an accident.",
+        "9 months for all pre-existing conditions declared and/or accepted at the time of "
+        "application.",
+        "2 months for all surgical cases, except pre-existing conditions.",
+        "Organ transplant: 2 years.",
+    ]),
+    ("Claims procedure.", [
+        "The member identifies themselves to the hospital with the Hadhi branded medical "
+        "identification card, or a guardian may identify the member.",
+        "On receipt of the pre-authorisation form, GA gives an undertaking letter stating the "
+        "nature of the illness and estimated charges. Before or at discharge the member fills "
+        "in and signs the GA claim form; the attending doctor completes it.",
+        "The member presents their NHIF card to the hospital before discharge, or settles the "
+        "NHIF amount with the hospital.",
+        "The hospital forwards the completed claim form with the detailed bill(s) to GA.",
+    ]),
+    ("Reimbursement claims.",
+     "Settle the bills with the hospital and send GA, within 60 days, the original receipts, "
+     "a duly completed claim form, the medical report, the itemised hospital bill(s) and the "
+     "discharge summary. GA verifies and settles valid bills within 10 days."),
+    ("Overseas procedures (India, South Africa and Pakistan only).",
+     "All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is "
+     "sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when "
+     "the expenses were incurred, subject to the policy limits."),
+    ("Main exclusions.", [
+        "Cosmetic treatments and plastic surgery, unless reconstructive surgery following an "
+        "accident.",
+        "Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, "
+        "reflexology, aromatherapy, patent medicines and household remedies.",
+        "Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, "
+        "hospice, private nursing/homecare (unless pre-authorised by GA), frail care or "
+        "long-term care facility that is not a hospital as defined.",
+        "Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol "
+        "and drug addiction or abuse.",
+        "Laser eye surgery.",
+        "Naval, military and air force operations.",
+        "Participation in extreme sports.",
+        "Treatment other than by a registered medical practitioner.",
+        "Expenses related to pandemic/epidemic and/or unknown diseases.",
+    ]),
+    ("", "This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA "
+         "on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 "
+         "and 0709 626 400."),
+])
+
+
+def hadhi_benefits(index, enhanced):
+    plan, limit, join_age = rc.HADHI_PLANS[index]
+    items = ["Inpatient limit: %s per person or couple per year" % kes(limit),
+             "Maximum joining age: %s years" % join_age]
+    for label, values in rc.HADHI_BENEFITS:
+        items.append("%s: %s" % (label, money(values[index])))
+    if enhanced:
+        items.append("COVID-19 hospitalisation, within the chronic limit: %s"
+                     % kes(rc.HADHI_COVID[index]))
+    else:
+        items.append("Pandemic/epidemic and unknown diseases: excluded")
+    return bullets("Inpatient benefits", items)
+
+
+def generate_hadhi(w):
+    w.comment("GA Hadhi Health Plan: by member (M) or couple (M+1) and age group, rows up to "
+              "each plan's maximum joining age.")
+    w.record("categ_ins_ga_hadhi_health", "product.category", [
+        ("name", "GA Hadhi Health"), ("parent_id", Ref("categ_ins"))])
+    cat = Catalogue(w, "categ_ins_ga_hadhi_health")
+    for index, (plan, limit, join_age) in enumerate(rc.HADHI_PLANS):
+        for enhanced, rates in ((False, rc.HADHI_STANDARD), (True, rc.HADHI_ENHANCED)):
+            flag = "E" if enhanced else "S"
+            rows = []
+            for band, (low, high) in enumerate(rc.HADHI_BANDS):
+                if high > join_age and low > join_age:
+                    continue
+                pair = rates[band][index]
+                if pair is None:
+                    continue
+                for size, premium in zip((1, 2), pair):
+                    rows.append(("GA-HADHI-%s-%s-%02d-M%s" % (plan, flag, low, size), "any",
+                                 low, high, size, premium))
+            variant = " – Enhanced with Covid-19" if enhanced else ""
+            key = "ga_hadhi_%s%s" % (plan.lower(), "_covid" if enhanced else "")
+            table = cat.table(
+                key, "GA Hadhi Inpatient – Plan %s – %s per Person or Couple%s" % (
+                    plan, kes(limit), variant), "inpatient", "family_size", rows, limit,
+                "Inpatient – Hadhi Plan %s: %s per person or couple per year%s" % (
+                    plan, kes(limit), ", with Covid-19 cover" if enhanced else ""),
+                benefits=hadhi_benefits(index, enhanced))
+            cat.product(key.replace("ga_hadhi_", "hadhi_"),
+                        "GA Hadhi Health – Plan %s (%s)%s%s" % (
+                            plan, kes(limit), variant, " (min. 10 members)" if enhanced else ""),
+                        "insurer_ga", [table], HADHI_TERMS, active=not enhanced)
+
+
+# =============================================================================
+# Heritage Insurance -- HeriAfya
+# =============================================================================
+
+HA_TERMS = html_terms("Heritage HeriAfya Medical Cover – quotation terms", [
+    ("Premiums.",
+     "Annual premiums in Kenya Shillings from the Heritage HeriAfya brochure (10 December "
+     "2024), priced as Heritage's HeriAfya quotation tool prices them: inpatient is shared "
+     "by the family, each adult on the rate for their own age group, the first child on the "
+     "child rate and every other child on the extra rate. Outpatient is per person (by each "
+     "person's age) or shared by the family (by family size). Maternity is per family. "
+     "Dental and optical are twin benefits, taken together with equal limits and "
+     "distribution, or as the combined solution. Premium quoted is subject to taxes: stamp "
+     "duty KES 40, Training Levy and PHCF of 0.45%."),
+    ("Eligibility.", [
+        "Principal and spouse: cover from 18 to 65 years, extended to 70 years. Only one "
+        "principal member and one spouse per family quote.",
+        "Child dependants: from 38 weeks (1 day old) to 18 years, extended to 23 years and "
+        "above with proof of full-time study.",
+        "Pre-cover medical tests are required for all new applicants above 55 years of age; "
+        "an applicant of any other age may be asked to undergo the tests for further "
+        "underwriting.",
+    ]),
+    ("Outpatient benefits by limit.", {
+        "head": ["Outpatient limit"] + ["{:,}".format(l) for l in rc.HA_OUTPATIENT_LIMITS],
+        "rows": [[label] + ["{:,}".format(v) for v in values]
+                 for label, values in rc.HA_OUTPATIENT_BY_LIMIT],
+    }),
+    ("Waiting periods.", [
+        "Accidents: no waiting period. General: 30 days from inception for new joiners.",
+        "Non-accidental dental surgery and optical surgery: 6 months.",
+        "Maternity: 10 months.",
+        "Gynaecological surgery: 12 months. Pre-existing and chronic conditions: 12 months.",
+        "Major diseases (cancer, kidney dialysis and organ transplants): 24 months.",
+        "Illness-related reconstructive/plastic surgery: 36 months.",
+    ]),
+    ("Co-payments.",
+     "KES 1,000 per visit to Aga Khan Nairobi, Kisumu and Mombasa; Nairobi Hospital; "
+     "Gertrude's; MP Shah; Mater; Karen Hospital, at all their branches. KES 500 per visit "
+     "to all other providers."),
+    ("Important notes.", [
+        "Flexible payment through Insurance Premium Financing from reputable banks (4 equal "
+        "instalments).",
+        "Benefits and premium rates may change at any time; a plan already purchased does not "
+        "change mid-term.",
+        "The Heritage Insurance Company reserves the right to decline any application.",
+        "All admissions must be reported to Heritage immediately, and within 48 hours for "
+        "emergency admissions.",
+        "Members must use the HeriAfya provider panel. Where members pay cash, Heritage "
+        "refunds at standard reasonable and customary rates, up to 80% of the claim.",
+        "Cover is in Kenya and East Africa, with referral to India only. Emergency treatment "
+        "outside the region while travelling is covered for up to 6 weeks per policy year; "
+        "notify Heritage before travel.",
+    ]),
+    ("Main exclusions (see the policy document for all).", [
+        "Cosmetic treatments and plastic surgery.",
+        "Prescribed alternative medicines, including homeopathy, acupuncture, Chinese medicine, "
+        "reflexology, aromatherapy, patent medicines and household remedies.",
+        "Services or treatment in any home, spa, hydro-clinic, sanatorium, step-down facility, "
+        "hospice, private nursing/home care (unless pre-authorised), frail care or long-term "
+        "care facility that is not a hospital as defined.",
+        "Tests or treatment related to infertility, contraception, impotence or sexual "
+        "dysfunction.",
+        "Termination of pregnancy, unless authorised by a registered medical practitioner when "
+        "the life of the mother is at risk.",
+        "Treatment by the insured person themselves, a family member or spouse.",
+        "Costs of cornea, muscular, skeletal or human organ or tissue transplant from a donor, "
+        "and related expenses (except under the organ transplant benefit).",
+        "Self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug "
+        "addiction, unless related to mental illness.",
+        "Experimental or pioneering medical and surgical techniques.",
+        "Injury or illness while serving full-time in a police or military unit.",
+        "Travel or non-medical costs (except where stated in the benefit table).",
+        "Vaccinations such as travel and flu vaccinations; epidemics and pandemics.",
+        "Dentures, inlays, crowns, bridges, periodontal and orthodontic treatment; dental "
+        "implants.",
+        "Replacement or repair of eye glasses; refractive eye surgery or laser eye treatment; "
+        "photophobia and photochromatic lenses; sunglasses, readers, contact lenses.",
+        "Food and nutritional supplements, including baby food and special milk preparations; "
+        "multivitamins and tonics; treatment for obesity; slimming preparations.",
+        "Anti-smoking preparations; hearing aids, glucometers and blood pressure machines.",
+        "Professional and dangerous sports, including motorcycling, rugby, football, "
+        "skydiving, mountaineering and water sports.",
+        "Treatment for learning difficulties, development and behavioural problems in "
+        "children.",
+    ]),
+    ("Paying Heritage Insurance.",
+     "Strictly to: The Heritage Insurance Company Kenya Ltd, Stanbic Bank, Chiromo branch, "
+     "account 0100012567965 (bank/branch code 31007, SWIFT SBICKENX); or M-Pesa Paybill "
+     "8779000, account: policy number or name."),
+    ("", "Heritage reserves the right to onboard members. Information given by the insured "
+         "forms the basis of the contract; false declaration or non-disclosure may lead to "
+         "waiting periods, premium loading, exclusions, termination of cover and recovery of "
+         "costs."),
+])
+
+
+def generate_heritage():
+    w = Writer()
+    w.record("insurer_heritage", "res.partner", [
+        ("name", "Heritage Insurance"),
+        ("is_company", Eval("True")),
+        ("country_id", Ref("base.ke")),
+    ])
+    w.record("categ_ins_heritage_heriafya", "product.category", [
+        ("name", "Heritage HeriAfya"), ("parent_id", Ref("categ_ins"))])
+    cat = Catalogue(w, "categ_ins_heritage_heriafya")
+
+    def short(amount):
+        return "%sK" % (amount // 1000)
+
+    w.comment("Outpatient, per person (B1) and shared per family (B2): offered with every "
+              "inpatient option.")
+    outpatient = []
+    for i, limit in enumerate(rc.HA_OUTPATIENT_LIMITS):
+        outpatient.append(cat.table(
+            "ha_op_%s" % short(limit).lower(),
+            "HeriAfya Outpatient – %s per Person" % kes(limit), "outpatient", "person",
+            [("HA-OP-%s-%02d" % (short(limit), low), "any", low, high, 0, prices[i])
+             for low, high, prices in rc.HA_OUTPATIENT_PER_PERSON],
+            limit, "Optional – outpatient cover (per person, or shared per family)",
+            benefits="" if i else bullets("Outpatient benefits", rc.HA_OUTPATIENT_BENEFITS + [
+                "Annual medical check-up (main member and/or spouse) and KEPI/baby-friendly and "
+                "private vaccinations (5 years and below): by outpatient limit, in the terms"]),
+            sequence=10 + i))
+    for i, limit in enumerate(rc.HA_OUTPATIENT_LIMITS):
+        # M+1 to M+5 as printed, M+6 to M+8 as the tool rates them (M+5 plus
+        # Extras). No member-only row: the brochure and the tool disagree.
+        prices = [row[i] for row in rc.HA_OUTPATIENT_SHARED]
+        for extra in range(1, rc.HA_OUTPATIENT_SHARED_EXTRAS + 1):
+            prices.append(prices[4] + extra * rc.HA_OUTPATIENT_SHARED_EXTRA[i])
+        outpatient.append(cat.table(
+            "ha_sop_%s" % short(limit).lower(),
+            "HeriAfya Outpatient – %s Shared per Family" % kes(limit), "outpatient",
+            "family_size",
+            [("HA-SOP-%s-M%s" % (short(limit), size), "any", 0, 0, size + 1, price)
+             for size, price in enumerate(prices, start=1)],
+            limit, "Optional – outpatient cover (per person, or shared per family)",
+            sequence=20 + i))
+
+    w.comment("Maternity per family.")
+    maternity = [cat.table(
+        "ha_mat_%s" % short(limit).lower(), "HeriAfya Maternity – %s per Family" % kes(limit),
+        "maternity", "policy", [("HA-MAT-%s" % short(limit), "any", 0, 0, 0, premium)], limit,
+        "Optional – maternity cover (per family)",
+        benefits="" if i else bullets("Maternity benefits", [
+            "Normal delivery, emergency caesarean section, elective caesarean section and "
+            "maternity complications are covered within the maternity benefit (10-month "
+            "waiting period)",
+            "Pre-natal and post-natal care: covered under outpatient for members with the "
+            "maternity benefit"]),
+        sequence=30 + i)
+        for i, (limit, premium) in enumerate(rc.HA_MATERNITY)]
+
+    w.comment("Dental and optical: twin (D, dental and optical at the same limit, the two "
+              "premiums together) or combined (E), per family or per person.")
+    dental = []
+    sequence = 40
+    for kind, table_rows in (("twin", rc.HA_DENTAL_OPTICAL),
+                             ("combined", rc.HA_DENTAL_OPTICAL_COMBINED)):
+        for basis, per in (("policy", "Family"), ("person", "Person")):
+            for limit, premium in table_rows:
+                price = premium * 2 if kind == "twin" else premium
+                what = ("%s each (dental + optical)" if kind == "twin" else "%s combined") % kes(limit)
+                code = "HA-DO-%s-%s-%s" % ("T" if kind == "twin" else "C", per[0], short(limit))
+                dental.append(cat.table(
+                    "ha_do_%s_%s_%s" % (kind, per.lower(), short(limit).lower()),
+                    "HeriAfya Dental & Optical – %s per %s" % (what, per), "other", basis,
+                    [(code, "any", 0, 0, 0, price)], limit,
+                    "Optional – dental and optical cover",
+                    benefits="" if sequence > 40 else bullets("Dental and optical", [
+                        "Twin: dental and optical taken together with equal limits and "
+                        "distribution; the premium is the dental premium plus the optical "
+                        "premium (e.g. KES 10,000 each: 3,780 + 3,780 per family)",
+                        "Combined solution: one limit shared by dental and optical",
+                        "Per family: one limit for the family; per person: a limit and a "
+                        "premium for each person",
+                        "6-month waiting period for non-accidental dental and optical "
+                        "surgery"]),
+                    cover_label="Dental and optical", sequence=sequence))
+                sequence += 1
+
+    for i, limit in enumerate(rc.HA_LIMITS):
+        principal, spouse, child, extra = rc.HA_INPATIENT[i]
+        option = "Option %s" % (i + 1)
+        w.comment("HeriAfya %s: %s shared by the family" % (option, kes(limit)))
+        rows = []
+        for (low, high), p_rate, s_rate in zip(rc.HA_BANDS, principal, spouse):
+            rows.append(("HA-IP-%s-P%02d" % (i + 1, low), "principal", low, high, 0, p_rate))
+            rows.append(("HA-IP-%s-S%02d" % (i + 1, low), "spouse", low, high, 0, s_rate))
+        rows.append(("HA-IP-%s-C" % (i + 1), "child", 0, 17, 0, child))
+        rows.append(("HA-IP-%s-X" % (i + 1), "child_extra", 0, 17, 0, extra))
+        items = ["Overall limit: %s per family per year, shared" % kes(limit)]
+        for label, values in rc.HA_INPATIENT_BENEFITS:
+            items.append("%s: %s" % (label, money(values[i])))
+        items.append("Maternity: normal delivery, emergency and elective caesarean section and "
+                     "maternity complications, within the maternity benefit if bought "
+                     "(10-month waiting period)")
+        table = cat.table(
+            "ha_ip_%s" % (i + 1), "HeriAfya Inpatient – %s – %s per Family" % (option, kes(limit)),
+            "inpatient", "person", rows, limit,
+            "Inpatient – HeriAfya %s: %s per family per year" % (option, kes(limit)),
+            benefits=bullets("Inpatient benefits (sub-limits within the overall benefit)", items))
+        cat.product("ha_option_%s" % (i + 1),
+                    "Heritage HeriAfya – %s (%s)" % (option, kes(limit)), "insurer_heritage",
+                    [table] + outpatient + maternity + dental, HA_TERMS, sequence=10 + i)
+    w.write("cover_product_heritage.xml")
     return w
 
 
@@ -695,7 +1044,8 @@ def generate_jubilee():
 
 def main():
     counts = {}
-    for name, writer in (("GA", generate_ga()), ("Jubilee", generate_jubilee())):
+    for name, writer in (("GA", generate_ga()), ("Jubilee", generate_jubilee()),
+                         ("Heritage", generate_heritage())):
         ids = writer.ids
         counts[name] = (
             sum(1 for i in ids if i.startswith("cover_")),

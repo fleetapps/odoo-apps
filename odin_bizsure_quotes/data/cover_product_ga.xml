@@ -4604,4 +4604,1306 @@
         <field name="terms" type="html"><h3>GA Community/Retail Health Insurance (inpatient only) – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Community/Retail Health Insurance rate card, effective 1 January 2022, priced per family by the number of people covered (member only, member + 1 ... member + 6). Plans are offered with rates excluding or including pandemic cover. Maternity is at an additional premium per family, for a female principal or spouse. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Scope of cover.</strong> Hospitalisation necessitating medical and/or surgical intervention to the insured as a result of accidental bodily injury and/or illness and/or a disease within the period of insurance, subject to the policy terms and conditions.</p><p><strong>Eligibility.</strong></p><ul><li>Adults: 19 to 65 years; last joining age 60.</li><li>Children: from birth (a term baby of 38 weeks) up to 18 years.</li><li>Seniors (61 to 100 years): refer to GA's Hadhi Plan (last joining age 75; not applicable to existing members).</li></ul><p><strong>Waiting periods from policy inception.</strong></p><ul><li>Illness admission: 30 days. Covid-19, if purchased: 30 days.</li><li>Accident-related admission: no waiting period.</li><li>Non-accidental major/minor surgeries/admissions: 12 months.</li><li>Neo-natal, prematurity and congenital conditions: 12 months.</li><li>Newly diagnosed chronic conditions, declared pre-existing and/or chronic conditions, organ transplant, HIV/AIDS and related conditions, cataract operation: 12 months.</li><li>Maternity complications/normal delivery: 10 months.</li></ul><p><strong>Territorial limits.</strong> Kenya only, extended to worldwide (excluding the UK, USA and Canada) while on business or holiday, up to 8 weeks from the date of travel.</p><p><strong>Important notes.</strong></p><ul><li>Pre-authorisation is required for all admissions, including treatment outside Kenya.</li><li>Private doctors are paid as per GA panel rates.</li><li>Claims incurred outside the GA panel are payable on a reimbursement basis.</li></ul><p><strong>Admission procedure.</strong></p><ul><li>Scheduled admissions: advise GA 48 hours before admission by sharing the pre-authorisation form; GA issues a letter of undertaking; on admission present the letter of undertaking, NHIF card and GA membership card.</li><li>Emergency admissions: identify yourself to the hospital with the GA membership card; the hospital shares a pre-authorisation form within 24 hours; GA issues a letter of undertaking; on discharge, fill and sign the claim form/invoice.</li></ul><p><strong>Overseas treatment.</strong> Notify GA before any overseas treatment. Expenses are settled on a reimbursement basis; the economy air ticket is refunded for treatment not locally available in Kenya; claims are reimbursed in Kenya Shillings at the exchange rate on the date of the claim.</p><p><strong>Reimbursement.</strong> Send GA, within 60 days of discharge, a fully filled and signed inpatient claim form, original receipts as proof of payment, the discharge summary, a medical report and the final itemised hospital bill.</p><p><strong>How to sign up.</strong> A fully filled application form, copies of ID/passport, KRA PIN and next of kin's ID, and proof of premium payment.</p><p><strong>Main exclusions.</strong></p><ul><li>Non-declared pre-existing conditions.</li><li>War and kindred risks (whether war be declared or not); naval, military or air force operations; participation in riots, strikes and civil commotion.</li><li>Self-referred or self-prescribed treatment.</li><li>Intentional self-injury, suicide or attempted suicide, or any bodily injury or illness wilfully self-inflicted or due to negligence.</li><li>Alcohol and substance abuse.</li><li>Cosmetic or beauty treatment in nature cure clinics or health hydros.</li><li>Cost of providing, maintaining or fitting an external prosthesis or appliance or other equipment, except wheelchairs, walking frames and crutches.</li><li>Alternative medicine, excluding Ayurvedic.</li><li>Diagnostic equipment and/or specialised surgical devices and gadgets.</li><li>Treatment other than by a registered (KMPDU) medical practitioner.</li><li>Participation in professional and hazardous sports, e.g. bungee jumping, paragliding.</li><li>Nutritional supplements, unless prescribed as part of treatment of specified medical conditions.</li><li>Family planning and fertility treatment, any form of assisted conception and complications, e.g. treatment related to infertility and impotence, hormonal imbalance, hormone replacement therapy (HRT).</li><li>All expenses related to donor screening and treatment, including surgery to remove organs from a donor.</li><li>Claims arising from or associated with epidemics/pandemics or unknown diseases, unless purchased.</li><li>Expenses recoverable under any other insurance, e.g. GPA, WIBA, NHIF.</li><li>Outpatient-related expenses, including maternity, dental and optical.</li><li>Expenses related to weight loss/gain, including obesity.</li><li>Treatment arising from contamination by radioactivity from nuclear fuel, waste or fission.</li><li>Expenses incurred as a result of natural calamities such as volcanic eruptions, earthquakes and typhoons.</li><li>Expenses/claims incurred in the USA, UK and Canada.</li></ul><p><strong>Paying GA Insurance.</strong> No cash is accepted. Pay GA Insurance Limited by EFT, RTGS, internal transfer or direct deposit to I&amp;M Bank Ltd, 2nd Ngong Avenue branch, account 00200208651202 (SWIFT IMBLKENA, branch code 57001); by cheque in favour of GA Insurance Limited; by debit or credit card; or by M-Pesa Paybill 870250, account: the GA client or intermediary account number.</p><p>This quotation is subject to GA Insurance's underwriting and acceptance. Benefits are a summary; refer to the policy document for detailed policy terms and conditions.</p></field>
         <field name="table_ids" eval="[(6, 0, [ref('table_ga_ip_10m_incl'), ref('table_ga_mat_50k'), ref('table_ga_mat_100k'), ref('table_ga_mat_150k'), ref('table_ga_mat_200k'), ref('table_ga_mat_250k'), ref('table_ga_mat_300k')])]"/>
     </record>
+
+    <!-- GA Hadhi Health Plan: by member (M) or couple (M+1) and age group, rows up to each plan's maximum joining age. -->
+    <record id="categ_ins_ga_hadhi_health" model="product.category">
+        <field name="name">GA Hadhi Health</field>
+        <field name="parent_id" ref="categ_ins"/>
+    </record>
+
+    <record id="table_ga_hadhi_a" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">5000000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan A: KES 5,000,000 per person or couple per year</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 5,000,000 per person or couple per year
+• Maximum joining age: 65 years
+• Bed capacity (charges net of NHIF): KES 20,000
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 1,000,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 1,000,000
+• Prematurity and congenital conditions: KES 250,000
+• Psychiatric and psychotherapy illness: KES 600,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 200,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 200,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 50,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 150,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• Pandemic/epidemic and unknown diseases: excluded</field>
+    </record>
+
+    <record id="rate_ga_hadhi_a_s_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-A-S-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">83545</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_s_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-A-S-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">167090</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_s_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-A-S-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">92828</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_s_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-A-S-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">185656</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_a" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan A (KES 5,000,000)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_a')])]"/>
+    </record>
+
+    <record id="table_ga_hadhi_a_covid" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">5000000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan A: KES 5,000,000 per person or couple per year, with Covid-19 cover</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 5,000,000 per person or couple per year
+• Maximum joining age: 65 years
+• Bed capacity (charges net of NHIF): KES 20,000
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 1,000,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 1,000,000
+• Prematurity and congenital conditions: KES 250,000
+• Psychiatric and psychotherapy illness: KES 600,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 200,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 200,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 50,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 150,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• COVID-19 hospitalisation, within the chronic limit: KES 1,000,000</field>
+    </record>
+
+    <record id="rate_ga_hadhi_a_e_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-A-E-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">100254</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_e_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-A-E-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">200508</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_e_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-A-E-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">111394</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_a_e_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan A – KES 5,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-A-E-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_a_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">222787</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_a_covid" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan A (KES 5,000,000) – Enhanced with Covid-19 (min. 10 members)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_a_covid')])]"/>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="table_ga_hadhi_b" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">2500000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan B: KES 2,500,000 per person or couple per year</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 2,500,000 per person or couple per year
+• Maximum joining age: 70 years
+• Bed capacity (charges net of NHIF): KES 16,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 600,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 500,000
+• Prematurity and congenital conditions: KES 150,000
+• Psychiatric and psychotherapy illness: KES 400,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 150,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 150,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 40,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 100,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• Pandemic/epidemic and unknown diseases: excluded</field>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">62097</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">124195</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">68997</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">137994</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">92957</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_s_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-B-S-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">185914</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_b" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan B (KES 2,500,000)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_b')])]"/>
+    </record>
+
+    <record id="table_ga_hadhi_b_covid" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">2500000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan B: KES 2,500,000 per person or couple per year, with Covid-19 cover</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 2,500,000 per person or couple per year
+• Maximum joining age: 70 years
+• Bed capacity (charges net of NHIF): KES 16,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 600,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 500,000
+• Prematurity and congenital conditions: KES 150,000
+• Psychiatric and psychotherapy illness: KES 400,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 150,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 150,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 40,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 100,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• COVID-19 hospitalisation, within the chronic limit: KES 500,000</field>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">74517</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">149034</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">82796</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">165593</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">111548</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_b_e_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan B – KES 2,500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-B-E-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_b_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">223097</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_b_covid" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan B (KES 2,500,000) – Enhanced with Covid-19 (min. 10 members)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_b_covid')])]"/>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="table_ga_hadhi_c" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">1000000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan C: KES 1,000,000 per person or couple per year</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 1,000,000 per person or couple per year
+• Maximum joining age: 75 years
+• Bed capacity (charges net of NHIF): KES 14,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 400,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 300,000
+• Prematurity and congenital conditions: KES 100,000
+• Psychiatric and psychotherapy illness: KES 250,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 100,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 100,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 30,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 80,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• Pandemic/epidemic and unknown diseases: excluded</field>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">51879</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">103757</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">57643</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">115286</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">77660</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">155320</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_71_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-71-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">105245</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_s_71_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-C-S-71-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">210490</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_c" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan C (KES 1,000,000)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_c')])]"/>
+    </record>
+
+    <record id="table_ga_hadhi_c_covid" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">1000000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan C: KES 1,000,000 per person or couple per year, with Covid-19 cover</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 1,000,000 per person or couple per year
+• Maximum joining age: 75 years
+• Bed capacity (charges net of NHIF): KES 14,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 400,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 300,000
+• Prematurity and congenital conditions: KES 100,000
+• Psychiatric and psychotherapy illness: KES 250,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 100,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 100,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 30,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 80,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 100,000
+• Traumacare extended to cover illness emergencies: covered
+• COVID-19 hospitalisation, within the chronic limit: KES 300,000</field>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">62254</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">124509</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">69172</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">138343</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">93192</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">186384</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_71_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-71-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">126294</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_c_e_71_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan C – KES 1,000,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-C-E-71-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_c_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">252588</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_c_covid" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan C (KES 1,000,000) – Enhanced with Covid-19 (min. 10 members)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_c_covid')])]"/>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="table_ga_hadhi_d" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">500000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan D: KES 500,000 per person or couple per year</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 500,000 per person or couple per year
+• Maximum joining age: 75 years
+• Bed capacity (charges net of NHIF): KES 10,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 250,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 250,000
+• Prematurity and congenital conditions: KES 75,000
+• Psychiatric and psychotherapy illness: KES 100,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 75,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 75,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 25,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 50,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 50,000
+• Traumacare extended to cover illness emergencies: covered
+• Pandemic/epidemic and unknown diseases: excluded</field>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">42457</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">84913</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">47174</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">94348</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">63556</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">127112</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_71_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-71-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">77280</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_s_71_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple</field>
+        <field name="default_code">GA-HADHI-D-S-71-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">154560</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_d" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan D (KES 500,000)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_d')])]"/>
+    </record>
+
+    <record id="table_ga_hadhi_d_covid" model="odin.cover.table">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="sequence">10</field>
+        <field name="cover">inpatient</field>
+        <field name="basis">family_size</field>
+        <field name="age_basis">own</field>
+        <field name="partial" eval="False"/>
+        <field name="limit">500000</field>
+        <field name="requires_outpatient" eval="False"/>
+        <field name="section_title">Inpatient – Hadhi Plan D: KES 500,000 per person or couple per year, with Covid-19 cover</field>
+        <field name="benefits">Inpatient benefits
+• Inpatient limit: KES 500,000 per person or couple per year
+• Maximum joining age: 75 years
+• Bed capacity (charges net of NHIF): KES 10,500
+• Newly diagnosed conditions including HIV/AIDS: full limit
+• Pre-existing, chronic and HIV/AIDS cover: KES 250,000
+• Organ transplant (2 years waiting period), within the chronic limit: KES 250,000
+• Prematurity and congenital conditions: KES 75,000
+• Psychiatric and psychotherapy illness: KES 100,000
+• Inpatient accidental optical and dental expenses: full limit
+• Inpatient non-accidental dental cover: KES 75,000
+• Inpatient non-accidental optical cover, including cataract operation but excluding laser eye surgery: KES 75,000
+• Post-hospitalisation visits/follow-ups within 30 days after discharge or the limit, whichever comes first (accident cases): KES 25,000
+• Day case surgery under general anaesthesia: covered
+• Home care for 1 month: covered
+• Emergency air evacuation within Kenya: covered
+• Emergency local road ambulance service leading to an admission: covered
+• Overseas evacuation, to the specified limit: covered
+• Cover outside Kenya while on business or leisure, on reimbursement, up to 8 weeks: covered
+• Pathology, X-ray, ultrasound, MRI scans and other radiological procedures: covered
+• Economy air ticket for treatment not locally available: covered
+• Radiotherapy and chemotherapy: covered
+• Prescription drugs: covered
+• External appliances on prescription (wheelchairs, corsets, walking frames, crutches and all assistive devices for PWDs): KES 50,000
+• Internal appliances on prescription, to the specified limit: covered
+• Terrorism and political violence: covered
+• Last expense per family: KES 50,000
+• Traumacare extended to cover illness emergencies: covered
+• COVID-19 hospitalisation, within the chronic limit: KES 250,000</field>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_50_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-50-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">50948</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_50_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-50-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">50</field>
+        <field name="odin_row_age_max">60</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">101896</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_61_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-61-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">56609</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_61_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-61-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">61</field>
+        <field name="odin_row_age_max">65</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">113218</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_66_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-66-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">76267</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_66_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-66-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">66</field>
+        <field name="odin_row_age_max">70</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">152534</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_71_m1" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-71-M1</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">1</field>
+        <field name="list_price">92736</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="rate_ga_hadhi_d_e_71_m2" model="product.template">
+        <field name="name">GA Hadhi Inpatient – Plan D – KES 500,000 per Person or Couple – Enhanced with Covid-19</field>
+        <field name="default_code">GA-HADHI-D-E-71-M2</field>
+        <field name="odin_cover_table_id" ref="table_ga_hadhi_d_covid"/>
+        <field name="odin_row_role">any</field>
+        <field name="odin_row_age_min">71</field>
+        <field name="odin_row_age_max">75</field>
+        <field name="odin_row_family_size">2</field>
+        <field name="list_price">185472</field>
+        <field name="type">service</field>
+        <field name="sale_ok" eval="True"/>
+        <field name="purchase_ok" eval="False"/>
+        <field name="invoice_policy">order</field>
+        <field name="categ_id" ref="categ_ins_ga_hadhi_health"/>
+        <field name="taxes_id" eval="[(6, 0, [ref('tax_training_levy'), ref('tax_phcf')])]"/>
+    </record>
+
+    <record id="cover_hadhi_d_covid" model="odin.cover.product">
+        <field name="name">GA Hadhi Health – Plan D (KES 500,000) – Enhanced with Covid-19 (min. 10 members)</field>
+        <field name="line">medical</field>
+        <field name="insurer_id" ref="insurer_ga"/>
+        <field name="plan_type">family</field>
+        <field name="sequence">10</field>
+        <field name="terms" type="html"><h3>GA Hadhi Health Plan – quotation terms</h3><p><strong>Premiums.</strong> Annual premiums in Kenya Shillings from GA Insurance's Hadhi Health Plan (updated October 2022), for a member (M) or a couple (M+1), by age group, rated on the older member. The inpatient limit is per person or couple. Standard premiums exclude pandemic cover; the enhanced premiums with Covid-19 coverage are for a minimum of 10 members and above. The quotation adds the Training Levy (0.2%), the Policyholders' Compensation Fund levy (0.25%) and KES 40 stamp duty.</p><p><strong>Eligibility.</strong></p><ul><li>Retirees and senior members of society.</li><li>Individual members aged 65 years and below can access all plans (A, B, C and D).</li><li>Individual members aged 66 to 70 years can only access Plans B, C and D.</li><li>Individual members aged 71 to 75 years can only access Plans C and D.</li><li>Maximum joining age for a group of 5 or more members is 75 years, with access to all plans.</li></ul><p><strong>Cover features.</strong></p><ul><li>Mode of identification: GA Hadhi Health Plan branded medical card; smart cards for those with combined inpatient and funded outpatient benefit.</li><li>Management by GA selected providers, based on the average fee guidelines of the Kenya Medical Practitioners and Dentists Board.</li><li>Emergency helpline under the TraumaCare Plan at no extra cost.</li><li>Worldwide cover while on business or holiday for 8 weeks from the date of travel (excluding the USA and Canada).</li><li>Cancellation notice of 30 days by either party.</li></ul><p><strong>Waiting periods.</strong></p><ul><li>General: 30 days for all claims, except claims arising from an accident.</li><li>9 months for all pre-existing conditions declared and/or accepted at the time of application.</li><li>2 months for all surgical cases, except pre-existing conditions.</li><li>Organ transplant: 2 years.</li></ul><p><strong>Claims procedure.</strong></p><ul><li>The member identifies themselves to the hospital with the Hadhi branded medical identification card, or a guardian may identify the member.</li><li>On receipt of the pre-authorisation form, GA gives an undertaking letter stating the nature of the illness and estimated charges. Before or at discharge the member fills in and signs the GA claim form; the attending doctor completes it.</li><li>The member presents their NHIF card to the hospital before discharge, or settles the NHIF amount with the hospital.</li><li>The hospital forwards the completed claim form with the detailed bill(s) to GA.</li></ul><p><strong>Reimbursement claims.</strong> Settle the bills with the hospital and send GA, within 60 days, the original receipts, a duly completed claim form, the medical report, the itemised hospital bill(s) and the discharge summary. GA verifies and settles valid bills within 10 days.</p><p><strong>Overseas procedures (India, South Africa and Pakistan only).</strong> All treatment must be pre-authorised by GA. Claims are reimbursed unless treatment is sought at GA-approved providers, in full in Kenya Shillings at the exchange rate when the expenses were incurred, subject to the policy limits.</p><p><strong>Main exclusions.</strong></p><ul><li>Cosmetic treatments and plastic surgery, unless reconstructive surgery following an accident.</li><li>Prescribed alternative medicines such as homeopathy, acupuncture, Chinese medicine, reflexology, aromatherapy, patent medicines and household remedies.</li><li>Services or treatment in any home, spa, hydroclinic, sanatorium, step-down facility, hospice, private nursing/homecare (unless pre-authorised by GA), frail care or long-term care facility that is not a hospital as defined.</li><li>Treatment of self-inflicted injury, suicide or attempted suicide, abuse of alcohol and drug addiction or abuse.</li><li>Laser eye surgery.</li><li>Naval, military and air force operations.</li><li>Participation in extreme sports.</li><li>Treatment other than by a registered medical practitioner.</li><li>Expenses related to pandemic/epidemic and/or unknown diseases.</li></ul><p>This quotation is subject to GA Insurance's underwriting and acceptance. Reach GA on 0709 626 400 or Careteam@gakenya.com; TraumaCare emergency numbers 0711 911 911 and 0709 626 400.</p></field>
+        <field name="table_ids" eval="[(6, 0, [ref('table_ga_hadhi_d_covid')])]"/>
+        <field name="active" eval="False"/>
+    </record>
 </odoo>

@@ -14,8 +14,8 @@ comparison.
 | Products | 278, each at its real annual premium |
 | Quotation templates | 16 — APA Jamii Plus ×8, Birdview Bizsure Afya ×8 |
 | Template lines | 691 |
-| Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans); Jubilee Health Insurance, with GA Insurance from the motor rates |
-| Cover Quotes products | 43 more plans, with 138 rate tables and 451 rates: GA Community Health ×26, Jubilee J Care ×6, J Care Junior ×6, J Senior ×5 (see below) |
+| Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans); Jubilee Health Insurance and Heritage Insurance, with GA Insurance from the motor rates |
+| Cover Quotes products | 61 more plans, with 212 rate tables and 767 rates: GA Community Health ×26, GA Hadhi ×8 (4 off), Jubilee J Care ×6, J Care Junior ×6, J Senior ×5, Heritage HeriAfya ×10 (see below) |
 | Instalment plans | 4, 6 and 10 instalments on the NCBA IPF rate card of 4 March 2026 (band fees, flat rate from KES 300,000, none under 25,000) |
 
 The 16 templates are the refined ones. The Motor, generic Health and
@@ -104,14 +104,14 @@ the derivation handles deliberately, both of which bite a naive reading:
 Sections of add-ons are flagged `is_optional`, which is Odoo 19's own
 section-level flag — a line is optional because its parent section is.
 
-## GA Community Health, Jubilee J Care, J Care Junior and J Senior
+## GA Community Health and Hadhi, Jubilee J Care, J Care Junior and J Senior, Heritage HeriAfya
 
 Added as Cover Quotes products (Cover Quotes ▸ Products), each with its rate
 tables, the way the office adds a plan: saving a product makes its quotation
 template, with the statutory charges and payment options of the latest plan.
 `tools/rate_cards.py` is the cards transcribed row for row, as printed;
-`tools/generate_cover_products.py` writes `data/cover_product_ga.xml` and
-`data/cover_product_jubilee.xml` from it. Both load once (noupdate): the rates
+`tools/generate_cover_products.py` writes `data/cover_product_ga.xml`,
+`data/cover_product_jubilee.xml` and `data/cover_product_heritage.xml` from it. Both load once (noupdate): the rates
 are the office's after that.
 
 | Card | Plans | Priced |
@@ -120,6 +120,8 @@ are the office's after that.
 | Jubilee *J Care*, effective 1 Dec 2023 | 6: Classic to Prestige | Per person on the eldest's age band; options: outpatient (per person, and shared per family on Royal and Prestige), maternity, dental, optical, last expense, personal accident, enhanced Covid-19 |
 | Jubilee *J Care Junior* (children 0–17 as main member) | 6: Classic to Prestige | Per child; outpatient, dental, optical |
 | Jubilee *J Senior*, effective 1 Dec 2023 | 5: Copper to Diamond | Per person on the eldest's age band, children on their own rates; outpatient, dental, optical, last expense, personal accident, enhanced Covid-19 |
+| GA *Hadhi Health Plan*, updated Oct 2022 | 4: Plans A to D (5M, 2.5M, 1M, 500,000), and 4 enhanced with Covid-19, off | Member (M) or couple (M+1), by the older member's age group, from 50 |
+| Heritage *HeriAfya* (brochure 10 Dec 2024, and Heritage's HeriAfya quotation tool) | 10: Options 1 to 10 (500,000 to 10M) | Inpatient shared per family, each adult on their own age group, first child on Child, others on Extra; outpatient per person or shared per family; maternity; dental and optical (twin or combined) |
 
 How the cards were read, where they leave room:
 
@@ -151,6 +153,36 @@ How the cards were read, where they leave room:
 * **J Senior day case admission**: the card prints "covered under applicable
   sub-limit" under Bronze, Silver and Gold only; the Copper and Diamond notes
   leave it out, as the card does.
+* **Hadhi joining ages.** Each plan's rows stop at its maximum joining age
+  (A 65, B 70, C and D 75): the 76–80 and 81–100 rates on the card are for
+  members renewing and are kept in `rate_cards.py`, not quoted. A couple is
+  rated on the older member. The card's group rule (joining to 75 on every
+  plan for 5 or more members) is not a family quote.
+* **Hadhi enhanced with Covid-19** carries "*Minimum of 10 members and
+  above" on the card: the four plans are installed **off**. Switch one on in
+  Cover Quotes ▸ Products for a qualifying group.
+* **HeriAfya ages.** Heritage's quotation tool prices each adult on their
+  own age group (the brochure heads the column "Principal Age"), with the
+  spouse on the spouse rate. Entry is 18 to 65: the tool's 61–70 group is
+  quoted to 65, like the other cards' joining ages.
+* **HeriAfya children.** The first child is on "Child", every other child on
+  "Extra" (the tool's "Additional Child"; its family table adds an Extra from
+  the second child on). This is the engine's *Child after the first* rate.
+* **HeriAfya shared outpatient for one person.** The brochure's "M" row
+  (35,438 at 50,000 ...) is not in the quotation tool, which charges a single
+  member the per-person rate of their age group instead. Neither is loaded:
+  a member alone takes outpatient per person, and the shared tables show
+  *no premium for a family of 1* under Checks until Heritage says which. M+6
+  to M+8 are M+5 plus one, two and three "Extra", as the tool rates them; the
+  tool's 200,000 column has cents, the brochure's rounded figures are used.
+* **HeriAfya dental and optical** are "twin benefits ... taken together with
+  equal limits and distribution" (the tool's notes): each twin option is one
+  line, dental plus optical at the same limit (10,000 each: 3,780 + 3,780 =
+  7,560), so they cannot be bought apart or at different limits. The
+  combined solution (one limit for both) is the other choice in the same
+  benefit. Per family is one premium for the family; per person, one each.
+* **HeriAfya pre-cover medical tests**: the brochure says above 55, the tool
+  above 50; the terms follow the brochure.
 
 ## Motor rates
 
@@ -191,8 +223,11 @@ outpatient tiers.
 for families read off the cards: J Care Classic for a principal of 35, a
 spouse of 42 and three children is 73,514 inpatient (23,215 + 19,453 +
 3 × 10,282, the 41–50 rates), outpatient 5 × 30,315; GA KES 1M for five is
-72,915 excluding and 87,498 including pandemic; and the age limits, the
-shared outpatient sizes, and the covers free for the principal.
+72,915 excluding and 87,498 including pandemic; HeriAfya Option 3 for a
+principal of 35, a spouse of 28 and three children 85,860 (32,400 + 18,360 +
+13,500 + 2 × 10,800, as the quotation tool gives it); Hadhi Plan A for a
+couple of 62 and 58, 185,656; and the age limits, the shared outpatient
+sizes, the covers free for the principal and the plans that are off.
 
 ## Known issue: the Motor templates are not shipped
 

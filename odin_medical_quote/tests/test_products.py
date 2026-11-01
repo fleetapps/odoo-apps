@@ -268,3 +268,55 @@ class TestMedicalProducts(MedicalQuoteCase):
         single = self.eldest_quote(product, include_spouse=False)
         accident = self.group(single, "personal_accident")["options"][0]
         self.assertFalse(accident["available"], "nobody to cover: not offered at 0")
+
+    def test_child_after_the_first(self):
+        """HeriAfya prices the first child on "Child" and every other child on
+        "Extra" (its quotation tool's family table: M + 2 is principal,
+        spouse and a child; M + 3 adds an Extra)."""
+        product = self.Product.create({
+            "name": "Extra – Option 1 (KES 500,000)", "line": "medical",
+            "insurer_id": self.insurer_jamii.id,
+            "table_ids": [Command.create({
+                "name": "Extra Inpatient – KES 500,000", "cover": "inpatient",
+                "basis": "person", "limit": 500000,
+                "row_ids": [Command.create(dict(zip(
+                    ("odin_row_role", "odin_row_age_min", "odin_row_age_max", "list_price"), row)))
+                    for row in (("principal", 18, 30, 13500), ("principal", 31, 40, 20250),
+                                ("spouse", 18, 30, 11475), ("spouse", 31, 40, 17213),
+                                ("child", 0, 17, 8438), ("child_extra", 0, 17, 6750))],
+            })],
+        })
+        cover = {"principal_age": 35, "include_spouse": True, "spouse_age": 28,
+                 "template_id": product.template_id.id}
+        one = self.Quote.search_plans({"cover": dict(cover, children=1)})["plans"][0]
+        self.assertEqual(one["core"]["amount"], 20250 + 11475 + 8438)
+        three = self.Quote.search_plans({"cover": dict(cover, children=3)})["plans"][0]
+        self.assertEqual(three["core"]["amount"], 20250 + 11475 + 8438 + 2 * 6750)
+        extra = next(part for part in three["core"]["parts"] if part["price"] == 6750)
+        self.assertEqual((extra["qty"], extra["who"]), (2, "Children"))
+        self.assertFalse(product.warning_html)
+
+    def test_age_limits_of_a_banded_family_table(self):
+        """A family-size table with a row per age band says the table's own
+        age limits, whichever row the template names."""
+        product = self.Product.create({
+            "name": "Banded – Plan A (KES 5,000,000)", "line": "medical",
+            "insurer_id": self.insurer_afya.id,
+            "table_ids": [Command.create({
+                "name": "Banded Inpatient – KES 5,000,000", "cover": "inpatient",
+                "basis": "family_size", "limit": 5000000,
+                "row_ids": [Command.create({
+                    "odin_row_family_size": size, "odin_row_age_min": low,
+                    "odin_row_age_max": high, "list_price": price})
+                    for low, high, size, price in ((50, 60, 1, 83545), (50, 60, 2, 167090),
+                                                   (61, 65, 1, 92828), (61, 65, 2, 185656))],
+            })],
+        })
+
+        def quote(age):
+            result = self.Quote.search_plans({"cover": {
+                "principal_age": age, "template_id": product.template_id.id}})
+            return (result["plans"] + result["unavailable"])[0]
+        self.assertEqual(quote(63)["core"]["amount"], 92828)
+        self.assertEqual(quote(72)["reason"], "For families where everyone is under 66.")
+        self.assertEqual(quote(45)["reason"], "For families with a member aged 50 or over.")

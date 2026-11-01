@@ -252,7 +252,7 @@ and the right row is found for each person. Where the rate card has no row
 The fields are on the product, under **Sales ▸ Medical quotes**, editable for
 a product whose name does not follow the pattern.
 
-Two settings on a per-person rate table (Cover Quotes ▸ Products ▸ a cover)
+Three settings on a per-person rate table (Cover Quotes ▸ Products ▸ a cover)
 cover what some cards print in their conditions rather than their rows:
 
 * **Age bands read at: the eldest's age.** For a card that says *"Premium
@@ -263,6 +263,8 @@ cover what some cards print in their conditions rather than their rows:
   none (J Care outpatient), children pay the family's band like everyone
   else. The row reads *Spouse, eldest aged 41–50* on the quotation. The
   default, each person's own age, is how APA's bands work.
+* **Who: Child after the first.** A row for every child but the first,
+  who stays on the *Child* row: HeriAfya's "Extra".
 * **Only some people.** The people the table has no rate for are left off
   instead of the cover being refused: last expense free for the principal
   and sold for dependants, personal accident sold only for dependants of 18

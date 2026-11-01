@@ -29,8 +29,10 @@ What it installs
 * As Cover Quotes products, with their rate tables: **GA Community/Retail
   Health** (inpatient only, 13 limits, excluding or including pandemic, with
   maternity) and Jubilee Health Insurance's **J Care** (6 levels), **J Care
-  Junior** (6) and **J Senior** (5), each with its optional covers. Generated
-  from ``tools/rate_cards.py`` by ``tools/generate_cover_products.py``.
+  Junior** (6) and **J Senior** (5), each with its optional covers; GA
+  **Hadhi Health** (plans A to D, standard; Covid-enhanced ones off) and
+  Heritage **HeriAfya** (options 1 to 10). Generated from
+  ``tools/rate_cards.py`` by ``tools/generate_cover_products.py``.
 
 Every section line carries ``benefit_label``, ``benefit_key`` and
 ``cover_limit``, so a cover comparison lines up Inpatient against Inpatient
@@ -44,7 +46,7 @@ into the XML. A rate change is an edit to the JSON and one run of the script.
 Do not edit the generated XML, and see README.md before editing prices in
 Odoo itself.
 """,
-    "version": "19.0.1.4.0",
+    "version": "19.0.1.5.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -61,6 +63,7 @@ Odoo itself.
         "data/motor_product.xml",
         "data/cover_product_ga.xml",
         "data/cover_product_jubilee.xml",
+        "data/cover_product_heritage.xml",
         "data/cover_product_data.xml",
     ],
     "application": False,
