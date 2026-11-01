@@ -57,7 +57,10 @@ class TestKeyTerms(TransactionCase):
         })
         comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
         terms = comparison._odin_export_terms()
-        self.assertEqual([term["title"] for term in terms],
-                         ["APA Jamii Plus", "Jubilee J Care", "Heritage HeriAfya"])
+        for term, heading in zip(terms, ("APA Jamii Plus", "Jubilee J Care", "Heritage HeriAfya"),
+                                 strict=True):
+            self.assertTrue(html2plaintext(term["note"]).startswith("*%s – key terms*" % heading))
+        self.assertEqual([term["title"] for term in terms], ["", "", ""],
+                         "each names its product: not printed twice")
         self.assertTrue(all(term["short"] for term in terms), "each kept whole on its page")
         self.assertLess(sum(len(html2plaintext(term["note"])) for term in terms), 3 * SHORT_TERMS)

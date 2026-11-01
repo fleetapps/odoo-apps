@@ -131,3 +131,35 @@ class TestQuoteExample(TransactionCase):
         self.assertAlmostEqual(rows["Total premium"][0], 91061.76, delta=0.015)
         members = dict(comparison._odin_export_members())
         self.assertEqual(members["Requested limit"], "750,000 — 750,000")
+
+    def test_whats_covered_at_the_limit_quoted(self):
+        """APA Family Cover KES 1,000,000 with outpatient KES 100,000: the
+        quotation lists that inpatient level's sub-limits and the 100,000
+        outpatient ones (GP visit KES 3,000), not the other limits'."""
+        apa = self.env.ref("odin_bizsure_quotes.sot_apa_jamii_plus_family_cover_kes_1_000_000")
+        Quote = self.env["odin.medical.quote"]
+        cover = {"principal_dob": self.dob(35), "include_spouse": True,
+                 "spouse_dob": self.dob(32), "children": 2, "template_id": apa.id}
+        plan = Quote.search_plans({"cover": cover})["plans"][0]
+        outpatient = next(g for g in plan["groups"] if g["benefit_key"] == "outpatient")
+        option = next(o for o in outpatient["options"] if o["limit"] == 100000)
+        saved = Quote.save_quote({
+            "customer": {"source": "new", "name": "Wanjiku Kamau", "phone": "0722 111 333"},
+            "cover": cover, "plans": [{"template_id": apa.id, "options": [option["key"]]}],
+        })
+        comparison = self.env["odin.quote.comparison"].browse(saved["comparison"]["id"])
+        matrix = comparison._odin_export_matrix()
+        column = matrix["columns"][0]
+        self.assertEqual((column["insurer"], column["cover"], column["product"]),
+                         ("APA Insurance", 1000000, "Jamii Plus · Family Cover"))
+        covered = comparison._odin_export_covered(matrix["columns"])
+        titles = [group["title"] for group in covered[0]["groups"]]
+        self.assertEqual(titles, ["Inpatient benefits", "Outpatient benefits on the KES 100,000 limit"])
+        outpatient_items = [item["text"] for item in covered[0]["groups"][1]["items"]]
+        self.assertIn("GP consultation limit per visit: KES 3,000", outpatient_items)
+        self.assertIn("Specialist fees (on GP referral): KES 3,500", outpatient_items)
+        inpatient_items = [item["text"] for item in covered[0]["groups"][0]["items"]]
+        self.assertIn("Overall limit: KES 1,000,000 per family per year", inpatient_items)
+        self.assertFalse(any("Below 70" in text or "terms below" in text
+                             for group in covered[0]["groups"] for text in
+                             [group["title"]] + [item["text"] for item in group["items"]]))

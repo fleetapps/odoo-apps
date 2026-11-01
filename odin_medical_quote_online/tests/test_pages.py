@@ -32,10 +32,12 @@ class TestOnlinePages(OnlineCase, HttpCase):
 
         page = self.url_open(path)
         self.assertEqual(page.status_code, 200)
-        for text in ("Hi Grace, here is your quote", comparison.name, "Plan 1 (KES 200,000)",
-                     "Hospital stays", "Doctor visits &amp; medicines", "Talk to an advisor"):
+        for text in ("Hi Grace, here is your quote", comparison.name, "Test Afya Insurer",
+                     '200,000 <span class="o_oq_cover_what">hospital cover', "Afya · Plan 1",
+                     "Doctor visits &amp; medicines", "Talk to an advisor"):
             self.assertIn(text, page.text)
         self.assertNotIn("Below 70", page.text)
+        self.assertNotIn("Hospital stays", page.text, "the cover heads the card, not listed again")
 
         pdf = self.url_open("/medical-quote/q/%s/pdf?token=%s" % (comparison.id, token))
         self.assertEqual(pdf.status_code, 200)

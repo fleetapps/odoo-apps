@@ -114,18 +114,29 @@ out like the broker's own quotations:
 * **Member details**: the dates of birth, children and limit range exactly
   as entered (dates written `21 Jan 1984`, never `01/21/1984`);
 * **Cover and premium comparison**: one column per plan (only the accepted
-  one once a plan is accepted), headed by the insurer, then product and
-  plan -- *J Care · Premier (KES 1,000,000)*, without the "Below 70" the
-  engine rates on -- the recommended plan marked; the limit of each benefit
+  one once a plan is accepted), headed by what a client compares first:
+  the insurer, then the hospital cover in large type (*KES 1,000,000*),
+  then the insurer's own names in small type (*J Care · Premier*), without
+  the "Below 70" the engine rates on; the recommended plan marked; the
+  limit of each benefit
   (outpatient, dental, optical and maternity saying *per person* or *per
   family*: 50,000 per person is not 50,000 per family), then each premium,
   the discount, *Taxes and levies* (levies and stamp duty together, as the
   client pays them), the policy charge, the **total premium** and each
   instalment plan's equal monthly payment (the first one now) and total;
+* **What's covered**: each plan's own benefits at the level quoted -- its
+  inpatient sub-limits (bed, chronic conditions, maternity complications,
+  last expense...) and those of each benefit added -- from the plan's
+  benefit notes, so the client reads their cover, not the whole brochure.
+  A note headed for one limit (*Outpatient benefits on the KES 50,000
+  limit*) goes on a quotation only with that limit;
 * the plans' **terms**, once each even when several plans share them;
 * the validity, *Quotation by* the salesperson and their phone, and the
   **payment options** box;
 * *By: <user> on <date>* and *For and on behalf of <company>* on every page.
+
+The email and the WhatsApp message name each plan the same way: *Jubilee
+Health Insurance – KES 1,000,000 hospital cover (J Care · Premier)*.
 
 The payment options are set once in **Sales ▸ Configuration ▸ Settings ▸
 Quotations ▸ Payment details on medical quotations** (bank account, branch,

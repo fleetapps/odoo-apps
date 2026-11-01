@@ -184,8 +184,8 @@ How the cards were read, where they leave room:
   7,560), so they cannot be bought apart or at different limits. The
   combined solution (one limit for both) is the other choice in the same
   benefit. Per family is one premium for the family; per person, one each.
-* **HeriAfya pre-cover medical tests**: the brochure says above 55, the tool
-  above 50; the terms follow the brochure.
+* **HeriAfya pre-cover medical tests**: the brochure says 55 and above, the
+  tool above 50; the terms follow the brochure.
 
 ## Key terms
 
@@ -194,8 +194,8 @@ the one and a half pages a full set of terms took, so a three-insurer
 quotation is no longer four pages of small print. Each product says the same
 things in the same order:
 
-1. **Your premium** -- how it is worked out (levies and stamp duty are in the
-   quotation's table and footnote)
+1. **Your premium** -- in a line: what it is worked out on (per person or
+   per family, and the levies, are on the quotation's table)
 2. **Who can join** -- ages, medical exams, who goes on a separate policy
 3. **Waiting periods**
 4. **Co-payments** -- where the insurer has them
@@ -222,7 +222,20 @@ sent keep the terms they went out with.
 The upgrade to 19.0.1.7.0 (`migrations/19.0.1.7.0`) writes the reworded key
 terms on every plan, and the GA Community Health names (*KES 1,000,000*,
 *KES 1,000,000, with pandemic cover*) on its plans, rate tables and inpatient
-headings, where an earlier version installed them.
+headings, where an earlier version installed them. The upgrade to 19.0.1.8.0
+writes them again, shortened (1,472 to 1,837 characters).
+
+## APA benefits by limit
+
+APA's outpatient benefits differ by outpatient limit (GP visit KES 2,000 on
+50,000, KES 3,000 from 100,000...), and its child-only plan's inpatient
+benefits by inpatient limit. The long terms printed every limit in a table;
+the key terms do not. So each limit has its own note, *Outpatient benefits on
+the KES 50,000 limit*, made by `tools/generate_data.py` from the table in
+APA's terms (kept in `data/source`), and a quotation keeps only the note of
+the limit quoted: its *What's covered* list shows the client's own
+sub-limits. The upgrade to 19.0.1.8.0 puts them on installed plans in place
+of the old note, which pointed to "the terms below".
 
 Put right on the way, from the terms as they were on BizSure:
 

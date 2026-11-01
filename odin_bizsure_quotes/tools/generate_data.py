@@ -233,6 +233,104 @@ def insurer_of(template_name):
                  if template_name.startswith(prefix)), None)
 
 
+# ------------------------------------------------------ APA notes, by limit
+#
+# APA's outpatient benefits differ by limit, and its child-only plan's
+# inpatient benefits by inpatient limit. Their long terms printed every limit
+# in a table; the key terms do not, so each limit gets its own note, titled
+# "... on the KES 50,000 limit", and a quotation keeps only the note of the
+# limit quoted (odin_medical_quote's NOTE_LIMIT).
+
+#: a template note that pointed to the long terms for the benefits by limit
+OUTPATIENT_POINTER = ("Outpatient cover is priced per person", "Benefits for each outpatient limit")
+CHILD_INPATIENT_POINTER = "Child-only cover is available for inpatient limits"
+
+
+def limit_title(what, limit):
+    return "%s benefits on the KES %s limit" % (what, "{:,.0f}".format(limit))
+
+
+def amount_text(cell):
+    """``2,000`` -> ``KES 2,000``; ``Up to 4,000`` -> ``up to KES 4,000``."""
+    found = re.fullmatch(r"(Up to )?([\d,]+)", cell.strip(), re.I)
+    if not found:
+        raise SystemExit("APA outpatient table: cannot read %r" % cell)
+    return "%sKES %s" % ("up to " if found.group(1) else "", found.group(2))
+
+
+def apa_outpatient_notes(note_html):
+    """One note per outpatient limit, from the table of APA's long terms."""
+    from lxml import html as lhtml
+    doc = lhtml.fromstring("<div>%s</div>" % note_html)
+    rows = None
+    for table in doc.iter("table"):
+        found = [[cell.text_content().strip() for cell in row] for row in table.iter("tr")]
+        if found and found[0][0] == "Outpatient benefit":
+            rows = found
+    also = next((" ".join(p.text_content().split()) for p in doc.iter("p")
+                 if "Also covered at every level:" in p.text_content()), "")
+    if not rows or not also:
+        raise SystemExit("APA terms: the outpatient benefits table has moved")
+    also = also.split("Also covered at every level:", 1)[1].strip().rstrip(".")
+    notes = []
+    for column, head in enumerate(rows[0][1:], start=1):
+        limit = float(head.replace(",", ""))
+        lines = [limit_title("Outpatient", limit),
+                 "• Limit: KES %s per person per year, the same for every member"
+                 % "{:,.0f}".format(limit)]
+        lines += ["• %s: %s" % (row[0], amount_text(row[column])) for row in rows[1:]]
+        lines += ["• Also covered: %s" % also,
+                  "• Co-payments at some hospitals: see Co-payments in the terms"]
+        notes.append((limit, "\n".join(lines)))
+    return notes
+
+
+def apa_child_inpatient_notes(lines, templates):
+    """The family plans' inpatient notes, one per limit, for the child-only
+    plan: the benefits are the same, the joining ages are the parents'."""
+    names = {t["id"]: t["name"] for t in templates}
+    notes = []
+    for line in lines:
+        name = names.get(line["sale_order_template_id"][0], "")
+        found = re.fullmatch(r"APA Jamii Plus – Family Cover \(KES ([\d,]+)\)", name)
+        text = line["name"] or ""
+        if found and line["display_type"] == "line_note" and text.startswith("Inpatient benefits"):
+            limit = float(found.group(1).replace(",", ""))
+            body = [part for part in text.splitlines()[1:]
+                    if not part.startswith("Principal and spouse can join")]
+            notes.append((limit, "\n".join([limit_title("Inpatient", limit)] + body)))
+    if len(notes) != 7:
+        raise SystemExit("APA child-only: expected 7 family inpatient notes, found %d" % len(notes))
+    return sorted(notes)
+
+
+def by_limit(line, notes, tag):
+    """The template note ``line`` as one note per limit: the first keeps its
+    external id, the others take the limit after it."""
+    out = []
+    for index, (limit, text) in enumerate(notes):
+        copy = dict(line, name=text)
+        if index:
+            copy["xml_suffix"] = "_%s%dk" % (tag, limit // 1000)
+        out.append(copy)
+    return out
+
+
+def rework_apa_notes(tmpl, tmpl_lines, lines, templates):
+    if not tmpl["name"].startswith("APA Jamii Plus"):
+        return tmpl_lines
+    out = []
+    for line in tmpl_lines:
+        text = line["name"] or ""
+        if line["display_type"] == "line_note" and text.startswith(OUTPATIENT_POINTER):
+            out += by_limit(line, apa_outpatient_notes(tmpl["note"]), "op")
+        elif line["display_type"] == "line_note" and text.startswith(CHILD_INPATIENT_POINTER):
+            out += by_limit(line, apa_child_inpatient_notes(lines, templates), "ip")
+        else:
+            out.append(line)
+    return out
+
+
 # ----------------------------------------------------------------- templates
 
 def write_templates(templates, lines, prod_xmlids):
@@ -258,12 +356,12 @@ def write_templates(templates, lines, prod_xmlids):
             body += field("odin_insurer_id", ref=insurer)
         body += "    </record>\n\n"
 
-        for line in sorted(by_template.get(tmpl["id"], []),
-                           key=lambda l: (l["sequence"], l["id"])):
+        tmpl_lines = sorted(by_template.get(tmpl["id"], []), key=lambda l: (l["sequence"], l["id"]))
+        for line in rework_apa_notes(tmpl, tmpl_lines, lines, templates):
             # Named after the rate card's own line id, not its position: a
             # position shifts when a line is inserted, and an upgrade would
             # then rewrite a note into a product line, which Odoo refuses.
-            line_id = "%s_line_%d" % (xmlid, line["id"])
+            line_id = "%s_line_%d%s" % (xmlid, line["id"], line.get("xml_suffix", ""))
             body += '    <record id="%s" model="sale.order.template.line">\n' % line_id
             body += field("sale_order_template_id", ref=xmlid)
             body += field("sequence", line["sequence"])

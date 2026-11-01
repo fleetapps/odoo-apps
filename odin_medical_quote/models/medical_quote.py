@@ -24,6 +24,17 @@ from odoo.exceptions import AccessError, UserError
 from .pricing import RateBook
 from .rating import Household
 
+#: a note for one limit of a benefit: "Outpatient benefits on the KES 50,000
+#: limit" goes on the quotation only when that limit is quoted
+NOTE_LIMIT = re.compile(r"\bon the KES\s*([\d,]+)\s+limit\b", re.I)
+
+
+def note_applies(text, limits):
+    """Whether a template note belongs on a quotation quoting ``limits``."""
+    first = (text or "").strip().split("\n", 1)[0]
+    found = NOTE_LIMIT.search(first)
+    return not found or float(found.group(1).replace(",", "")) in limits
+
 #: a quotation that has gone no further than being sent can still be redone
 EDITABLE_ORDER_STATES = ("draft", "sent")
 #: what marks a global discount line for Odoo (see sale.order.line)
@@ -475,8 +486,15 @@ class MedicalQuote(models.AbstractModel):
                     add(self._odin_heading_line(block["section"], 0))
                 for line in block["priced"]:
                     add(self._odin_product_line(line, fiscal_position, 0))
+            # The block's notes, but of the limits quoted only: APA's
+            # outpatient has one note of sub-limits per limit.
+            if block["kind"] == "optional":
+                limits = {chosen[g["key"]]["limit"] for g in block["offered"] if g["key"] in chosen}
+            else:
+                limits = {line.product_id.odin_rate_limit for line in block["priced"]}
             for note in block["notes"]:
-                add(self._odin_heading_line(note, 0))
+                if note_applies(note.name, limits):
+                    add(self._odin_heading_line(note, 0))
             if block["key"] == "statutory_charges" and not policy_done:
                 add_policy_charge()
                 policy_done = True

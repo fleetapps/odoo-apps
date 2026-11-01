@@ -16,6 +16,12 @@ SEPARATOR = re.compile(r"\s[–—-]\s")
 #: "– Below 70" / "– Above 70": which rate card the family is on, the
 #: engine's business rather than the client's
 AGE_VARIANT = re.compile(r"\s*[–—-]\s*(?:Below|Above)\s+\d+\s*$", re.I)
+#: the cover in a plan's name -- "Premier (KES 1,000,000)", "Classic (KES
+#: 500,000 per child)", "KES 1,000,000, with pandemic cover" -- printed apart
+#: from the name, and first
+COVER_IN_NAME = re.compile(
+    r"\s*\(KES\s*(?P<amount>[\d,]+)(?P<per>\s+per\s+\w+)?\)"
+    r"|^KES\s*(?P<lead>[\d,]+)(?:\s*,\s*|\s*$)", re.I)
 
 
 def distinguishing_labels(names):
@@ -123,6 +129,28 @@ class SaleOrderTemplate(models.Model):
         if product == insurer:
             product = ""
         return insurer, product, AGE_VARIANT.sub("", plan).strip()
+
+    def _odin_display_parts(self, cover):
+        """(insurer, product) to print under ``cover``, the plan's hospital
+        cover, which a client looks for first: ``Jubilee Health Insurance``,
+        ``J Care · Premier``; ``GA Insurance``, ``Community Health, with
+        pandemic cover``. The plan's name loses the amount the cover already
+        says; any other amount in it stays."""
+        self.ensure_one()
+        insurer, product, plan = self._odin_display_names()
+
+        def drop(match):
+            amount = float((match.group("amount") or match.group("lead")).replace(",", ""))
+            if not cover or amount != cover:
+                return match.group(0)
+            # "Classic (per child)": whom the cover is for stays.
+            return " (%s)" % match.group("per").strip() if match.group("per") else ""
+
+        plan = COVER_IN_NAME.sub(drop, plan).strip(" ,")
+        if not (product and plan):
+            return insurer, product or plan
+        # "Community Health, with pandemic cover"; "J Care · Premier".
+        return insurer, "%s%s%s" % (product, ", " if plan[:1].islower() else " · ", plan)
 
     def _odin_client_title(self):
         """``Jubilee J Care – Premier (KES 1,000,000)``: the plan's whole name,

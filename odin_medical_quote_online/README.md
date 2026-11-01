@@ -13,16 +13,19 @@ reuses everything below.
      only my children.
    * Then their ages, not dates of birth.
 2. **Plans:**
-   * **One card per insurer's product** -- *Jubilee · J Care · Premier (KES
-     1,000,000)* -- not one per plan: a family that fits 53 plans sees 5
-     cards. The hospital cover is the card's first line, a dropdown of every
-     amount the product sells, and the price follows it. Where a product
-     sells an amount in two versions (GA: with or without pandemic cover),
-     a switch adds the other: *Add pandemic cover*.
+   * **One card per insurer's product**, not one per plan: a family that
+     fits 53 plans sees 5 cards (a couple in their late fifties 6, seniors
+     4, children only 2). Each card reads in the order a visitor compares:
+     the insurer, then the hospital cover as the headline -- a dropdown of
+     every amount the product sells, the price following it -- then the
+     insurer's own name for it in small type (*J Care · Premier*). Where a
+     product sells an amount in two versions (GA: with or without pandemic
+     cover), a switch adds the other: *Add pandemic cover*.
    * Each card opens on its plan nearest KES 500,000, so the cards compare
      like with like; cards are cheapest first, priced in full (levies and
      stamp duty included), with the monthly option. The cheapest is marked
      *Lowest price*.
+   * The client's quote page heads each plan the same way.
    * Changing the amount keeps the doctor-visit, dental or optical choice
      where the new plan has it, and a card already on the quote stays on
      it with the new amount.
