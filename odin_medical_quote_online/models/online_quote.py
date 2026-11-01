@@ -239,8 +239,10 @@ class MedicalQuoteOnline(models.AbstractModel):
                 "option": pick["option"]["key"],
                 "limit": pick["option"]["limit"],
                 "amount": pick["option"]["amount"],
+                # The engine labels options only when their limits do not tell
+                # them apart: 150,000 per person or 150,000 shared per family.
                 "options": [{"key": o["key"], "limit": o["limit"], "amount": o["amount"],
-                             "label": o["label"] or o["name"]} for o in pick["options"]],
+                             "label": o["label"], "name": o["name"]} for o in pick["options"]],
             } for key, pick in picks.items()],
             "premium": totals["premium"],
             "levies": totals["levies"],
