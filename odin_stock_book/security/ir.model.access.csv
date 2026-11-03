@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_stock_line_user,stock book line user,model_odin_stock_line,group_stock_book_user,1,1,1,1
+access_odin_stock_line_component_user,stock book component user,model_odin_stock_line_component,group_stock_book_user,1,1,1,1
