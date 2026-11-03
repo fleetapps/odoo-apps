@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_petty_cash_line_list" model="ir.ui.view">
+        <field name="name">odin.petty.cash.line.list</field>
+        <field name="model">odin.petty.cash.line</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'" decoration-warning="status_key in ('need_amount','need_description','need_category','need_receipt')" decoration-info="status_key == 'need_stock'">
+                <field name="date"/>
+                <field name="voucher"/>
+                <field name="description"/>
+                <field name="paid_to"/>
+                <field name="phone" optional="hide"/>
+                <field name="method"/>
+                <field name="mpesa_code"/>
+                <field name="amount" sum="Paid"/>
+                <field name="charge" sum="Charges"/>
+                <field name="total" sum="Total"/>
+                <field name="rule_id"/>
+                <field name="account_id" optional="hide"/>
+                <field name="status_key" widget="badge" decoration-success="status_key == 'posted'" decoration-warning="status_key in ('need_amount','need_description','need_category','need_receipt')" decoration-info="status_key in ('need_stock','ready')"/>
+                <field name="approved_by_id" optional="show"/>
+                <field name="float_id" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="state" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="odin_petty_cash_line_form" model="ir.ui.view">
+        <field name="name">odin.petty.cash.line.form</field>
+        <field name="model">odin.petty.cash.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary" invisible="status_key != 'ready'" groups="odin_petty_cash.group_petty_cash_approver"/>
+                    <button name="action_reset" type="object" string="Reset to draft" invisible="state != 'posted'" groups="odin_petty_cash.group_petty_cash_approver"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <field name="status_key" widget="statusbar" statusbar_visible="ready,posted"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="voucher" placeholder="New voucher"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="float_id" options="{'no_create': True}"/>
+                            <field name="kind"/>
+                            <field name="date" readonly="state == 'posted'"/>
+                            <field name="description"/>
+                            <field name="paid_to"/>
+                            <field name="phone" widget="phone"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="method"/>
+                            <field name="mpesa_code"/>
+                            <field name="amount" readonly="state == 'posted'"/>
+                            <field name="charge" readonly="state == 'posted'"/>
+                            <field name="total"/>
+                            <field name="rule_id" readonly="state == 'posted'" options="{'no_create': True}"/>
+                            <field name="account_id" readonly="state == 'posted'"/>
+                            <field name="analytic_distribution" widget="analytic_distribution" readonly="state == 'posted'"/>
+                        </group>
+                    </group>
+                    <group invisible="not needs_stock" string="Goes into stock">
+                        <field name="needs_stock" invisible="1"/>
+                        <field name="product_id" readonly="state == 'posted'"/>
+                        <field name="quantity" readonly="state == 'posted'"/>
+                        <field name="product_uom_id"/>
+                        <field name="picking_id"/>
+                    </group>
+                    <group string="Posting" invisible="state != 'posted'">
+                        <field name="move_id"/>
+                        <field name="approved_by_id"/>
+                        <field name="approved_on"/>
+                    </group>
+                    <field name="state" invisible="1"/>
+                    <field name="currency_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="odin_petty_cash_line_search" model="ir.ui.view">
+        <field name="name">odin.petty.cash.line.search</field>
+        <field name="model">odin.petty.cash.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="description"/>
+                <field name="paid_to"/>
+                <field name="voucher"/>
+                <field name="mpesa_code"/>
+                <field name="rule_id"/>
+                <filter name="todo" string="Needs something" domain="[('status_key', 'in', ('need_amount','need_description','need_category','need_stock','need_receipt'))]"/>
+                <filter name="ready" string="Ready to approve" domain="[('status_key', '=', 'ready')]"/>
+                <filter name="posted" string="Approved" domain="[('state', '=', 'posted')]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="by_rule" string="Category" context="{'group_by': 'rule_id'}"/>
+                    <filter name="by_month" string="Month" context="{'group_by': 'date:month'}"/>
+                    <filter name="by_payee" string="Paid to" context="{'group_by': 'paid_to'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="odin_petty_cash_line_action" model="ir.actions.act_window">
+        <field name="name">Vouchers</field>
+        <field name="res_model">odin.petty.cash.line</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+    </record>
+
+    <record id="odin_petty_cash_book_action" model="ir.actions.client">
+        <field name="name">Petty Cash Book</field>
+        <field name="tag">odin_petty_cash.book</field>
+    </record>
+</odoo>
