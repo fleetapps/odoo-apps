@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_petty_cash_float_user,petty cash float user,model_odin_petty_cash_float,group_petty_cash_user,1,0,0,0
+access_odin_petty_cash_float_approver,petty cash float approver,model_odin_petty_cash_float,group_petty_cash_approver,1,1,1,1
+access_odin_petty_cash_line_user,petty cash voucher user,model_odin_petty_cash_line,group_petty_cash_user,1,1,1,1
+access_odin_petty_cash_import_user,petty cash import user,model_odin_petty_cash_import,group_petty_cash_user,1,1,1,0
+access_reconcile_model_petty_cash,reconcile models for petty cash,account.model_account_reconcile_model,group_petty_cash_user,1,0,0,0
+access_reconcile_model_line_petty_cash,reconcile model lines for petty cash,account.model_account_reconcile_model_line,group_petty_cash_user,1,0,0,0
