@@ -23,11 +23,15 @@
                                 t-on-click="() => this.state.confirmCount = true">
                             <i class="fa fa-check me-1"/>Post count
                         </button>
+                        <span t-if="state.saveNote" class="o_sb_save_note" role="status" aria-live="polite">
+                            <t t-if="state.saveNote === 'saving'"><i class="fa fa-circle-o-notch fa-spin me-1"/>Saving…</t>
+                            <t t-else=""><i class="fa fa-check me-1"/>Saved</t>
+                        </span>
                     </div>
                 </t>
 
                 <div t-if="state.loading" class="o_sb_loading text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
-                <div t-elif="state.view === 'log' and state.book.empty" class="o_sb_empty">
+                <div t-elif="state.view === 'log' and state.book and state.book.empty" class="o_sb_empty">
                     <h2>No warehouse yet</h2>
                     <p class="text-muted">Create a warehouse in Inventory, then the Stock Book opens here.</p>
                 </div>
@@ -38,9 +42,10 @@
                         <button role="tab" t-att-aria-selected="state.view === 'sheet'" t-on-click="() => this.setView('sheet')"><i class="fa fa-table me-1"/>Stock sheet</button>
                         <button role="tab" t-att-aria-selected="state.view === 'count'" t-on-click="() => this.setView('count')"><i class="fa fa-check-square-o me-1"/>Count</button>
                     </div>
-                    <t t-if="state.view === 'log'" t-call="odin_stock_book.Movements"/>
-                    <t t-elif="state.view === 'sheet'" t-call="odin_stock_book.Sheet"/>
-                    <t t-else="" t-call="odin_stock_book.Count"/>
+                    <t t-if="state.view === 'log' and state.book" t-call="odin_stock_book.Movements"/>
+                    <t t-elif="state.view === 'sheet' and state.sheet" t-call="odin_stock_book.Sheet"/>
+                    <t t-elif="state.view === 'count' and state.count" t-call="odin_stock_book.Count"/>
+                    <div t-else="" class="o_sb_loading text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
                 </t>
             </Layout>
         </div>
@@ -94,15 +99,24 @@
             <button t-if="book.older_open.count" class="btn btn-sm btn-warning" t-on-click="openOlder">
                 <i class="fa fa-history me-1"/><t t-esc="book.older_open.count"/> not posted from earlier months
             </button>
+            <button t-if="cancelledCount" class="btn btn-sm btn-link o_sb_cancelled_toggle" t-on-click="toggleCancelled"
+                    t-att-aria-pressed="state.showCancelled ? 'true' : 'false'">
+                <i t-att-class="state.showCancelled ? 'fa fa-eye-slash me-1' : 'fa fa-eye me-1'"/>
+                <t t-if="state.showCancelled">Hide <t t-esc="cancelledCount"/> cancelled</t>
+                <t t-else=""><t t-esc="cancelledCount"/> cancelled</t>
+            </button>
             <div class="o_sb_toolbar_end">
                 <span class="o_sb_hint text-muted d-none d-xxl-inline">Type in the last row · Enter moves on · paste rows from Excel into it</span>
+                <button class="btn btn-sm btn-light border" t-on-click="() => this.printSheet()" data-tooltip="The month as a sheet to sign and file">
+                    <i class="fa fa-print me-1"/>Print
+                </button>
                 <button class="btn btn-sm btn-light border" t-on-click="exportXlsx"><i class="fa fa-file-excel-o me-1"/>Export</button>
             </div>
         </div>
 
-        <div class="o_sb_body" t-att-class="{ o_sb_with_panel: selected }">
+        <div class="o_sb_body" t-att-class="{ o_sb_with_panel: selected, o_sb_stale: state.refreshing }">
             <div class="o_sb_sheet">
-                <table class="o_sb_table">
+                <table class="o_sb_table o_sb_log">
                     <thead>
                         <tr>
                             <th class="o_sb_c_date">Date</th>
@@ -120,12 +134,20 @@
                     </thead>
                     <tbody>
                         <t t-foreach="dayRows" t-as="entry" t-key="entry.key">
-                            <tr t-if="entry.day" class="o_sb_day"><td colspan="11" t-esc="dayHeading(entry.day)"/></tr>
+                            <tr t-if="entry.day" class="o_sb_day">
+                                <td colspan="11">
+                                    <span t-esc="dayHeading(entry.day)"/>
+                                    <button class="o_sb_day_print" t-on-click="() => this.printSheet(entry.day)"
+                                            data-tooltip="Print this day" t-att-aria-label="'Print ' + dayHeading(entry.day)">
+                                        <i class="fa fa-print"/>
+                                    </button>
+                                </td>
+                            </tr>
                             <t t-else="">
                                 <t t-set="row" t-value="entry.row"/>
                                 <t t-set="draft" t-value="row.state === 'draft'"/>
-                                <tr t-attf-class="o_sb_row o_sb_tone_{{row.tone}} {{row.id === state.selectedId ? 'o_sb_selected' : ''}} {{draft ? 'o_sb_draft' : 'o_sb_locked'}}"
-                                    t-on-click="(ev) => this.onRowClick(ev, row)">
+                                <tr t-attf-class="o_sb_row o_sb_tone_{{row.tone}} {{row.id === state.selectedId ? 'o_sb_selected' : ''}} {{draft ? 'o_sb_draft' : 'o_sb_locked'}} {{state.flash[row.id] ? 'o_sb_flash' : ''}}"
+                                    t-att-data-id="row.id" t-on-click="(ev) => this.onRowClick(ev, row)">
                                     <td class="o_sb_c_date">
                                         <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-value="shortDate(row.date)" t-on-change="(ev) => this.onCell(ev, row, 'date')" aria-label="Date"/>
                                         <t t-else="" t-esc="shortDate(row.date)"/>
@@ -133,17 +155,19 @@
                                     <td class="o_sb_c_ref"><span class="o_sb_mono" t-esc="shortRef(row.ref) or '—'" t-att-title="row.ref or 'A reference is given when it is posted'"/></td>
                                     <td class="o_sb_c_item o_sb_toggle">
                                         <span t-if="row.components.length" class="o_sb_caret"><i t-att-class="isOpen(row) ? 'fa fa-caret-down' : 'fa fa-caret-right'"/></span>
-                                        <span class="o_sb_code" t-esc="row.product and row.product.code"/>
-                                        <span t-esc="row.product ? row.product.name : 'No item'"/>
-                                        <span t-if="row.components.length and !isOpen(row)" class="o_sb_hint text-muted"> · <t t-esc="row.components.length"/> components</span>
+                                        <span class="o_sb_item_text" t-att-title="row.product ? row.product.display_name : ''">
+                                            <span class="o_sb_code" t-esc="row.product and row.product.code"/>
+                                            <span t-esc="row.product ? row.product.name : 'No item'"/>
+                                            <span t-if="row.components.length and !isOpen(row)" class="o_sb_hint text-muted"> · <t t-esc="row.components.length"/> components</span>
+                                        </span>
                                     </td>
                                     <td class="o_sb_num o_sb_c_qty">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'in') }"
+                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'in'), o_sb_quiet: quiet(row.direction, 'in', row.qty_in) }"
                                                t-att-value="row.qty_in ? fmt(row.qty_in) : ''" placeholder="+" inputmode="decimal" t-on-change="(ev) => this.onCell(ev, row, 'qty_in')" aria-label="Added"/>
                                         <span t-elif="row.qty_in" class="o_sb_in">+<t t-esc="fmt(row.qty_in)"/></span>
                                     </td>
                                     <td class="o_sb_num o_sb_c_qty">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'wrong_way' and row.direction === 'out' }"
+                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'out'), o_sb_quiet: quiet(row.direction, 'out', row.qty_out) }"
                                                t-att-value="row.qty_out ? fmt(row.qty_out) : ''" placeholder="−" inputmode="decimal" t-on-change="(ev) => this.onCell(ev, row, 'qty_out')" aria-label="Removed"/>
                                         <t t-elif="row.qty_out">−<t t-esc="fmt(row.qty_out)"/></t>
                                     </td>
@@ -155,7 +179,7 @@
                                                 <option t-att-value="r.key" t-att-selected="r.key === row.reason" t-esc="r.label"/>
                                             </t>
                                         </select>
-                                        <span t-else="" class="o_sb_reason"><i class="o_sb_dot" t-attf-style="background: {{reasonColor(row.reason)}}"/><t t-esc="row.reason_label"/></span>
+                                        <span t-else="" class="o_sb_reason"><i t-attf-class="o_sb_dot o_sb_r_{{row.reason or 'none'}}"/><t t-esc="row.reason_label"/></span>
                                     </td>
                                     <td class="o_sb_c_partner">
                                         <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-class="{ o_sb_missing: row.status_key === 'need_partner' }" t-att-value="row.partner_name"
@@ -164,7 +188,7 @@
                                     </td>
                                     <td class="o_sb_num o_sb_c_onhand" t-att-class="{ o_sb_neg: row.onhand_after &lt; 0 }" t-esc="row.product ? fmt(row.onhand_after) : ''"/>
                                     <td class="o_sb_c_status">
-                                        <span t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-title="row.detail" t-esc="row.status"/>
+                                        <span t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-esc="row.status"/>
                                         <span t-if="row.posted_by" class="o_sb_appr" t-esc="row.posted_by"/>
                                     </td>
                                     <td class="o_sb_c_open">
@@ -172,6 +196,9 @@
                                             <i class="fa fa-chevron-right"/>
                                         </button>
                                     </td>
+                                </tr>
+                                <tr t-if="row.detail and row.id === state.selectedId" t-attf-class="o_sb_detail_row o_sb_detail_{{row.tone}}">
+                                    <td colspan="11"><i class="fa fa-info-circle me-1"/><t t-esc="row.detail"/></td>
                                 </tr>
                                 <t t-if="isOpen(row)">
                                     <t t-foreach="row.components" t-as="comp" t-key="comp.id">
@@ -190,7 +217,7 @@
                                             <td class="o_sb_muted o_sb_c_unit" t-esc="comp.uom"/>
                                             <td class="o_sb_muted o_sb_small" t-esc="comp.unlimited ? 'not counted' : 'from recipe'"/>
                                             <td class="o_sb_c_partner"/>
-                                            <td class="o_sb_num" t-att-class="{ o_sb_neg: !comp.unlimited and comp.onhand_after !== null and comp.onhand_after &lt; 0 }" t-esc="comp.unlimited ? '' : (comp.onhand_after === null ? '' : fmt(comp.onhand_after))"/>
+                                            <td class="o_sb_num o_sb_c_onhand" t-att-class="{ o_sb_neg: !comp.unlimited and comp.onhand_after !== null and comp.onhand_after &lt; 0 }" t-esc="comp.unlimited ? '' : (comp.onhand_after === null ? '' : fmt(comp.onhand_after))"/>
                                             <td>
                                                 <span t-if="!comp.unlimited and comp.onhand_after !== null and comp.onhand_after &lt; 0" class="o_sb_pill o_sb_pill_danger">Not enough</span>
                                             </td>
@@ -205,7 +232,21 @@
                             </t>
                         </t>
 
-                        <!-- The entry row, like the next empty line of the sheet -->
+                        <tr t-if="!rows.length and (state.status or state.search or state.reason)">
+                            <td colspan="11" class="o_sb_nothing text-muted">Nothing matches.
+                                <a href="#" t-on-click.prevent="() => { this.state.search = ''; this.state.status = ''; this.setReason(''); }">Show all</a></td>
+                        </tr>
+                        <tr t-if="!rows.length and !state.status and !state.search and !state.reason">
+                            <td colspan="11" class="o_sb_nothing text-muted">
+                                <t t-if="cancelledCount and !state.showCancelled">Only cancelled lines in <t t-esc="monthLabel"/>.
+                                    <a href="#" t-on-click.prevent="toggleCancelled">Show them</a></t>
+                                <t t-else="">No movements in <t t-esc="monthLabel"/> yet. Type the first one in the row below.</t>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                    <!-- The entry row, like the next empty line of the sheet: pinned to
+                         the bottom of the sheet, always in sight. -->
                         <tr t-if="state.newRow and !state.status and !state.search" class="o_sb_new">
                             <t t-set="nr" t-value="state.newRow"/>
                             <td class="o_sb_c_date"><input class="o_sb_cell" data-field="date" t-att-value="shortDate(nr.date)" title="Type 3, 3/11 or 3 Nov, or paste rows from Excel"
@@ -228,8 +269,10 @@
                                 </ul>
                             </td>
                             <td class="o_sb_num o_sb_c_qty"><input class="o_sb_cell o_sb_num" data-field="qty_in" t-att-value="nr.qty_in" placeholder="+" inputmode="decimal"
+                                t-att-class="{ o_sb_quiet: nr.reason and quiet(reasonDirection(nr.reason), 'in', nr.qty_in) }"
                                 t-on-input="(ev) => this.onNewInput('qty_in', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'qty_in')" aria-label="New added"/></td>
                             <td class="o_sb_num o_sb_c_qty"><input class="o_sb_cell o_sb_num" data-field="qty_out" t-att-value="nr.qty_out" placeholder="−" inputmode="decimal"
+                                t-att-class="{ o_sb_quiet: nr.reason and quiet(reasonDirection(nr.reason), 'out', nr.qty_out) }"
                                 t-on-input="(ev) => this.onNewInput('qty_out', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'qty_out')" aria-label="New removed"/></td>
                             <td class="o_sb_c_unit o_sb_muted" t-esc="nr.product ? nr.product.uom : ''"/>
                             <td class="o_sb_c_reason">
@@ -257,14 +300,7 @@
                                 </button>
                             </td>
                         </tr>
-                        <tr t-if="!rows.length and (state.status or state.search or state.reason)">
-                            <td colspan="11" class="o_sb_nothing text-muted">Nothing matches.
-                                <a href="#" t-on-click.prevent="() => { this.state.search = ''; this.state.status = ''; this.setReason(''); }">Show all</a></td>
-                        </tr>
-                        <tr t-if="!rows.length and !state.status and !state.search and !state.reason">
-                            <td colspan="11" class="o_sb_nothing text-muted">No movements in <t t-esc="monthLabel"/> yet. Type the first one in the row above.</td>
-                        </tr>
-                    </tbody>
+                    </tfoot>
                 </table>
             </div>
 
@@ -404,7 +440,7 @@
                 <button class="btn btn-sm btn-light border" t-on-click="exportXlsx"><i class="fa fa-file-excel-o me-1"/>Export</button>
             </div>
         </div>
-        <div class="o_sb_body">
+        <div class="o_sb_body" t-att-class="{ o_sb_stale: state.refreshing }">
             <div class="o_sb_sheet">
                 <table class="o_sb_table">
                     <thead>
@@ -492,7 +528,7 @@
             <button class="btn btn-sm btn-success ms-auto" t-on-click="() => this.postCount()">Post count</button>
             <button class="btn btn-sm btn-light border" t-on-click="() => this.state.confirmCount = false">Not yet</button>
         </div>
-        <div class="o_sb_body">
+        <div class="o_sb_body" t-att-class="{ o_sb_stale: state.refreshing }">
             <div class="o_sb_sheet">
                 <table class="o_sb_table">
                     <thead>

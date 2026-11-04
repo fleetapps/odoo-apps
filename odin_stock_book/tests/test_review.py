@@ -247,3 +247,68 @@ class TestStockBookReview(TestStockBook):
         names = self.Book.with_user(self.storekeeper).book_suggest_partners("zebra")
         self.assertIn("ZEBRA MINE", names)
         self.assertNotIn("ZEBRA SECRET", names)
+
+
+@tagged("post_install", "-at_install")
+class TestStockBookPage(TestStockBook):
+    """What the page's notices and printing rely on."""
+
+    def test_short_status_fits_its_column(self):
+        line = self.Line.create({"product_id": self.fg.id, "reason": "filling", "qty_in": 720})  # 60 cartons, 50 on hand
+        key, label, _tone, detail = line._status()
+        self.assertEqual((key, label), ("short", "Short · 1 item"))
+        self.assertIn("Type G", detail, "the names are in the detail")
+        line.qty_in = 1200  # 100 cartons, 1200 bottles, 600 L of bulk: all three short
+        self.assertEqual(line._status()[1], "Short · 3 items")
+
+    def test_undo_the_quantity_moving_column(self):
+        row = self.Book.book_save(False, {"product_id": self.fg.id, "reason": "sale", "qty_in": 6, "partner_name": "A"})
+        self.assertEqual(row["moved_to"], "removed")
+        row = self.Book.book_save(row["id"], {"qty_in": 6, "qty_out": 0}, keep_column=True)
+        self.assertEqual((row["qty_in"], row["qty_out"], row["status_key"]), (6, 0, "wrong_way"),
+                         "back where it was typed: the line asks which it is")
+        row = self.Book.book_save(row["id"], {"reason": "return"})
+        self.assertEqual((row["qty_in"], row["status_key"]), (6, "ready"))
+
+    def test_undo_cancel_and_undo_added_lines(self):
+        line = self.Line.create({"product_id": self.fg.id, "reason": "spoiled", "qty_out": 1})
+        self.Book.book_cancel([line.id])
+        self.assertEqual(self.Book.book_restore([line.id]), 1)
+        self.assertEqual(line.state, "draft")
+        posted = self.Line.create({"product_id": self.fg.id, "reason": "spoiled", "qty_out": 1})
+        posted.action_post()
+        posted.action_draft()
+        self.assertEqual(posted.state, "posted", "only a cancelled line goes back to draft")
+        pasted = self.Book.book_paste("3\tFIN-PAK-002\t\t2\tSale\tA\n3\tFIN-PAK-002\t\t1\tSale\tB", 2026, 11)
+        self.assertEqual(len(pasted["ids"]), 2)
+        first = self.Line.browse(pasted["ids"][0])
+        first.date = fields.Date.today()
+        first.action_post()
+        result = self.Book.book_discard(pasted["ids"])
+        self.assertEqual(result, {"removed": 1, "kept": 1}, "a line posted meanwhile stays")
+        self.assertTrue(first.exists())
+
+    def test_print_a_day_and_a_month(self):
+        today = fields.Date.today()
+        sale = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 24, "partner_name": "Naivas"})
+        sale.action_post()
+        self.Line.create({"product_id": self.fg.id, "reason": "filling", "qty_in": 12, "note": "batch 2"})
+        cancelled = self.Line.create({"product_id": self.sticker.id, "reason": "spoiled", "qty_out": 3,
+                                      "partner_name": "SHOULD NOT PRINT"})
+        cancelled.action_cancel()
+        action = self.Book.book_print(today.year, today.month)
+        self.assertEqual((action["type"], action["report_name"]), ("ir.actions.report", "odin_stock_book.report_movement_log"))
+        Report = self.env["ir.actions.report"]
+        html = Report._render_qweb_html("odin_stock_book.report_movement_log", [], data=action["data"])[0].decode()
+        self.assertIn(sale.ref, html)
+        self.assertIn("NAIVAS", html)
+        self.assertIn("batch 2", html)
+        self.assertIn("Not posted", html)
+        self.assertIn("not posted yet", html, "a sheet with drafts says it is not final")
+        self.assertIn("500 Ml Handwash Round", html, "a filling prints its components")
+        self.assertNotIn("SHOULD NOT PRINT", html)
+        self.assertIn("Checked by (supervisor)", html)
+        day = Report._render_qweb_html("odin_stock_book.report_movement_log", [], data=self.Book.book_print(
+            day=fields.Date.to_string(today - timedelta(days=1)))["data"])[0].decode()
+        self.assertNotIn(sale.ref, day, "a day prints only that day")
+        self.assertIn("No movements.", day)

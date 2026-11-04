@@ -1,4 +1,6 @@
-import { Component, onMounted, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
+import {
+    Component, onMounted, onPatched, onWillStart, onWillUnmount, toRaw, useExternalListener, useRef, useState,
+} from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -9,16 +11,24 @@ import { download } from "@web/core/network/download";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { parseAmount, parseDay } from "./utils";
 
-const REASON_COLOR = {
-    filling: "#139A4A", production: "#7A5AF8", received: "#F79009", return: "#0BA5EC", sale: "#2E90FA",
-    spoiled: "#F04438", sample: "#EE46BC", used: "#98A2B3", correction: "#667085",
-};
 const WITH_PARTNER = new Set(["sale", "return", "received"]);
 // The order Enter moves through the entry row.
 const NEW_COLS = ["date", "item", "qty_in", "qty_out", "reason", "partner_name"];
+// How long the row just saved stays highlighted, and an Undo stays offered.
+const FLASH_MS = 1600;
+const UNDO_MS = 8000;
 
 function blankRow(date, keep = {}) {
     return { date, product: null, query: "", qty_in: "", qty_out: "", reason: keep.reason || "", partner_name: "" };
+}
+
+/** Nothing typed in the entry row yet: its date can follow the month tab. */
+function untouched(row) {
+    return !row.product && !row.query && !row.qty_in && !row.qty_out && !row.partner_name;
+}
+
+function nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 export class StockBook extends Component {
@@ -39,45 +49,90 @@ export class StockBook extends Component {
             selectedId: null, open: {}, newRow: null, suggest: null, saving: false,
             compSearch: { query: "", results: [] }, confirmCount: false, countConflicts: null,
             warehouseId: params.warehouse_id || false, warehouses: [], pasting: false,
+            // Crispness: what is being saved, what is being switched to, and
+            // which rows to highlight for a moment.
+            pending: 0, saveNote: "", refreshing: 0, flash: {}, showCancelled: false,
         });
+        // Each load has a number; a load that comes back after a newer one
+        // started is dropped, so a slow answer never puts old values back.
+        this.loadSeq = 0;
+        this.timers = new Set();
+        this.patchWaiters = [];
         this.suggestItems = debounce(this.suggestItems.bind(this), 180);
         this.suggestPartners = debounce(this.suggestPartners.bind(this), 180);
         this.searchComponents = debounce(this.searchComponents.bind(this), 180);
         this.reloadSoon = debounce(() => this.load(), 200);
         onWillStart(() => this.load());
-        onMounted(() => this.state.view === "log" && this.focusNew("item"));
+        onMounted(() => {
+            if (this.state.view === "log") {
+                this.scrollToEnd();
+                this.focusNew("item");
+            }
+        });
+        onPatched(() => {
+            const waiters = this.patchWaiters;
+            this.patchWaiters = [];
+            waiters.forEach((resolve) => resolve());
+        });
+        onWillUnmount(() => this.timers.forEach((t) => clearTimeout(t)));
         useExternalListener(window, "keydown", (ev) => this.onGlobalKey(ev));
+    }
+
+    later(fn, ms) {
+        const timer = setTimeout(() => {
+            this.timers.delete(timer);
+            fn();
+        }, ms);
+        this.timers.add(timer);
+    }
+
+    /** Resolves once the page shows the latest state. */
+    rendered() {
+        return Promise.race([new Promise((resolve) => this.patchWaiters.push(resolve)), nextFrame()]);
+    }
+
+    get sheetEl() {
+        return this.root.el?.querySelector(".o_sb_sheet");
     }
 
     // ------------------------------------------------------------ data
     async load() {
+        const seq = ++this.loadSeq;
         const { year, month, search } = this.state;
         const warehouse_id = this.state.warehouseId;
+        const view = this.state.view;
         let data;
-        if (this.state.view === "log") {
-            const book = await this.orm.call("odin.stock.book", "get_book", [], {
+        if (view === "log") {
+            data = await this.orm.call("odin.stock.book", "get_book", [], {
                 year, month, reason: this.state.reason, status: this.state.status, search, warehouse_id,
             });
-            this.state.book = data = book;
-            if (!book.empty) {
-                this.state.year = book.year;
-                this.state.month = book.month;
-                if (!this.state.newRow) {
-                    this.state.newRow = blankRow(this.defaultDate());
-                }
-            }
-        } else if (this.state.view === "sheet") {
-            this.state.sheet = data = await this.orm.call("odin.stock.book", "get_sheet", [], {
+        } else if (view === "sheet") {
+            data = await this.orm.call("odin.stock.book", "get_sheet", [], {
                 year, month, group: this.state.group, search, warehouse_id,
             });
-            this.state.year = this.state.sheet.year;
-            this.state.month = this.state.sheet.month;
         } else {
-            this.state.count = data = await this.orm.call("odin.stock.book", "get_count", [], {
+            data = await this.orm.call("odin.stock.book", "get_count", [], {
                 group: this.state.group, search, warehouse_id,
             });
         }
-        if (data?.warehouse) {
+        if (seq !== this.loadSeq || view !== this.state.view) {
+            return false;
+        }
+        const sheet = this.sheetEl;
+        const atEnd = sheet && sheet.scrollHeight - sheet.scrollTop - sheet.clientHeight < 24;
+        // The month first: the entry row's date follows it.
+        if (data.year) {
+            this.state.year = data.year;
+            this.state.month = data.month;
+        }
+        if (view === "log") {
+            this.applyBook(data);
+        } else if (view === "sheet") {
+            this.state.sheet = data;
+        } else {
+            this.state.count = data;
+        }
+        if (data.warehouse) {
             this.state.warehouseId = data.warehouse.id;
             this.state.warehouses = data.warehouses;
         }
@@ -85,10 +140,147 @@ export class StockBook extends Component {
         if (this.state.selectedId && !this.selected) {
             this.state.selectedId = null;
         }
+        if (atEnd && view === "log") {
+            // Reading the newest lines, like a chat: stay at the end.
+            this.rendered().then(() => this.scrollToEnd());
+        }
+        return true;
     }
 
-    get rows() {
+    /**
+     * The month's rows, keeping the rows that did not change as they were,
+     * so the page only touches what changed; a row's components stay open or
+     * closed as they were first shown.
+     */
+    applyBook(book) {
+        if (!book.empty) {
+            const before = new Map((toRaw(this.state.book)?.rows || []).map((r) => [r.id, r]));
+            book.rows = book.rows.map((row) => {
+                const old = before.get(row.id);
+                return old && JSON.stringify(old) === JSON.stringify(row) ? old : row;
+            });
+            for (const row of book.rows) {
+                if (this.state.open[row.id] === undefined && row.components.length) {
+                    this.state.open[row.id] = this.defaultOpen(row);
+                }
+            }
+        }
+        this.state.book = book;
+        if (book.empty) {
+            return;
+        }
+        const row = this.state.newRow;
+        if (!row) {
+            this.state.newRow = blankRow(this.defaultDate());
+        } else if (untouched(row) && !row.date.startsWith(this.monthPrefix)) {
+            row.date = this.defaultDate();
+        }
+    }
+
+    /**
+     * Changes made on the page: the call, then the month again. "Saving…"
+     * shows meanwhile and "Saved" after; on an error the page reloads so it
+     * never shows what the server refused.
+     */
+    async mutate(call, { flash = null, reveal = false, onResult = null } = {}) {
+        this.state.pending++;
+        this.state.saveNote = "saving";
+        let result;
+        try {
+            result = await call();
+        } catch (error) {
+            this.state.pending--;
+            if (!this.state.pending) {
+                this.state.saveNote = "";
+            }
+            await this.load();
+            throw error;
+        }
+        this.state.pending--;
+        // Before the month comes back, so it shows in its final form at once.
+        onResult?.(result);
+        await this.load();
+        const ids = typeof flash === "function" ? flash(result) : flash;
+        if (ids?.length) {
+            this.flashRows(ids, reveal);
+        }
+        if (!this.state.pending) {
+            this.state.saveNote = "saved";
+            this.later(() => !this.state.pending && (this.state.saveNote = ""), 1500);
+        }
+        return result;
+    }
+
+    /** Highlight rows for a moment; ``reveal``: scroll the first into view. */
+    async flashRows(ids, reveal = false) {
+        for (const id of ids) {
+            this.state.flash[id] = (this.state.flash[id] || 0) + 1;
+        }
+        this.later(() => ids.forEach((id) => delete this.state.flash[id]), FLASH_MS);
+        if (reveal) {
+            await this.rendered();
+            this.root.el?.querySelector(`.o_sb_row[data-id="${ids[0]}"]`)?.scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    scrollToEnd() {
+        const sheet = this.sheetEl;
+        if (sheet) {
+            sheet.scrollTop = sheet.scrollHeight;
+        }
+    }
+
+    /** Switching month, year, warehouse or view: the old content stays,
+     * dimmed, until the new one is there; no blank page in between. */
+    async navigate(change, { toEnd = true } = {}) {
+        this.state.refreshing++;
+        change();
+        try {
+            if (await this.load()) {
+                await this.rendered();
+                if (toEnd && this.state.view === "log") {
+                    this.scrollToEnd();
+                }
+            }
+        } finally {
+            this.state.refreshing--;
+        }
+    }
+
+    /**
+     * A notice with Undo. ``undo`` runs at most once; the notice closes
+     * when it is clicked.
+     */
+    notifyUndo(message, undo, options = {}) {
+        let done = false;
+        const close = this.notification.add(message, {
+            type: "info", autocloseDelay: UNDO_MS, ...options,
+            buttons: [{
+                name: _t("Undo"), primary: true, icon: "fa-undo",
+                onClick: async () => {
+                    if (done) {
+                        return;
+                    }
+                    done = true;
+                    close();
+                    await undo();
+                },
+            }],
+        });
+        return close;
+    }
+
+    get allRows() {
         return this.state.book?.rows || [];
+    }
+
+    /** Cancelled lines are left out unless asked for. */
+    get rows() {
+        return this.state.showCancelled ? this.allRows : this.allRows.filter((r) => r.state !== "cancelled");
+    }
+
+    get cancelledCount() {
+        return this.allRows.filter((r) => r.state === "cancelled").length;
     }
 
     get selected() {
@@ -112,6 +304,10 @@ export class StockBook extends Component {
     get monthLabel() {
         const months = (this.state.book || this.state.sheet)?.months;
         return months ? `${months[this.state.month - 1].label} ${this.state.year}` : "";
+    }
+
+    get monthPrefix() {
+        return `${this.state.year}-${String(this.state.month).padStart(2, "0")}`;
     }
 
     get readyIds() {
@@ -154,10 +350,6 @@ export class StockBook extends Component {
         return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]} ${this.shortDate(value)}`;
     }
 
-    reasonColor(key) {
-        return REASON_COLOR[key] || "#98A2B3";
-    }
-
     shortRef(ref) {
         if (!ref) {
             return "";
@@ -166,38 +358,43 @@ export class StockBook extends Component {
         return `${parts[0]}/${parts[parts.length - 1]}`;
     }
 
+    /** The quantity column the reason does not use: hidden until hovered or focused. */
+    quiet(direction, column, value) {
+        return !value && ((column === "in" && direction === "out") || (column === "out" && direction === "in"));
+    }
+
     // ------------------------------------------------------------ navigation
-    async setView(view) {
-        this.state.view = view;
-        this.state.selectedId = null;
-        this.state.group = "";
-        this.state.search = "";
-        this.state.loading = true;
-        await this.load();
-        if (view === "log") {
-            this.focusNew("item");
-        }
+    setView(view) {
+        return this.navigate(() => {
+            this.state.view = view;
+            this.state.selectedId = null;
+            this.state.group = "";
+            this.state.search = "";
+        }).then(() => view === "log" && this.focusNew("item"));
     }
 
-    async setWarehouse(ev) {
-        this.state.warehouseId = Number(ev.target.value) || false;
-        this.state.selectedId = null;
-        this.state.newRow = null;
-        this.state.countConflicts = null;
-        await this.load();
+    setWarehouse(ev) {
+        return this.navigate(() => {
+            this.state.warehouseId = Number(ev.target.value) || false;
+            this.state.selectedId = null;
+            // Its on-hand figures belong to the other warehouse.
+            this.state.newRow = null;
+            this.state.countConflicts = null;
+        });
     }
 
-    async setMonth(month) {
-        this.state.month = month;
-        this.state.selectedId = null;
-        this.state.newRow = null;
-        await this.load();
+    setMonth(month) {
+        return this.navigate(() => {
+            this.state.month = month;
+            this.state.selectedId = null;
+        });
     }
 
-    async shiftYear(delta) {
-        this.state.year += delta;
-        this.state.newRow = null;
-        await this.load();
+    shiftYear(delta) {
+        return this.navigate(() => {
+            this.state.year += delta;
+            this.state.selectedId = null;
+        });
     }
 
     async setReason(reason) {
@@ -224,10 +421,20 @@ export class StockBook extends Component {
         this.reloadSoon();
     }
 
-    async openOlder() {
+    openOlder() {
         const older = this.state.book.older_open;
-        this.state.year = older.year;
-        await this.setMonth(older.month);
+        return this.navigate(() => {
+            this.state.year = older.year;
+            this.state.month = older.month;
+            this.state.selectedId = null;
+        });
+    }
+
+    toggleCancelled() {
+        this.state.showCancelled = !this.state.showCancelled;
+        if (!this.state.showCancelled && this.state.selectedId && !this.selected) {
+            this.state.selectedId = null;
+        }
     }
 
     select(row) {
@@ -239,13 +446,16 @@ export class StockBook extends Component {
         this.state.open[row.id] = !this.isOpen(row);
     }
 
+    /** Open by default only when a component is short, so a batch with a
+     * dozen ingredients does not push the rest of the day off the screen. */
+    defaultOpen(row) {
+        return row.state === "draft"
+            && row.components.some((c) => !c.unlimited && c.onhand_after !== null && c.onhand_after < 0);
+    }
+
     isOpen(row) {
         const flag = this.state.open[row.id];
-        // Open by default only when a component is short, so a batch with a
-        // dozen ingredients does not push the rest of the day off the screen.
-        return flag === undefined
-            ? row.state === "draft" && row.components.some((c) => !c.unlimited && c.onhand_after !== null && c.onhand_after < 0)
-            : flag;
+        return flag === undefined ? this.defaultOpen(row) : flag;
     }
 
     onRowClick(ev, row) {
@@ -266,19 +476,27 @@ export class StockBook extends Component {
 
     // ------------------------------------------------------------ editing rows
     async save(row, values) {
-        const saved = await this.orm.call("odin.stock.book", "book_save", [row.id, values]);
+        const saved = await this.mutate(() => this.orm.call("odin.stock.book", "book_save", [row.id, values]),
+            { flash: [row.id] });
         this.tellMoved(saved);
-        await this.load();
+        return saved;
     }
 
-    /** The reason only removes (or only adds): say where the number went. */
+    /** The reason only removes (or only adds): say where the number went, and offer to put it back. */
     tellMoved(saved) {
-        if (saved.moved_to) {
-            this.notification.add(saved.moved_to === "removed"
-                ? _t("%(reason)s removes stock: the quantity is in Removed.", { reason: saved.reason_label })
-                : _t("%(reason)s adds stock: the quantity is in Added.", { reason: saved.reason_label }),
-                { type: "info" });
+        if (!saved.moved_to) {
+            return;
         }
+        const toRemoved = saved.moved_to === "removed";
+        const message = toRemoved
+            ? _t("%(reason)s removes stock: the quantity is in Removed.", { reason: saved.reason_label })
+            : _t("%(reason)s adds stock: the quantity is in Added.", { reason: saved.reason_label });
+        this.notifyUndo(message, () => {
+            const qty = toRemoved ? saved.qty_out : saved.qty_in;
+            const values = toRemoved ? { qty_in: qty, qty_out: 0 } : { qty_in: 0, qty_out: qty };
+            return this.mutate(() => this.orm.call("odin.stock.book", "book_save", [saved.id, values],
+                { keep_column: true }), { flash: [saved.id] });
+        });
     }
 
     onCell(ev, row, field) {
@@ -287,7 +505,7 @@ export class StockBook extends Component {
             value = parseAmount(value, NaN);
             if (Number.isNaN(value) || value < 0) {
                 this.notification.add(_t("Type a quantity, e.g. 240"), { type: "warning" });
-                ev.target.value = row[field] || "";
+                ev.target.value = row[field] ? this.fmt(row[field]) : "";
                 return;
             }
         } else if (field === "date") {
@@ -315,26 +533,26 @@ export class StockBook extends Component {
         this.save(row, { unit_cost: cost });
     }
 
-    async setComponent(row, comp, ev) {
+    setComponent(row, comp, ev) {
         const qty = parseAmount(ev.target.value, NaN);
         if (Number.isNaN(qty) || qty < 0) {
             this.notification.add(_t("Type a quantity, e.g. 240"), { type: "warning" });
-            ev.target.value = comp.qty;
+            ev.target.value = this.fmt(comp.qty);
             return;
         }
-        await this.orm.call("odin.stock.book", "book_component", [row.id], { component_id: comp.id, qty });
-        await this.load();
+        return this.mutate(() => this.orm.call("odin.stock.book", "book_component", [row.id],
+            { component_id: comp.id, qty }), { flash: [row.id] });
     }
 
-    async removeComponent(row, comp) {
-        await this.orm.call("odin.stock.book", "book_component", [row.id], { component_id: comp.id, remove: true });
-        await this.load();
+    removeComponent(row, comp) {
+        return this.mutate(() => this.orm.call("odin.stock.book", "book_component", [row.id],
+            { component_id: comp.id, remove: true }), { flash: [row.id] });
     }
 
     async resetComponents(row) {
-        await this.orm.call("odin.stock.book", "book_reset_components", [row.id]);
+        await this.mutate(() => this.orm.call("odin.stock.book", "book_reset_components", [row.id]),
+            { flash: [row.id] });
         this.notification.add(_t("Components back to the recipe"), { type: "info" });
-        await this.load();
     }
 
     onCompSearch(ev) {
@@ -348,11 +566,11 @@ export class StockBook extends Component {
             { warehouse_id: this.state.warehouseId }) : [];
     }
 
-    async addComponent(row, product) {
+    addComponent(row, product) {
         this.state.compSearch = { query: "", results: [] };
-        await this.orm.call("odin.stock.book", "book_component", [row.id], { product_id: product.id, qty: 1 });
         this.state.open[row.id] = true;
-        await this.load();
+        return this.mutate(() => this.orm.call("odin.stock.book", "book_component", [row.id],
+            { product_id: product.id, qty: 1 }), { flash: [row.id] });
     }
 
     // ------------------------------------------------------------ the entry row
@@ -377,6 +595,10 @@ export class StockBook extends Component {
         }
         const items = await this.orm.call("odin.stock.book", "book_suggest_products", [text],
             { warehouse_id: this.state.warehouseId });
+        // Typed on since: a newer answer is on its way.
+        if (this.state.newRow?.query !== text) {
+            return;
+        }
         this.state.suggest = items.length ? { field: "item", items, index: 0 } : null;
     }
 
@@ -386,6 +608,9 @@ export class StockBook extends Component {
             return;
         }
         const items = await this.orm.call("odin.stock.book", "book_suggest_partners", [text]);
+        if (this.state.newRow?.partner_name !== text) {
+            return;
+        }
         this.state.suggest = items.length ? { field: "partner_name", items, index: 0 } : null;
     }
 
@@ -525,22 +750,27 @@ export class StockBook extends Component {
         const row = this.state.newRow;
         this.state.saving = true;
         try {
-            const saved = await this.orm.call("odin.stock.book", "book_save", [false, {
+            const saved = await this.mutate(() => this.orm.call("odin.stock.book", "book_save", [false, {
                 date: row.date, product_id: row.product.id, reason: row.reason,
                 qty_in: parseAmount(row.qty_in), qty_out: parseAmount(row.qty_out),
                 partner_name: row.partner_name || false, warehouse_id: this.state.warehouseId,
-            }]);
+            }]), {
+                flash: (result) => [result.id], reveal: true,
+                onResult: (result) => result.components.length && (this.state.open[result.id] = true),
+            });
             this.state.newRow = blankRow(row.date);
             this.state.suggest = null;
             this.tellMoved(saved);
             if (saved.components.length) {
-                this.state.open[saved.id] = true;
                 this.notification.add(_t("%(n)s components from the recipe: check them, then post.",
                     { n: saved.components.length }), { type: "info" });
-            } else if (saved.status_key !== "ready") {
+            } else if (saved.status_key !== "ready" && !saved.moved_to) {
                 this.notification.add(`${saved.product.name}: ${saved.status}. ${saved.detail}`, { type: "warning" });
             }
-            await this.load();
+            if (!saved.date.startsWith(this.monthPrefix)) {
+                this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(saved.date)),
+                    { type: "info" });
+            }
         } finally {
             this.state.saving = false;
         }
@@ -562,23 +792,28 @@ export class StockBook extends Component {
         }
         this.state.pasting = true;
         try {
-            const result = await this.orm.call("odin.stock.book", "book_paste", [text], {
+            const result = await this.mutate(() => this.orm.call("odin.stock.book", "book_paste", [text], {
                 year: this.state.year, month: this.state.month, warehouse_id: this.state.warehouseId,
-            });
+            }), { flash: (r) => r.ids });
             const skipped = result.skipped.map((s) => _t("Row %(row)s: %(why)s", s));
             const lines = [_t("%s lines added as drafts.", result.created), ...result.notes, ...skipped];
-            this.notification.add(lines.slice(0, 12).join("\n") + (lines.length > 12 ? "\n…" : ""), {
+            const options = {
                 title: skipped.length ? _t("Pasted, %s rows left out", skipped.length) : _t("Pasted"),
                 type: skipped.length || result.notes.length ? "warning" : "success",
                 sticky: Boolean(skipped.length || result.notes.length), className: "o_sb_notice",
-            });
+            };
+            const message = lines.slice(0, 12).join("\n") + (lines.length > 12 ? "\n…" : "");
+            if (result.ids.length) {
+                this.notifyUndo(message, () => this.discard(result.ids), options);
+            } else {
+                this.notification.add(message, options);
+            }
             const elsewhere = (result.months || []).filter(([y, m]) => y !== this.state.year || m !== this.state.month);
             if (elsewhere.length) {
                 this.notification.add(_t("Some rows are dated in another month: open its tab to see them."),
                     { type: "info" });
             }
             this.state.newRow = blankRow(this.defaultDate());
-            await this.load();
         } finally {
             this.state.pasting = false;
         }
@@ -588,7 +823,7 @@ export class StockBook extends Component {
         const go = () => {
             const el = this.root.el?.querySelector(`.o_sb_new [data-field="${field}"]`);
             if (el) {
-                el.focus();
+                el.focus({ preventScroll: true });
                 el.select?.();
             }
             return Boolean(el);
@@ -617,11 +852,11 @@ export class StockBook extends Component {
 
     // ------------------------------------------------------------ actions
     async post(ids, allowShort = false) {
-        const { count, refs } = await this.orm.call("odin.stock.book", "book_post", [ids], { allow_short: allowShort });
+        const { count, refs } = await this.mutate(() => this.orm.call("odin.stock.book", "book_post", [ids],
+            { allow_short: allowShort }), { flash: ids });
         const shown = refs.length > 3 ? `${refs[0]} … ${refs[refs.length - 1]}` : refs.join(", ");
         this.notification.add(count ? _t("%(n)s posted: %(refs)s", { n: count, refs: shown }) : _t("Nothing was ready to post"),
             { type: count ? "success" : "warning" });
-        await this.load();
     }
 
     /** What posting the ready lines will create, so a supervisor posts on purpose. */
@@ -646,10 +881,19 @@ export class StockBook extends Component {
         });
     }
 
+    /** Undo of Copy, Reverse and Paste: the drafts they added go. */
+    async discard(ids) {
+        const { removed, kept } = await this.mutate(() => this.orm.call("odin.stock.book", "book_discard", [ids]));
+        if (kept) {
+            this.notification.add(_t("%(removed)s removed; %(kept)s were posted meanwhile and stay.", { removed, kept }),
+                { type: "warning" });
+        }
+    }
+
     async copyLine(row) {
-        const id = await this.orm.call("odin.stock.book", "book_copy", [row.id], { day: this.defaultDate() });
-        this.notification.add(_t("Copied as a new draft"), { type: "info" });
-        await this.load();
+        const id = await this.mutate(() => this.orm.call("odin.stock.book", "book_copy", [row.id],
+            { day: this.defaultDate() }), { flash: (newId) => [newId], reveal: true });
+        this.notifyUndo(_t("Copied as a new draft."), () => this.discard([id]));
         this.state.selectedId = this.rows.some((r) => r.id === id) ? id : null;
     }
 
@@ -660,31 +904,33 @@ export class StockBook extends Component {
                 { reason: row.reason === "sale" ? _t("Customer return") : row.reason === "return" ? _t("Sale") : _t("Correction"), ref: row.ref }),
             confirmLabel: _t("Add the reversing line"),
             confirm: async () => {
-                await this.orm.call("odin.stock.book", "book_reverse", [row.id]);
-                const today = this.state.book.today.split("-").map(Number);
-                if (today[0] !== this.state.year || today[1] !== this.state.month) {
-                    this.notification.add(_t("Added in today's month."), { type: "info" });
-                }
-                await this.load();
+                const id = await this.mutate(() => this.orm.call("odin.stock.book", "book_reverse", [row.id]),
+                    { flash: (newId) => [newId], reveal: true });
+                const today = this.state.book.today;
+                this.notifyUndo(today.startsWith(this.monthPrefix)
+                    ? _t("Reversing line added as a draft.")
+                    : _t("Reversing line added as a draft, in today's month."), () => this.discard([id]));
             },
             cancel: () => {},
         });
     }
 
     /** A short line: go and count the item that is short. */
-    async countItem(product) {
-        this.state.view = "count";
-        this.state.selectedId = null;
-        this.state.group = "";
-        this.state.search = product.code || product.name;
-        this.state.loading = true;
-        await this.load();
+    countItem(product) {
+        return this.navigate(() => {
+            this.state.view = "count";
+            this.state.selectedId = null;
+            this.state.group = "";
+            this.state.search = product.code || product.name;
+        });
     }
 
     async cancel(row) {
-        await this.orm.call("odin.stock.book", "book_cancel", [[row.id]]);
         this.state.selectedId = null;
-        await this.load();
+        await this.mutate(() => this.orm.call("odin.stock.book", "book_cancel", [[row.id]]));
+        const name = row.product ? row.product.name : _t("Line");
+        this.notifyUndo(_t("%s: line cancelled.", name), () => this.mutate(
+            () => this.orm.call("odin.stock.book", "book_restore", [[row.id]]), { flash: [row.id], reveal: true }));
     }
 
     async openDocument(row) {
@@ -703,17 +949,25 @@ export class StockBook extends Component {
         } });
     }
 
+    /** The movement log as a PDF to sign: the month on the tab, or one ``day``. */
+    async printSheet(day = false) {
+        const action = await this.orm.call("odin.stock.book", "book_print", [], {
+            year: this.state.year, month: this.state.month, day, warehouse_id: this.state.warehouseId,
+        });
+        await this.action.doAction(action);
+    }
+
     // ------------------------------------------------------------ count
-    async setCount(row, ev) {
+    setCount(row, ev) {
         const raw = ev.target.value.trim();
         const qty = raw === "" ? null : parseAmount(raw, NaN);
         if (qty !== null && (Number.isNaN(qty) || qty < 0)) {
             this.notification.add(_t("Type what is on the shelf, e.g. 412"), { type: "warning" });
-            ev.target.value = row.counted ?? "";
+            ev.target.value = row.counted === null ? "" : this.fmt(row.counted);
             return;
         }
-        await this.orm.call("odin.stock.book", "count_set", [row.product.id, qty], { warehouse_id: this.state.warehouseId });
-        await this.load();
+        return this.mutate(() => this.orm.call("odin.stock.book", "count_set", [row.product.id, qty],
+            { warehouse_id: this.state.warehouseId }));
     }
 
     onCountKey(ev) {
@@ -738,9 +992,9 @@ export class StockBook extends Component {
      * extra) to what is there now.
      */
     async postCount(resolve = false) {
-        const result = await this.orm.call("odin.stock.book", "count_post", [], {
+        const result = await this.mutate(() => this.orm.call("odin.stock.book", "count_post", [], {
             warehouse_id: this.state.warehouseId, resolve,
-        });
+        }));
         this.state.confirmCount = false;
         if (result.moved) {
             this.state.countConflicts = result.moved;
@@ -748,7 +1002,6 @@ export class StockBook extends Component {
         }
         this.state.countConflicts = null;
         this.notification.add(_t("Count posted: %s items adjusted", result.applied), { type: "success" });
-        await this.load();
     }
 }
 

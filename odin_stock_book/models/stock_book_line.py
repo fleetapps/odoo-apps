@@ -177,6 +177,9 @@ class StockBookLine(models.Model):
         """A reason that only adds (or only removes) takes the quantity in its
         own column: 24 typed in Added for a Sale is 24 removed."""
         moved = self.env["odin.stock.line"]
+        if self.env.context.get("odin_stock_keep_column"):
+            # Undone from the page: the quantity stays where it was typed.
+            return moved
         for line in self.filtered(lambda l: l.state == "draft"):
             if line.direction == "out" and line.qty_in and not line.qty_out:
                 super(StockBookLine, line).write({"qty_out": line.qty_in, "qty_in": 0.0})
@@ -234,8 +237,9 @@ class StockBookLine(models.Model):
             if float_compare(comp.qty, available.get(comp.product_id.id, 0.0), precision_digits=4) > 0:
                 short.append(comp.product_id)
         if short:
-            names = ", ".join(p.name for p in short[:2]) + (f" +{len(short) - 2}" if len(short) > 2 else "")
-            return "short", _("Short: %s", names), "danger", _(
+            # The count fits the status column; the names are in the detail.
+            label = _("Short · 1 item") if len(short) == 1 else _("Short · %s items", len(short))
+            return "short", label, "danger", _(
                 "More than is on hand: %s. Count them, receive the delivery, or change the quantity.",
                 ", ".join(p.name for p in short))
         return "ready", *STATUS["ready"], ""
@@ -474,6 +478,13 @@ class StockBookLine(models.Model):
     def action_cancel(self):
         self.filtered(lambda l: l.state == "draft").with_context(odin_stock_book_posting=True).write(
             {"state": "cancelled"})
+        return True
+
+    def action_draft(self):
+        """A cancelled line back to a draft. Never a posted one: that is
+        undone by the line that does the opposite."""
+        self.filtered(lambda l: l.state == "cancelled").with_context(odin_stock_book_posting=True).write(
+            {"state": "draft"})
         return True
 
     def action_open_document(self):

@@ -29,6 +29,7 @@
                     <button name="action_post" type="object" string="Post" class="btn-primary" invisible="state != 'draft'"
                             groups="odin_stock_book.group_stock_book_supervisor"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <button name="action_draft" type="object" string="Back to draft" invisible="state != 'cancelled'"/>
                     <button name="action_open_document" type="object" string="Open document" invisible="state != 'posted'"/>
                     <field name="state" widget="statusbar"/>
                 </header>

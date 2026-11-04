@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A4 landscape: the log has a dozen columns. -->
+    <record id="paperformat_movement_log" model="report.paperformat">
+        <field name="name">Stock Book: A4 landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">38</field>
+        <field name="margin_bottom">22</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">32</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_movement_log" model="ir.actions.report">
+        <field name="name">Movement log</field>
+        <field name="model">odin.stock.line</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_stock_book.report_movement_log</field>
+        <field name="report_file">odin_stock_book.report_movement_log</field>
+        <field name="paperformat_id" ref="paperformat_movement_log"/>
+    </record>
+
+    <!-- Laid out with tables only: the PDF engine (wkhtmltopdf) is an old
+         WebKit without flexbox or CSS variables. -->
+    <template id="report_movement_log">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page o_sb_print">
+                    <table class="o_sb_print_head">
+                        <tr>
+                            <td>
+                                <h2>Movement log</h2>
+                                <div class="o_sb_print_period"><span t-out="warehouse.name"/> · <span t-out="period"/></div>
+                            </td>
+                            <td class="o_sb_print_counts">
+                                <span t-out="line_count"/> lines · <span t-out="posted_count"/> posted<t t-if="draft_count"> ·
+                                <strong><span t-out="draft_count"/> not posted</strong></t>
+                                <div class="o_sb_print_muted">Printed <span t-out="printed_on"/> by <span t-out="printed_by"/></div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div t-if="draft_count" class="o_sb_print_warn">
+                        <strong><span t-out="draft_count"/> lines are not posted yet</strong>: their stock has not moved
+                        and their numbers can still change. This sheet is not final.
+                    </div>
+
+                    <p t-if="not days" class="o_sb_print_muted">No movements.</p>
+                    <table t-else="" class="o_sb_print_log">
+                        <thead>
+                            <tr>
+                                <th class="o_sb_print_ref">Ref</th>
+                                <th class="o_sb_print_item">Item</th>
+                                <th class="o_sb_print_num">Added</th>
+                                <th class="o_sb_print_num">Removed</th>
+                                <th class="o_sb_print_unit">Unit</th>
+                                <th class="o_sb_print_reason">Reason</th>
+                                <th class="o_sb_print_partner">Customer / supplier</th>
+                                <th class="o_sb_print_num">On hand after</th>
+                                <th class="o_sb_print_state">Posted by</th>
+                                <th class="o_sb_print_note">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="days" t-as="d">
+                                <tr t-if="not one_day" class="o_sb_print_day"><td colspan="10" t-out="d['label']"/></tr>
+                                <t t-foreach="d['rows']" t-as="r">
+                                    <tr t-att-class="'o_sb_print_line' + (' o_sb_print_draft' if r['state'] == 'draft' else '')">
+                                        <td class="o_sb_print_ref" t-out="r['ref'] or '—'"/>
+                                        <td class="o_sb_print_item">
+                                            <span t-if="r['product'] and r['product']['code']" class="o_sb_print_code" t-out="r['product']['code']"/>
+                                            <t t-out="r['product'] and r['product']['name']"/>
+                                        </td>
+                                        <td class="o_sb_print_num"><t t-if="r['qty_in']">+<t t-out="qty(r['qty_in'])"/></t></td>
+                                        <td class="o_sb_print_num"><t t-if="r['qty_out']">−<t t-out="qty(r['qty_out'])"/></t></td>
+                                        <td class="o_sb_print_unit" t-out="r['uom']"/>
+                                        <td class="o_sb_print_reason" t-out="r['reason_label']"/>
+                                        <td class="o_sb_print_partner" t-out="r['partner_name']"/>
+                                        <td class="o_sb_print_num" t-out="qty(r['onhand_after'], '0') if r['product'] else ''"/>
+                                        <td class="o_sb_print_state">
+                                            <t t-if="r['state'] == 'posted'" t-out="r['posted_by']"/>
+                                            <t t-else=""><strong>Not posted</strong><div class="o_sb_print_muted" t-out="r['status']"/></t>
+                                        </td>
+                                        <td class="o_sb_print_note" t-out="r['note']"/>
+                                    </tr>
+                                    <tr t-foreach="r['components']" t-as="c" class="o_sb_print_comp">
+                                        <td/>
+                                        <td class="o_sb_print_item o_sb_print_comp_item">
+                                            <span t-if="c['product']['code']" class="o_sb_print_code" t-out="c['product']['code']"/>
+                                            <t t-out="c['product']['name']"/>
+                                        </td>
+                                        <td/>
+                                        <td class="o_sb_print_num">−<t t-out="qty(c['qty'])"/></td>
+                                        <td class="o_sb_print_unit" t-out="c['uom']"/>
+                                        <td colspan="5" class="o_sb_print_muted">used in this <t t-out="r['reason_label'].lower()"/></td>
+                                    </tr>
+                                </t>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <table class="o_sb_print_foot">
+                        <tr>
+                            <td class="o_sb_print_summary">
+                                <div class="o_sb_print_label">Lines by reason</div>
+                                <table>
+                                    <tr t-foreach="by_reason" t-as="item"><td t-out="item[0]"/><td class="o_sb_print_num" t-out="item[1]"/></tr>
+                                </table>
+                            </td>
+                            <td class="o_sb_print_sign">
+                                <div class="o_sb_print_label">Prepared by (storekeeper)</div>
+                                <div class="o_sb_print_line_field">Name</div>
+                                <div class="o_sb_print_line_field">Signature</div>
+                                <div class="o_sb_print_line_field">Date</div>
+                            </td>
+                            <td class="o_sb_print_sign">
+                                <div class="o_sb_print_label">Checked by (supervisor)</div>
+                                <div class="o_sb_print_line_field">Name</div>
+                                <div class="o_sb_print_line_field">Signature</div>
+                                <div class="o_sb_print_line_field">Date</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -241,11 +241,13 @@ class StockBook(models.AbstractModel):
         return {"count": len(out), "examples": out[:3].mapped("name")}
 
     @api.model
-    def book_save(self, line_id, values):
+    def book_save(self, line_id, values, keep_column=False):
+        """``keep_column``: the page undoing "the quantity is in Removed": the
+        number stays in the column it was typed in."""
         allowed = {"date", "reason", "product_id", "qty_in", "qty_out", "partner_name", "note", "unit_cost",
                    "bom_id", "warehouse_id"}
         values = {k: v for k, v in values.items() if k in allowed}
-        Line = self.env["odin.stock.line"]
+        Line = self.env["odin.stock.line"].with_context(odin_stock_keep_column=bool(keep_column))
         if line_id:
             line = Line.browse(line_id)
             meant_in, meant_out = values.get("qty_in", line.qty_in), values.get("qty_out", line.qty_out)
@@ -298,6 +300,33 @@ class StockBook(models.AbstractModel):
     def book_cancel(self, ids):
         self.env["odin.stock.line"].browse(ids).action_cancel()
         return True
+
+    @api.model
+    def book_restore(self, ids):
+        """Undo of Cancel line: the cancelled lines are drafts again."""
+        lines = self.env["odin.stock.line"].browse(ids).exists()
+        lines.action_draft()
+        return len(lines.filtered(lambda l: l.state == "draft"))
+
+    @api.model
+    def book_discard(self, ids):
+        """Undo of Copy, Reverse and Paste: the drafts they added go, without a
+        trace. A line posted in the meantime stays (and is counted)."""
+        lines = self.env["odin.stock.line"].browse(ids).exists()
+        drafts = lines.filtered(lambda l: l.state in ("draft", "cancelled"))
+        kept = len(lines - drafts)
+        drafts.unlink()
+        return {"removed": len(drafts), "kept": kept}
+
+    @api.model
+    def book_print(self, year=False, month=False, day=False, warehouse_id=False):
+        """The movement log of a month, or of one day, as a sheet to sign."""
+        wh = self._warehouse(warehouse_id)
+        if not wh:
+            raise UserError(_("Create a warehouse first."))
+        data = {"year": year, "month": month, "day": day or False, "warehouse_id": wh.id}
+        return self.env.ref("odin_stock_book.action_report_movement_log").report_action(
+            [], data=data, config=False)
 
     @api.model
     def book_copy(self, line_id, day=False):
@@ -449,7 +478,7 @@ class StockBook(models.AbstractModel):
                 "partner_name": cell.get("partner") or False, "note": cell.get("note") or False,
             })
         lines = self.env["odin.stock.line"].create(vals_list)
-        return {"created": len(lines), "skipped": skipped, "notes": notes,
+        return {"created": len(lines), "ids": lines.ids, "skipped": skipped, "notes": notes,
                 "months": sorted({(d.year, d.month) for d in lines.mapped("date")})}
 
     # ------------------------------------------------------------ stock sheet

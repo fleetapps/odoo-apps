@@ -18,6 +18,17 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
   purchase...). Rows whose item cannot be told apart are left out and listed.
 * **More than one warehouse**: pick it at the top left; every view, the count
   and the export follow it.
+* **The entry row stays at the bottom of the sheet**, in sight however long the
+  month is; a month opens at its newest lines. Saving keeps your place and the
+  cell you moved to, and the line just saved lights up for a moment ("Saving…",
+  then "Saved", at the top).
+* **Undo** in the notice after: the quantity moving to the reason's column,
+  Cancel line, Copy, Reverse and a paste (the pasted drafts go). A posted line
+  is never undone this way.
+* **Cancelled lines are hidden**; "3 cancelled" in the toolbar shows them.
+* A draft shows only the quantity column its reason uses (the other appears on
+  hover). The status says what a line needs in a word ("Short · 2 items");
+  hover it, or select the line, for the whole reason.
 * **Reasons and what posting creates**
 
   | Reason | Goes in | Posts as |
@@ -85,10 +96,23 @@ and asks: *Movements came after the count* applies what was found missing or
 extra to what is there now; *The count saw them* sets the item to the number
 counted. Nothing is posted until one is chosen.
 
-## Export
+## Export and print
 
 Excel with two sheets, MOVEMENT LOG (components under each filling or batch)
 and MAIN INVENTORY, for the month on the tab.
+
+*Print* gives the month's movement log as a PDF to sign and file (A4
+landscape); the print button on a day's heading prints that day. Cancelled
+lines are left out; lines not posted yet are marked, and the sheet says it is
+not final while there are any. It ends with the lines by reason and a sign-off
+for the storekeeper and the supervisor. The PDF needs wkhtmltopdf on the
+server, as every Odoo PDF does.
+
+## Light and dark
+
+The page follows Odoo's dark theme. Status colours, the stripe on each row,
+red negatives, green additions and the reason dots have light and dark values,
+checked for contrast (text 4.5:1, stripes and dots 3:1) in both.
 
 ## Access
 
