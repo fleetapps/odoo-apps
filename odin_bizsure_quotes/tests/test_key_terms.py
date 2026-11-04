@@ -26,7 +26,7 @@ class TestKeyTerms(TransactionCase):
 
     def test_every_plan(self):
         plans = self.plans()
-        self.assertEqual(len(plans), 16 + 61, "the catalogue's 16 plans and the 61 added")
+        self.assertEqual(len(plans), 16 + 76, "the catalogue's 16 plans and the 76 added")
         for plan in plans:
             text = html2plaintext(plan.terms)
             self.assertLess(len(text), SHORT_TERMS, "%s: about half a page" % plan.name)

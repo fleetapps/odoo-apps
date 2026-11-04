@@ -18,6 +18,7 @@ class TestNewCards(TransactionCase):
         cls.jubilee = cls.env.ref("odin_bizsure_quotes.insurer_jubilee")
         cls.ga = cls.env.ref("odin_bizsure_quotes.insurer_ga")
         cls.heritage = cls.env.ref("odin_bizsure_quotes.insurer_heritage")
+        cls.apa = cls.env.ref("odin_bizsure_quotes.insurer_apa")
 
     def plan(self, key, **cover):
         product = self.env.ref("odin_bizsure_quotes.cover_%s" % key)
@@ -37,7 +38,8 @@ class TestNewCards(TransactionCase):
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.ga)), 34,
                          "26 Community Health, 8 Hadhi")
         self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.jubilee)), 17)
-        self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.heritage)), 10)
+        self.assertEqual(len(products.filtered(lambda p: p.insurer_id == self.heritage)), 20,
+                         "Options 1 to 10 per family and per person")
         off = products.filtered(lambda p: not p.active)
         self.assertEqual(sorted(off.mapped("name")), sorted(
             "GA Hadhi Health – Plan %s (KES %s), with Covid-19 cover (groups of 10 or more)" % pair
@@ -181,6 +183,49 @@ class TestNewCards(TransactionCase):
         self.assertFalse(group["options"][8]["available"], "shared: no member-only rate")
         older = self.plan("ha_option_1", principal_age=66)
         self.assertFalse(older["available"], "principal and spouse join from 18 to 65")
+
+    def test_heriafya_per_person(self):
+        """The tool's per-person basis: the spouse on the principal's rate for
+        their own age group, children as on the family option."""
+        family = {"principal_age": 35, "include_spouse": True, "spouse_age": 28, "children": 3}
+        plan = self.plan("ha_option_3_pp", **family)
+        self.assertTrue(plan["available"], plan["reason"])
+        self.assertEqual(plan["core"]["amount"], 32400 + 21600 + 13500 + 2 * 10800)
+        self.assertEqual(self.options(plan, "outpatient")[1][2], 42525 + 4 * 32400,
+                         "the same options as the family plan")
+        template = self.env.ref("odin_bizsure_quotes.cover_ha_option_3_pp").template_id
+        self.assertEqual(template.odin_inpatient_limit, 1000000)
+        self.assertEqual(template.odin_insurer_id, self.heritage)
+        self.assertFalse(self.plan("ha_option_1_pp", principal_age=66)["available"])
+
+    def test_afya_nafuu(self):
+        """APA rates on age next birthday: entered as age today, each band a
+        year lower. Outpatient and maternity: every tier with every plan."""
+        Product = self.env["odin.cover.product"]
+        plans = Product.search([("insurer_id", "=", self.apa.id), ("line", "=", "medical")])
+        self.assertEqual(sorted(plans.mapped("name")), sorted(
+            "APA Afya Nafuu – %s (KES %s)" % pair for pair in (
+                ("Affluent", "1,000,000"), ("Executive", "750,000"), ("Standard", "500,000"),
+                ("Select", "300,000"), ("Mwananchi", "100,000"))))
+        for product in plans:
+            self.assertFalse(product.warning_html, product.name)
+            self.assertTrue(product.template_id.odin_medical, product.name)
+            self.assertEqual(product.template_id.odin_insurer_id, self.apa, product.name)
+        family = {"principal_age": 35, "include_spouse": True, "spouse_age": 28, "children": 3}
+        plan = self.plan("an_standard", **family)
+        self.assertTrue(plan["available"], plan["reason"])
+        self.assertEqual(plan["core"]["amount"], 2 * 11643 + 3 * 6727,
+                         "two adults on 21-40, three children on 1 month-20")
+        self.assertEqual(self.options(plan, "outpatient")[1], [
+            2 * 9100 + 3 * 6700, 2 * 11090 + 3 * 9000, 2 * 12900 + 3 * 11100,
+            2 * 16500 + 3 * 13950, 2 * 20700 + 3 * 18200])
+        self.assertEqual(self.options(plan, "maternity")[1], [7500, 10000, 15000])
+        # 40 today is 41 next birthday: the 41-54 band.
+        self.assertEqual(self.plan("an_affluent", principal_age=40)["core"]["amount"], 23499)
+        self.assertEqual(self.plan("an_affluent", principal_age=39)["core"]["amount"], 16300)
+        self.assertEqual(self.plan("an_mwananchi", principal_age=74)["core"]["amount"], 19890)
+        self.assertFalse(self.plan("an_mwananchi", principal_age=75)["available"],
+                         "last joining age 75 next birthday")
 
     def test_hadhi(self):
         result = self.Quote.search_plans({"cover": {
