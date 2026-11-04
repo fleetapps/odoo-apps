@@ -31,7 +31,8 @@ What it installs
   maternity) and Jubilee Health Insurance's **J Care** (6 levels), **J Care
   Junior** (6) and **J Senior** (5), each with its optional covers; GA
   **Hadhi Health** (plans A to D, standard; Covid-enhanced ones off) and
-  Heritage **HeriAfya** (options 1 to 10). Generated from
+  Heritage **HeriAfya** (options 1 to 10, per family and per person) and APA
+  **Afya Nafuu** (Affluent to Mwananchi). Generated from
   ``tools/rate_cards.py`` by ``tools/generate_cover_products.py``.
 
 Every section line carries ``benefit_label``, ``benefit_key`` and
@@ -46,7 +47,7 @@ into the XML. A rate change is an edit to the JSON and one run of the script.
 Do not edit the generated XML, and see README.md before editing prices in
 Odoo itself.
 """,
-    "version": "19.0.1.8.0",
+    "version": "19.0.1.9.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
@@ -64,6 +65,7 @@ Odoo itself.
         "data/cover_product_ga.xml",
         "data/cover_product_jubilee.xml",
         "data/cover_product_heritage.xml",
+        "data/cover_product_apa.xml",
         "data/cover_product_data.xml",
     ],
     "application": False,

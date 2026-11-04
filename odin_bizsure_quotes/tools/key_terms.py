@@ -237,6 +237,32 @@ KEY_TERMS = {
             "Paybill 8779000, account: policy number or name."),
         "Please note": please_note("Heritage", "Heritage may decline any application."),
     }),
+    "apa_afya_nafuu": ("APA Afya Nafuu – key terms", {
+        "Your premium": (
+            "Annual, per person, by age next birthday; paid in full before cover starts."),
+        "Who can join": (
+            "From 1 month to 75 (last joining age 75). A medical report for everyone joining "
+            "at 55 and over. Renewal depends on claims and APA's underwriting."),
+        "Waiting periods": (
+            "Accidents: none. Illness: 30 days. Surgery: 90 days. Pre-existing, chronic and "
+            "congenital conditions, HIV/AIDS, fibroids, hernia, adenoids and haemorrhoids: 12 "
+            "months. Maternity: 10 months. Cataract: 1 year (APA's exclusions say 24 months). "
+            "Transplants: 3rd year. A break in cover restarts them."),
+        "Before treatment": (
+            "APA's panel only: no refund for treatment elsewhere. Show your card. Planned "
+            "admissions: tell APA 48 hours ahead and wait for approval; emergencies within 48 "
+            "hours. Bills are paid net of SHIF. Cover: Kenya, and up to 6 weeks abroad on a "
+            "refund."),
+        "Not covered": (
+            "Check-ups, cosmetic surgery unless after an accident, family planning and "
+            "infertility, alternative medicine, self-injury, drink and drugs, war, glasses and "
+            "dental unless in the cover, treatment outside Kenya or the panel, and APA's other "
+            "exclusions."),
+        "How to pay": APA_COMMON["How to pay"],
+        "Please note": please_note(
+            "APA", "Either side may cancel on 14 days' notice; no refund after 6 months or once "
+            "a claim is made."),
+    }),
 }
 
 
@@ -263,3 +289,12 @@ def measured(key):
     heading, sections = KEY_TERMS[key]
     return len("*%s*" % heading) + sum(
         1 + len("*%s.* %s" % (s, sections[s])) for s in SECTIONS if s in sections)
+
+#: HeriAfya per person: the same product, each person with the limit to themselves.
+KEY_TERMS["heritage_heriafya_pp"] = (
+    "Heritage HeriAfya – key terms",
+    dict(KEY_TERMS["heritage_heriafya"][1], **{
+        "Your premium": (
+            "Annual; each person has the hospital limit to themselves: adults pay by age, "
+            "the first child the child rate, other children less."),
+    }))

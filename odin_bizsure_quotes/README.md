@@ -15,7 +15,7 @@ comparison.
 | Quotation templates | 16 — APA Jamii Plus ×8, Birdview Bizsure Afya ×8 |
 | Template lines | 691 |
 | Insurers | APA Insurance, Birdview Microinsurance (contacts, set on their plans); Jubilee Health Insurance and Heritage Insurance, with GA Insurance from the motor rates |
-| Cover Quotes products | 61 more plans, with 212 rate tables and 767 rates: GA Community Health ×26, GA Hadhi ×8 (4 off), Jubilee J Care ×6, J Care Junior ×6, J Senior ×5, Heritage HeriAfya ×10 (see below) |
+| Cover Quotes products | 76 more plans, with 235 rate tables and 915 rates: GA Community Health ×26, GA Hadhi ×8 (4 off), Jubilee J Care ×6, J Care Junior ×6, J Senior ×5, Heritage HeriAfya ×20 (per family and per person), APA Afya Nafuu ×5 (see below) |
 | Instalment plans | 4, 6 and 10 instalments on the NCBA IPF rate card of 4 March 2026 (band fees, flat rate from KES 300,000, none under 25,000) |
 
 The 16 templates are the refined ones. The Motor, generic Health and
@@ -121,7 +121,8 @@ are the office's after that.
 | Jubilee *J Care Junior* (children 0–17 as main member) | 6: Classic to Prestige | Per child; outpatient, dental, optical |
 | Jubilee *J Senior*, effective 1 Dec 2023 | 5: Copper to Diamond | Per person on the eldest's age band, children on their own rates; outpatient, dental, optical, last expense, personal accident, enhanced Covid-19 |
 | GA *Hadhi Health Plan*, updated Oct 2022 | 4: Plans A to D (5M, 2.5M, 1M, 500,000), and 4 enhanced with Covid-19, off | Member (M) or couple (M+1), by the older member's age group, from 50 |
-| Heritage *HeriAfya* (brochure 10 Dec 2024, and Heritage's HeriAfya quotation tool) | 10: Options 1 to 10 (500,000 to 10M) | Inpatient shared per family, each adult on their own age group, first child on Child, others on Extra; outpatient per person or shared per family; maternity; dental and optical (twin or combined) |
+| Heritage *HeriAfya* (brochure 10 Dec 2024, and Heritage's HeriAfya quotation tool) | 20: Options 1 to 10 (500,000 to 10M), each per family and per person | Inpatient shared per family, each adult on their own age group, first child on Child, others on Extra; or per person, the spouse on the principal's rate; outpatient per person or shared per family; maternity; dental and optical (twin or combined) |
+| APA *Afya Nafuu* (brochure, "rates as at June 2017") | 5: Affluent (1M), Executive (750,000), Standard (500,000), Select (300,000), Mwananchi (100,000) | Per person by age band, on age next birthday; outpatient per person (30,000 to 100,000) and maternity per policy (50,000 to 100,000), every tier with every plan |
 
 How the cards were read, where they leave room:
 
@@ -184,6 +185,28 @@ How the cards were read, where they leave room:
   7,560), so they cannot be bought apart or at different limits. The
   combined solution (one limit for both) is the other choice in the same
   benefit. Per family is one premium for the family; per person, one each.
+* **HeriAfya per person** is the quotation tool's other inpatient basis
+  (*Basis: Per Person*): each person has the option's limit to themselves.
+  The tool's per-person table is the family one with the spouse on the
+  principal's rate for their own age group; children are as on the family
+  option. Named *Option 3 (KES 1,000,000 per person)*, beside the family
+  option of the same limit, with the same optional covers.
+* **Afya Nafuu ages.** APA rates on age next birthday; each band is loaded a
+  year lower so the agent enters the age today, as on every other card: the
+  rows read *aged 20–39* for APA's "21 - 40 Years", and a 40-year-old is on
+  the 41–54 rates. The last joining age, 75 next birthday, is 74 today.
+* **Afya Nafuu outpatient and maternity.** The rates page prints outpatient
+  100,000 under Affluent down to 30,000 under Mwananchi, the benefits page the
+  same five limits the other way round, and maternity under Standard, Select
+  and Mwananchi only. The premium follows the limit on both pages, so every
+  tier is offered with every plan, priced by its limit, as on the APA Jamii
+  Plus plans; the consultation limit per visit follows the outpatient limit
+  (KES 1,000 on 30,000 and 40,000, 1,500 on 50,000 and 75,000, 2,000 on
+  100,000). Maternity is one premium per policy (female principal or spouse).
+* **Afya Nafuu inpatient limit**: the card says "Overall maximum benefit per
+  year" without saying per person or per family, so the quotation says
+  *per year*. The brochure's rates are dated June 2017: confirm them with APA
+  before quoting.
 * **HeriAfya pre-cover medical tests**: the brochure says 55 and above, the
   tool above 50; the terms follow the brochure.
 

@@ -824,3 +824,81 @@ HA_OUTPATIENT_BY_LIMIT = [
     ("KEPI/baby-friendly and private vaccinations (5 years and below)",
      [5000, 7500, 10000, 15000, 20000, 20000, 20000, 20000]),
 ]
+
+#: HeriAfya inpatient PER PERSON (the quotation tool's "Per Person" basis): each
+#: person has the option's limit to themselves. The tool's per-person table is
+#: the per-family one with the spouse on the principal's rate, by their own age
+#: group; Child and Additional Child are unchanged. Built from HA_INPATIENT by
+#: the generator (spouse = principal), not retyped.
+
+
+# =============================================================================
+# APA Insurance -- Afya Nafuu (brochure; "Rates are as at June 2017")
+# =============================================================================
+
+#: Core plans and their inpatient overall maximum benefit per year
+AN_PLANS = ["Affluent", "Executive", "Standard", "Select", "Mwananchi"]
+AN_LIMITS = [1000000, 750000, 500000, 300000, 100000]
+
+#: "Premiums are calculated based on the members age at next birthday". The
+#: bands as printed (age next birthday); the generator moves each down a year
+#: so the agent enters the client's age today, as for every other card.
+#: "1 Months - 20 Years" is 0 to 20.
+AN_INPATIENT_BANDS = [(0, 20), (21, 40), (41, 54), (55, 65), (66, 75)]
+#: PER PERSON INPATIENT RATES, by band, Affluent to Mwananchi
+AN_INPATIENT = [
+    [9417, 7788, 6727, 6115, 5500],
+    [16300, 13480, 11643, 10584, 8900],
+    [23499, 19779, 17043, 15084, 11120],
+    [31552, 26804, 23066, 20128, 16543],
+    [42350, 38115, 30492, 25918, 19890],
+]
+
+#: OUT PATIENT COVER PER PERSON (OPTIONAL): the rates page's limits, which
+#: rise with the premium (the benefits page prints the same five limits in the
+#: opposite order under the plan names). Offered as five tiers with every plan.
+AN_OUTPATIENT_LIMITS = [100000, 75000, 50000, 40000, 30000]
+AN_OUTPATIENT_BANDS = [(0, 20), (21, 40), (41, 60), (61, 75)]
+AN_OUTPATIENT = [
+    [18200, 13950, 11100, 9000, 6700],
+    [20700, 16500, 12900, 11090, 9100],
+    [23200, 19050, 16300, 13450, 11520],
+    [26200, 23300, 20750, 17818, 14750],
+]
+#: Maximum consultation limit per visit, by outpatient limit (benefits page)
+AN_OUTPATIENT_CONSULTATION = {30000: 1000, 40000: 1000, 50000: 1500, 75000: 1500,
+                              100000: 2000}
+
+#: OPTIONAL MATERNITY COVER PER PERSON (FEMALE PRINCIPAL OR SPOUSE): one
+#: premium per policy. Printed under Standard, Select and Mwananchi only;
+#: offered as three tiers with every plan.
+AN_MATERNITY = [(50000, 7500), (75000, 10000), (100000, 15000)]
+
+#: Inpatient benefits, Affluent to Mwananchi
+AN_INPATIENT_BENEFITS = [
+    ("Bed", ["general ward bed"] * 5),
+    ("Prescription drugs and dressings (discharge drugs up to 14 days' supply)",
+     ["covered"] * 5),
+    ("Physicians', specialists' and surgical fees, including anaesthetists' fees, at APA "
+     "panel rates", ["covered"] * 5),
+    ("Theatre charges, HDU and ICU", ["covered"] * 5),
+    ("Diagnostic tests; CT and MRI scans subject to pre-authorisation", ["covered"] * 5),
+    ("Physiotherapy as part of treatment", ["covered"] * 5),
+    ("Pre-existing, chronic and congenital conditions, HIV/AIDS and psychiatry, after 12 "
+     "months of cover and on full disclosure; organ transplant from the 3rd year",
+     [250000, 200000, 150000, 100000, 50000]),
+    ("Inpatient dental", [40000, 30000, 30000, 20000, 10000]),
+    ("Inpatient ophthalmology, including cataract removal (1-year waiting period)",
+     [40000, 30000, 30000, 20000, 10000]),
+    ("First-ever emergency caesarean section and maternity complications, after 10 months "
+     "of cover", [50000, 40000, 30000, 30000, 30000]),
+    ("Reconstructive surgery, and emergency dental or optical treatment, following an "
+     "accident", ["covered"] * 5),
+    ("Post-hospitalisation treatment, reimbursement only, first 2 weeks after discharge",
+     [20000, 15000, 10000, 10000, 7500]),
+    ("Funeral expenses", [30000, 25000, 25000, 20000, 20000]),
+    ("Day care surgery under general anaesthesia", ["covered"] * 5),
+    ("Home nursing on a doctor's recommendation", ["up to 30 days"] * 5),
+    ("Accommodation for one parent staying with an insured child under 8", ["covered"] * 5),
+    ("Local ambulance to hospital for emergencies", ["covered"] * 5),
+]

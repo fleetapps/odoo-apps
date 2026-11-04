@@ -2,7 +2,8 @@
 """Turn tools/rate_cards.py into Cover Quotes products.
 
 Writes ``data/cover_product_ga.xml`` (Community Health and Hadhi),
-``data/cover_product_jubilee.xml`` and ``data/cover_product_heritage.xml``:
+``data/cover_product_jubilee.xml``, ``data/cover_product_heritage.xml`` and
+``data/cover_product_apa.xml`` (Afya Nafuu):
 the insurer, product categories, one rate table (``odin.cover.table``) per
 table of the card with one row per person, band or family size, and one
 product (``odin.cover.product``) per plan. Saving a product makes its
@@ -387,6 +388,16 @@ def generate_heritage():
                     cover_label="Dental and optical", sequence=sequence))
                 sequence += 1
 
+    def inpatient_items(i, limit, per):
+        items = ["Overall limit: %s %s" % (kes(limit), per)]
+        for label, values in rc.HA_INPATIENT_BENEFITS:
+            items.append("%s: %s" % (label, money(values[i])))
+        items.append("Maternity: normal delivery, emergency and elective caesarean section and "
+                     "maternity complications, within the maternity benefit if bought "
+                     "(10-month waiting period)")
+        return bullets("Inpatient benefits (sub-limits within the overall benefit)", items)
+
+    optional = outpatient + maternity + dental
     for i, limit in enumerate(rc.HA_LIMITS):
         principal, spouse, child, extra = rc.HA_INPATIENT[i]
         option = "Option %s" % (i + 1)
@@ -397,21 +408,38 @@ def generate_heritage():
             rows.append(("HA-IP-%s-S%02d" % (i + 1, low), "spouse", low, high, 0, s_rate))
         rows.append(("HA-IP-%s-C" % (i + 1), "child", 0, 17, 0, child))
         rows.append(("HA-IP-%s-X" % (i + 1), "child_extra", 0, 17, 0, extra))
-        items = ["Overall limit: %s per family per year, shared" % kes(limit)]
-        for label, values in rc.HA_INPATIENT_BENEFITS:
-            items.append("%s: %s" % (label, money(values[i])))
-        items.append("Maternity: normal delivery, emergency and elective caesarean section and "
-                     "maternity complications, within the maternity benefit if bought "
-                     "(10-month waiting period)")
         table = cat.table(
             "ha_ip_%s" % (i + 1), "HeriAfya Inpatient – %s – %s per Family" % (option, kes(limit)),
             "inpatient", "person", rows, limit,
             "Inpatient – HeriAfya %s: %s per family per year" % (option, kes(limit)),
-            benefits=bullets("Inpatient benefits (sub-limits within the overall benefit)", items))
+            benefits=inpatient_items(i, limit, "per family per year, shared"))
         cat.product("ha_option_%s" % (i + 1),
                     "Heritage HeriAfya – %s (%s)" % (option, kes(limit)), "insurer_heritage",
-                    [table] + outpatient + maternity + dental, terms("heritage_heriafya"),
+                    [table] + optional, terms("heritage_heriafya"),
                     sequence=10 + i)
+
+    # Per person: the quotation tool's other inpatient basis. Every person has
+    # the limit to themselves; the spouse pays the principal's rate for their
+    # own age group, children as on the family option.
+    for i, limit in enumerate(rc.HA_LIMITS):
+        principal, _spouse, child, extra = rc.HA_INPATIENT[i]
+        option = "Option %s" % (i + 1)
+        w.comment("HeriAfya %s: %s per person" % (option, kes(limit)))
+        rows = []
+        for (low, high), rate in zip(rc.HA_BANDS, principal):
+            rows.append(("HA-IPP-%s-P%02d" % (i + 1, low), "principal", low, high, 0, rate))
+            rows.append(("HA-IPP-%s-S%02d" % (i + 1, low), "spouse", low, high, 0, rate))
+        rows.append(("HA-IPP-%s-C" % (i + 1), "child", 0, 17, 0, child))
+        rows.append(("HA-IPP-%s-X" % (i + 1), "child_extra", 0, 17, 0, extra))
+        table = cat.table(
+            "ha_ipp_%s" % (i + 1), "HeriAfya Inpatient – %s – %s per Person" % (option, kes(limit)),
+            "inpatient", "person", rows, limit,
+            "Inpatient – HeriAfya %s: %s per person per year" % (option, kes(limit)),
+            benefits=inpatient_items(i, limit, "per person per year"))
+        cat.product("ha_option_%s_pp" % (i + 1),
+                    "Heritage HeriAfya – %s (%s per person)" % (option, kes(limit)),
+                    "insurer_heritage", [table] + optional, terms("heritage_heriafya_pp"),
+                    sequence=30 + i)
     w.write("cover_product_heritage.xml")
     return w
 
@@ -691,10 +719,93 @@ def generate_jubilee():
     return w
 
 
+# =============================================================================
+# APA Insurance -- Afya Nafuu
+# =============================================================================
+
+def generate_apa():
+    """Afya Nafuu: five plans priced per person by age band, with outpatient
+    (five tiers, per person) and maternity (three tiers, per policy) offered
+    with every plan.
+
+    APA rates on age next birthday; each band is moved down a year so the
+    agent enters the client's age today: "21 - 40 Years" (next birthday) is
+    20 to 39 today, and a 40-year-old is on the 41-54 rates.
+    """
+    w = Writer()
+    w.record("categ_ins_apa_afya_nafuu", "product.category", [
+        ("name", "APA Afya Nafuu"), ("parent_id", Ref("categ_ins"))])
+    cat = Catalogue(w, "categ_ins_apa_afya_nafuu")
+
+    def today(band):
+        low, high = band
+        return max(low - 1, 0), high - 1
+
+    def short(amount):
+        return "%sK" % (amount // 1000)
+
+    w.comment("Outpatient per person, every limit with every plan.")
+    outpatient = []
+    for j, limit in enumerate(sorted(rc.AN_OUTPATIENT_LIMITS)):
+        col = rc.AN_OUTPATIENT_LIMITS.index(limit)
+        rows = []
+        for band, prices in zip(rc.AN_OUTPATIENT_BANDS, rc.AN_OUTPATIENT):
+            low, high = today(band)
+            rows.append(("AN-OP-%s-%02d" % (short(limit), band[0]), "any", low, high, 0,
+                         prices[col]))
+        outpatient.append(cat.table(
+            "an_op_%s" % short(limit).lower(),
+            "Afya Nafuu Outpatient – %s per Person" % kes(limit), "outpatient", "person",
+            rows, limit, "Optional – outpatient cover (per person)",
+            benefits=bullets("Outpatient benefits on the %s limit" % kes(limit), [
+                "Consultation: up to %s per visit" % kes(rc.AN_OUTPATIENT_CONSULTATION[limit]),
+                "Physician's consultation fees: covered",
+                "Prescription drugs, up to 30 days' supply: covered",
+                "Specialist's fees, strictly on referral by a GP: up to KES 2,000",
+                "X-ray, MRI, CT and other diagnostic tests: covered",
+                "Physiotherapy prescribed by a GP: covered",
+                "Pre-existing and chronic conditions, HIV/AIDS and congenital conditions, "
+                "after 12 months of cover and on full disclosure: covered",
+                "Not covered: maternity and pregnancy-related outpatient treatment"]),
+            sequence=10 + j))
+
+    w.comment("Maternity: one premium per policy (female principal or spouse).")
+    maternity = [cat.table(
+        "an_mat_%s" % short(limit).lower(), "Afya Nafuu Maternity – %s" % kes(limit),
+        "maternity", "policy", [("AN-MAT-%s" % short(limit), "any", 0, 0, 0, premium)], limit,
+        "Optional – maternity cover (female principal or spouse)",
+        benefits="" if i else bullets("Maternity benefits", [
+            "Normal delivery and complications: covered after 10 months",
+            "Elective caesarean section: covered after 10 months"]),
+        sequence=30 + i)
+        for i, (limit, premium) in enumerate(rc.AN_MATERNITY)]
+
+    for i, (plan, limit) in enumerate(zip(rc.AN_PLANS, rc.AN_LIMITS)):
+        w.comment("Afya Nafuu %s: %s" % (plan, kes(limit)))
+        rows = []
+        for band, prices in zip(rc.AN_INPATIENT_BANDS, rc.AN_INPATIENT):
+            low, high = today(band)
+            rows.append(("AN-IP-%s-%02d" % (plan[:3].upper(), band[0]), "any", low, high, 0,
+                         prices[i]))
+        items = ["Overall maximum benefit: %s per year" % kes(limit)]
+        for label, values in rc.AN_INPATIENT_BENEFITS:
+            items.append("%s: %s" % (label, money(values[i])))
+        table = cat.table(
+            "an_ip_%s" % slug(plan), "Afya Nafuu Inpatient – %s – %s" % (plan, kes(limit)),
+            "inpatient", "person", rows, limit,
+            "Inpatient – APA Afya Nafuu %s: %s per year" % (plan, kes(limit)),
+            benefits=bullets("Inpatient benefits", items))
+        cat.product("an_%s" % slug(plan), "APA Afya Nafuu – %s (%s)" % (plan, kes(limit)),
+                    "insurer_apa", [table] + outpatient + maternity, terms("apa_afya_nafuu"),
+                    sequence=50 + i)
+    w.write("cover_product_apa.xml")
+    return w
+
+
 def main():
     counts = {}
     for name, writer in (("GA", generate_ga()), ("Jubilee", generate_jubilee()),
-                         ("Heritage", generate_heritage())):
+                         ("Heritage", generate_heritage()), ("APA", generate_apa())):
         ids = writer.ids
         counts[name] = (
             sum(1 for i in ids if i.startswith("cover_")),
