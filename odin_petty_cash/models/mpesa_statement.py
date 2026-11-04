@@ -65,6 +65,19 @@ def is_charge(details):
     return bool(re.search(r"\bcharge\b", details or "", re.IGNORECASE))
 
 
+def _balance_after(rows):
+    """The balance after all of a receipt's rows (payment and charge), whatever
+    order the statement prints them in: the row that came last is the one
+    whose balance no other row started from."""
+    if len(rows) == 1:
+        return rows[0][0]
+    started_from = {round(balance - net, 2) for balance, net in rows}
+    for balance, _net in rows:
+        if round(balance, 2) not in started_from:
+            return balance
+    return rows[0][0]
+
+
 def group_rows(rows):
     """Group raw rows ({code, time, details, status, paid_in, withdrawn, balance})
     into transactions. Failed and reversed rows are left out."""
@@ -81,6 +94,7 @@ def group_rows(rows):
             }
             order.append(row["code"])
         net = row["paid_in"] - row["withdrawn"]
+        tx.setdefault("rows", []).append((row["balance"], net))
         if is_charge(row["details"]):
             tx["charge"] += -net if net < 0 else 0.0
         else:
@@ -88,13 +102,10 @@ def group_rows(rows):
             tx["amount"] = abs(net)
             tx["kind"] = "topup" if net > 0 else "payment"
             tx["party"], tx["number"], tx["account"] = split_party(row["details"])
-        # The statement runs newest first: the first row seen for a receipt
-        # carries the balance after the whole transaction (charge included).
-        if tx["balance"] is None:
-            tx["balance"] = row["balance"]
     result = []
     for code in order:
         tx = txs[code]
+        tx["balance"] = _balance_after(tx.pop("rows"))
         if tx["kind"] is None:  # a lone charge row: book it as a payment of its own
             tx.update(kind="payment", amount=tx["charge"], charge=0.0, details="M-PESA charge",
                       party="Safaricom")

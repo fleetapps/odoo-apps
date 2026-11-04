@@ -11,7 +11,7 @@ to, phone, method, M-Pesa code, paid, charges, total, balance, approved by -
 on one page, by month, with the M-Pesa statement filling most of it in.
 See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Accounting/Accounting",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",

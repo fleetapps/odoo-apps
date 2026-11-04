@@ -21,6 +21,21 @@ STATUS_TONE = {"need_amount": "warning", "need_description": "warning", "need_ca
                "need_stock": "info", "need_receipt": "warning", "ready": "primary",
                "posted": "success", "cancelled": "muted"}
 
+# Set by numbering, approving, resetting, the statement and the receipts,
+# never by hand or over the API: that would mark a voucher approved without
+# its entry, or put an approved one back to draft with its entry still posted.
+SYSTEM_FIELDS = {"state", "voucher", "voucher_seq", "move_id", "approved_by_id", "approved_on", "picking_id",
+                 "source", "statement_balance", "charge_from_statement", "receipt_count"}
+# What an approved voucher keeps as its entry has it.
+LOCKED_FIELDS = {"amount", "charge", "account_id", "date", "kind", "float_id", "product_id", "quantity",
+                 "description", "paid_to", "rule_id", "analytic_distribution", "method", "partner_id"}
+SYSTEM_CONTEXT = "odin_petty_cash_system"
+
+
+def escape_like(value):
+    """A name searched with =ilike: % and _ in it are letters, not wildcards."""
+    return (value or "").replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
 
 class PettyCashLine(models.Model):
     """One voucher: a row of the petty cash book."""
@@ -79,12 +94,16 @@ class PettyCashLine(models.Model):
     _code_unique = models.Constraint(
         "unique(float_id, mpesa_code)",
         "This M-Pesa code is already in the book. Each M-Pesa payment can only be recorded once.")
+    _voucher_unique = models.UniqueIndex(
+        "(float_id, voucher) WHERE voucher IS NOT NULL", "Another voucher of this float has this number.")
 
     # ------------------------------------------------------------ computes
     @api.depends("amount", "method", "phone", "kind")
     def _compute_charge(self):
         for line in self:
-            if line.charge_from_statement:
+            # An approved voucher keeps the charge its entry has (the statement
+            # adding a phone number later must not change it).
+            if line.charge_from_statement or line.state == "posted":
                 continue
             # Sending to a phone has a known tariff; pay bill and till charges
             # vary and arrive with the statement.
@@ -146,7 +165,7 @@ class PettyCashLine(models.Model):
     def _refresh_receipt_count(self):
         groups = dict(self.env["ir.attachment"].sudo()._read_group(
             [("res_model", "=", self._name), ("res_id", "in", self.ids)], ["res_id"], ["__count"]))
-        for line in self:
+        for line in self.with_context(**{SYSTEM_CONTEXT: True}):
             line.receipt_count = groups.get(line.id, 0)
 
     # ------------------------------------------------------------ rules
@@ -185,9 +204,20 @@ class PettyCashLine(models.Model):
         return self.env["account.reconcile.model"]
 
     # ------------------------------------------------------------ create/write
+    def _check_system_fields(self, vals, creating=False):
+        if self.env.context.get(SYSTEM_CONTEXT):
+            return
+        touched = {key for key in SYSTEM_FIELDS & vals.keys()
+                   if not (creating and (key, vals[key]) in (("state", "draft"), ("source", "manual")))}
+        if touched:
+            raise UserError(_("Numbers, approvals and what the statement says are set by Petty Cash itself: "
+                              "approve, reset or cancel the voucher instead of changing %s.",
+                              ", ".join(sorted(touched))))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            self._check_system_fields(vals, creating=True)
             for key in ("description", "paid_to", "mpesa_code"):
                 if vals.get(key):
                     vals[key] = " ".join(str(vals[key]).split()).upper()
@@ -197,12 +227,18 @@ class PettyCashLine(models.Model):
         return lines
 
     def write(self, vals):
+        self._check_system_fields(vals)
         for key in ("description", "paid_to", "mpesa_code"):
             if vals.get(key):
                 vals[key] = " ".join(str(vals[key]).split()).upper()
-        locked = {"amount", "charge", "account_id", "date", "kind", "float_id", "product_id", "quantity"}
-        if locked & vals.keys() and self.filtered(lambda l: l.state == "posted"):
-            raise UserError(_("An approved voucher cannot be changed. Reset it to draft first."))
+        posted = self.filtered(lambda l: l.state == "posted")
+        if posted and not self.env.context.get(SYSTEM_CONTEXT):
+            if LOCKED_FIELDS & vals.keys():
+                raise UserError(_("An approved voucher cannot be changed. Reset it to draft first."))
+            # The statement may give an approved voucher the code it lacked;
+            # a code it already has stays, as its entry has it.
+            if "mpesa_code" in vals and posted.filtered(lambda l: l.mpesa_code and l.mpesa_code != vals["mpesa_code"]):
+                raise UserError(_("An approved voucher keeps its M-Pesa code. Reset it to draft first."))
         if "date" in vals:
             old_months = {l.id: (l.date.year, l.date.month) for l in self}
         result = super().write(vals)
@@ -212,17 +248,15 @@ class PettyCashLine(models.Model):
         return result
 
     def _assign_voucher(self):
-        """PCV/2026/11/001: numbered per float and month, in the order typed."""
+        """PCV/2026/11/001: numbered per float and month, in the order typed,
+        from the float's gapless sequence. A number is never given twice:
+        not to two people saving at once, nor again after a draft is deleted."""
         self.ensure_one()
-        start = self.date.replace(day=1)
-        self.flush_model(["voucher_seq", "date", "float_id"])
-        self.env.cr.execute(
-            "SELECT COALESCE(MAX(voucher_seq), 0) FROM odin_petty_cash_line "
-            "WHERE float_id = %s AND date >= %s AND date < (%s::date + interval '1 month') AND id != %s",
-            (self.float_id.id, start, start, self.id))
-        seq = self.env.cr.fetchone()[0] + 1
-        self.voucher_seq = seq
-        self.voucher = f"{self.float_id.voucher_prefix}/{self.date.year}/{self.date.month:02d}/{seq:03d}"
+        number = self.float_id._next_voucher_number(self.date)
+        self.with_context(**{SYSTEM_CONTEXT: True}).write({
+            "voucher_seq": number,
+            "voucher": f"{self.float_id.voucher_prefix}/{self.date.year}/{self.date.month:02d}/{number:03d}",
+        })
 
     @api.constrains("mpesa_code")
     def _check_mpesa_code(self):
@@ -243,6 +277,9 @@ class PettyCashLine(models.Model):
         return super().unlink()
 
     # ------------------------------------------------------------ actions
+    # An approver need not be an accountant or a storekeeper: once Petty Cash
+    # has checked they may approve this float, the entry and the receipt are
+    # made with the rights to make them (sudo), still recorded as theirs.
     def action_approve(self):
         for line in self:
             if line.state != "draft":
@@ -252,31 +289,41 @@ class PettyCashLine(models.Model):
             if line.status_key != "ready":
                 raise UserError(_("%(voucher)s is not ready: %(why)s.", voucher=line.voucher,
                                   why=dict(STATUS)[line.status_key].lower()))
+            line = line.with_context(**{SYSTEM_CONTEXT: True})
             if line.needs_stock and not line.picking_id:
                 line._receive_stock()
-            line.move_id = line._post_entry()
-            line.write({"state": "posted", "approved_by_id": self.env.user.id,
+            line.write({"move_id": line._post_entry().id, "state": "posted", "approved_by_id": self.env.user.id,
                         "approved_on": fields.Datetime.now()})
         return True
 
     def action_reset(self):
         for line in self.filtered(lambda l: l.state == "posted"):
+            if not line.float_id._can_approve():
+                raise UserError(_("Only an approver for %s can reset an approved voucher.", line.float_id.name))
             if line.picking_id:
                 raise UserError(_("%s received stock. Return the goods from Inventory before resetting it.",
                                   line.voucher))
             if line.move_id:
-                line.move_id.button_draft()
-                line.move_id.button_cancel()
-            line.write({"state": "draft", "move_id": False, "approved_by_id": False, "approved_on": False})
+                line.move_id.sudo().button_draft()
+                line.move_id.sudo().button_cancel()
+            line.with_context(**{SYSTEM_CONTEXT: True}).write(
+                {"state": "draft", "move_id": False, "approved_by_id": False, "approved_on": False})
         return True
 
     def action_cancel(self):
-        self.filtered(lambda l: l.state == "draft").write({"state": "cancelled"})
+        self.filtered(lambda l: l.state == "draft").with_context(**{SYSTEM_CONTEXT: True}).write(
+            {"state": "cancelled"})
+        return True
+
+    def action_draft(self):
+        """A cancelled voucher back to a draft, its number kept."""
+        self.filtered(lambda l: l.state == "cancelled").with_context(**{SYSTEM_CONTEXT: True}).write(
+            {"state": "draft"})
         return True
 
     def _debit_account(self):
         if self.needs_stock and self.product_id:
-            categ = self.product_id.categ_id
+            categ = self.product_id.categ_id.with_company(self.company_id)
             account = categ.property_stock_valuation_account_id
             if account:
                 return account
@@ -313,11 +360,12 @@ class PettyCashLine(models.Model):
                 }))
             lines.append(Command.create({"name": label, "account_id": flt.account_id.id,
                                          "credit": self.total, "partner_id": partner.id}))
-        move = self.env["account.move"].create({
+        move = self.env["account.move"].sudo().create({
             "move_type": "entry", "journal_id": flt.journal_id.id, "date": self.date,
             "ref": " ".join(filter(None, [self.voucher, self.mpesa_code])), "line_ids": lines,
         })
-        for attachment in self.env["ir.attachment"].search([("res_model", "=", self._name), ("res_id", "=", self.id)]):
+        for attachment in self.env["ir.attachment"].sudo().search(
+                [("res_model", "=", self._name), ("res_id", "=", self.id)]):
             attachment.copy({"res_model": "account.move", "res_id": move.id})
         move.action_post()
         return move
@@ -326,12 +374,14 @@ class PettyCashLine(models.Model):
         if not self.paid_to:
             return self.env["res.partner"]
         return self.env["res.partner"].search(
-            [("name", "=ilike", self.paid_to), "|", ("company_id", "=", False),
+            [("name", "=ilike", escape_like(self.paid_to)), "|", ("company_id", "=", False),
              ("company_id", "=", self.company_id.id)], limit=1)
 
     def _receive_stock(self):
         """Receive the goods into the main warehouse at what was paid."""
         self.ensure_one()
+        partner = self._find_partner()
+        self = self.sudo()  # noqa: PLW0642 - see action_approve
         warehouse = self.env["stock.warehouse"].search([("company_id", "=", self.company_id.id)], limit=1)
         if not warehouse:
             raise UserError(_("There is no warehouse to receive %s into.", self.product_id.display_name))
@@ -342,7 +392,7 @@ class PettyCashLine(models.Model):
             "location_id": picking_type.default_location_src_id.id or self.env.ref("stock.stock_location_suppliers").id,
             "location_dest_id": picking_type.default_location_dest_id.id,
             "origin": self.voucher,
-            "partner_id": self._find_partner().id,
+            "partner_id": partner.id,
             "move_ids": [Command.create({
                 "product_id": self.product_id.id, "product_uom_qty": self.quantity,
                 "product_uom": self.product_id.uom_id.id, "price_unit": unit_price,
@@ -354,7 +404,12 @@ class PettyCashLine(models.Model):
         for move in picking.move_ids:
             move.quantity = move.product_uom_qty
             move.picked = True
-        picking.button_validate()
+        result = picking.with_context(skip_backorder=True, picking_ids_not_to_backorder=picking.ids,
+                                      skip_sms=True).button_validate()
+        if picking.state != "done":
+            raise UserError(_("Odoo could not receive %(product)s for %(voucher)s (%(what)s). Receive it from "
+                              "Inventory, then approve.", product=self.product_id.display_name, voucher=self.voucher,
+                              what=isinstance(result, dict) and result.get("name") or picking.state))
         # Odoo 19 values a receipt from its documents (bills, orders) or, failing
         # those, a manual value: the amount paid out of the float is that value.
         for move in picking.move_ids:
@@ -373,7 +428,8 @@ class PettyCashLine(models.Model):
             "category": self.rule_id.name.removeprefix("Auto: ") if self.rule_id else (
                 self.account_id.display_name if self.account_id else ""),
             "rule_id": self.rule_id.id, "account": self.account_id.display_name or "",
-            "analytic": ", ".join(self.env["account.analytic.account"].browse(
+            # Names only: cashiers need not see analytic accounting.
+            "analytic": ", ".join(self.env["account.analytic.account"].sudo().browse(
                 [int(k) for key in (self.analytic_distribution or {}) for k in key.split(",")]).mapped("name")),
             "needs_stock": self.needs_stock,
             "product": [self.product_id.id, self.product_id.display_name] if self.product_id else False,
@@ -404,15 +460,21 @@ class PettyCashLine(models.Model):
         if not line_id and line.amount:
             twin = self.search([
                 ("id", "!=", line.id), ("float_id", "=", line.float_id.id), ("date", "=", line.date),
-                ("amount", "=", line.amount), ("paid_to", "=ilike", line.paid_to or ""),
+                ("amount", "=", line.amount), ("paid_to", "=ilike", escape_like(line.paid_to)),
                 ("state", "!=", "cancelled")], limit=1)
             row["duplicate_of"] = twin.voucher or False
         return row
 
     @api.model
+    def _readable_float(self, float_id):
+        """The float, if this user may see it: the suggestions below read the
+        table directly, past the record rules."""
+        return self.env["odin.petty.cash.float"].search([("id", "=", float_id)], limit=1)
+
+    @api.model
     def book_suggest_payee(self, float_id, text):
         """Payees typed before, with their phone and what they are usually paid for."""
-        if not text:
+        if not text or not self._readable_float(float_id):
             return []
         self.env.cr.execute("""
             SELECT paid_to, phone, description, method
@@ -437,7 +499,7 @@ class PettyCashLine(models.Model):
 
     @api.model
     def book_suggest_description(self, float_id, text):
-        if not text or len(text) < 2:
+        if not text or len(text) < 2 or not self._readable_float(float_id):
             return []
         self.env.cr.execute("""
             SELECT description, COUNT(*) FROM odin_petty_cash_line

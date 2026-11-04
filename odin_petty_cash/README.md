@@ -39,11 +39,33 @@ with the same columns and a tab per month.
    charges paid to (Safaricom), top-ups come from (e.g. Director's current
    account), rules that buy stock, approvers.
 2. Give people *Petty Cash: Cashier* (type, upload) or *Approver* (approve, set up).
-   Accounting administrators are approvers.
+   Accounting administrators are approvers. Neither needs accounting or
+   inventory rights: the book shows them the float's balance, and an approver's
+   approval posts the entry (and receives the stock) for them, recorded as theirs.
 
 ## Notes
 
-* Vouchers are numbered per float and month: `PCV/2026/11/001`.
-* An approved voucher is locked; *Reset to draft* cancels its entry (not allowed
-  once it received stock - return the goods first).
+* Vouchers are numbered per float and month: `PCV/2026/11/001`, from a gapless
+  sequence per float: two people saving at once never share a number, and a
+  deleted draft's number is not given again.
+* An approved voucher is locked (amount, charge, category, description, payee,
+  method; its M-Pesa code once it has one); only an approver can *Reset to
+  draft*, which cancels its entry (not allowed once it received stock - return
+  the goods first). Approving, resetting and numbering cannot be done by
+  writing to the voucher directly.
+* A cancelled voucher stays on the page but does not count in the balance or
+  what was spent; *Back to draft* on its form brings it back.
 * Each M-Pesa code can be in the book once.
+* The statement check compares the book (approved or not) up to the
+  statement's day with the statement balance.
+* Uploading a statement: each voucher answers for one transaction; an approved
+  voucher typed without its code gets it; a cancelled voucher whose code is on
+  the statement comes back as a draft (the money did leave the float); an
+  approved voucher whose charge differs from the statement is listed to
+  correct; a statement older than the last one does not change the float's
+  statement balance.
+
+## Upgrading from 19.0.1.0.0
+
+The upgrade gives each float its voucher sequence and carries each month on
+after the highest number already given.

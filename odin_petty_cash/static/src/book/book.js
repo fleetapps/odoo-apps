@@ -157,12 +157,13 @@ export class PettyCashBook extends Component {
         return `${m.label} ${this.state.book.year}`;
     }
 
+    /** The book (approved or not) up to the statement's day, less the statement. */
     get statementDiff() {
         const f = this.state.book.float;
-        if (f.statement_balance === null || f.statement_balance === undefined) {
+        if (f.statement_gap === null || f.statement_gap === undefined) {
             return null;
         }
-        return Math.round((f.book_balance - f.statement_balance) * 100) / 100;
+        return f.statement_gap;
     }
 
     fmt(value, blankZero = false) {

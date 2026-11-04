@@ -1,3 +1,4 @@
+import calendar
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
@@ -44,25 +45,75 @@ class PettyCashFloat(models.Model):
     approver_ids = fields.Many2many("res.users", string="Approvers",
                                     help="Who may approve. Empty: any Petty Cash approver.")
     voucher_prefix = fields.Char(default="PCV", required=True)
+    voucher_sequence_id = fields.Many2one(
+        "ir.sequence", readonly=True, copy=False,
+        help="Numbers the vouchers, from 001 each month (one date range per month).")
     statement_balance = fields.Monetary(readonly=True, help="Balance on the last M-Pesa statement uploaded.")
     statement_date = fields.Datetime(readonly=True)
     line_ids = fields.One2many("odin.petty.cash.line", "float_id")
 
+    # ------------------------------------------------------------------ numbers
+    def _voucher_sequence(self):
+        """The float's gapless voucher sequence, made the first time."""
+        self.ensure_one()
+        if not self.voucher_sequence_id:
+            self.sudo().voucher_sequence_id = self.env["ir.sequence"].sudo().create({
+                "name": _("Petty cash vouchers: %s", self.name), "code": "odin.petty.cash.voucher",
+                "implementation": "no_gap", "use_date_range": True, "padding": 3,
+                "company_id": self.company_id.id,
+            })
+        return self.voucher_sequence_id.sudo()
+
+    def _month_range(self, day):
+        """The sequence's date range for the month of ``day``: numbers start
+        again at 001 each month (Odoo would otherwise make a yearly range)."""
+        sequence = self._voucher_sequence()
+        Range = self.env["ir.sequence.date_range"].sudo()
+        found = Range.search([("sequence_id", "=", sequence.id), ("date_from", "<=", day), ("date_to", ">=", day)],
+                             limit=1)
+        if not found:
+            first = day.replace(day=1)
+            found = Range.create({"sequence_id": sequence.id, "date_from": first,
+                                  "date_to": first.replace(day=calendar.monthrange(first.year, first.month)[1])})
+        return found
+
+    def _next_voucher_number(self, day):
+        """The next voucher number of the month. The float row is locked
+        first, so two people saving at once wait for each other instead of
+        both making the month's range or taking the same number."""
+        self.ensure_one()
+        self.env.cr.execute("SELECT id FROM odin_petty_cash_float WHERE id = %s FOR UPDATE", [self.id])
+        self._month_range(day)
+        return int(self._voucher_sequence()._next(sequence_date=day))
+
     # ------------------------------------------------------------------ book
-    def _book_balance(self, before=None, include_draft=False):
-        """Float account balance from posted entries (before a date if given),
-        plus unposted vouchers when asked."""
+    def _book_balance(self, before=None, include_draft=False, upto=None):
+        """Float account balance from posted entries (before a date, or up to
+        and including one, if given), plus unposted vouchers when asked.
+
+        Read with sudo: cashiers and approvers see the float's balance, the
+        book's whole point, without being given the journal items."""
         self.ensure_one()
         domain = [("account_id", "=", self.account_id.id), ("parent_state", "=", "posted"),
                   ("company_id", "=", self.company_id.id)]
         if before:
             domain.append(("date", "<", before))
-        groups = self.env["account.move.line"]._read_group(domain, [], ["balance:sum"])
+        if upto:
+            domain.append(("date", "<=", upto))
+        groups = self.env["account.move.line"].sudo()._read_group(domain, [], ["balance:sum"])
         balance = groups[0][0] if groups else 0.0
         if include_draft:
-            drafts = self.line_ids.filtered(lambda l: l.state == "draft" and (not before or l.date < before))
+            drafts = self.line_ids.filtered(lambda l: l.state == "draft" and (not before or l.date < before)
+                                            and (not upto or l.date <= upto))
             balance += sum(drafts.mapped("signed_total"))
         return balance or 0.0
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        floats = super().create(vals_list)
+        for flt in floats:
+            flt._voucher_sequence()
+        return floats
 
     def _can_approve(self):
         self.ensure_one()
@@ -94,6 +145,12 @@ class PettyCashFloat(models.Model):
         counts = {"need": 0, "ready": 0, "stock": 0, "posted": 0}
         spent = received = 0.0
         for line in month_lines:
+            if line.state == "cancelled":
+                # Shown, but it neither moves the balance nor counts as spent.
+                row = line._book_row()
+                row["balance"] = float_round(running, 2)
+                rows.append(row)
+                continue
             running += line.signed_total
             key = line.status_key
             if key in ("need_description", "need_category", "need_receipt", "need_amount"):
@@ -123,7 +180,8 @@ class PettyCashFloat(models.Model):
 
         per_month = dict.fromkeys(range(1, 13), 0)
         for group_month, count in Line._read_group(
-                [("float_id", "=", flt.id), ("date", ">=", date(year, 1, 1)), ("date", "<", date(year + 1, 1, 1))],
+                [("float_id", "=", flt.id), ("state", "!=", "cancelled"),
+                 ("date", ">=", date(year, 1, 1)), ("date", "<", date(year + 1, 1, 1))],
                 ["date:month"], ["__count"]):
             per_month[group_month.month] = count
         older = Line.search([("float_id", "=", flt.id), ("state", "=", "draft"), ("date", "<", start)],
@@ -131,6 +189,12 @@ class PettyCashFloat(models.Model):
         rules = self.env["account.reconcile.model"].search(flt._rule_domain())
         book_balance = flt._book_balance()
         projected = flt._book_balance(include_draft=True)
+        # Against the statement: everything in the book up to the statement's
+        # day, approved or not; vouchers after it are not on it yet.
+        statement_gap = None
+        if flt.statement_date:
+            upto = fields.Datetime.context_timestamp(self, flt.statement_date).date()
+            statement_gap = float_round(flt._book_balance(include_draft=True, upto=upto) - flt.statement_balance, 2)
         return {
             "floats": [{"id": f.id, "name": f.name} for f in floats],
             "float": {
@@ -139,6 +203,7 @@ class PettyCashFloat(models.Model):
                 "projected_balance": projected,
                 "statement_balance": flt.statement_balance if flt.statement_date else None,
                 "statement_date": fields.Datetime.to_string(flt.statement_date) if flt.statement_date else False,
+                "statement_gap": statement_gap,
             },
             "year": year, "month": month,
             "months": [{"month": i, "label": MONTHS[i - 1], "count": per_month[i]} for i in range(1, 13)],
