@@ -1015,3 +1015,14 @@ select.o_sb_cell {
         background: var(--sb-green);
     }
 }
+
+// Warehouse switch in the control panel, for companies with more than one store.
+.o_sb_wh {
+    width: auto;
+    min-width: 9rem;
+}
+
+// Paste results can run to several lines.
+.o_sb_notice .o_notification_content {
+    white-space: pre-line;
+}

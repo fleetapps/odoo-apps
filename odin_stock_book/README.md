@@ -8,6 +8,16 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * **Type in the last row**: date (`3`, `3/11`, `3 Nov`), item (any words of the
   code or name: `lush 500`), added or removed, reason, customer or supplier.
   Enter moves along; the item remembers the reason it is usually logged with.
+  A reason that only removes (Sale, Spoiled...) or only adds takes the number
+  in its own column, whichever one it was typed in.
+* **Paste rows from Excel** into the last row's date or item cell: one draft
+  per row. With a heading row (DATE, CODE or ITEM, ADDED, REMOVED, REASON,
+  CUSTOMER, NOTE) columns go by heading; without one, in the MOVEMENT LOG's
+  order (date, item, added, removed, reason, customer). A blank date takes the
+  row above's; the sheet's own words work for reasons (sold, damaged,
+  purchase...). Rows whose item cannot be told apart are left out and listed.
+* **More than one warehouse**: pick it at the top left; every view, the count
+  and the export follow it.
 * **Reasons and what posting creates**
 
   | Reason | Goes in | Posts as |
@@ -32,22 +42,48 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * Each line says what it still needs: item, reason, quantity, the right column,
   a recipe, a customer.
 * **Posting** (supervisors) creates the real Odoo document and locks the line;
-  mistakes are fixed with a *Correction* line, so history stays intact. Lines
-  are numbered by reason: `FIL/2026/0014`, `OUT/2026/0112`...
+  mistakes are fixed with a new line, so history stays intact. *Post N ready*
+  first says what it will create. Lines are numbered by reason and year from
+  Odoo's gapless sequences (Settings > Technical > Sequences, *Stock Book: ...*):
+  `FIL/2026/0014`, `OUT/2026/0112`. Lines posted together, or by two people at
+  once, never share a number.
+* **Back-dated lines** land on their day: the moves, the delivery, receipt or
+  scrap, the manufacturing order and any journal entries are dated the line's
+  date. Lines dated ahead wait (*Dated ahead*) until the day.
+* **Copy** a line to log the same movement again; **Reverse** a posted sale,
+  return, scrap or correction to add the draft that undoes it (a sale comes
+  back as a customer return), noted with the reference it reverses. A filling
+  is undone by unbuilding its order in Manufacturing, a receipt by returning it
+  to the supplier in Inventory.
+* Items tracked by lot or serial number are posted and counted in Inventory,
+  where the numbers are entered; the book says so before posting.
 * Items a recipe uses that nobody counts, such as tap water: tick *Never short in
-  Stock Book* on the product.
+  Stock Book* on the product. Consumables Odoo keeps no stock of are never
+  short either.
+* Components follow the recipe as the manufacturing order will: kits are opened
+  up into what they contain, recipe lines for other variants are left out, and
+  a recipe written in grams for an item stocked in kilograms uses kilograms.
 
 ## Stock sheet
 
 Opening + added − removed = closing for the month on the tab, by category, with
-cost, value and weeks of cover (last four weeks' use). Filters for finished
+cost, value and weeks of cover (last four weeks' use). Quantities are what was
+really moved (a filling that used 232 bottles where the recipe said 230 shows
+232); transfers to and from another warehouse count, moves between shelves of
+the same warehouse do not. Months run on the user's time zone. Filters for finished
 goods, raw materials, packaging, moved this month, out of stock.
 
 ## Count
 
 Type what is on the shelf; the difference and its value show at once. Enter goes
 to the next item. *Post count* (supervisors) applies all counted items as one
-inventory adjustment.
+inventory adjustment. The count is for the whole warehouse stock, shelves
+below it included.
+
+When stock moved after an item was counted (*moved since*), *Post count* stops
+and asks: *Movements came after the count* applies what was found missing or
+extra to what is there now; *The count saw them* sets the item to the number
+counted. Nothing is posted until one is chosen.
 
 ## Export
 
@@ -57,4 +93,12 @@ and MAIN INVENTORY, for the month on the tab.
 ## Access
 
 *Stock Book: Storekeeper* types lines and counts; *Supervisor* posts. Inventory
-administrators are supervisors.
+administrators are supervisors; a supervisor need not be one. Posting,
+cancelling and references are the book's own: a line cannot be marked posted,
+turned back into a draft or renumbered by hand, from the form or over the API.
+
+## Upgrading from 19.0.1.0.0
+
+The upgrade starts each reason's numbering after the highest reference already
+in the book, renumbered lines included, and warns in the log about any
+reference two lines still share.

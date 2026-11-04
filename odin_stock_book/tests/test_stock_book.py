@@ -94,8 +94,8 @@ class TestStockBook(TransactionCase):
         self.assertEqual(self.onhand(self.fg), 76)
 
     def test_wrong_column_and_return_receive_scrap_correction(self):
-        wrong = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_in": 5, "partner_name": "x"})
-        self.assertEqual(wrong._status()[0], "wrong_way")
+        typed_in = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_in": 5, "partner_name": "x"})
+        self.assertEqual((typed_in.qty_in, typed_in.qty_out), (0, 5), "a sale takes the quantity in Removed")
         ret = self.Line.create({"product_id": self.fg.id, "reason": "return", "qty_in": 6, "partner_name": "Highridge"})
         rec = self.Line.create({"product_id": self.bottle.id, "reason": "received", "qty_in": 100, "unit_cost": 14.5,
                                 "partner_name": "Safepak"})

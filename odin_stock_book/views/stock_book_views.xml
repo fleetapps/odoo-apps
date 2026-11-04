@@ -44,11 +44,12 @@
                             <field name="uom_id"/>
                         </group>
                         <group>
-                            <field name="partner_name"/>
+                            <field name="partner_name" readonly="state != 'draft'"/>
                             <field name="bom_id" readonly="state != 'draft'"/>
-                            <field name="unit_cost" invisible="reason != 'received'"/>
+                            <field name="unit_cost" invisible="reason != 'received'" readonly="state != 'draft'"/>
                             <field name="warehouse_id" readonly="state != 'draft'"/>
                             <field name="note"/>
+                            <field name="reverses_id" invisible="not reverses_id"/>
                             <field name="onhand_after" invisible="state != 'posted'"/>
                         </group>
                     </group>

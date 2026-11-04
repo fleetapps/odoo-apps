@@ -6,9 +6,9 @@ import { Layout } from "@web/search/layout";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { debounce } from "@web/core/utils/timing";
 import { download } from "@web/core/network/download";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { parseAmount, parseDay } from "./utils";
 
-const NEED = new Set(["need_product", "need_reason", "need_qty", "wrong_way", "need_recipe", "need_partner"]);
 const REASON_COLOR = {
     filling: "#139A4A", production: "#7A5AF8", received: "#F79009", return: "#0BA5EC", sale: "#2E90FA",
     spoiled: "#F04438", sample: "#EE46BC", used: "#98A2B3", correction: "#667085",
@@ -30,13 +30,15 @@ export class StockBook extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.dialog = useService("dialog");
         this.root = useRef("root");
         const params = this.props.action.params || {};
         this.state = useState({
             view: params.view || "log", loading: true, book: null, sheet: null, count: null,
             year: false, month: false, reason: "", status: "", search: "", group: "",
             selectedId: null, open: {}, newRow: null, suggest: null, saving: false,
-            compSearch: { query: "", results: [] }, confirmCount: false,
+            compSearch: { query: "", results: [] }, confirmCount: false, countConflicts: null,
+            warehouseId: params.warehouse_id || false, warehouses: [], pasting: false,
         });
         this.suggestItems = debounce(this.suggestItems.bind(this), 180);
         this.suggestPartners = debounce(this.suggestPartners.bind(this), 180);
@@ -50,11 +52,13 @@ export class StockBook extends Component {
     // ------------------------------------------------------------ data
     async load() {
         const { year, month, search } = this.state;
+        const warehouse_id = this.state.warehouseId;
+        let data;
         if (this.state.view === "log") {
             const book = await this.orm.call("odin.stock.book", "get_book", [], {
-                year, month, reason: this.state.reason, status: this.state.status, search,
+                year, month, reason: this.state.reason, status: this.state.status, search, warehouse_id,
             });
-            this.state.book = book;
+            this.state.book = data = book;
             if (!book.empty) {
                 this.state.year = book.year;
                 this.state.month = book.month;
@@ -63,15 +67,19 @@ export class StockBook extends Component {
                 }
             }
         } else if (this.state.view === "sheet") {
-            this.state.sheet = await this.orm.call("odin.stock.book", "get_sheet", [], {
-                year, month, group: this.state.group, search,
+            this.state.sheet = data = await this.orm.call("odin.stock.book", "get_sheet", [], {
+                year, month, group: this.state.group, search, warehouse_id,
             });
             this.state.year = this.state.sheet.year;
             this.state.month = this.state.sheet.month;
         } else {
-            this.state.count = await this.orm.call("odin.stock.book", "get_count", [], {
-                group: this.state.group, search,
+            this.state.count = data = await this.orm.call("odin.stock.book", "get_count", [], {
+                group: this.state.group, search, warehouse_id,
             });
+        }
+        if (data?.warehouse) {
+            this.state.warehouseId = data.warehouse.id;
+            this.state.warehouses = data.warehouses;
         }
         this.state.loading = false;
         if (this.state.selectedId && !this.selected) {
@@ -171,6 +179,14 @@ export class StockBook extends Component {
         }
     }
 
+    async setWarehouse(ev) {
+        this.state.warehouseId = Number(ev.target.value) || false;
+        this.state.selectedId = null;
+        this.state.newRow = null;
+        this.state.countConflicts = null;
+        await this.load();
+    }
+
     async setMonth(month) {
         this.state.month = month;
         this.state.selectedId = null;
@@ -250,8 +266,19 @@ export class StockBook extends Component {
 
     // ------------------------------------------------------------ editing rows
     async save(row, values) {
-        await this.orm.call("odin.stock.book", "book_save", [row.id, values]);
+        const saved = await this.orm.call("odin.stock.book", "book_save", [row.id, values]);
+        this.tellMoved(saved);
         await this.load();
+    }
+
+    /** The reason only removes (or only adds): say where the number went. */
+    tellMoved(saved) {
+        if (saved.moved_to) {
+            this.notification.add(saved.moved_to === "removed"
+                ? _t("%(reason)s removes stock: the quantity is in Removed.", { reason: saved.reason_label })
+                : _t("%(reason)s adds stock: the quantity is in Added.", { reason: saved.reason_label }),
+                { type: "info" });
+        }
     }
 
     onCell(ev, row, field) {
@@ -317,7 +344,8 @@ export class StockBook extends Component {
 
     async searchComponents() {
         const q = this.state.compSearch.query;
-        this.state.compSearch.results = q ? await this.orm.call("odin.stock.book", "book_suggest_products", [q]) : [];
+        this.state.compSearch.results = q ? await this.orm.call("odin.stock.book", "book_suggest_products", [q],
+            { warehouse_id: this.state.warehouseId }) : [];
     }
 
     async addComponent(row, product) {
@@ -347,7 +375,8 @@ export class StockBook extends Component {
             this.state.suggest = null;
             return;
         }
-        const items = await this.orm.call("odin.stock.book", "book_suggest_products", [text]);
+        const items = await this.orm.call("odin.stock.book", "book_suggest_products", [text],
+            { warehouse_id: this.state.warehouseId });
         this.state.suggest = items.length ? { field: "item", items, index: 0 } : null;
     }
 
@@ -499,10 +528,11 @@ export class StockBook extends Component {
             const saved = await this.orm.call("odin.stock.book", "book_save", [false, {
                 date: row.date, product_id: row.product.id, reason: row.reason,
                 qty_in: parseAmount(row.qty_in), qty_out: parseAmount(row.qty_out),
-                partner_name: row.partner_name || false,
+                partner_name: row.partner_name || false, warehouse_id: this.state.warehouseId,
             }]);
             this.state.newRow = blankRow(row.date);
             this.state.suggest = null;
+            this.tellMoved(saved);
             if (saved.components.length) {
                 this.state.open[saved.id] = true;
                 this.notification.add(_t("%(n)s components from the recipe: check them, then post.",
@@ -515,6 +545,43 @@ export class StockBook extends Component {
             this.state.saving = false;
         }
         this.focusNew("item");
+    }
+
+    /**
+     * Rows copied from Excel (more than one cell) pasted into the entry row
+     * become draft lines, one per row; what cannot be read is listed.
+     */
+    async onNewPaste(ev) {
+        const text = ev.clipboardData?.getData("text/plain") || "";
+        if (!/[\t\n]/.test(text.trim())) {
+            return;
+        }
+        ev.preventDefault();
+        if (this.state.pasting) {
+            return;
+        }
+        this.state.pasting = true;
+        try {
+            const result = await this.orm.call("odin.stock.book", "book_paste", [text], {
+                year: this.state.year, month: this.state.month, warehouse_id: this.state.warehouseId,
+            });
+            const skipped = result.skipped.map((s) => _t("Row %(row)s: %(why)s", s));
+            const lines = [_t("%s lines added as drafts.", result.created), ...result.notes, ...skipped];
+            this.notification.add(lines.slice(0, 12).join("\n") + (lines.length > 12 ? "\n…" : ""), {
+                title: skipped.length ? _t("Pasted, %s rows left out", skipped.length) : _t("Pasted"),
+                type: skipped.length || result.notes.length ? "warning" : "success",
+                sticky: Boolean(skipped.length || result.notes.length), className: "o_sb_notice",
+            });
+            const elsewhere = (result.months || []).filter(([y, m]) => y !== this.state.year || m !== this.state.month);
+            if (elsewhere.length) {
+                this.notification.add(_t("Some rows are dated in another month: open its tab to see them."),
+                    { type: "info" });
+            }
+            this.state.newRow = blankRow(this.defaultDate());
+            await this.load();
+        } finally {
+            this.state.pasting = false;
+        }
     }
 
     focusNew(field) {
@@ -550,14 +617,68 @@ export class StockBook extends Component {
 
     // ------------------------------------------------------------ actions
     async post(ids, allowShort = false) {
-        const count = await this.orm.call("odin.stock.book", "book_post", [ids], { allow_short: allowShort });
-        this.notification.add(count ? _t("%s posted", count) : _t("Nothing was ready to post"),
+        const { count, refs } = await this.orm.call("odin.stock.book", "book_post", [ids], { allow_short: allowShort });
+        const shown = refs.length > 3 ? `${refs[0]} … ${refs[refs.length - 1]}` : refs.join(", ");
+        this.notification.add(count ? _t("%(n)s posted: %(refs)s", { n: count, refs: shown }) : _t("Nothing was ready to post"),
             { type: count ? "success" : "warning" });
         await this.load();
     }
 
+    /** What posting the ready lines will create, so a supervisor posts on purpose. */
     postAll() {
-        return this.post(this.readyIds);
+        const ids = this.readyIds;
+        const rows = this.rows.filter((r) => ids.includes(r.id));
+        const byKind = {};
+        for (const r of rows) {
+            byKind[r.posts_as] = (byKind[r.posts_as] || 0) + 1;
+        }
+        const body = [
+            _t("Posting %s lines creates:", ids.length),
+            ...Object.entries(byKind).map(([kind, n]) => `• ${n} × ${kind}`),
+            _t("Posted lines are locked; a mistake is fixed with a new line."),
+        ].join("\n");
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Post %s lines?", ids.length),
+            body,
+            confirmLabel: _t("Post %s", ids.length),
+            confirm: () => this.post(ids),
+            cancel: () => {},
+        });
+    }
+
+    async copyLine(row) {
+        const id = await this.orm.call("odin.stock.book", "book_copy", [row.id], { day: this.defaultDate() });
+        this.notification.add(_t("Copied as a new draft"), { type: "info" });
+        await this.load();
+        this.state.selectedId = this.rows.some((r) => r.id === id) ? id : null;
+    }
+
+    reverseLine(row) {
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Reverse %s?", row.ref),
+            body: _t("A draft %(reason)s line for the same item and quantity is added today, with a note that it reverses %(ref)s. Post it to undo the movement.",
+                { reason: row.reason === "sale" ? _t("Customer return") : row.reason === "return" ? _t("Sale") : _t("Correction"), ref: row.ref }),
+            confirmLabel: _t("Add the reversing line"),
+            confirm: async () => {
+                await this.orm.call("odin.stock.book", "book_reverse", [row.id]);
+                const today = this.state.book.today.split("-").map(Number);
+                if (today[0] !== this.state.year || today[1] !== this.state.month) {
+                    this.notification.add(_t("Added in today's month."), { type: "info" });
+                }
+                await this.load();
+            },
+            cancel: () => {},
+        });
+    }
+
+    /** A short line: go and count the item that is short. */
+    async countItem(product) {
+        this.state.view = "count";
+        this.state.selectedId = null;
+        this.state.group = "";
+        this.state.search = product.code || product.name;
+        this.state.loading = true;
+        await this.load();
     }
 
     async cancel(row) {
@@ -577,7 +698,9 @@ export class StockBook extends Component {
     }
 
     async exportXlsx() {
-        await download({ url: "/odin_stock_book/export", data: { year: this.state.year, month: this.state.month } });
+        await download({ url: "/odin_stock_book/export", data: {
+            year: this.state.year, month: this.state.month, warehouse_id: this.state.warehouseId || "",
+        } });
     }
 
     // ------------------------------------------------------------ count
@@ -589,7 +712,7 @@ export class StockBook extends Component {
             ev.target.value = row.counted ?? "";
             return;
         }
-        await this.orm.call("odin.stock.book", "count_set", [row.product.id, qty]);
+        await this.orm.call("odin.stock.book", "count_set", [row.product.id, qty], { warehouse_id: this.state.warehouseId });
         await this.load();
     }
 
@@ -609,10 +732,22 @@ export class StockBook extends Component {
         }
     }
 
-    async postCount() {
-        const n = await this.orm.call("odin.stock.book", "count_post", []);
+    /**
+     * ``resolve``: when stock moved after items were counted, "counted" sets
+     * them to the count, "difference" applies what was found missing (or
+     * extra) to what is there now.
+     */
+    async postCount(resolve = false) {
+        const result = await this.orm.call("odin.stock.book", "count_post", [], {
+            warehouse_id: this.state.warehouseId, resolve,
+        });
         this.state.confirmCount = false;
-        this.notification.add(_t("Count posted: %s items adjusted", n), { type: "success" });
+        if (result.moved) {
+            this.state.countConflicts = result.moved;
+            return;
+        }
+        this.state.countConflicts = null;
+        this.notification.add(_t("Count posted: %s items adjusted", result.applied), { type: "success" });
         await this.load();
     }
 }

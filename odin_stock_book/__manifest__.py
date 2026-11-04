@@ -12,7 +12,7 @@ Bottle filling and production batches fill their components from the recipe;
 posting creates the manufacturing order, delivery, return, receipt or scrap.
 See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",
@@ -22,6 +22,7 @@ See README.md.
     "data": [
         "security/stock_book_security.xml",
         "security/ir.model.access.csv",
+        "data/ir_sequence_data.xml",
         "views/stock_book_views.xml",
         "views/menus.xml",
     ],

@@ -19,6 +19,8 @@ class StockBookExport(http.Controller):
         year, month = int(year), int(month)
         wh = int(warehouse_id) if warehouse_id else False
         book = Book.get_book(year, month, warehouse_id=wh)
+        if book.get("empty"):
+            return request.not_found()
         sheet_data = Book.get_sheet(year, month, warehouse_id=wh)
         output = io.BytesIO()
         wb = xlsxwriter.Workbook(output, {"in_memory": True})
@@ -68,7 +70,7 @@ class StockBookExport(http.Controller):
         log.autofilter(2, 0, max(r - 1, 3), len(cols) - 1)
 
         inv = wb.add_worksheet("MAIN INVENTORY")
-        inv.write(0, 0, f"MAIN INVENTORY · {sheet_data['label']}", title)
+        inv.write(0, 0, f"MAIN INVENTORY · {sheet_data['label']} · {sheet_data['warehouse']['name']}", title)
         cols = [("CODE", 15), ("ITEM", 42), ("OPENING", 12), ("ADDED", 11), ("REMOVED", 11), ("CLOSING", 12),
                 ("UNIT", 8), ("UNIT COST", 12), ("VALUE", 15), ("WEEKS OF COVER", 10)]
         for i, (name, width) in enumerate(cols):
@@ -97,7 +99,7 @@ class StockBookExport(http.Controller):
         inv.write(r, 7, "TOTAL", cat)
         inv.write(r, 8, sheet_data["total"], cat_money)
         wb.close()
-        filename = f"Stock book {year}-{month:02d}.xlsx"
+        filename = f"Stock book {book['warehouse']['name']} {year}-{month:02d}.xlsx"
         return request.make_response(output.getvalue(), headers=[
             ("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             ("Content-Disposition", content_disposition(filename)),

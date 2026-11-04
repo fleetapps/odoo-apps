@@ -1,6 +1,8 @@
 import math
 from datetime import datetime, time
 
+import pytz
+
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero
@@ -20,19 +22,42 @@ REASONS = {
 REASON_SELECTION = [(key, value[1]) for key, value in REASONS.items()]
 NEEDS_PARTNER = {"sale", "return"}
 MAKES = {"filling", "production"}
+SEQUENCE_CODE = "odin.stock.line.%s"
+
+# A posted line is undone by the line that does the opposite, so the
+# history stays: what each reason reverses into.
+REVERSE = {"sale": "return", "return": "sale", "spoiled": "correction", "sample": "correction",
+           "used": "correction", "correction": "correction"}
+
+# Written by posting and cancelling only: not by the form, an import or a
+# call from outside, which would turn a posted line back into a draft, or
+# mark a draft posted without its stock moves.
+SYSTEM_FIELDS = {"state", "ref", "onhand_after", "posted_by_id", "posted_on", "production_id", "picking_id",
+                 "scrap_id", "move_ids", "partner_id"}
+# What a posted (or cancelled) line keeps as it was.
+LOCKED_FIELDS = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id",
+                 "partner_name", "unit_cost", "company_id", "reverses_id"}
 
 STATUS = {
     "need_product": ("Pick the item", "warning"),
     "need_reason": ("Pick a reason", "warning"),
     "need_qty": ("Type how many", "warning"),
     "wrong_way": ("Added or removed?", "warning"),
+    "tracked": ("Needs lot numbers", "danger"),
     "need_recipe": ("No recipe", "danger"),
     "need_partner": ("Which customer?", "warning"),
+    "future": ("Dated ahead", "warning"),
     "short": ("Short", "danger"),
     "ready": ("Ready to post", "primary"),
     "posted": ("Posted", "success"),
     "cancelled": ("Cancelled", "muted"),
 }
+NEED_KEYS = {"need_product", "need_reason", "need_qty", "wrong_way", "tracked", "need_recipe", "need_partner",
+             "future"}
+
+
+def _normal_name(name):
+    return " ".join((name or "").split()).upper()
 
 
 class StockBookLine(models.Model):
@@ -73,6 +98,10 @@ class StockBookLine(models.Model):
     picking_id = fields.Many2one("stock.picking", readonly=True, copy=False)
     scrap_id = fields.Many2one("stock.scrap", readonly=True, copy=False)
     move_ids = fields.Many2many("stock.move", readonly=True, copy=False)
+    reverses_id = fields.Many2one("odin.stock.line", string="Reverses", readonly=True, copy=False, index="btree_not_null",
+                                  help="The posted line this one undoes.")
+
+    _ref_unique = models.UniqueIndex("(ref) WHERE ref IS NOT NULL", "Another movement already has this reference.")
 
     # ------------------------------------------------------------ basics
     @property
@@ -89,6 +118,8 @@ class StockBookLine(models.Model):
     @api.model
     def _available(self, products, warehouse):
         """On hand in the warehouse's stock (and its sub-locations)."""
+        if not products or not warehouse:
+            return dict.fromkeys(products.ids, 0.0)
         quants = self.env["stock.quant"]._read_group(
             [("product_id", "in", products.ids), ("location_id", "child_of", warehouse.lot_stock_id.id)],
             ["product_id"], ["quantity:sum"])
@@ -114,7 +145,10 @@ class StockBookLine(models.Model):
         return uom.round(qty) if uom else round(qty, 2)
 
     def _explode(self):
-        """Fill the components from the recipe for the quantity made."""
+        """Fill the components from the recipe for the quantity made, the
+        way the manufacturing order will: kits are opened up into what they
+        contain and recipe lines for other variants are left out, so the
+        line and the order it posts agree."""
         for line in self.filtered(lambda l: l.state == "draft").with_context(odin_stock_exploding=True):
             if line.reason not in MAKES or not line.product_id or not line.qty_in:
                 line.component_ids = [Command.clear()]
@@ -124,16 +158,38 @@ class StockBookLine(models.Model):
             if not bom:
                 line.component_ids = [Command.clear()]
                 continue
-            factor = line.product_id.uom_id._compute_quantity(line.qty_in, bom.product_uom_id) / bom.product_qty
+            factor = line.product_id.uom_id._compute_quantity(line.qty_in, bom.product_uom_id, round=False) \
+                / bom.product_qty
+            _boms, bom_lines = bom.explode(line.product_id, factor, picking_type=bom.picking_type_id)
             commands = [Command.clear()]
-            for seq, bom_line in enumerate(bom.bom_line_ids):
-                qty = bom_line.product_uom_id._compute_quantity(bom_line.product_qty * factor,
-                                                                bom_line.product_id.uom_id)
+            for seq, (bom_line, data) in enumerate(bom_lines):
+                product = bom_line.product_id
+                if product.type != "consu":
+                    continue
+                qty = bom_line.product_uom_id._compute_quantity(data["qty"], product.uom_id, round=False)
                 commands.append(Command.create({
-                    "sequence": seq, "product_id": bom_line.product_id.id,
-                    "qty": line._round_component(qty, bom_line.product_id.uom_id), "from_recipe": True,
+                    "sequence": seq, "product_id": product.id,
+                    "qty": line._round_component(qty, product.uom_id), "from_recipe": True,
                 }))
             line.component_ids = commands
+
+    def _place_qty(self):
+        """A reason that only adds (or only removes) takes the quantity in its
+        own column: 24 typed in Added for a Sale is 24 removed."""
+        moved = self.env["odin.stock.line"]
+        for line in self.filtered(lambda l: l.state == "draft"):
+            if line.direction == "out" and line.qty_in and not line.qty_out:
+                super(StockBookLine, line).write({"qty_out": line.qty_in, "qty_in": 0.0})
+                moved |= line
+            elif line.direction == "in" and line.qty_out and not line.qty_in:
+                super(StockBookLine, line).write({"qty_in": line.qty_out, "qty_out": 0.0})
+                moved |= line
+        return moved
+
+    def _unlimited(self, product):
+        """Never short: things nobody counts (ticked on the product) and
+        consumables Odoo does not keep stock of."""
+        return product.stock_book_unlimited or not product.is_storable
 
     # ------------------------------------------------------------ status
     def _status(self, available=None):
@@ -145,6 +201,11 @@ class StockBookLine(models.Model):
             return self.state, label, tone, ""
         if not self.product_id:
             return "need_product", *STATUS["need_product"], ""
+        tracked = (self.product_id | self.component_ids.product_id).filtered(lambda p: p.tracking != "none")
+        if tracked:
+            return "tracked", *STATUS["tracked"], _(
+                "%s is tracked by lot or serial number. Post it from Inventory or Manufacturing, where the "
+                "numbers are entered.", ", ".join(tracked.mapped("display_name")))
         if not self.reason:
             return "need_reason", *STATUS["need_reason"], ""
         if float_is_zero(self.qty, precision_digits=4) or (self.qty_in and self.qty_out):
@@ -158,6 +219,9 @@ class StockBookLine(models.Model):
                                                             self.product_id.display_name)
         if self.reason in NEEDS_PARTNER and not (self.partner_name or "").strip():
             return "need_partner", *STATUS["need_partner"], ""
+        if self.date > fields.Date.context_today(self):
+            return "future", *STATUS["future"], _("Dated %s: it can be posted on the day.",
+                                                  self.date.strftime("%d %b %Y"))
         available = available if available is not None else self._available(
             self.product_id | self.component_ids.product_id, self.warehouse_id)
         short = []
@@ -165,7 +229,7 @@ class StockBookLine(models.Model):
                                           precision_digits=4) > 0:
             short.append(self.product_id)
         for comp in self.component_ids:
-            if comp.product_id.stock_book_unlimited:
+            if self._unlimited(comp.product_id):
                 continue
             if float_compare(comp.qty, available.get(comp.product_id.id, 0.0), precision_digits=4) > 0:
                 short.append(comp.product_id)
@@ -177,23 +241,37 @@ class StockBookLine(models.Model):
         return "ready", *STATUS["ready"], ""
 
     # ------------------------------------------------------------ create / write
+    def _check_system_fields(self, vals, creating=False):
+        if self.env.context.get("odin_stock_book_posting"):
+            return
+        # A new line may say it is a draft; nothing else is set by hand.
+        touched = {key for key in SYSTEM_FIELDS & vals.keys()
+                   if not (creating and key == "state" and vals[key] == "draft")}
+        if touched:
+            raise UserError(_("Posting, cancelling and references are done by the Stock Book: post or cancel "
+                              "the line instead of changing %s.", ", ".join(sorted(touched))))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            self._check_system_fields(vals, creating=True)
             if vals.get("partner_name"):
-                vals["partner_name"] = " ".join(vals["partner_name"].split()).upper()
+                vals["partner_name"] = _normal_name(vals["partner_name"])
         lines = super().create(vals_list)
+        lines._place_qty()
         lines._explode()
         return lines
 
     def write(self, vals):
+        self._check_system_fields(vals)
         if vals.get("partner_name"):
-            vals["partner_name"] = " ".join(vals["partner_name"].split()).upper()
-        locked = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id"}
-        if locked & vals.keys() and self.filtered(lambda l: l.state != "draft"):
+            vals["partner_name"] = _normal_name(vals["partner_name"])
+        if LOCKED_FIELDS & vals.keys() and self.filtered(lambda l: l.state != "draft"):
             raise UserError(_("A posted line cannot be changed. Add a Correction line instead."))
         result = super().write(vals)
-        if ({"product_id", "qty_in", "reason", "bom_id"} & vals.keys() and "component_ids" not in vals
+        if {"reason", "qty_in", "qty_out"} & vals.keys():
+            self._place_qty()
+        if ({"product_id", "qty_in", "qty_out", "reason", "bom_id"} & vals.keys() and "component_ids" not in vals
                 and not self.env.context.get("odin_stock_exploding")):
             self._explode()
         return result
@@ -205,35 +283,47 @@ class StockBookLine(models.Model):
 
     # ------------------------------------------------------------ posting
     def _when(self):
-        """The line's date as a datetime (noon), so back-dated lines land on their day."""
+        """The line's date as a datetime: now for today, noon (the user's
+        time) for a back-dated line, so it lands on its day."""
         today = fields.Date.context_today(self)
         if self.date >= today:
             return fields.Datetime.now()
-        return datetime.combine(self.date, time(12, 0))
+        tz = pytz.timezone(self.env.context.get("tz") or self.env.user.tz or "UTC")
+        return tz.localize(datetime.combine(self.date, time(12, 0))).astimezone(pytz.utc).replace(tzinfo=None)
 
     def _assign_ref(self):
-        prefix = REASONS[self.reason][3]
-        year = self.date.year
-        self.env.cr.execute(
-            "SELECT ref FROM odin_stock_line WHERE ref LIKE %s ORDER BY ref DESC LIMIT 1",
-            (f"{prefix}/{year}/%",))
-        last = self.env.cr.fetchone()
-        seq = int(last[0].rsplit("/", 1)[1]) + 1 if last else 1
-        self.ref = f"{prefix}/{year}/{seq:04d}"
+        """The next number for the reason and the line's year, from Odoo's
+        gapless sequence: a row lock, so lines posted together or by two
+        people at once never share a number, and a failed post gives its
+        number back."""
+        code = SEQUENCE_CODE % REASONS[self.reason][3]
+        ref = self.env["ir.sequence"].next_by_code(code, sequence_date=self.date)
+        if not ref:
+            raise UserError(_("The numbering for %(reason)s (%(code)s) is missing. Upgrade the Stock Book module.",
+                              reason=REASONS[self.reason][1], code=code))
+        self.ref = ref
 
     def action_post(self, allow_short=False):
         if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
             raise UserError(_("Only a Stock Book supervisor can post. Ask Operations to post it."))
+        today = fields.Date.context_today(self)
         for line in self.filtered(lambda l: l.state == "draft").sorted(lambda l: (l.date, l.id)):
             key, label, _tone, detail = line._status()
             if key != "ready" and not (key == "short" and allow_short):
                 raise UserError(_("%(item)s: %(why)s. %(detail)s", item=line.product_id.display_name or _("Line"),
                                   why=label, detail=detail))
+            context = {"odin_stock_book_posting": True}
+            if line.date < today:
+                # Journal entries of a back-dated line go on its day too.
+                context["force_period_date"] = line.date
+            line = line.with_context(**context)
             line._assign_ref()
             moves = getattr(line, f"_post_{'make' if line.reason in MAKES else line.reason}")()
             when = line._when()
             moves.write({"date": when})
             moves.move_line_ids.write({"date": when})
+            if line.date < today:
+                line._backdate_documents(when)
             line.write({
                 "state": "posted", "posted_by_id": self.env.user.id, "posted_on": fields.Datetime.now(),
                 "move_ids": [Command.set(moves.ids)],
@@ -241,15 +331,32 @@ class StockBookLine(models.Model):
             })
         return True
 
+    def _backdate_documents(self, when):
+        """The manufacturing order, transfer or scrap shows the line's day,
+        not the day it was posted."""
+        if self.production_id:
+            # force_date: Odoo's own way to date a done order.
+            self.production_id.with_context(force_date=True).write({"date_start": when, "date_finished": when})
+        if self.picking_id:
+            self.picking_id.date_done = when
+        if self.scrap_id:
+            self.scrap_id.date_done = when
+
     def _partner(self):
         name = (self.partner_name or "").strip()
         if not name:
             return self.env["res.partner"]
-        partner = self.env["res.partner"].search(
-            [("name", "=ilike", name), "|", ("company_id", "=", False), ("company_id", "=", self.company_id.id)],
-            limit=1)
+        escaped = name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        Partner = self.env["res.partner"]
+        found = Partner.search(
+            [("name", "=ilike", escaped), "|", ("company_id", "=", False), ("company_id", "=", self.company_id.id)],
+            order="id", limit=20)
+        # The company itself rather than a contact person of the same name.
+        partner = found.filtered(lambda p: not p.parent_id)[:1] or found[:1]
         if not partner:
-            partner = self.env["res.partner"].create({"name": name.title(), "company_id": False})
+            # A name typed in the book is enough for a contact: supervisors
+            # need not be allowed to create contacts in general.
+            partner = Partner.sudo().create({"name": name.title(), "company_id": False}).sudo(False)
         self.partner_id = partner
         return partner
 
@@ -281,12 +388,15 @@ class StockBookLine(models.Model):
             qty = wanted.get(move.product_id, 0.0)
             # A component on several recipe lines: the first move takes it all.
             wanted[move.product_id] = 0.0
-            move._set_quantity_done(qty)
+            move._set_quantity_done(move.product_id.uom_id._compute_quantity(qty, move.product_uom))
             move.picked = True
-        result = mo.with_context(skip_consumption=True, skip_backorder=True, mo_ids_to_backorder=[]).button_mark_done()
-        if isinstance(result, dict) and result.get("res_model"):
+        result = mo.with_context(skip_consumption=True, skip_backorder=True, mo_ids_to_backorder=[],
+                                 skip_redirection=True).button_mark_done()
+        if mo.state != "done":
             raise UserError(_("Odoo asked a question while posting %(ref)s (%(what)s). Post it from "
-                              "Manufacturing instead.", ref=self.ref, what=result.get("name") or result["res_model"]))
+                              "Manufacturing instead.", ref=self.ref,
+                              what=isinstance(result, dict) and (result.get("name") or result.get("res_model"))
+                              or mo.state))
         self.production_id = mo
         return (mo.move_raw_ids | mo.move_finished_ids).filtered(lambda m: m.state == "done")
 
@@ -327,7 +437,9 @@ class StockBookLine(models.Model):
         moves = self._post_picking(wh.in_type_id, self.env.ref("stock.stock_location_suppliers"),
                                    self._location(), self._partner())
         if self.unit_cost:
-            for move in moves:
+            # The cost typed on the line is the receipt's value (a manual
+            # value in Odoo 19, which only stock managers may write).
+            for move in moves.sudo():
                 move.value_manual = self.unit_cost * move.quantity
         return moves
 
@@ -360,7 +472,8 @@ class StockBookLine(models.Model):
         return move
 
     def action_cancel(self):
-        self.filtered(lambda l: l.state == "draft").write({"state": "cancelled"})
+        self.filtered(lambda l: l.state == "draft").with_context(odin_stock_book_posting=True).write(
+            {"state": "cancelled"})
         return True
 
     def action_open_document(self):
@@ -371,6 +484,33 @@ class StockBookLine(models.Model):
                     "domain": [("id", "in", self.move_ids.ids)], "name": self.ref}
         return {"type": "ir.actions.act_window", "res_model": record._name, "res_id": record.id,
                 "views": [[False, "form"]]}
+
+    # ------------------------------------------------------------ copy / reverse
+    def _copy_as_draft(self, date):
+        """The same movement again, as a new draft on ``date``: a filling
+        takes the recipe again."""
+        self.ensure_one()
+        return self.copy({"date": date, "note": False})
+
+    def _reverse(self):
+        """A draft that undoes this posted line: a sale comes back as a
+        customer return, a scrap or correction as a correction the other
+        way. Fillings and receipts are undone in Manufacturing (unbuild) and
+        Inventory (return to the supplier)."""
+        self.ensure_one()
+        if self.state != "posted" or self.reason not in REVERSE:
+            raise UserError(_("Only a posted sale, return, scrap or correction can be reversed here."))
+        existing = self.search([("reverses_id", "=", self.id), ("state", "!=", "cancelled")], limit=1)
+        if existing:
+            raise UserError(_("%(ref)s is already reversed by %(other)s.", ref=self.ref,
+                              other=existing.ref or _("a draft line")))
+        return self.create({
+            "date": fields.Date.context_today(self), "warehouse_id": self.warehouse_id.id,
+            "company_id": self.company_id.id, "product_id": self.product_id.id,
+            "reason": REVERSE[self.reason], "qty_in": self.qty_out, "qty_out": self.qty_in,
+            "partner_name": self.partner_name, "reverses_id": self.id,
+            "note": _("Reverses %s", self.ref),
+        })
 
 
 class StockBookComponent(models.Model):
@@ -388,7 +528,19 @@ class StockBookComponent(models.Model):
     qty = fields.Float(digits="Product Unit")
     from_recipe = fields.Boolean(readonly=True)
 
-    def write(self, vals):
-        if self.line_id.filtered(lambda l: l.state != "draft"):
+    def _check_draft(self, lines):
+        if lines.filtered(lambda l: l.state != "draft"):
             raise UserError(_("A posted line cannot be changed. Add a Correction line instead."))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        self._check_draft(self.env["odin.stock.line"].browse({v["line_id"] for v in vals_list if v.get("line_id")}))
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._check_draft(self.line_id | self.env["odin.stock.line"].browse(vals.get("line_id")))
         return super().write(vals)
+
+    def unlink(self):
+        self._check_draft(self.line_id)
+        return super().unlink()
