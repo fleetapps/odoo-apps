@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 import pytz
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, api, fields, models
+from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 
 from .stock_book_line import MAKES, NEED_KEYS, REASONS, REVERSE

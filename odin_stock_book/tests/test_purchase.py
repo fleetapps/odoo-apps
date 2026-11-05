@@ -23,6 +23,13 @@ class TestStockBookPurchase(TestStockBook):
                                   "price_include_override": "tax_excluded"})
         cls.vat_in = Tax.create({"name": "Test 16 in", "amount": 16, "type_tax_use": "purchase",
                                  "price_include_override": "tax_included"})
+        # As on a live database: payments go through an outstanding account.
+        # A new database's journals have none on their payment methods.
+        cls.outstanding = cls.env["account.account"].create({
+            "code": "120099", "name": "Test Outstanding Payments", "account_type": "asset_current", "reconcile": True})
+        cls.pay_journal = cls.env["account.journal"].search(
+            [("type", "=", "bank"), ("company_id", "=", cls.env.company.id)], limit=1)
+        cls.pay_journal.outbound_payment_method_line_ids[:1].payment_account_id = cls.outstanding
 
     def _received(self, product=None, qty=100, cost=14.5, **vals):
         return self.Line.create({"product_id": (product or self.bottle).id, "reason": "received", "qty_in": qty,
@@ -335,9 +342,11 @@ class TestStockBookPurchase(TestStockBook):
         """A new item from a new supplier whose default is included in the price."""
         self.bottle.supplier_taxes_id = self.vat_in
         new = self.env["res.partner"].create({"name": "First Time Supplier"})
-        self.assertEqual(self.Book.book_purchase_item(self.bottle.id, new.id)["tax_id"], self.vat_net.id)
+        tax = self.env["account.tax"].browse(self.Book.book_purchase_item(self.bottle.id, new.id)["tax_id"])
+        self.assertEqual(tax.amount, 16)
+        self.assertFalse(tax.price_include)
 
-    def test_a_date_changed_on_one_line_keeps_the_lpo_whole(self):
+    def test_an_lpos_lines_cannot_drift_apart(self):
         keeper = new_test_user(self.env, "lpo_dates", groups="odin_stock_book.group_stock_book_user")
         today = fields.Date.context_today(self.Line)
         result = self.Book.with_user(keeper).book_purchase_save({
@@ -347,7 +356,8 @@ class TestStockBookPurchase(TestStockBook):
                       {"product_id": self.carton.id, "qty": 4, "cost": 5, "tax_id": self.vat_net.id}],
         })
         lines = self.Line.browse(result["ids"])
-        lines[1].date = today - timedelta(days=2)
+        with self.assertRaises(UserError):
+            lines[1].date = today - timedelta(days=2)
         self.Book.book_post(lines[0].ids)
         self.assertEqual(set(lines.mapped("state")), {"posted"})
         self.assertEqual(len(lines.purchase_id), 1)
@@ -377,7 +387,7 @@ class TestStockBookPurchase(TestStockBook):
 
     def test_window_pays_from_the_journal_chosen(self):
         journals = self.Book._purchase_pay_journals()
-        self.assertTrue(journals)
+        self.assertIn(self.pay_journal, journals)
         for journal in journals:
             result = self._window(ref=f"LPO-91-{journal.id}", pay_journal_id=journal.id)
             bill = self.env["purchase.order"].browse(result["order_id"]).invoice_ids
@@ -386,6 +396,7 @@ class TestStockBookPurchase(TestStockBook):
             self.assertEqual(payment.amount, bill.amount_total)
             self.assertEqual(payment.date, bill.invoice_date)
             self.assertTrue(payment.move_id, "the payment is in the ledger")
+            self.assertEqual(payment.outstanding_account_id, self.outstanding)
             self.assertIn(bill.payment_state, ("in_payment", "paid"))
 
     def test_a_journal_with_no_ledger_entry_cannot_pay(self):
@@ -422,7 +433,7 @@ class TestStockBookPurchase(TestStockBook):
         self.assertEqual(self.env["odin.stock.purchase"].search_count([]), count)
 
     def test_nothing_stays_if_the_payment_fails(self):
-        journal = self.Book._purchase_pay_journals()[:1]
+        journal = self.pay_journal
         bottles = self.onhand(self.bottle)
         Purchase = type(self.env["odin.stock.purchase"])
         with patch.object(Purchase, "_pay", side_effect=UserError("No")):
