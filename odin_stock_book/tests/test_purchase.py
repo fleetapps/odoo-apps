@@ -23,6 +23,12 @@ class TestStockBookPurchase(TestStockBook):
                                   "price_include_override": "tax_excluded"})
         cls.vat_in = Tax.create({"name": "Test 16 in", "amount": 16, "type_tax_use": "purchase",
                                  "price_include_override": "tax_included"})
+        # As on a live database: VAT has its own account. With none, Odoo puts
+        # it on the line it is charged on, here the Stock account.
+        cls.vat_account = cls.env["account.account"].create({
+            "code": "111099", "name": "Test Purchase VAT", "account_type": "asset_current"})
+        for tax in cls.vat_net | cls.vat_in:
+            tax.invoice_repartition_line_ids.filtered(lambda r: r.repartition_type == "tax").account_id = cls.vat_account
         # As on a live database: payments go through an outstanding account.
         # A new database's journals have none on their payment methods.
         cls.outstanding = cls.env["account.account"].create({

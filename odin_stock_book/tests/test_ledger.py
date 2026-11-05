@@ -57,6 +57,26 @@ class TestStockBookLedger(TestStockBookPurchase):
             self.assertEqual(stock, accounts["stock_valuation"])
         self.assertEqual(self.Book._imported_orders(), self.env["purchase.order"], "billed once")
 
+    def test_paid_from_the_bank_on_the_day_of_the_bill(self):
+        order = self._imported_order()
+        self.Book.book_bill_imported(dry_run=False, pay_journal_id=self.pay_journal.id)
+        bill = order.invoice_ids
+        self.assertIn(bill.payment_state, ("in_payment", "paid"))
+        payment = bill._get_reconciled_payments()
+        self.assertEqual(payment.journal_id, self.pay_journal)
+        self.assertEqual(payment.date, bill.invoice_date)
+
+    def test_only_the_orders_named_are_billed(self):
+        first, second = self._imported_order(), self._imported_order()
+        second.partner_ref = "IMP-2"
+        self.Book.book_bill_imported(dry_run=False, order_ids=first.ids)
+        self.assertTrue(first.invoice_ids)
+        self.assertFalse(second.invoice_ids)
+
+    def test_a_vat_with_no_account_is_not_offered(self):
+        tax = self.env["account.tax"].create({"name": "Test no account", "amount": 16, "type_tax_use": "purchase"})
+        self.assertNotIn(tax, self.Book._purchase_taxes())
+
     def test_partial_orders_wait_until_asked(self):
         order = self._imported_order()
         order.origin = "2026_PURCHASES March rows 1-3 PARTIAL 2 line(s) awaiting product"

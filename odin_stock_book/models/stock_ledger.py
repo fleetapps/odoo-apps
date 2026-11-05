@@ -79,6 +79,8 @@ class StockBook(models.AbstractModel):
         if dry_run:
             return report
         journal = self.env["account.journal"].sudo().browse(pay_journal_id or []).exists()
+        if pay_journal_id and journal not in self._purchase_pay_journals():
+            raise UserError(_("Payments from that journal would not reach the ledger."))
         paid_by_petty = {order: petty for order, petty in (petty_pairs or [])}
         billed, failed = [], []
         for order in todo:
@@ -152,7 +154,10 @@ class StockBook(models.AbstractModel):
         wizard = self.env["account.payment.register"].sudo().with_company(bill.company_id).with_context(
             active_model="account.move", active_ids=bill.ids,
         ).create({"journal_id": journal.id, "payment_date": bill.invoice_date})
-        return wizard._create_payments()
+        payment = wizard._create_payments()
+        if not payment.move_id or bill.payment_state not in ("in_payment", "paid"):
+            raise UserError(_("The payment of %(bill)s did not reach the accounts.", bill=bill.name))
+        return payment
 
     # ------------------------------------------------------------ stock in the ledger
     @api.model

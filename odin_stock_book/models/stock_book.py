@@ -427,9 +427,12 @@ class StockBook(models.AbstractModel):
     def _purchase_taxes(self):
         """Purchase VAT to choose from. Withholding is left out: it is taken
         when paying, on top of the VAT, not instead of it."""
-        return self.env["account.tax"].search([
+        taxes = self.env["account.tax"].search([
             ("type_tax_use", "=", "purchase"), ("company_id", "=", self.env.company.id),
             ("amount", ">=", 0)], order="sequence, id")
+        # A VAT with no account would land on the Stock account with the goods.
+        return taxes.filtered(lambda t: not t.amount or t.invoice_repartition_line_ids.filtered(
+            lambda r: r.repartition_type == "tax").account_id)
 
     @api.model
     def _purchase_pay_journals(self):
