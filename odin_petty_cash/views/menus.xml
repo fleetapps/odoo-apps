@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_petty_cash_root" name="Petty Cash" web_icon="odin_petty_cash,static/description/icon.png"
+              groups="group_petty_cash_user" sequence="45"/>
+    <menuitem id="menu_petty_cash_book" name="Book" parent="menu_petty_cash_root"
+              action="odin_petty_cash_book_action" sequence="1"/>
+    <menuitem id="menu_petty_cash_vouchers" name="Vouchers" parent="menu_petty_cash_root"
+              action="odin_petty_cash_line_action" sequence="2"/>
+    <menuitem id="menu_petty_cash_upload" name="Upload Statement" parent="menu_petty_cash_root"
+              action="odin_petty_cash_import_action" sequence="3"/>
+    <menuitem id="menu_petty_cash_floats" name="Floats" parent="menu_petty_cash_root"
+              action="odin_petty_cash_float_action" groups="group_petty_cash_approver" sequence="9"/>
+</odoo>

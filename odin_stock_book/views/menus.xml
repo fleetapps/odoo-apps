@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_stock_book_root" name="Stock Book" web_icon="odin_stock_book,static/description/icon.png"
+              groups="group_stock_book_user" sequence="44"/>
+    <menuitem id="menu_stock_book_movements" name="Movements" parent="menu_stock_book_root"
+              action="odin_stock_book_action" sequence="1"/>
+    <menuitem id="menu_stock_book_sheet" name="Stock sheet" parent="menu_stock_book_root"
+              action="odin_stock_book_sheet_action" sequence="2"/>
+    <menuitem id="menu_stock_book_count" name="Count" parent="menu_stock_book_root"
+              action="odin_stock_book_count_action" sequence="3"/>
+    <menuitem id="menu_stock_book_all" name="All movements" parent="menu_stock_book_root"
+              action="odin_stock_line_action" sequence="9"/>
+</odoo>
