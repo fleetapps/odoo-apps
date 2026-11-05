@@ -173,7 +173,6 @@
                     <field name="is_shared" invisible="1"/>
                     <field name="is_subscribed" invisible="1"/>
                 </sheet>
-                <chatter/>
             </form>
         </field>
     </record>
