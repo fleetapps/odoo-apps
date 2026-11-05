@@ -21,7 +21,16 @@ const PALETTE = [
     "#F6903D", "#008685", "#F08BB4", "#6DC8EC", "#269A99", "#D8584B",
 ];
 
-const CHART_TYPES = ["bar", "line", "pie", "donut"];
+const CHART_TYPES = ["bar", "line", "pie", "donut", "aging"];
+// Summary cards draw their own figures, and do not change into anything else.
+const CARD_TYPES = ["pnl", "aging", "banks"];
+// A card's green, then what sits beside it.
+const CARD_PALETTE = ["#2ca01c", "#0077c5", "#ffb000", "#00b7c3", "#ff8000", "#7d2ae8", "#d52b1e", "#8d9096"];
+const PERIOD_LABELS = {
+    this_month: "This month", last_month: "Last month", last_30_days: "Last 30 days",
+    this_quarter: "This quarter", last_quarter: "Last quarter",
+    this_year: "This year", last_year: "Last year", all_time: "All time",
+};
 // Which figures a tile needs. Two types in the same family are drawn from the
 // same payload, so switching between them is instant and local; crossing
 // families needs the server to shape the data differently. This one table is
@@ -31,6 +40,7 @@ const CHART_TYPES = ["bar", "line", "pie", "donut"];
 const SHAPE_FAMILY = {
     kpi: "kpi", table: "table", pivot: "pivot",
     bar: "chart", line: "chart", pie: "chart", donut: "chart",
+    pnl: "pnl", aging: "aging", banks: "banks",
 };
 // A comparison is a question you ask of a whole dashboard — "how does all of
 // this look against last year?" — so it lives beside the period rather than
@@ -217,6 +227,8 @@ export class AIDashboardCanvas extends Component {
                 // on screen rather than from what is stored.
                 type: w.type,
                 title: w.title,
+                caption: w.caption,
+                period: (usable && figures.period) || w.period,
                 span: Math.max(1, Math.min(12, w.span || 6)),
                 color: w.color,
                 format: w.format || { kind: "plain" },
@@ -381,12 +393,42 @@ export class AIDashboardCanvas extends Component {
         }
     }
 
+    get periodLabels() {
+        return Object.entries(PERIOD_LABELS);
+    }
+
+    get isCardBoard() {
+        return this.widgets.length > 0 && this.widgets.every((w) => this.isCard(w));
+    }
+
+    /** Shaped like an accounting summary: its total first, under its title. */
+    isCard(widget) {
+        return CARD_TYPES.includes(widget.type) || Boolean(widget.caption || widget.period);
+    }
+
+    total(widget) {
+        return (widget.series || []).reduce((sum, point) => sum + (point.value || 0), 0);
+    }
+
+    cardColor(index) {
+        return CARD_PALETTE[index % CARD_PALETTE.length];
+    }
+
+    /** Income and expenses drawn against the larger of the two. */
+    pnlShare(widget, value) {
+        const largest = Math.max(Math.abs(widget.income || 0), Math.abs(widget.expenses || 0));
+        return largest ? Math.round((Math.abs(value) / largest) * 100) : 0;
+    }
+
     config(widget) {
         const series = widget.series || [];
         const labels = series.map((point) => point.label);
         const values = series.map((point) => point.value);
-        const isCircular = widget.type === "pie" || widget.type === "donut";
+        const isCircular = ["pie", "donut", "aging"].includes(widget.type);
         const base = widget.color != null ? widget.color : 0;
+        if (this.isCard(widget)) {
+            return this.cardConfig(widget, labels, values, isCircular);
+        }
 
         const datasets = [];
         if (widget.compare_series) {
@@ -452,6 +494,54 @@ export class AIDashboardCanvas extends Component {
                     }
                     const point = series[elements[0].index];
                     if (point) {
+                        this.drill(widget, point.raw);
+                    }
+                },
+            },
+        };
+    }
+
+    /** A card's chart: green, plain, and its legend written beside it. */
+    cardConfig(widget, labels, values, isCircular) {
+        const money = (v) => this.format(v, { ...widget, format: { ...widget.format, decimals: 0 } });
+        const compare = widget.compare_series
+            ? [{ label: this.compareLabel, data: widget.compare_series, backgroundColor: "#babec5",
+                 borderColor: "#babec5", borderDash: [5, 4], borderWidth: widget.type === "line" ? 2 : 0,
+                 pointRadius: 2, tension: 0 }]
+            : [];
+        // Nothing owed is still a ring, not a hole in the card.
+        const nothing = isCircular && !values.some((v) => v);
+        return {
+            type: isCircular ? "doughnut" : widget.type,
+            data: {
+                labels,
+                datasets: [...compare, {
+                    label: widget.title, data: nothing ? [1] : values,
+                    backgroundColor: nothing ? ["#e3e5e8"]
+                        : isCircular ? values.map((_v, i) => this.cardColor(i)) : CARD_PALETTE[0],
+                    borderColor: isCircular ? "#fff" : CARD_PALETTE[0],
+                    borderWidth: isCircular ? 2 : widget.type === "line" ? 2 : 0,
+                    pointBackgroundColor: "#fff", pointBorderWidth: 2, pointRadius: 4,
+                    tension: 0, maxBarThickness: 36,
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: isCircular ? "58%" : undefined,
+                plugins: {
+                    legend: { display: !isCircular && Boolean(widget.compare_series), position: "top", align: "end",
+                              labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
+                    tooltip: { enabled: !nothing,
+                               callbacks: { label: (ctx) => `${ctx.label}: ${this.format(ctx.parsed.y ?? ctx.parsed, widget)}` } },
+                },
+                scales: isCircular ? {} : {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 0, autoSkipPadding: 12 } },
+                    y: { beginAtZero: true, border: { display: false }, grid: { color: "#e3e5e8" },
+                         ticks: { font: { size: 11 }, maxTicksLimit: 6, callback: (v) => money(v) } },
+                },
+                onClick: (_event, elements) => {
+                    const point = (widget.series || [])[elements[0]?.index];
+                    if (widget.drill && point && point.raw != null) {
                         this.drill(widget, point.raw);
                     }
                 },
@@ -790,7 +880,7 @@ export class AIDashboardCanvas extends Component {
             return [];
         }
         if (widget.group_count === 1) {
-            return [...CHART_TYPES, "table"];
+            return [...CHART_TYPES.filter((type) => type !== "aging"), "table"];
         }
         if (widget.group_count === 2) {
             // Exactly two groupings is the shape a pivot needs, so a table of

@@ -321,3 +321,25 @@ class TestStoredFields(TransactionCase):
 
     def test_count_is_always_allowed(self):
         spec_lib.validate(minimal(), self.env, self.scope)
+
+
+@tagged("post_install", "-at_install")
+class TestSummaryCardSpec(TransactionCase):
+
+    def _with(self, **widget):
+        spec = minimal()
+        spec["widgets"] = [{"id": "c", "title": "Card", "span": 4, **widget}]
+        return spec
+
+    def test_a_card_reads_only_its_own_model(self):
+        with self.assertRaises(spec_lib.SpecError):
+            spec_lib.validate(self._with(type="pnl", query={"model": "res.partner", "measures": ["__count"]}), self.env)
+
+    def test_a_period_must_be_a_known_one_and_not_on_a_position_card(self):
+        with self.assertRaises(spec_lib.SpecError):
+            spec_lib.validate(self._with(type="bar", period="whenever", query={
+                "model": "res.partner", "group_by": ["country_id"], "measures": ["__count"]}), self.env)
+        if "account.move" in self.env:
+            with self.assertRaises(spec_lib.SpecError):
+                spec_lib.validate(self._with(type="aging", period="this_year", query={
+                    "model": "account.move", "measures": ["amount_residual:sum"]}), self.env)
