@@ -106,6 +106,8 @@ class MCPEngine(models.AbstractModel):
             "periods": sorted(spec_lib.PERIODS),
             "filter_types": sorted(spec_lib.FILTER_TYPES),
             "format_kinds": sorted(spec_lib.FORMAT_KINDS),
+            "format_negate": "format {\"negate\": true} flips the sign on a kpi, line or bar: ledger balances "
+                             "read debit-positive, so a profit tile over account.move.line needs it.",
             "compare": {
                 "targets": sorted(spec_lib.COMPARE_TARGETS),
                 "comparable_types": sorted(spec_lib.COMPARABLE_TYPES),

@@ -208,3 +208,12 @@ class TestUnsavedSpecOverride(TransactionCase):
         self.Render.with_user(self.owner).render(
             self.board.id, None, None, self._edited(title="Experiment"))
         self.assertEqual(self.board.last_render_ms, 0)
+
+    def test_negate_flips_a_kpi_and_a_series(self):
+        render = self.Render
+        self.assertEqual(render._negated({"format": {"negate": True}}, {"value": -40.0, "compare": 0})["value"], 40.0)
+        shaped = render._negated({"format": {"negate": True}},
+                                 {"series": [{"value": 5.0}, {"value": 0}], "compare_series": [2.0]})
+        self.assertEqual([p["value"] for p in shaped["series"]], [-5.0, 0])
+        self.assertEqual(shaped["compare_series"], [-2.0])
+        self.assertEqual(render._negated({"format": {}}, {"value": -40.0})["value"], -40.0)

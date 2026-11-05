@@ -270,7 +270,7 @@ class AIDashboardRender(models.AbstractModel):
             return dict(base, error=_("This tile could not be calculated (%s).")
                         % type(exc).__name__)
 
-        shaped = self._shape(widget, query, rows, previous)
+        shaped = self._negated(widget, self._shape(widget, query, rows, previous))
         if mode != "none":
             shaped["compare_mode"] = mode
             if previous is None:
@@ -284,6 +284,21 @@ class AIDashboardRender(models.AbstractModel):
                                 "you. Someone with wider access may see more.") \
                 % self._model_label(model_name)
         return dict(base, **shaped, domain=domain, model=model_name)
+
+    @staticmethod
+    def _negated(widget, shaped):
+        """Flip the sign for a tile asking for it: profit from ledger balances."""
+        if not (widget.get("format") or {}).get("negate"):
+            return shaped
+        flip = lambda number: -number if number else number  # never a -0
+        for key in ("value", "compare"):
+            if shaped.get(key) is not None:
+                shaped[key] = flip(shaped[key])
+        for point in shaped.get("series") or []:
+            point["value"] = flip(point["value"])
+        if shaped.get("compare_series"):
+            shaped["compare_series"] = [flip(n) for n in shaped["compare_series"]]
+        return shaped
 
     def _read(self, model, query, domain):
         group_by = list(query.get("group_by") or [])
