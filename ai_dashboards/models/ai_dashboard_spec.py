@@ -64,7 +64,7 @@ WIDGET_KEYS = {"id", "type", "title", "span", "query", "format", "compare",
                "drill", "color"}
 QUERY_KEYS = {"model", "domain", "group_by", "measures", "order", "limit"}
 FILTER_KEYS = {"key", "type", "label", "default", "field"}
-FORMAT_KEYS = {"kind", "decimals", "suffix"}
+FORMAT_KEYS = {"kind", "decimals", "suffix", "negate"}
 COMPARE_KEYS = {"to"}
 
 FORMAT_KINDS = {"plain", "monetary", "percent", "integer", "duration"}
@@ -503,6 +503,13 @@ def _validate_widget(widget, index, seen_ids, env=None, scope=None):
         if fmt.get("suffix"):
             clean_fmt["suffix"] = _text(fmt["suffix"], _("format suffix"),
                                         limit=16)
+        if fmt.get("negate"):
+            # Ledger balances read debit-positive, so profit is the negative of
+            # what the lines add up to. Only where one number per point is drawn.
+            if widget.get("type") not in ("kpi", "line", "bar"):
+                _fail(_("Widget '%s': negate works on a kpi, line or bar.")
+                      % widget_id)
+            clean_fmt["negate"] = True
         clean["format"] = clean_fmt
 
     if "compare" in widget and widget["compare"] is not None:
