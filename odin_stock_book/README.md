@@ -110,8 +110,27 @@ Inline lines read the cost as before VAT and take the VAT last used for the item
 or supplier, never one included in the price. In the window the VAT on each line
 says how its cost is read.
 
+A *Received* line with no cost asks for it: its status opens the window with that
+line in it, and saving replaces the line. A draft LPO reopens with *Edit purchase*.
+
 A receipt validated in Purchases, or a return to the supplier, adds its own
 posted line here. Enter a delivery in one place or the other, not both.
+
+## The cards
+
+Each opens what it counts, says what those lines are, and offers the next step.
+
+* **Needs something**: the lines missing a detail. A line's status is a button
+  that goes to what is missing.
+* **Short**: the lines using more than is on hand, and each item short by how
+  much, with *Buy* or *Make*, and *Count*.
+* **Ready to post**: the lines ready, with *Post*. Posting goes in date order, so a
+  delivery lets the use after it through. A line that cannot go stays a draft and
+  is listed with why; the others still post.
+* **Out for recipes**: every item at zero that a live recipe needs, the recipes
+  waiting, how fast it goes and where it last came from. Tick several and *Add
+  purchase*, or *Make* what has its own recipe.
+* **Stock value** opens the stock sheet.
 
 ## Stock sheet
 

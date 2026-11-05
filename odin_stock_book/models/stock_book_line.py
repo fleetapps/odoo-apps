@@ -299,10 +299,10 @@ class StockBookLine(models.Model):
 
     def write(self, vals):
         self._check_system_fields(vals)
-        if {"partner_name", "date", "purchase_ref", "warehouse_id", "tax_id"} & vals.keys() \
+        if {"partner_name", "date", "purchase_ref", "warehouse_id", "tax_id", "reason"} & vals.keys() \
                 and not self.env.context.get("odin_stock_book_posting") and self.filtered("stock_purchase_id"):
-            raise UserError(_("This line belongs to a whole LPO, entered in Add purchase. Cancel its lines and enter "
-                              "it again to change its supplier, number, date or VAT."))
+            raise UserError(_("This line belongs to a whole LPO. Change its supplier, number, date or VAT with "
+                              "Edit purchase."))
         if vals.get("purchase_ref"):
             vals["purchase_ref"] = _normal_ref(vals["purchase_ref"])
         if vals.get("partner_name"):

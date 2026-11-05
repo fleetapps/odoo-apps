@@ -104,7 +104,15 @@ class StockBook(models.AbstractModel):
     @api.model
     def _product(self, product):
         return {"id": product.id, "code": product.default_code or "", "name": product.name,
-                "display_name": product.display_name, "uom": product.uom_id.name} if product else False
+                "display_name": product.display_name, "uom": product.uom_id.name,
+                "made": self._make_reason(product)} if product else False
+
+    @api.model
+    def _make_reason(self, product):
+        """How an item with its own recipe is made here; False if it is bought."""
+        if not product.product_tmpl_id.bom_ids:
+            return False
+        return "production" if "bulk" in (product.categ_id.complete_name or "").lower() else "filling"
 
     @api.model
     def _is_supervisor(self):
@@ -176,7 +184,8 @@ class StockBook(models.AbstractModel):
             keep = groups.get(reason, {reason})
             rows = [r for r in rows if r["reason"] in keep]
         if status:
-            keep = {"need": NEED_KEYS | {"short"}, "ready": {"ready"}, "posted": {"posted"}}.get(status, {status})
+            # As the cards count them: a short line is under Short, not Needs.
+            keep = {"need": NEED_KEYS, "ready": {"ready"}, "posted": {"posted"}}.get(status, {status})
             rows = [r for r in rows if r["status_key"] in keep]
         if search:
             needle = search.lower()
@@ -206,6 +215,8 @@ class StockBook(models.AbstractModel):
             "reasons": [{"key": k, "label": v[1], "direction": v[0]} for k, v in REASONS.items()],
             "can_post": self._is_supervisor(),
             "to_bill": self._orders_to_bill(),
+            "can_open_bill": self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_readonly"),
         }
 
     @api.model
@@ -221,10 +232,16 @@ class StockBook(models.AbstractModel):
     def _row(self, line, status, onhand, comp_onhand, reversed_by=None):
         key, label, tone, detail = status
         recipes = line._recipes() if line.reason in MAKES and line.state == "draft" else line.bom_id
+        order = line.purchase_id.sudo()
+        # Billed in the window, or from Purchases afterwards.
+        bill = order.invoice_ids.filtered(lambda m: m.state == "posted")[:1] or order.invoice_ids[:1]
         return {
             "id": line.id, "date": fields.Date.to_string(line.date), "ref": line.ref or "",
             "reason": line.reason or "", "reason_label": REASONS[line.reason][1] if line.reason else "",
-            "posts_as": REASONS[line.reason][2] if line.reason else "",
+            "posts_as": _("Purchase order, receipt, bill and payment") if line.stock_purchase_id.pay_journal_id
+            else _("Purchase order, receipt and bill") if line.stock_purchase_id
+            else REASONS[line.reason][2] if line.reason else "",
+            "window": bool(line.stock_purchase_id),
             "direction": REASONS[line.reason][0] if line.reason else "both",
             "product": self._product(line.product_id), "uom": line.uom_id.name or "",
             "qty_in": line.qty_in, "qty_out": line.qty_out, "partner_name": line.partner_name or "",
@@ -239,7 +256,8 @@ class StockBook(models.AbstractModel):
             "posted_by": line.posted_by_id.name or "", "has_document": bool(line.move_ids),
             "purchase": line.purchase_id.sudo().name or "", "current_cost": line.product_id.standard_price,
             "purchase_ref": line.purchase_ref or "", "tax_name": line.tax_id.name or "",
-            "bill": line.bill_id.sudo().name or "", "paid_from": line.stock_purchase_id.pay_journal_id.sudo().name or "",
+            "bill": bill.name or "", "bill_id": bill.id or False,
+            "unbilled": order.invoice_status == "to invoice", "paid_from": line.stock_purchase_id.pay_journal_id.sudo().name or "",
             "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
             "can_reverse": line.state == "posted" and line.reason in REVERSE and not reversed_by,
@@ -249,11 +267,67 @@ class StockBook(models.AbstractModel):
     def _out_in_recipes(self, wh):
         """Components the recipes need that are at zero or below: what stops
         the next filling or batch."""
-        bom_products = self.env["mrp.bom.line"].search([("bom_id.active", "=", True)]).product_id.filtered(
-            "is_storable")
-        available = self.env["odin.stock.line"]._available(bom_products, wh)
-        out = bom_products.filtered(lambda p: available[p.id] <= 0 and not p.stock_book_unlimited)
-        return {"count": len(out), "examples": out[:3].mapped("name")}
+        out, recipes = self._recipe_shortages(wh)
+        blocked = {bom for product in out for bom in recipes[product.id]}
+        return {"count": len(out), "recipes": len(blocked), "examples": out[:3].mapped("name")}
+
+    @api.model
+    def _recipe_shortages(self, wh):
+        """The items at zero or below that a live recipe uses, those most
+        recipes wait for first, with those recipes by item id. Archived items
+        and recipes of archived products stop no batch and are left out."""
+        lines = self.env["mrp.bom.line"].search([("bom_id.active", "=", True)]).filtered(
+            lambda l: l.product_id.active and l.product_id.is_storable and l.bom_id.product_tmpl_id.active)
+        available = self.env["odin.stock.line"]._available(lines.product_id, wh)
+        recipes = {}
+        for line in lines:
+            product = line.product_id
+            if available[product.id] <= 0 and not product.stock_book_unlimited:
+                recipes.setdefault(product.id, self.env["mrp.bom"])
+                recipes[product.id] |= line.bom_id
+        out = self.env["product.product"].browse(list(recipes)).sorted(
+            lambda p: (-len(recipes[p.id]), p.default_code or p.name))
+        return out, recipes
+
+    @api.model
+    def get_recipes(self, group=False, search="", warehouse_id=False):
+        """What the Out for recipes card opens: each item that stops a batch,
+        which recipes wait for it, how fast it goes, where it last came from,
+        and whether it is bought or made here."""
+        wh = self._warehouse(warehouse_id)
+        out, recipes = self._recipe_shortages(wh)
+        total_items, blocked = len(out), {bom for boms in recipes.values() for bom in boms}
+        for word in (search or "").lower().split():
+            out = out.filtered(lambda p: word in (p.default_code or "").lower() or word in p.name.lower())
+        if group:
+            out = out.filtered(lambda p: (p.categ_id.complete_name or "").lower().startswith(group.lower()))
+        today = fields.Date.context_today(self)
+        recent = self._move_totals(wh, self._utc(today - timedelta(days=28)), self._utc(today + timedelta(days=1)))[1]
+        available = self.env["odin.stock.line"]._available(out, wh)
+        Order = self.env["purchase.order.line"].sudo()
+        rows = []
+        for product in out:
+            last = Order.search([("product_id", "=", product.id), ("state", "=", "purchase"),
+                                 ("company_id", "=", wh.company_id.id)], order="date_order desc, id desc", limit=1)
+            boms = recipes[product.id]
+            make = self._make_reason(product)
+            rows.append({
+                "product": {**self._product(product), "stock": True, "tracked": product.tracking != "none",
+                            "onhand": available[product.id]},
+                "uom": product.uom_id.name, "onhand": available[product.id], "made": bool(make),
+                "reason": make or "received",
+                "category": product.categ_id.complete_name or "",
+                "recipe_count": len(boms), "recipes": [b.product_tmpl_id.name for b in boms[:40]],
+                "weekly": round(recent.get(product.id, 0.0) / 4, 2),
+                "last": {"date": fields.Date.to_string(last.date_order.date()), "partner": last.partner_id.name,
+                         "cost": last.price_unit} if last else False,
+            })
+        return {
+            "warehouse": {"id": wh.id, "name": wh.name},
+            "warehouses": [{"id": w.id, "name": w.name} for w in self._warehouses()],
+            "rows": rows, "items": total_items, "recipes": len(blocked),
+            "currency": self.env.company.currency_id.symbol,
+        }
 
     @api.model
     def book_save(self, line_id, values, keep_column=False):
@@ -304,13 +378,35 @@ class StockBook(models.AbstractModel):
 
     @api.model
     def book_post(self, ids, allow_short=False):
+        """Post the lines one after another, in date order, so a receipt lets
+        the use after it through, as the page projected. One that cannot go
+        stays a draft and is reported; the others are not held back by it."""
+        if not self._is_supervisor():
+            raise UserError(_("Only a Stock Book supervisor can post. Ask Operations to post it."))
         lines = self.env["odin.stock.line"].browse(ids).exists().filtered(lambda l: l.state == "draft")
         lines |= lines._purchase_siblings()
-        if not allow_short:
-            lines = lines.filtered(lambda l: l._status()[0] == "ready")
-        lines.action_post(allow_short=allow_short)
+        skipped, failed = [], []
+        for line in lines.sorted(lambda l: (l.date, l.id)):
+            if line.state != "draft":
+                continue  # went with its order
+            key, label, _tone, detail = line._status()
+            if key != "ready" and not (key == "short" and allow_short):
+                skipped.append({"id": line.id, "item": line.product_id.name or _("Line"), "why": label})
+                continue
+            batch = line
+            if line.reason == "received":
+                purchase = line._purchase_key()
+                batch = lines.filtered(lambda l: l.state == "draft" and l.reason == "received"
+                                       and l._purchase_key() == purchase and l._status()[0] == "ready") | line
+            try:
+                with self.env.cr.savepoint():
+                    batch.action_post(allow_short=allow_short)
+            except UserError as error:
+                self.env.invalidate_all()
+                failed += [{"id": l.id, "item": l.product_id.name or _("Line"), "why": error.args[0]} for l in batch]
         posted = lines.filtered(lambda l: l.state == "posted").sorted("ref")
-        return {"count": len(posted), "refs": posted.mapped("ref")}
+        return {"count": len(posted), "refs": posted.mapped("ref"), "ids": posted.ids,
+                "skipped": skipped, "failed": failed}
 
     # ------------------------------------------------------------ add purchase
     @api.model
@@ -388,22 +484,24 @@ class StockBook(models.AbstractModel):
         return {"tax_id": tax.id or False, "last_cost": last.price_unit or product.standard_price}
 
     @api.model
-    def book_purchase_check(self, partner_id, ref):
-        """Why this number cannot be used, as soon as it is typed; False if it can."""
+    def book_purchase_check(self, partner_id, ref, ignore_ids=None):
+        """Why this number cannot be used, as soon as it is typed; False if it
+        can. ``ignore_ids``: the lines being edited, whose number it may be."""
         partner = self.env["res.partner"].browse(partner_id or []).exists()
         try:
             self.env["odin.stock.line"]._check_purchase_ref(partner, ref, self.env.company)
-            self._check_purchase_waiting(partner, ref)
+            self._check_purchase_waiting(partner, ref, ignore_ids)
         except UserError as error:
             return str(error)
         return False
 
     @api.model
-    def _check_purchase_waiting(self, partner, ref):
+    def _check_purchase_waiting(self, partner, ref, ignore_ids=None):
         ref = " ".join((ref or "").split())
         waiting = self.env["odin.stock.line"].search(
             [("state", "=", "draft"), ("reason", "=", "received"), ("company_id", "=", self.env.company.id),
-             ("partner_id", "=", partner.id), ("purchase_ref", "=ilike", _escape_like(ref))], limit=1)
+             ("partner_id", "=", partner.id), ("purchase_ref", "=ilike", _escape_like(ref)),
+             ("id", "not in", ignore_ids or [])], limit=1)
         if waiting:
             raise UserError(_("%(ref)s from %(supplier)s is already on the book, waiting to be posted.",
                               ref=ref, supplier=partner.display_name))
@@ -441,11 +539,54 @@ class StockBook(models.AbstractModel):
         }
 
     @api.model
-    def book_purchase_save(self, values, post=True):
+    def book_purchase_load(self, line_id):
+        """A draft line for the purchase window: all of its LPO if it came from
+        the window, only itself otherwise. Saving replaces what is loaded."""
+        Line = self.env["odin.stock.line"]
+        line = Line.browse(line_id).exists()
+        if not line or line.state != "draft" or line.reason != "received":
+            raise UserError(_("Only a received line not yet posted can be opened as a purchase."))
+        window = line.stock_purchase_id
+        lines = window.line_ids.filtered(lambda l: l.state == "draft") if window else line
+        partner = window.partner_id or line.partner_id
+        name = (line.partner_name or "").strip()
+        if not partner and name:
+            found = self.env["res.partner"].search([("name", "=ilike", _escape_like(name)), ("parent_id", "=", False)],
+                                                   limit=1)
+            partner = found
+        rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": l.product_id.tracking != "none"},
+                 "qty": l.qty_in, "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": ""} for l in lines]
+        rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
+                  "cost": c.unit_cost, "tax_id": c.tax_id.id or False, "note": c.name or ""} for c in window.charge_ids]
+        return {
+            "supplier": {"id": partner.id, "name": partner.name} if partner else False,
+            "supplier_query": partner.name if partner else name.title(),
+            "purchase_ref": line.purchase_ref or "", "date": fields.Date.to_string(line.date),
+            "paid": (str(window.pay_journal_id.id) if window.pay_journal_id else "none") if window else "",
+            "lines": rows, "replace_ids": lines.ids, "edit": bool(window),
+        }
+
+    @api.model
+    def _purchase_replace(self, ids):
+        """What a purchase being saved takes the place of: its draft lines, and
+        the entry they came from with its other costs."""
+        lines = self.env["odin.stock.line"].browse(ids or []).exists()
+        if lines.filtered(lambda l: l.state != "draft" or l.reason != "received"):
+            raise UserError(_("These lines were posted meanwhile. Nothing was saved: check the book."))
+        windows = lines.stock_purchase_id
+        everything = lines | windows.line_ids
+        if everything.filtered(lambda l: l.state == "posted"):
+            raise UserError(_("These lines were posted meanwhile. Nothing was saved: check the book."))
+        everything.unlink()
+        windows.sudo().unlink()
+
+    @api.model
+    def book_purchase_save(self, values, post=True, replace_ids=None):
         """One LPO from the purchase window, as Stock Book lines: posted at
         once by a supervisor, left for one otherwise. All of it or none."""
         Line = self.env["odin.stock.line"]
         company = self.env.company
+        self._purchase_replace(replace_ids)
         wh = self._warehouse(values.get("warehouse_id"))
         if not wh:
             raise UserError(_("Create a warehouse first."))

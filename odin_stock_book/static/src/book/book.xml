@@ -13,10 +13,10 @@
                                 <option t-att-value="wh.id" t-att-selected="wh.id === state.warehouseId" t-esc="wh.name"/>
                             </t>
                         </select>
-                        <button t-if="state.view === 'log'" class="btn btn-primary" t-on-click="() => this.focusNew('item')" data-tooltip="Shortcut: N">
+                        <button t-if="state.view === 'log'" class="btn btn-primary" t-on-click="startNew" data-tooltip="Shortcut: N">
                             <i class="fa fa-plus me-1"/>Movement
                         </button>
-                        <button t-if="state.view === 'log' and state.book and !state.book.empty" class="btn btn-secondary o_sb_add_purchase" t-on-click="openPurchase" data-tooltip="An LPO or invoice with all its items. Shortcut: P">
+                        <button t-if="state.view === 'log' and state.book and !state.book.empty" class="btn btn-secondary o_sb_add_purchase" t-on-click="() => this.openPurchase()" data-tooltip="An LPO or invoice with all its items. Shortcut: P">
                             <i class="fa fa-truck me-1"/>Add purchase
                         </button>
                         <button t-if="state.view === 'log' and state.book and state.book.can_post and readyIds.length" class="btn btn-success" t-on-click="postAll">
@@ -44,10 +44,12 @@
                         <button role="tab" t-att-aria-selected="state.view === 'log'" t-on-click="() => this.setView('log')"><i class="fa fa-list-ul me-1"/>Movements</button>
                         <button role="tab" t-att-aria-selected="state.view === 'sheet'" t-on-click="() => this.setView('sheet')"><i class="fa fa-table me-1"/>Stock sheet</button>
                         <button role="tab" t-att-aria-selected="state.view === 'count'" t-on-click="() => this.setView('count')"><i class="fa fa-check-square-o me-1"/>Count</button>
+                        <button role="tab" t-att-aria-selected="state.view === 'recipes'" t-on-click="() => this.setView('recipes')"><i class="fa fa-flask me-1"/>Out for recipes</button>
                     </div>
                     <t t-if="state.view === 'log' and state.book" t-call="odin_stock_book.Movements"/>
                     <t t-elif="state.view === 'sheet' and state.sheet" t-call="odin_stock_book.Sheet"/>
                     <t t-elif="state.view === 'count' and state.count" t-call="odin_stock_book.Count"/>
+                    <t t-elif="state.view === 'recipes' and state.recipes" t-call="odin_stock_book.Recipes"/>
                     <div t-else="" class="o_sb_loading text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
                 </t>
             </Layout>
@@ -58,15 +60,15 @@
     <t t-name="odin_stock_book.Movements">
         <t t-set="book" t-value="state.book"/>
         <section class="o_sb_summary">
-            <div class="o_sb_kpi o_sb_kpi_balance">
+            <button class="o_sb_kpi o_sb_kpi_click o_sb_kpi_balance" t-on-click="() => this.setView('sheet')" title="Open the stock sheet">
                 <span class="o_sb_kpi_label">Stock value</span>
                 <span class="o_sb_kpi_value"><small t-esc="book.currency"/> <t t-esc="money(book.stock_value)"/></span>
                 <span class="o_sb_kpi_sub"><t t-esc="book.warehouse.name"/> · on hand at cost</span>
-            </div>
+            </button>
             <button class="o_sb_kpi o_sb_kpi_click" t-att-class="{ o_sb_kpi_on: state.status === 'need', o_sb_kpi_warn: book.counts.need }" t-on-click="() => this.setStatus('need')">
                 <span class="o_sb_kpi_label">Needs something</span>
                 <span class="o_sb_kpi_value" t-esc="book.counts.need"/>
-                <span class="o_sb_kpi_sub">item, reason, quantity or customer</span>
+                <span class="o_sb_kpi_sub">a line is missing a detail</span>
             </button>
             <button class="o_sb_kpi o_sb_kpi_click" t-att-class="{ o_sb_kpi_on: state.status === 'short', o_sb_kpi_bad: book.counts.short }" t-on-click="() => this.setStatus('short')">
                 <span class="o_sb_kpi_label">Short</span>
@@ -78,11 +80,11 @@
                 <span class="o_sb_kpi_value" t-esc="book.counts.ready"/>
                 <span class="o_sb_kpi_sub"><t t-esc="book.counts.posted"/> posted in <t t-esc="monthLabel"/></span>
             </button>
-            <button class="o_sb_kpi o_sb_kpi_click" t-att-class="{ o_sb_kpi_bad: book.out_in_recipes.count }" t-on-click="() => this.setView('count')"
+            <button class="o_sb_kpi o_sb_kpi_click" t-att-class="{ o_sb_kpi_bad: book.out_in_recipes.count }" t-on-click="() => this.setView('recipes')"
                     t-att-title="book.out_in_recipes.examples.join(', ')">
-                <span class="o_sb_kpi_label">Out, needed by recipes</span>
+                <span class="o_sb_kpi_label">Out for recipes</span>
                 <span class="o_sb_kpi_value" t-esc="book.out_in_recipes.count"/>
-                <span class="o_sb_kpi_sub o_sb_ellipsis"><t t-esc="book.out_in_recipes.examples.join(', ') or 'nothing missing'"/></span>
+                <span class="o_sb_kpi_sub o_sb_ellipsis"><t t-if="book.out_in_recipes.count">items out · <t t-esc="book.out_in_recipes.recipes"/> recipes wait</t><t t-else="">nothing missing</t></span>
             </button>
         </section>
 
@@ -94,13 +96,10 @@
             </div>
             <div class="o_sb_search">
                 <i class="fa fa-search"/>
-                <input class="form-control form-control-sm" placeholder="Search item, code, customer…  ( / )" t-att-value="state.search" t-on-input="onSearch" aria-label="Search"/>
+                <input class="form-control form-control-sm" placeholder="Search…  ( / )" title="Item, code, customer, supplier or LPO number" t-att-value="state.search" t-on-input="onSearch" aria-label="Search"/>
             </div>
             <button t-if="book.to_bill" class="btn btn-sm btn-warning o_sb_to_bill" t-on-click="openToBill" title="Received but not billed: their stock is not in the accounts until they are">
                 <i class="fa fa-file-text-o me-1"/><t t-esc="book.to_bill"/> to bill
-            </button>
-            <button t-if="state.status" class="btn btn-sm btn-light border" t-on-click="() => this.setStatus(state.status)">
-                <i class="fa fa-times me-1"/>Showing: <t t-esc="{need: 'needs something', short: 'short', ready: 'ready', posted: 'posted'}[state.status]"/>
             </button>
             <button t-if="book.older_open.count" class="btn btn-sm btn-warning" t-on-click="openOlder">
                 <i class="fa fa-history me-1"/><t t-esc="book.older_open.count"/> not posted from earlier months
@@ -119,6 +118,28 @@
                 <button class="btn btn-sm btn-light border" t-on-click="exportXlsx"><i class="fa fa-file-excel-o me-1"/>Export</button>
             </div>
         </div>
+
+        <!-- A card opens this: what these lines are, and what to do about them. -->
+        <section t-if="state.status" t-attf-class="o_sb_focus o_sb_focus_{{state.status}}" role="status">
+            <div class="o_sb_focus_main">
+                <strong t-esc="focus.title"/>
+                <span t-if="focus.text" t-esc="focus.text"/>
+            </div>
+            <div class="o_sb_focus_actions">
+                <button t-if="state.status === 'ready' and book.can_post and readyIds.length" class="btn btn-sm btn-success" t-on-click="postAll"><i class="fa fa-check me-1"/>Post <t t-esc="readyIds.length"/></button>
+                <button class="btn btn-sm btn-light border" t-on-click="() => this.setStatus(state.status)"><i class="fa fa-times me-1"/>Show all lines</button>
+            </div>
+            <ul t-if="state.status === 'short' and shortItems.length" class="o_sb_focus_items" aria-label="What is short">
+                <li t-foreach="shortItems.slice(0, 8)" t-as="s" t-key="s.product.id">
+                    <span class="o_sb_focus_item" t-att-title="s.product.display_name"><t t-esc="s.product.name"/></span>
+                    <span class="o_sb_neg text-nowrap">short <t t-esc="fmt(s.short)"/> <t t-esc="s.uom"/></span>
+                    <button t-if="s.product.made" class="btn btn-sm btn-light border" t-on-click="() => this.makeItem({ product: s.product, reason: s.product.made })">Make</button>
+                    <button t-else="" class="btn btn-sm btn-light border" t-on-click="() => this.openPurchase({ items: [s.product] })">Buy</button>
+                    <button class="btn btn-sm btn-light border" t-on-click="() => this.countItem(s.product)">Count</button>
+                </li>
+                <li t-if="shortItems.length > 8" class="o_sb_muted">and <t t-esc="shortItems.length - 8"/> more</li>
+            </ul>
+        </section>
 
         <div class="o_sb_body" t-att-class="{ o_sb_with_panel: selected, o_sb_stale: state.refreshing }">
             <div class="o_sb_sheet">
@@ -152,10 +173,11 @@
                             <t t-else="">
                                 <t t-set="row" t-value="entry.row"/>
                                 <t t-set="draft" t-value="row.state === 'draft'"/>
-                                <tr t-attf-class="o_sb_row o_sb_tone_{{row.tone}} {{row.id === state.selectedId ? 'o_sb_selected' : ''}} {{draft ? 'o_sb_draft' : 'o_sb_locked'}} {{state.flash[row.id] ? 'o_sb_flash' : ''}}"
+                                <t t-set="free" t-value="draft and !row.window"/>
+                                <tr t-attf-class="o_sb_row o_sb_tone_{{row.tone}} {{row.id === state.selectedId ? 'o_sb_selected' : ''}} {{draft ? 'o_sb_draft' : 'o_sb_locked'}} {{row.window and draft ? 'o_sb_window' : ''}} {{state.flash[row.id] ? 'o_sb_flash' : ''}}"
                                     t-att-data-id="row.id" t-on-click="(ev) => this.onRowClick(ev, row)">
                                     <td class="o_sb_c_date">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-value="shortDate(row.date)" t-on-change="(ev) => this.onCell(ev, row, 'date')" aria-label="Date"/>
+                                        <input t-if="free" t-on-focus="onCellFocus" class="o_sb_cell" data-cell="date" t-att-value="shortDate(row.date)" t-on-change="(ev) => this.onCell(ev, row, 'date')" aria-label="Date"/>
                                         <t t-else="" t-esc="shortDate(row.date)"/>
                                     </td>
                                     <td class="o_sb_c_ref"><span class="o_sb_mono" t-esc="shortRef(row.ref) or '—'" t-att-title="row.ref or 'A reference is given when it is posted'"/></td>
@@ -168,18 +190,18 @@
                                         </span>
                                     </td>
                                     <td class="o_sb_num o_sb_c_qty">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'in'), o_sb_quiet: quiet(row.direction, 'in', row.qty_in) }"
+                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" data-cell="qty_in" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'in'), o_sb_quiet: quiet(row.direction, 'in', row.qty_in) }"
                                                t-att-value="row.qty_in ? fmt(row.qty_in) : ''" placeholder="+" inputmode="decimal" t-on-change="(ev) => this.onCell(ev, row, 'qty_in')" aria-label="Added"/>
                                         <span t-elif="row.qty_in" class="o_sb_in">+<t t-esc="fmt(row.qty_in)"/></span>
                                     </td>
                                     <td class="o_sb_num o_sb_c_qty">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'out'), o_sb_quiet: quiet(row.direction, 'out', row.qty_out) }"
+                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell o_sb_num" data-cell="qty_out" t-att-class="{ o_sb_missing: row.status_key === 'need_qty' or (row.status_key === 'wrong_way' and row.direction === 'out'), o_sb_quiet: quiet(row.direction, 'out', row.qty_out) }"
                                                t-att-value="row.qty_out ? fmt(row.qty_out) : ''" placeholder="−" inputmode="decimal" t-on-change="(ev) => this.onCell(ev, row, 'qty_out')" aria-label="Removed"/>
                                         <t t-elif="row.qty_out">−<t t-esc="fmt(row.qty_out)"/></t>
                                     </td>
                                     <td class="o_sb_c_unit o_sb_muted" t-esc="row.uom"/>
                                     <td class="o_sb_c_reason">
-                                        <select t-if="draft" class="o_sb_cell" t-att-class="{ o_sb_missing: !row.reason }" t-on-change="(ev) => this.onCell(ev, row, 'reason')" aria-label="Reason">
+                                        <select t-if="free" class="o_sb_cell" data-cell="reason" t-att-class="{ o_sb_missing: !row.reason }" t-on-change="(ev) => this.onCell(ev, row, 'reason')" aria-label="Reason">
                                             <option value="" t-att-selected="!row.reason">Reason…</option>
                                             <t t-foreach="book.reasons" t-as="r" t-key="r.key">
                                                 <option t-att-value="r.key" t-att-selected="r.key === row.reason" t-esc="r.label"/>
@@ -188,14 +210,18 @@
                                         <span t-else="" class="o_sb_reason"><i t-attf-class="o_sb_dot o_sb_r_{{row.reason or 'none'}}"/><t t-esc="row.reason_label"/></span>
                                     </td>
                                     <td class="o_sb_c_partner">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-class="{ o_sb_missing: row.status_key === 'need_partner' or row.status_key === 'need_supplier' }" t-att-value="row.partner_name"
+                                        <input t-if="free" t-on-focus="onCellFocus" class="o_sb_cell" data-cell="partner" t-att-class="{ o_sb_missing: row.status_key === 'need_partner' or row.status_key === 'need_supplier' }" t-att-value="row.partner_name"
                                                t-att-placeholder="row.reason === 'sale' ? 'Customer?' : (row.reason === 'received' ? 'Supplier?' : '')" t-on-change="(ev) => this.onCell(ev, row, 'partner_name')" aria-label="Customer or supplier"/>
                                         <t t-else="" t-esc="row.partner_name"/>
-                                        <small t-if="row.purchase_ref" class="o_sb_lpo" t-att-title="row.purchase ? 'On purchase order ' + row.purchase : 'LPO / invoice number'">LPO <t t-esc="row.purchase_ref"/></small>
+                                        <small t-if="row.purchase_ref or row.purchase" class="o_sb_lpo" t-att-title="row.purchase ? 'On purchase order ' + row.purchase : 'LPO / invoice number'"><t t-esc="row.purchase_ref or row.purchase"/></small>
                                     </td>
                                     <td class="o_sb_num o_sb_c_onhand" t-att-class="{ o_sb_neg: row.onhand_after &lt; 0 }" t-esc="row.product ? fmt(row.onhand_after) : ''"/>
                                     <td class="o_sb_c_status">
-                                        <span t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-esc="row.status"/>
+                                        <button t-if="pillActs(row)" type="button" t-attf-class="o_sb_pill o_sb_pill_btn o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-on-click="() => this.onPill(row)">
+                                            <t t-esc="row.status"/><i class="fa fa-angle-right ms-1"/>
+                                        </button>
+                                        <span t-else="" t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-esc="row.status"/>
+                                        <span t-if="row.unbilled" class="o_sb_pill o_sb_pill_warning ms-1" title="Received but not billed: its stock is not in the accounts yet">To bill</span>
                                         <span t-if="row.posted_by" class="o_sb_appr" t-esc="row.posted_by"/>
                                     </td>
                                     <td class="o_sb_c_open">
@@ -332,7 +358,8 @@
                     <dt t-if="sel.bill">Bill</dt><dd t-if="sel.bill" class="o_sb_mono" t-esc="sel.bill"/>
                     <dt t-if="sel.state === 'draft' and sel.purchase_ref and sel.paid_from">Paid from</dt><dd t-if="sel.state === 'draft' and sel.purchase_ref and sel.paid_from" t-esc="sel.paid_from"/>
                     <dt t-if="sel.tax_name">VAT</dt><dd t-if="sel.tax_name" t-esc="sel.tax_name"/>
-                    <dt>Posts as</dt><dd t-esc="sel.posts_as or '—'"/>
+                    <dt t-if="sel.unbilled">Bill</dt><dd t-if="sel.unbilled">Not billed yet</dd>
+                    <dt t-esc="sel.state === 'posted' ? 'Posted as' : 'Posts as'"/><dd t-esc="sel.posts_as or '—'"/>
                     <dt t-if="sel.reverses">Reverses</dt><dd t-if="sel.reverses" class="o_sb_mono" t-esc="sel.reverses"/>
                     <dt t-if="sel.reversed_by">Reversed by</dt><dd t-if="sel.reversed_by" class="o_sb_mono" t-esc="sel.reversed_by"/>
                 </dl>
@@ -385,8 +412,16 @@
                     </div>
                 </div>
 
-                <div t-if="sel.reason === 'received' and sel.state === 'draft'" class="o_sb_box">
-                    <span class="o_sb_box_label">Cost per unit<t t-if="!sel.tax_name">, before VAT</t></span>
+                <div t-if="sel.reason === 'received' and sel.state === 'draft'" class="o_sb_box o_sb_box_info">
+                    <span class="o_sb_box_label" t-esc="sel.window ? 'Part of an LPO' : 'Goods bought?'"/>
+                    <button class="btn btn-sm btn-primary align-self-start" t-on-click="() => this.openPurchaseFor(sel)">
+                        <i class="fa fa-truck me-1"/><t t-esc="sel.window ? 'Edit purchase' : 'Complete purchase'"/>
+                    </button>
+                    <span t-if="!sel.window" class="small text-muted">Adds the LPO number, VAT, bill and payment, all in one step.</span>
+                </div>
+
+                <div t-if="sel.reason === 'received' and sel.state === 'draft' and !sel.window" class="o_sb_box">
+                    <span class="o_sb_box_label">Or only the cost per unit, before VAT, with no bill</span>
                     <input class="form-control form-control-sm o_sb_cost_input" t-att-class="{ 'is-invalid': sel.status_key === 'need_cost' }" inputmode="decimal" t-att-value="sel.unit_cost or ''"
                            t-att-placeholder="sel.current_cost ? 'Last cost ' + fmt(sel.current_cost) : 'From the invoice'"
                            t-on-change="(ev) => this.setUnitCost(sel, ev)" aria-label="Cost per unit"/>
@@ -402,7 +437,8 @@
                     <button t-if="book.can_post and sel.status_key === 'ready'" class="btn btn-success" t-on-click="() => this.post([sel.id])"><i class="fa fa-check me-1"/>Post</button>
                     <button t-if="book.can_post and sel.status_key === 'short'" class="btn btn-warning" t-on-click="() => this.post([sel.id], true)"
                             title="Posts even though stock goes below zero; count it soon">Post anyway</button>
-                    <button t-if="sel.has_document" class="btn btn-link" t-on-click="() => this.openDocument(sel)">Open in Odoo</button>
+                    <button t-if="sel.has_document" class="btn btn-link" t-on-click="() => this.openDocument(sel)"><t t-esc="sel.purchase ? 'Open purchase order' : 'Open in Odoo'"/></button>
+                    <button t-if="sel.bill_id and book.can_open_bill" class="btn btn-link" t-on-click="() => this.openBill(sel)">Open bill</button>
                     <button t-if="sel.product and sel.state !== 'cancelled'" class="btn btn-link" t-on-click="() => this.copyLine(sel)"
                             title="The same movement again, as a new draft">Copy</button>
                     <button t-if="sel.can_reverse" class="btn btn-link" t-on-click="() => this.reverseLine(sel)"
@@ -413,8 +449,6 @@
                 <p t-if="sel.status_key === 'ready' and !book.can_post" class="small text-muted mb-0">Waiting for a supervisor to post.</p>
                 <p t-if="sel.state === 'posted' and (sel.reason === 'filling' or sel.reason === 'production')" class="small text-muted mb-0">
                     To undo a filling or batch, unbuild its manufacturing order in Manufacturing.</p>
-                <p t-if="sel.state === 'draft' and sel.reason === 'received'" class="small text-muted mb-0">
-                    Posting makes the purchase order, receives it and adds the stock, all in one step.</p>
                 <p t-if="sel.state === 'posted' and sel.reason === 'received'" class="small text-muted mb-0">
                     <t t-if="sel.purchase">On purchase order <t t-esc="sel.purchase"/>. </t>To send goods back, return the receipt to the supplier in Inventory.</p>
             </aside>
@@ -495,6 +529,70 @@
             </div>
         </div>
         <t t-call="odin_stock_book.MonthTabs"><t t-set="months" t-value="sheet.months"/></t>
+    </t>
+
+    <!-- ===================================================== Out for recipes -->
+    <t t-name="odin_stock_book.Recipes">
+        <t t-set="data" t-value="state.recipes"/>
+        <section class="o_sb_focus o_sb_focus_recipes" role="status">
+            <div class="o_sb_focus_main">
+                <strong t-if="data.items"><t t-esc="data.items"/> items are out of stock, and <t t-esc="data.recipes"/> recipes need them</strong>
+                <strong t-else="">Every recipe has what it needs</strong>
+                <span t-if="data.items">Most-used first. Buy it, make it if it has its own recipe, or count it if it is on the shelf. Tick several to buy them on one purchase.</span>
+            </div>
+            <div class="o_sb_focus_actions">
+                <button class="btn btn-sm btn-primary" t-att-disabled="!pickedRows.length" t-on-click="buyPicked">
+                    <i class="fa fa-truck me-1"/>Add purchase<t t-if="pickedRows.length"> · <t t-esc="pickedRows.length"/> items</t>
+                </button>
+            </div>
+        </section>
+        <div class="o_sb_toolbar">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Show">
+                <t t-foreach="[['', 'All'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['Finished Goods', 'Made here']]" t-as="opt" t-key="opt[0]">
+                    <button class="btn" t-att-class="state.group === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
+                </t>
+            </div>
+            <div class="o_sb_search">
+                <i class="fa fa-search"/>
+                <input class="form-control form-control-sm" placeholder="Search item or code…  ( / )" t-att-value="state.search" t-on-input="onSearch" aria-label="Search"/>
+            </div>
+        </div>
+        <div class="o_sb_body" t-att-class="{ o_sb_stale: state.refreshing }">
+            <div class="o_sb_sheet">
+                <table class="o_sb_table o_sb_recipes">
+                    <thead>
+                        <tr>
+                            <th class="o_sb_c_pick"><span class="visually-hidden">Choose</span></th>
+                            <th class="o_sb_c_code">Code</th><th>Item</th>
+                            <th class="o_sb_num">On hand</th><th class="o_sb_c_unit">Unit</th>
+                            <th>Needed by</th><th class="o_sb_num">Used a week</th><th>Last bought</th>
+                            <th class="o_sb_c_acts"><span class="visually-hidden">What to do</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="data.rows" t-as="r" t-key="r.product.id" class="o_sb_plain">
+                            <td class="o_sb_c_pick"><input t-if="!r.made" type="checkbox" class="form-check-input" t-att-checked="state.picked[r.product.id]" t-on-change="() => this.togglePick(r)" t-att-aria-label="'Choose ' + r.product.name"/></td>
+                            <td class="o_sb_mono" t-esc="r.product.code"/>
+                            <td t-esc="r.product.name"/>
+                            <td class="o_sb_num o_sb_neg fw-semibold" t-esc="fmt(r.onhand)"/>
+                            <td class="o_sb_muted" t-esc="r.uom"/>
+                            <td t-att-title="r.recipes.join(', ')"><strong t-esc="r.recipe_count"/> <t t-esc="r.recipe_count === 1 ? 'recipe' : 'recipes'"/> <span class="o_sb_muted o_sb_small">· <t t-esc="r.recipes.slice(0, 2).join(', ')"/><t t-if="r.recipe_count > 2">…</t></span></td>
+                            <td class="o_sb_num" t-esc="r.weekly ? fmt(r.weekly) : '—'"/>
+                            <td>
+                                <t t-if="r.last"><t t-esc="shortDate(r.last.date)"/> <span class="o_sb_muted o_sb_small">· <t t-esc="r.last.partner"/> · <t t-esc="fmt(r.last.cost, 2)"/></span></t>
+                                <span t-else="" class="o_sb_muted o_sb_small">never</span>
+                            </td>
+                            <td class="o_sb_c_acts">
+                                <button t-if="r.made" class="btn btn-sm btn-primary" t-on-click="() => this.makeItem(r)">Make</button>
+                                <button t-else="" class="btn btn-sm btn-primary" t-on-click="() => this.openPurchase({ items: [r.product] })">Buy</button>
+                                <button class="btn btn-sm btn-light border ms-1" t-on-click="() => this.countItem(r.product)">Count</button>
+                            </td>
+                        </tr>
+                        <tr t-if="!data.rows.length"><td colspan="9" class="o_sb_nothing text-muted"><t t-esc="data.items ? 'Nothing matches.' : 'Nothing is out.'"/></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </t>
 
     <!-- ===================================================== Count -->

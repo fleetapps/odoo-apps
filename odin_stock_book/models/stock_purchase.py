@@ -27,6 +27,11 @@ class StockBookPurchase(models.Model):
     bill_id = fields.Many2one("account.move", readonly=True, copy=False)
     payment_id = fields.Many2one("account.payment", readonly=True, copy=False)
 
+    def unlink(self):
+        if self.filtered("order_id"):
+            raise UserError(_("This purchase is posted. Reverse it in Purchases and Accounting."))
+        return super().unlink()
+
     def _charge_order_lines(self, when):
         return [Command.create({
             "product_id": charge.product_id.id, "name": charge.name or charge.product_id.display_name,

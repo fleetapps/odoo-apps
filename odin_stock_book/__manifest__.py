@@ -13,7 +13,7 @@ posting creates the manufacturing order, delivery, return, purchase order with
 its receipt, or scrap.
 See README.md.
 """,
-    "version": "19.0.1.3.0",
+    "version": "19.0.1.4.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",

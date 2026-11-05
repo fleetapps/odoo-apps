@@ -1,25 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="odin_stock_book.PurchaseDialog">
-        <Dialog title.translate="Add purchase" size="'xl'" beforeDismiss="beforeDismiss" bodyClass="'o_sb_pd_body'">
+        <Dialog title="title" size="'xl'" beforeDismiss="beforeDismiss">
             <div class="o_sb_pd" t-ref="root">
                 <div class="o_sb_pd_head">
-                    <div class="o_sb_pd_field o_sb_pd_supplier">
+                    <div class="o_sb_pd_field">
                         <label for="o_sb_pd_supplier">Supplier</label>
                         <input id="o_sb_pd_supplier" data-pd="supplier" class="form-control" autocomplete="off"
                                t-att-class="{ 'is-invalid': state.tried and !state.supplier }" t-att-value="state.supplierQuery"
                                placeholder="Type to find the supplier" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
                                t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickSupplier(item))"/>
-                        <ul t-if="state.suggest and state.suggest.kind === 'supplier'" class="o_sb_pd_suggest">
-                            <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
-                                t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
-                        </ul>
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_ref">LPO / invoice no.</label>
                         <input id="o_sb_pd_ref" data-pd="ref" class="form-control" autocomplete="off"
                                t-att-class="{ 'is-invalid': state.refProblem or (state.tried and !state.ref.trim()) }" t-att-value="state.ref"
-                               placeholder="As on the paper" t-on-input="onRefInput" t-on-change="checkRef"/>
+                               placeholder="As on the paper" t-on-input="onRefInput" t-on-change="checkRef" t-on-keydown="onRefKey"/>
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_date">Date received</label>
@@ -29,7 +25,7 @@
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_paid">Paid from</label>
-                        <select id="o_sb_pd_paid" data-pd="paid" class="form-select" t-att-class="{ 'is-invalid': state.tried and !state.paid }" t-on-change="(ev) => this.state.paid = ev.target.value">
+                        <select id="o_sb_pd_paid" data-pd="paid" class="form-select" t-att-class="{ 'is-invalid': state.tried and !state.paid }" t-on-change="onPaid" t-on-keydown="onPaidKey">
                             <option value="" t-att-selected="!state.paid">Choose</option>
                             <option t-foreach="state.options.journals" t-as="journal" t-key="journal.id" t-att-value="journal.id" t-att-selected="'' + journal.id === state.paid" t-esc="journal.label"/>
                             <option value="none" t-att-selected="state.paid === 'none'">Not paid yet</option>
@@ -38,7 +34,7 @@
                     <div t-if="state.refProblem" class="o_sb_pd_alert alert alert-danger" role="alert"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.refProblem"/></div>
                 </div>
 
-                <div class="o_sb_pd_lines" role="table" aria-label="Items">
+                <div class="o_sb_pd_lines" role="table" aria-label="Items" t-on-scroll="() => this.state.suggest = null">
                     <div class="o_sb_pd_row o_sb_pd_title" role="row">
                         <span role="columnheader">Item</span>
                         <span role="columnheader" class="o_sb_pd_num">Quantity</span>
@@ -50,19 +46,10 @@
                     </div>
                     <div t-foreach="state.lines" t-as="line" t-key="line.key" class="o_sb_pd_row" role="row">
                         <div class="o_sb_pd_item" data-label="Item">
-                            <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'product-' + line.key" t-att-value="line.query"
-                                   t-att-class="{ 'is-invalid': missing(line, 'product') }" placeholder="Code or name" aria-label="Item"
+                            <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'product-' + line.key" t-att-value="line.query" t-att-title="line.query"
+                                   t-att-class="{ 'is-invalid': missing(line, 'product') }" placeholder="Code or name; transport too" aria-label="Item"
                                    t-on-input="(ev) => this.onItemInput(line, ev)" t-on-blur="onBlurSuggest"
-                                   t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickItem(line, item))"/>
-                            <ul t-if="state.suggest and state.suggest.kind === 'item' and state.suggest.key === line.key" class="o_sb_pd_suggest">
-                                <li t-foreach="state.suggest.items" t-as="item" t-key="item.id" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_off: item.tracked }"
-                                    t-on-mousedown.prevent="() => this.pickItem(line, item)">
-                                    <t t-esc="item.label"/>
-                                    <small t-if="item.stock === false">Not stock: on the bill only</small>
-                                    <small t-elif="item.tracked">Tracked by lot: receive it in Purchases</small>
-                                    <small t-else=""><t t-esc="item.onhand"/> <t t-esc="item.uom"/> on hand</small>
-                                </li>
-                            </ul>
+                                   t-on-keydown="(ev) => this.onItemKey(line, ev)"/>
                             <input t-if="line.product and !line.product.stock" class="form-control form-control-sm o_sb_pd_note" t-att-value="line.note" placeholder="What for (shows on the bill)" aria-label="Description"
                                    t-on-input="(ev) => line.note = ev.target.value"/>
                         </div>
@@ -70,7 +57,7 @@
                                t-att-class="{ 'is-invalid': missing(line, 'qty') }" aria-label="Quantity" t-on-input="(ev) => this.onNumber(line, 'qty', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'qty', ev)"/></div>
                         <div class="o_sb_pd_unit" data-label="Unit" t-esc="line.product ? line.product.uom : ''"/>
                         <div data-label="Unit cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
-                               t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + money(line.lastCost) : ''" aria-label="Unit cost"
+                               t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + amount(line.lastCost) : ''" aria-label="Unit cost"
                                t-on-input="(ev) => this.onNumber(line, 'cost', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'cost', ev)"/></div>
                         <div data-label="VAT">
                             <select class="form-select form-select-sm" t-att-data-pd="'tax-' + line.key" t-att-class="{ 'is-invalid': missing(line, 'tax') }" aria-label="VAT" t-on-change="(ev) => this.onTax(line, ev)">
@@ -83,23 +70,45 @@
                     </div>
                 </div>
 
-                <div class="o_sb_pd_totals" aria-live="polite">
-                    <dl>
-                        <dt>Before VAT</dt><dd t-esc="state.totals ? money(state.totals.subtotal) : '—'"/>
-                        <dt>VAT</dt><dd t-esc="state.totals ? money(state.totals.vat) : '—'"/>
-                        <dt class="o_sb_pd_total">Total <t t-esc="state.options.currency"/></dt><dd class="o_sb_pd_total" t-esc="state.totals ? money(state.totals.total) : '—'"/>
-                    </dl>
-                </div>
+                <ul t-if="state.suggest" class="dropdown-menu o_sb_pd_suggest" t-att-style="suggestStyle" role="listbox">
+                    <li t-if="state.suggest.none" class="o_sb_pd_none">No item matches. Try part of the name or the code.</li>
+                    <li t-if="state.suggest.empty" class="o_sb_pd_none">No supplier matches.</li>
+                    <t t-if="state.suggest.kind === 'supplier'">
+                        <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
+                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
+                    </t>
+                    <t t-else="">
+                        <t t-set="suggestLine" t-value="state.lines.find((l) => l.key === state.suggest.key)"/>
+                        <li t-foreach="state.suggest.items" t-as="item" t-key="item.id" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_off: item.tracked }"
+                            t-on-mousedown.prevent="() => this.pickItem(suggestLine, item)">
+                            <t t-esc="item.label"/>
+                            <small t-if="item.stock === false">Not stock: on the bill only</small>
+                            <small t-elif="item.tracked">Tracked by lot: receive it in Purchases</small>
+                            <small t-else=""><t t-esc="amount(item.onhand)"/> <t t-esc="item.uom"/> on hand</small>
+                        </li>
+                    </t>
+                </ul>
 
-                <div t-if="state.error" class="alert alert-danger mb-0" role="alert"><t t-esc="state.error"/></div>
-                <div t-elif="state.tried and problem and problem[1] !== state.refProblem" class="alert alert-warning mb-0" role="alert"><t t-esc="problem[1]"/></div>
+                <div class="o_sb_pd_foot">
+                    <div class="o_sb_pd_msgs" aria-live="polite">
+                        <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
+                        <div t-elif="state.tried and problem and problem[1] !== state.refProblem" class="alert alert-warning" role="alert"><t t-esc="problem[1]"/></div>
+                    </div>
+                    <div class="o_sb_pd_totals" aria-live="polite">
+                        <dl>
+                            <dt>Before VAT</dt><dd t-esc="state.totals ? money(state.totals.subtotal) : '—'"/>
+                            <dt>VAT</dt><dd t-esc="state.totals ? money(state.totals.vat) : '—'"/>
+                            <dt class="o_sb_pd_total">Total <t t-esc="state.options.currency"/></dt><dd class="o_sb_pd_total" t-esc="state.totals ? money(state.totals.total) : '—'"/>
+                        </dl>
+                    </div>
+                </div>
             </div>
             <t t-set-slot="footer">
                 <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="save">
                     <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
                 </button>
                 <button class="btn btn-secondary" t-att-disabled="state.saving" t-on-click="discard">Cancel</button>
-                <small class="o_sb_pd_help text-muted" t-esc="saveHelp"/>
+                <small class="o_sb_pd_help" t-esc="saveHelp"/>
             </t>
         </Dialog>
     </t>

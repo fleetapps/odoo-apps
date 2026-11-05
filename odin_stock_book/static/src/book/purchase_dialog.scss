@@ -1,20 +1,22 @@
-// Add purchase. Opens above the page, outside .o_sb, so it keeps to Bootstrap's
-// own colours and works in Odoo's dark theme as they do.
+// Add purchase. Opens above the page, outside .o_sb, so it has none of the
+// book's own colours. Odoo compiles Bootstrap with an empty variable prefix, so
+// its variables are written with #{$prefix}; a literal --bs-... does not exist
+// there. The suggestion lists are Bootstrap's dropdown, in light and in dark.
 
-.o_sb_pd_body {
-    // Room for the item list under the last row.
-    min-height: 26rem;
+// Stays where it opened as rows are added, rather than re-centring.
+.modal-dialog:has(.o_sb_pd) {
+    align-items: flex-start;
 }
 
 .o_sb_pd {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .o_sb_pd_head {
     display: grid;
-    grid-template-columns: minmax(14rem, 2fr) minmax(9rem, 1fr) 10.5rem 10rem;
+    grid-template-columns: minmax(14rem, 2fr) minmax(9rem, 1fr) 10.5rem 11rem;
     gap: 0.75rem;
 
     label {
@@ -25,30 +27,40 @@
     }
 }
 
-.o_sb_pd_field,
-.o_sb_pd_item {
-    position: relative;
-}
-
 .o_sb_pd_alert {
     grid-column: 1 / -1;
     margin: 0;
     padding: 0.5rem 0.75rem;
 }
 
+// The lines scroll by themselves, so the totals and Save stay in sight.
+.o_sb_pd_lines {
+    max-height: max(14rem, calc(100vh - 27rem));
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 .o_sb_pd_row {
     display: grid;
-    grid-template-columns: minmax(14rem, 1fr) 6.5rem 3.5rem 8rem 13rem 7.5rem 2rem;
+    grid-template-columns: minmax(14rem, 1fr) 6.5rem 3.5rem 8rem 12rem 7.5rem 2rem;
     gap: 0.5rem;
-    align-items: center;
+    align-items: start;
     padding: 0.25rem 0;
+
+    > div {
+        min-width: 0;
+    }
 }
 
 .o_sb_pd_title {
-    border-bottom: 1px solid var(--bs-border-color);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--#{$prefix}modal-bg, var(--#{$prefix}body-bg));
+    border-bottom: 1px solid var(--#{$prefix}border-color);
     font-weight: 600;
     font-size: 0.8rem;
-    color: var(--bs-secondary-color);
+    color: var(--#{$prefix}secondary-color);
 }
 
 .o_sb_pd_num {
@@ -56,49 +68,46 @@
     font-variant-numeric: tabular-nums;
 }
 
-.o_sb_pd_unit {
-    color: var(--bs-secondary-color);
-    font-size: 0.85rem;
+.o_sb_pd_unit,
+.o_sb_pd_amount {
+    padding-top: 0.3rem;
+    font-size: 0.875rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.o_sb_pd_remove {
-    color: var(--bs-secondary-color);
-    padding: 0.1rem 0.4rem;
+.o_sb_pd_unit {
+    color: var(--#{$prefix}secondary-color);
 }
 
-.o_sb_pd_suggest {
-    position: absolute;
-    z-index: 30;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    min-width: 22rem;
-    max-height: 15rem;
-    overflow: auto;
-    margin: 2px 0 0;
+.o_sb_pd_remove {
+    color: var(--#{$prefix}secondary-color);
+    padding: 0.2rem 0.4rem;
+}
+
+.o_sb_pd_note {
+    margin-top: 0.25rem;
+}
+
+// Fixed, placed from its input: the scrolling lines would clip it otherwise.
+.o_sb_pd_suggest.dropdown-menu {
+    position: fixed;
+    z-index: 1090;
+    display: block;
+    max-height: 16rem;
+    overflow-y: auto;
     padding: 0.25rem;
-    list-style: none;
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.4rem;
-    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.18);
 
     li {
-        padding: 0.35rem 0.55rem;
+        padding: 0.35rem 0.6rem;
         border-radius: 0.3rem;
         cursor: pointer;
-
-        &.active,
-        &:hover {
-            background: var(--bs-secondary-bg);
-        }
+        white-space: normal;
 
         small {
             display: block;
-            color: var(--bs-secondary-color);
+            opacity: 0.75;
         }
 
         &.o_sb_pd_off {
@@ -107,28 +116,51 @@
         }
 
         &.o_sb_pd_create {
-            border-top: 1px solid var(--bs-border-color);
+            border-top: 1px solid var(--#{$prefix}border-color);
+            border-radius: 0;
             font-weight: 600;
+        }
+
+        &.o_sb_pd_none {
+            cursor: default;
+            color: var(--#{$prefix}secondary-color);
         }
     }
 }
 
-.o_sb_pd_totals {
+.o_sb_pd_foot {
     display: flex;
-    justify-content: flex-end;
-    border-top: 1px solid var(--bs-border-color);
-    padding-top: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-top: 1px solid var(--#{$prefix}border-color);
+    padding-top: 0.6rem;
+}
+
+.o_sb_pd_msgs {
+    flex: 1 1 18rem;
+    min-width: 0;
+
+    .alert {
+        margin: 0;
+        padding: 0.45rem 0.75rem;
+    }
+}
+
+.o_sb_pd_totals {
+    margin-left: auto;
 
     dl {
         display: grid;
         grid-template-columns: auto minmax(8rem, auto);
-        gap: 0.2rem 1.5rem;
+        gap: 0.1rem 1.5rem;
         margin: 0;
     }
 
     dt {
         font-weight: 400;
-        color: var(--bs-secondary-color);
+        color: var(--#{$prefix}secondary-color);
     }
 
     dd {
@@ -140,27 +172,28 @@
     .o_sb_pd_total {
         font-weight: 700;
         font-size: 1.1rem;
-        color: var(--bs-body-color);
+        color: var(--#{$prefix}body-color);
     }
 }
 
 .o_sb_pd_help {
     flex: 1 1 18rem;
     align-self: center;
-}
+    color: var(--#{$prefix}secondary-color);
 
-.o_sb_lpo {
-    display: block;
-    color: var(--bs-secondary-color);
-    font-size: 0.72rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    kbd {
+        font-size: 0.7rem;
+    }
 }
 
 @media (max-width: 991.98px) {
     .o_sb_pd_head {
         grid-template-columns: 1fr;
+    }
+
+    .o_sb_pd_lines {
+        max-height: none;
+        overflow: visible;
     }
 
     .o_sb_pd_title {
@@ -171,29 +204,17 @@
     .o_sb_pd_row {
         grid-template-columns: 1fr 1fr;
         padding: 0.75rem 0;
-        border-bottom: 1px solid var(--bs-border-color);
+        border-bottom: 1px solid var(--#{$prefix}border-color);
 
         > [data-label]::before {
             content: attr(data-label);
             display: block;
             font-size: 0.75rem;
-            color: var(--bs-secondary-color);
+            color: var(--#{$prefix}secondary-color);
         }
     }
 
     .o_sb_pd_item {
         grid-column: 1 / -1;
     }
-
-    .o_sb_pd_suggest {
-        min-width: 100%;
-    }
-}
-
-.o_sb_pd_note {
-    margin-top: 0.25rem;
-}
-
-.o_sb_to_bill {
-    white-space: nowrap;
 }

@@ -33,6 +33,10 @@ export class PurchaseDialog extends Component {
     static components = { Dialog: GuardedDialog };
     static props = {
         warehouseId: { type: [Number, Boolean], optional: true },
+        // A draft line to start from, which saving replaces.
+        lineId: { type: [Number, Boolean], optional: true },
+        // Items to start with, from a shortage.
+        items: { type: Array, optional: true },
         onSaved: Function,
         close: Function,
     };
@@ -45,6 +49,7 @@ export class PurchaseDialog extends Component {
             options: { taxes: [], journals: [], today: "", can_post: false, currency: "" },
             supplier: null, supplierQuery: "", ref: "", date: "", refProblem: "", paid: "",
             lines: [blankLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
+            edit: false, replaceIds: [],
         });
         this.totalsSeq = 0;
         this.refSeq = 0;
@@ -52,10 +57,62 @@ export class PurchaseDialog extends Component {
         onWillStart(async () => {
             this.state.options = await this.orm.call("odin.stock.book", "book_purchase_options", []);
             this.state.date = this.state.options.today;
+            await this.prefill();
+            this.snapshot = this.fingerprint;
         });
-        onMounted(() => this.focus("supplier"));
+        onMounted(() => this.focus(this.firstCell));
         onWillUnmount(() => this.timers.forEach((t) => clearTimeout(t)));
         this.beforeDismiss = () => this.confirmDiscard();
+    }
+
+    /** Start from a draft line, or from items a shortage asks for. */
+    async prefill() {
+        if (this.props.lineId) {
+            const data = await this.orm.call("odin.stock.book", "book_purchase_load", [this.props.lineId]);
+            this.state.supplier = data.supplier || null;
+            this.state.supplierQuery = data.supplier_query || "";
+            this.state.ref = data.purchase_ref;
+            this.state.date = data.date;
+            this.state.paid = data.paid;
+            this.state.edit = data.edit;
+            this.state.replaceIds = data.replace_ids;
+            this.state.lines = data.lines.map((row) => ({
+                ...blankLine(), product: row.product, query: row.product.display_name, note: row.note,
+                qty: row.qty ? String(row.qty) : "", cost: row.cost ? String(row.cost) : "",
+                taxId: row.tax_id, taxTouched: Boolean(row.tax_id),
+            }));
+        } else if (this.props.items?.length) {
+            this.state.lines = this.props.items.map((product) => ({
+                ...blankLine(), product, query: product.display_name,
+            }));
+        } else {
+            return;
+        }
+        this.ensureBlankLine();
+        await Promise.all(this.state.lines.filter((line) => line.product).map((line) => this.loadDefaults(line)));
+        if (this.state.ref && this.state.supplier?.id && !this.state.replaceIds.length) {
+            await this.checkRef();
+        }
+        await this.loadTotals();
+    }
+
+    /** Where typing should start: the first thing still missing at the top. */
+    get firstCell() {
+        if (!this.state.supplier) {
+            return "supplier";
+        }
+        if (!this.state.ref) {
+            return "ref";
+        }
+        const line = this.items.find((l) => this.lineProblem(l));
+        return line ? `${this.lineProblem(line)}-${line.key}` : "paid";
+    }
+
+    get title() {
+        if (this.state.edit) {
+            return _t("Edit purchase");
+        }
+        return this.props.lineId ? _t("Complete purchase") : _t("Add purchase");
     }
 
     later(fn, ms = 0) {
@@ -89,8 +146,14 @@ export class PurchaseDialog extends Component {
         return this.state.lines.filter((line) => !isBlank(line));
     }
 
+    get fingerprint() {
+        const { supplierQuery, ref, date, paid } = this.state;
+        return JSON.stringify([supplierQuery, ref, date, paid, this.items.map((line) => (
+            [line.product?.id, line.query, line.qty, line.cost, line.taxId, line.note]))]);
+    }
+
     get dirty() {
-        return Boolean(this.state.supplierQuery || this.state.ref || this.items.length);
+        return this.fingerprint !== this.snapshot;
     }
 
     async confirmDiscard() {
@@ -99,7 +162,7 @@ export class PurchaseDialog extends Component {
         }
         return new Promise((resolve) => {
             this.dialogService.add(ConfirmationDialog, {
-                title: _t("Discard this purchase?"),
+                title: _t("Discard these changes?"),
                 body: _t("What you typed has not been saved."),
                 confirmLabel: _t("Discard"), cancelLabel: _t("Keep editing"),
                 confirm: () => resolve(true), cancel: () => resolve(false),
@@ -169,6 +232,7 @@ export class PurchaseDialog extends Component {
 
     // ------------------------------------------------------------ supplier
     async onSupplierInput(ev) {
+        this.anchor = ev.target;
         const text = ev.target.value;
         this.state.supplierQuery = text;
         this.state.supplier = null;
@@ -185,7 +249,29 @@ export class PurchaseDialog extends Component {
         if (can_create) {
             options.push({ create: text.trim(), label: _t('Create "%s" as a new supplier', text.trim()) });
         }
-        this.state.suggest = options.length ? { kind: "supplier", items: options, index: 0 } : null;
+        // A new supplier is chosen on purpose, never by typing a name wrong
+        // and pressing Enter: with no match, nothing starts selected.
+        this.state.suggest = options.length
+            ? { kind: "supplier", items: options, index: items.length ? 0 : -1, empty: !items.length } : null;
+    }
+
+    /** The list sits under its input, or above it where there is no room below. */
+    get suggestStyle() {
+        const rect = this.anchor?.getBoundingClientRect();
+        if (!rect) {
+            return "";
+        }
+        const width = Math.max(rect.width, 340);
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+        const below = window.innerHeight - rect.bottom;
+        const place = below < 200 && rect.top > below
+            ? `bottom: ${window.innerHeight - rect.top + 2}px;`
+            : `top: ${rect.bottom + 2}px;`;
+        return `${place} left: ${left}px; width: ${width}px;`;
+    }
+
+    amount(value) {
+        return Number(value || 0).toLocaleString("en-KE", { maximumFractionDigits: 2 });
     }
 
     pickSupplier(item) {
@@ -226,6 +312,25 @@ export class PurchaseDialog extends Component {
         this.state.refProblem = "";
     }
 
+    onRefKey(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            ev.target.blur();
+            this.focus(`product-${this.state.lines[0].key}`);
+        }
+    }
+
+    onPaid(ev) {
+        this.state.paid = ev.target.value;
+    }
+
+    onPaidKey(ev) {
+        if (ev.key === "Enter" && !ev.ctrlKey && !ev.metaKey) {
+            ev.preventDefault();
+            this.root.el?.closest(".modal-content")?.querySelector(".o_sb_pd_save")?.focus();
+        }
+    }
+
     /** Told as soon as the number is typed, not after every item is. */
     async checkRef() {
         const ref = this.state.ref.trim();
@@ -234,8 +339,9 @@ export class PurchaseDialog extends Component {
             this.state.refProblem = "";
             return;
         }
+        // The purchase's own number, while it is being edited, is not a duplicate.
         const problem = await this.orm.call("odin.stock.book", "book_purchase_check",
-            [this.state.supplier.id, ref]);
+            [this.state.supplier.id, ref], { ignore_ids: this.state.replaceIds });
         if (seq === this.refSeq) {
             this.state.refProblem = problem || "";
         }
@@ -243,6 +349,7 @@ export class PurchaseDialog extends Component {
 
     // ------------------------------------------------------------ lines
     async onItemInput(line, ev) {
+        this.anchor = ev.target;
         const text = ev.target.value;
         line.query = text;
         line.product = null;
@@ -261,7 +368,17 @@ export class PurchaseDialog extends Component {
         this.state.suggest = items.length
             ? { kind: "item", key: line.key, items: items.map((item) => ({ ...item, label: item.display_name })),
                 index: Math.max(items.findIndex((item) => !item.tracked), 0) }
-            : null;
+            : { kind: "item", key: line.key, items: [], index: -1, none: true };
+    }
+
+    /** Enter on the empty next item: the items are done, on to how it was paid. */
+    onItemKey(line, ev) {
+        if (this.state.suggest) {
+            this.onSuggestKey(ev, (item) => this.pickItem(line, item));
+        } else if (ev.key === "Enter" && !ev.ctrlKey && !ev.metaKey && !line.query.trim()) {
+            ev.preventDefault();
+            this.focus("paid");
+        }
     }
 
     pickItem(line, item) {
@@ -325,16 +442,23 @@ export class PurchaseDialog extends Component {
         if (!suggest) {
             return;
         }
-        if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+        if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && suggest.items.length) {
             ev.preventDefault();
             const step = ev.key === "ArrowDown" ? 1 : -1;
             suggest.index = (suggest.index + step + suggest.items.length) % suggest.items.length;
         } else if (ev.key === "Enter" || ev.key === "Tab") {
+            const item = suggest.items[suggest.index];
             if (ev.key === "Enter") {
                 ev.preventDefault();
+                if (ev.ctrlKey || ev.metaKey) {
+                    return;
+                }
             }
-            ev.stopPropagation();
-            pick(suggest.items[suggest.index]);
+            // Tab only moves on from a new supplier; creating one takes Enter or a click.
+            if (item && !(ev.key === "Tab" && item.create)) {
+                ev.stopPropagation();
+                pick(item);
+            }
         } else if (ev.key === "Escape") {
             // Closes the list, not the window.
             ev.stopPropagation();
@@ -405,8 +529,8 @@ export class PurchaseDialog extends Component {
 
     get saveHelp() {
         return this.state.options.can_post
-            ? _t("Creates the purchase order, adds the stock, posts the bill and records the payment, all at once. It is then final: mistakes are reversed in Purchases and Accounting.")
-            : _t("The lines wait on the book for a supervisor to post them together, with the bill and payment.");
+            ? _t("Order, stock, bill and payment, all at once. Final once saved. Ctrl+Enter saves.")
+            : _t("Waits on the book for a supervisor, who posts it with its bill and payment.");
     }
 
     // ------------------------------------------------------------ save
@@ -429,11 +553,15 @@ export class PurchaseDialog extends Component {
                 purchase_ref: this.state.ref.trim(), date: this.state.date,
                 pay_journal_id: this.state.paid === "none" ? false : Number(this.state.paid),
                 lines: this.items.map((line) => this.linePayload(line)),
-            }]);
+            }], { replace_ids: this.state.replaceIds });
             this.props.onSaved(result);
             this.props.close();
         } catch (error) {
             // Nothing was saved: the window stays, with what was typed.
+            if (error.data?.name?.endsWith("Error") && !error.data.name.endsWith("UserError")
+                && !error.data.name.endsWith("ValidationError")) {
+                throw error;
+            }
             this.state.error = error.data?.message || error.message || _t("It could not be saved.");
         } finally {
             this.state.saving = false;

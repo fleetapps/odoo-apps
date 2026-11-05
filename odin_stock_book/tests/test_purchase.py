@@ -474,3 +474,127 @@ class TestStockBookPurchase(TestStockBook):
         before = self.Book.get_book()["to_bill"]
         self._received().action_post()
         self.assertEqual(self.Book.get_book()["to_bill"], before + 1)
+
+    # ------------------------------------------------------------ the cards and the book
+    def test_needs_card_shows_what_it_counts(self):
+        self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 1})  # no customer: needs
+        self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 99999, "partner_name": "A"})  # short
+        book = self.Book.get_book(status="need")
+        self.assertEqual(len(book["rows"]), book["counts"]["need"])
+        self.assertEqual({r["status_key"] for r in book["rows"]}, {"need_partner"})
+        self.assertEqual({r["status_key"] for r in self.Book.get_book(status="short")["rows"]}, {"short"})
+
+    def test_out_for_recipes_lists_what_stops_a_batch(self):
+        self.env["stock.quant"]._update_available_quantity(self.carton, self.stock, -self.onhand(self.carton))
+        data = self.Book.get_recipes()
+        self.assertEqual(self.Book.get_book()["out_in_recipes"]["count"], data["items"])
+        row = next(r for r in data["rows"] if r["product"]["id"] == self.carton.id)
+        self.assertEqual(row["recipe_count"], 1)
+        self.assertIn(self.fg.name, row["recipes"])
+        self.assertFalse(row["made"])
+        self.assertEqual(row["reason"], "received")
+        self.assertTrue(row["product"]["stock"])
+        self._window(ref="LPO-R1", lines=[{"product_id": self.carton.id, "qty": 5, "cost": 2, "tax_id": self.vat_net.id}])
+        self.assertFalse(self.Book.get_recipes(search=self.carton.default_code)["rows"], "bought: no longer out")
+
+    def test_archived_item_stops_no_batch(self):
+        self.env["stock.quant"]._update_available_quantity(self.carton, self.stock, -self.onhand(self.carton))
+        self.assertIn(self.carton.id, [r["product"]["id"] for r in self.Book.get_recipes()["rows"]])
+        self.carton.active = False
+        self.assertNotIn(self.carton.id, [r["product"]["id"] for r in self.Book.get_recipes()["rows"]])
+
+    def test_a_needs_cost_line_becomes_a_purchase(self):
+        line = self.Line.create({"product_id": self.bottle.id, "reason": "received", "qty_in": 7,
+                                 "partner_name": self.supplier.name})
+        self.assertEqual(line._status()[0], "need_cost")
+        loaded = self.Book.book_purchase_load(line.id)
+        self.assertEqual(loaded["supplier"]["id"], self.supplier.id)
+        self.assertEqual(loaded["replace_ids"], line.ids)
+        self.assertEqual(loaded["lines"][0]["qty"], 7)
+        self.assertFalse(loaded["edit"])
+        result = self.Book.book_purchase_save({
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-C1", "warehouse_id": self.wh.id,
+            "date": loaded["date"], "pay_journal_id": False,
+            "lines": [{"product_id": self.bottle.id, "qty": 7, "cost": 3, "tax_id": self.vat_net.id}],
+        }, replace_ids=loaded["replace_ids"])
+        self.assertFalse(line.exists(), "replaced, not left beside it to be posted twice")
+        self.assertEqual(self.Line.browse(result["ids"]).qty_in, 7)
+
+    def test_a_draft_lpo_can_be_edited(self):
+        keeper = new_test_user(self.env, "lpo_edit", groups="odin_stock_book.group_stock_book_user")
+        transport = self._service()
+        values = {
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-E1", "warehouse_id": self.wh.id,
+            "date": fields.Date.to_string(fields.Date.context_today(self.Line)), "pay_journal_id": self.pay_journal.id,
+            "lines": [{"product_id": self.bottle.id, "qty": 2, "cost": 3, "tax_id": self.vat_net.id},
+                      {"product_id": transport.id, "qty": 1, "cost": 50, "tax_id": self.vat_net.id, "note": "Boda"}],
+        }
+        Book = self.Book.with_user(keeper)
+        first = Book.book_purchase_save(values)
+        loaded = Book.book_purchase_load(first["ids"][0])
+        self.assertTrue(loaded["edit"])
+        self.assertEqual(loaded["paid"], str(self.pay_journal.id))
+        self.assertEqual([r["product"]["stock"] for r in loaded["lines"]], [True, False])
+        self.assertEqual(loaded["lines"][1]["note"], "Boda")
+        self.assertFalse(Book.book_purchase_check(self.supplier.id, "LPO-E1", loaded["replace_ids"]))
+        self.assertTrue(Book.book_purchase_check(self.supplier.id, "LPO-E1"))
+        values["lines"][0]["qty"] = 9
+        second = Book.book_purchase_save(values, replace_ids=loaded["replace_ids"])
+        self.assertFalse(self.Line.browse(first["ids"]).exists())
+        self.assertEqual(self.Line.browse(second["ids"]).qty_in, 9)
+        self.assertEqual(self.env["odin.stock.purchase"].search_count([("purchase_ref", "=", "LPO-E1")]), 1)
+
+    # ------------------------------------------------------------ bulk posting
+    def test_bulk_post_goes_in_date_order_as_the_page_projects(self):
+        """A delivery lets the use after it through: it used to be left out silently."""
+        have = self.onhand(self.sticker)
+        day = fields.Date.context_today(self.Line)
+        receipt = self._received(self.sticker, qty=100, cost=2, date=day - timedelta(days=2))
+        use = self.Line.create({"product_id": self.sticker.id, "reason": "used", "qty_out": have + 50,
+                                "date": day - timedelta(days=1)})
+        rows = {r["id"]: r for r in self.Book.get_book(day.year, day.month)["rows"]} if use.date.month == day.month else {}
+        if rows:
+            self.assertEqual(rows[use.id]["status_key"], "ready", "the page projects the delivery first")
+        result = self.Book.book_post((use | receipt).ids)
+        self.assertEqual(result["count"], 2)
+        self.assertEqual((receipt.state, use.state), ("posted", "posted"))
+        self.assertEqual(self.onhand(self.sticker), 50)
+        self.assertFalse(result["skipped"] or result["failed"])
+
+    def test_bulk_post_reports_what_stayed_and_posts_the_rest(self):
+        good = self.Line.create({"product_id": self.fg.id, "reason": "used", "qty_out": 1})
+        short = self.Line.create({"product_id": self.sticker.id, "reason": "used", "qty_out": 999999})
+        result = self.Book.book_post((good | short).ids)
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(good.state, "posted")
+        self.assertEqual(short.state, "draft")
+        self.assertEqual([s["id"] for s in result["skipped"]], short.ids)
+
+    def test_bulk_post_survives_a_line_that_fails(self):
+        good = self.Line.create({"product_id": self.fg.id, "reason": "used", "qty_out": 1})
+        bad = self.Line.create({"product_id": self.fg.id, "reason": "spoiled", "qty_out": 1})
+        Line = type(self.Line)
+        original = Line._post_scrap
+        def refuse(line):
+            if line.reason == "spoiled":
+                raise UserError("Refused")
+            return original(line)
+        with patch.object(Line, "_post_spoiled", refuse):
+            result = self.Book.book_post((good | bad).ids)
+        self.assertEqual(good.state, "posted")
+        self.assertEqual(bad.state, "draft")
+        self.assertFalse(bad.ref, "its number goes back")
+        self.assertEqual(result["failed"][0]["why"], "Refused")
+
+    def test_bulk_post_keeps_a_supplier_day_on_one_order(self):
+        one = self._received(self.bottle, qty=1, cost=2)
+        two = self._received(self.carton, qty=1, cost=2)
+        self.assertEqual(self.Book.book_post((one | two).ids)["count"], 2)
+        self.assertEqual(one.purchase_id, two.purchase_id)
+
+    def test_storekeeper_cannot_bulk_post(self):
+        keeper = new_test_user(self.env, "bulk_keeper", groups="odin_stock_book.group_stock_book_user")
+        line = self.Line.create({"product_id": self.fg.id, "reason": "used", "qty_out": 1})
+        with self.assertRaises(UserError):
+            self.Book.with_user(keeper).book_post(line.ids)
+        self.assertEqual(line.state, "draft")

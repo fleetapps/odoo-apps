@@ -45,7 +45,7 @@ export class StockBook extends Component {
         this.root = useRef("root");
         const params = this.props.action.params || {};
         this.state = useState({
-            view: params.view || "log", loading: true, book: null, sheet: null, count: null,
+            view: params.view || "log", loading: true, book: null, sheet: null, count: null, recipes: null, picked: {},
             year: false, month: false, reason: "", status: "", search: "", group: "",
             selectedId: null, open: {}, newRow: null, suggest: null, saving: false,
             compSearch: { query: "", results: [] }, confirmCount: false, countConflicts: null,
@@ -111,6 +111,10 @@ export class StockBook extends Component {
             data = await this.orm.call("odin.stock.book", "get_sheet", [], {
                 year, month, group: this.state.group, search, warehouse_id,
             });
+        } else if (view === "recipes") {
+            data = await this.orm.call("odin.stock.book", "get_recipes", [], {
+                group: this.state.group, search, warehouse_id,
+            });
         } else {
             data = await this.orm.call("odin.stock.book", "get_count", [], {
                 group: this.state.group, search, warehouse_id,
@@ -130,6 +134,8 @@ export class StockBook extends Component {
             this.applyBook(data);
         } else if (view === "sheet") {
             this.state.sheet = data;
+        } else if (view === "recipes") {
+            this.state.recipes = data;
         } else {
             this.state.count = data;
         }
@@ -372,6 +378,20 @@ export class StockBook extends Component {
             this.state.group = "";
             this.state.search = "";
         }).then(() => view === "log" && this.focusNew("item"));
+    }
+
+    /** The entry row is hidden under a filter: a new movement clears it. */
+    async startNew() {
+        if (this.state.view !== "log") {
+            await this.setView("log");
+        } else if (this.state.status || this.state.search) {
+            this.state.status = "";
+            this.state.search = "";
+            await this.load();
+            await this.rendered();
+        }
+        this.scrollToEnd();
+        this.focusNew("item");
     }
 
     setWarehouse(ev) {
@@ -762,10 +782,12 @@ export class StockBook extends Component {
             this.state.newRow = blankRow(row.date);
             this.state.suggest = null;
             this.tellMoved(saved);
-            if (saved.status_key === "need_cost") {
-                // The cost is in the side panel: open it there, ready to type.
-                this.state.selectedId = saved.id;
-                this.later(() => document.querySelector(".o_sb_cost_input")?.focus(), 50);
+            if (saved.reason === "received" && ["need_cost", "need_supplier"].includes(saved.status_key)) {
+                // Goods bought: finish it as a purchase, with this line in it.
+                if (saved.date.startsWith(this.monthPrefix)) {
+                    this.state.selectedId = saved.id;
+                }
+                this.openPurchaseFor(saved);
                 return;
             }
             if (saved.components.length) {
@@ -841,7 +863,8 @@ export class StockBook extends Component {
     }
 
     onGlobalKey(ev) {
-        if (!this.root.el?.isConnected) {
+        // A window above the page has the keyboard.
+        if (!this.root.el?.isConnected || document.querySelector(".o_dialog")) {
             return;
         }
         const typing = ev.target.closest?.("input, textarea, select");
@@ -852,22 +875,34 @@ export class StockBook extends Component {
             ev.preventDefault();
             this.root.el.querySelector(".o_sb_search input")?.focus();
         } else if (ev.key === "p" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey
-                   && this.state.book && !this.state.book.empty && !document.querySelector(".o_dialog")) {
+                   && this.state.book && !this.state.book.empty) {
             ev.preventDefault();
             this.openPurchase();
         } else if (ev.key === "n" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey) {
             ev.preventDefault();
-            this.focusNew("item");
+            this.startNew();
         }
     }
 
     // ------------------------------------------------------------ actions
     async post(ids, allowShort = false) {
-        const { count, refs } = await this.mutate(() => this.orm.call("odin.stock.book", "book_post", [ids],
-            { allow_short: allowShort }), { flash: ids });
+        const { count, refs, skipped, failed } = await this.mutate(
+            () => this.orm.call("odin.stock.book", "book_post", [ids], { allow_short: allowShort }), { flash: ids });
         const shown = refs.length > 3 ? `${refs[0]} … ${refs[refs.length - 1]}` : refs.join(", ");
-        this.notification.add(count ? _t("%(n)s posted: %(refs)s", { n: count, refs: shown }) : _t("Nothing was ready to post"),
-            { type: count ? "success" : "warning" });
+        if (count) {
+            this.notification.add(_t("%(n)s posted: %(refs)s", { n: count, refs: shown }), { type: "success" });
+        }
+        // Whatever stayed a draft is named, with why: never a silent shortfall.
+        const stayed = [...failed, ...skipped];
+        if (stayed.length) {
+            const lines = stayed.slice(0, 10).map((s) => `${s.item}: ${s.why}`);
+            this.notification.add(lines.join("\n") + (stayed.length > 10 ? "\n…" : ""), {
+                title: _t("%s lines were not posted", stayed.length), type: failed.length ? "danger" : "warning",
+                sticky: true, className: "o_sb_notice",
+            });
+        } else if (!count) {
+            this.notification.add(_t("Nothing was ready to post"), { type: "warning" });
+        }
     }
 
     /** What posting the ready lines will create, so a supervisor posts on purpose. */
@@ -881,6 +916,7 @@ export class StockBook extends Component {
         const body = [
             _t("Posting %s lines creates:", ids.length),
             ...Object.entries(byKind).map(([kind, n]) => `• ${n} × ${kind}`),
+            _t("Lines are posted in date order. Any that cannot go stay as drafts and are listed; the others still post."),
             _t("Posted lines are locked; a mistake is fixed with a new line."),
         ].join("\n");
         this.dialog.add(ConfirmationDialog, {
@@ -944,17 +980,128 @@ export class StockBook extends Component {
             () => this.orm.call("odin.stock.book", "book_restore", [[row.id]]), { flash: [row.id], reveal: true }));
     }
 
-    /** A whole LPO or invoice in one window; its lines land on the book. */
-    openPurchase() {
+    /**
+     * A whole LPO or invoice in one window; its lines land on the book.
+     * ``lineId``: starting from a draft line, which saving replaces.
+     * ``items``: starting with these items, from a shortage.
+     */
+    openPurchase({ lineId = false, items = [] } = {}) {
         this.dialog.add(PurchaseDialog, {
             warehouseId: this.state.warehouseId || this.state.book?.warehouse?.id || false,
+            lineId, items,
             onSaved: (result) => this.purchaseSaved(result),
         });
     }
 
+    openPurchaseFor(row) {
+        this.openPurchase({ lineId: row.id });
+    }
+
+    // ------------------------------------------------------------ what each status asks for
+    /** Draft lines whose status says what to do next are buttons. */
+    pillActs(row) {
+        return row.state === "draft" && !["ready", "cancelled", "posted"].includes(row.status_key);
+    }
+
+    onPill(row) {
+        if (row.reason === "received" && ["need_cost", "need_supplier"].includes(row.status_key)) {
+            this.openPurchaseFor(row);
+            return;
+        }
+        this.state.selectedId = row.id;
+        const cell = {
+            need_reason: "reason", need_partner: "partner", future: "date",
+            need_qty: row.direction === "out" ? "qty_out" : "qty_in",
+            wrong_way: row.direction === "out" ? "qty_out" : "qty_in",
+        }[row.status_key];
+        if (cell) {
+            this.later(() => {
+                const el = this.root.el?.querySelector(`.o_sb_row[data-id="${row.id}"] [data-cell="${cell}"]`);
+                el?.focus();
+                el?.select?.();
+            }, 30);
+        }
+    }
+
+    // ------------------------------------------------------------ the banner a card opens
+    /** What is short across the lines shown, most short first. */
+    get shortItems() {
+        const items = new Map();
+        const add = (product, onhand, uom) => {
+            if (onhand !== null && onhand !== undefined && onhand < 0) {
+                const seen = items.get(product.id);
+                if (!seen || -onhand > seen.short) {
+                    items.set(product.id, { product: { ...product, stock: true }, short: -onhand, uom });
+                }
+            }
+        };
+        for (const row of this.rows) {
+            if (row.status_key === "short") {
+                if (row.qty_out) {
+                    add(row.product, row.onhand_after, row.uom);
+                }
+                row.components.filter((c) => !c.unlimited).forEach((c) => add(c.product, c.onhand_after, c.uom));
+            }
+        }
+        return [...items.values()].sort((a, b) => b.short - a.short);
+    }
+
+    get focus() {
+        const n = this.rows.length;
+        const month = this.monthLabel;
+        const texts = {
+            need: n ? {
+                title: _t("%(n)s lines in %(month)s are missing something", { n, month }),
+                text: _t("Each line's status says what. Click the status to fill it in."),
+            } : { title: _t("Nothing is missing in %s", month), text: _t("Every line has what it needs.") },
+            short: n ? {
+                title: _t("%(n)s lines in %(month)s use more than is on hand", { n, month }),
+                text: _t("Receive what is missing or count it, and they become ready. If the stock really is there, open a line to post it anyway."),
+            } : { title: _t("Nothing is short in %s", month), text: _t("Every line has enough on hand.") },
+            ready: n ? {
+                title: _t("%(n)s lines in %(month)s are ready to post", { n, month }),
+                text: this.state.book.can_post ? _t("Posting creates the real documents and locks each line.")
+                    : _t("A supervisor posts them."),
+            } : { title: _t("Nothing is waiting to post in %s", month), text: "" },
+        };
+        return texts[this.state.status] || { title: "", text: "" };
+    }
+
+    // ------------------------------------------------------------ out for recipes
+    togglePick(row) {
+        this.state.picked[row.product.id] = !this.state.picked[row.product.id];
+    }
+
+    get pickedRows() {
+        return (this.state.recipes?.rows || []).filter((r) => this.state.picked[r.product.id] && !r.made);
+    }
+
+    buyPicked() {
+        const items = this.pickedRows.map((r) => r.product);
+        this.state.picked = {};
+        this.openPurchase({ items });
+    }
+
+    /** An item made here: its filling or batch, in the entry row. */
+    async makeItem(row) {
+        await this.setView("log");
+        this.state.status = "";
+        this.state.search = "";
+        await this.load();
+        await this.rendered();
+        const line = this.state.newRow;
+        line.product = row.product;
+        line.query = row.product.display_name;
+        line.reason = row.reason;
+        this.scrollToEnd();
+        this.focusNew("qty_in");
+    }
+
     async purchaseSaved(result) {
         await this.load();
-        this.flashRows(result.ids, true);
+        if (this.state.view === "log") {
+            this.flashRows(result.ids, true);
+        }
         const money = result.total ? ` · ${this.fmt(result.total, 2)}` : "";
         const paid = result.paid_from ? _t(", paid from %s", result.paid_from) : _t(", not paid yet");
         const text = result.posted
@@ -974,6 +1121,11 @@ export class StockBook extends Component {
             type: "ir.actions.act_window", name: _t("Purchases to bill"), res_model: "purchase.order",
             views: [[false, "list"], [false, "form"]], domain: [["invoice_status", "=", "to invoice"]],
         });
+    }
+
+    openBill(row) {
+        this.action.doAction({ type: "ir.actions.act_window", res_model: "account.move", res_id: row.bill_id,
+                               views: [[false, "form"]] });
     }
 
     async openDocument(row) {

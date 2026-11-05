@@ -1343,3 +1343,165 @@ tr:hover > td > .o_sb_cell.o_sb_quiet,
 .o_sb_notice .o_notification_content {
     white-space: pre-line;
 }
+
+// What a card opens ----------------------------------------------------------
+.o_sb_focus {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    padding: 0.6rem 0.9rem;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-left: 4px solid var(--sb-stripe-info);
+    border-radius: 0.5rem;
+}
+
+.o_sb_focus_need { border-left-color: var(--sb-stripe-warning); }
+.o_sb_focus_short,
+.o_sb_focus_recipes { border-left-color: var(--sb-stripe-danger); }
+.o_sb_focus_ready { border-left-color: var(--sb-stripe-primary); }
+
+.o_sb_focus_main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    align-items: baseline;
+    min-width: 0;
+
+    span,
+    a {
+        font-size: 0.85rem;
+    }
+
+    span {
+        color: var(--sb-muted);
+    }
+}
+
+.o_sb_focus_actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.o_sb_focus_items {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+    gap: 0.3rem 1.25rem;
+    margin: 0;
+    padding: 0.4rem 0 0;
+    list-style: none;
+    border-top: 1px solid var(--sb-line);
+    font-size: 0.85rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .btn {
+        --btn-padding-y: 0.05rem;
+        padding-block: 0.05rem;
+    }
+}
+
+.o_sb_focus_item {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+button.o_sb_pill_btn {
+    border: 0;
+    cursor: pointer;
+    outline-offset: 1px;
+
+    &:hover {
+        filter: brightness(0.95);
+        text-decoration: underline;
+    }
+}
+
+.o_sb_lpo {
+    display: block;
+    color: var(--sb-muted);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_sb_to_bill {
+    white-space: nowrap;
+}
+
+// Out for recipes
+.o_sb_recipes {
+    .o_sb_c_pick { width: 2rem; text-align: center; }
+    .o_sb_c_acts { width: 8.5rem; white-space: nowrap; text-align: right; }
+
+    td:nth-child(6),
+    td:nth-child(8) {
+        max-width: 22rem;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
+@media (max-width: 767.98px) {
+    // Two cards a row, the stock value across them, nothing cut off at the edge.
+    .o_sb_summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_sb_kpi_balance {
+        grid-column: 1 / -1;
+    }
+
+    .o_sb_toolbar .btn-group {
+        max-width: 100%;
+        overflow-x: auto;
+
+        .btn {
+            white-space: nowrap;
+        }
+    }
+
+    .o_sb_focus {
+        grid-template-columns: 1fr;
+    }
+
+    .o_sb_focus_items {
+        grid-template-columns: 1fr;
+    }
+}
+
+// An LPO's fixed cells line up with the inputs of the lines around them.
+.o_sb_window > .o_sb_c_reason,
+.o_sb_window > .o_sb_c_partner {
+    padding-left: calc(0.6rem + 1px);
+}
+
+.o_sb_log .o_sb_window > td:first-child {
+    padding-left: calc(0.85rem + 0.3rem + 1px) !important;
+}
+
+// With the panel open the sheet is narrow: the item stays readable, the code
+// and what the panel repeats give way.
+.o_sb_with_panel .o_sb_log {
+    .o_sb_c_ref {
+        @include o-sb-column-off;
+    }
+
+    .o_sb_c_item .o_sb_code {
+        display: none;
+    }
+}
