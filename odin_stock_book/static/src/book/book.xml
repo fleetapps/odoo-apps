@@ -16,6 +16,9 @@
                         <button t-if="state.view === 'log'" class="btn btn-primary" t-on-click="() => this.focusNew('item')" data-tooltip="Shortcut: N">
                             <i class="fa fa-plus me-1"/>Movement
                         </button>
+                        <button t-if="state.view === 'log' and state.book and !state.book.empty" class="btn btn-secondary o_sb_add_purchase" t-on-click="openPurchase" data-tooltip="An LPO or invoice with all its items. Shortcut: P">
+                            <i class="fa fa-truck me-1"/>Add purchase
+                        </button>
                         <button t-if="state.view === 'log' and state.book and state.book.can_post and readyIds.length" class="btn btn-success" t-on-click="postAll">
                             <i class="fa fa-check me-1"/>Post <t t-esc="readyIds.length"/> ready
                         </button>
@@ -93,6 +96,9 @@
                 <i class="fa fa-search"/>
                 <input class="form-control form-control-sm" placeholder="Search item, code, customer…  ( / )" t-att-value="state.search" t-on-input="onSearch" aria-label="Search"/>
             </div>
+            <button t-if="book.to_bill" class="btn btn-sm btn-warning o_sb_to_bill" t-on-click="openToBill" title="Received but not billed: their stock is not in the accounts until they are">
+                <i class="fa fa-file-text-o me-1"/><t t-esc="book.to_bill"/> to bill
+            </button>
             <button t-if="state.status" class="btn btn-sm btn-light border" t-on-click="() => this.setStatus(state.status)">
                 <i class="fa fa-times me-1"/>Showing: <t t-esc="{need: 'needs something', short: 'short', ready: 'ready', posted: 'posted'}[state.status]"/>
             </button>
@@ -182,9 +188,10 @@
                                         <span t-else="" class="o_sb_reason"><i t-attf-class="o_sb_dot o_sb_r_{{row.reason or 'none'}}"/><t t-esc="row.reason_label"/></span>
                                     </td>
                                     <td class="o_sb_c_partner">
-                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-class="{ o_sb_missing: row.status_key === 'need_partner' }" t-att-value="row.partner_name"
-                                               t-att-placeholder="row.reason === 'sale' ? 'Customer?' : ''" t-on-change="(ev) => this.onCell(ev, row, 'partner_name')" aria-label="Customer or supplier"/>
+                                        <input t-if="draft" t-on-focus="onCellFocus" class="o_sb_cell" t-att-class="{ o_sb_missing: row.status_key === 'need_partner' or row.status_key === 'need_supplier' }" t-att-value="row.partner_name"
+                                               t-att-placeholder="row.reason === 'sale' ? 'Customer?' : (row.reason === 'received' ? 'Supplier?' : '')" t-on-change="(ev) => this.onCell(ev, row, 'partner_name')" aria-label="Customer or supplier"/>
                                         <t t-else="" t-esc="row.partner_name"/>
+                                        <small t-if="row.purchase_ref" class="o_sb_lpo" t-att-title="row.purchase ? 'On purchase order ' + row.purchase : 'LPO / invoice number'">LPO <t t-esc="row.purchase_ref"/></small>
                                     </td>
                                     <td class="o_sb_num o_sb_c_onhand" t-att-class="{ o_sb_neg: row.onhand_after &lt; 0 }" t-esc="row.product ? fmt(row.onhand_after) : ''"/>
                                     <td class="o_sb_c_status">
@@ -320,6 +327,11 @@
                     <dt t-esc="sel.qty_in ? 'Added' : 'Removed'"/><dd><t t-esc="fmt(sel.qty_in or sel.qty_out)"/> <t t-esc="sel.uom"/></dd>
                     <dt>On hand after</dt><dd t-att-class="{ o_sb_neg: sel.onhand_after &lt; 0 }"><t t-esc="fmt(sel.onhand_after)"/> <t t-esc="sel.uom"/></dd>
                     <dt t-if="sel.partner_name" t-esc="sel.reason === 'received' ? 'Supplier' : 'Customer'"/><dd t-if="sel.partner_name" t-esc="sel.partner_name"/>
+                    <dt t-if="sel.purchase_ref">LPO / invoice</dt><dd t-if="sel.purchase_ref" t-esc="sel.purchase_ref"/>
+                    <dt t-if="sel.purchase">Purchase order</dt><dd t-if="sel.purchase" class="o_sb_mono" t-esc="sel.purchase"/>
+                    <dt t-if="sel.bill">Bill</dt><dd t-if="sel.bill" class="o_sb_mono" t-esc="sel.bill"/>
+                    <dt t-if="sel.state === 'draft' and sel.purchase_ref and sel.paid_from">Paid from</dt><dd t-if="sel.state === 'draft' and sel.purchase_ref and sel.paid_from" t-esc="sel.paid_from"/>
+                    <dt t-if="sel.tax_name">VAT</dt><dd t-if="sel.tax_name" t-esc="sel.tax_name"/>
                     <dt>Posts as</dt><dd t-esc="sel.posts_as or '—'"/>
                     <dt t-if="sel.reverses">Reverses</dt><dd t-if="sel.reverses" class="o_sb_mono" t-esc="sel.reverses"/>
                     <dt t-if="sel.reversed_by">Reversed by</dt><dd t-if="sel.reversed_by" class="o_sb_mono" t-esc="sel.reversed_by"/>
@@ -374,8 +386,9 @@
                 </div>
 
                 <div t-if="sel.reason === 'received' and sel.state === 'draft'" class="o_sb_box">
-                    <span class="o_sb_box_label">Cost per unit (optional)</span>
-                    <input class="form-control form-control-sm" inputmode="decimal" t-att-value="sel.unit_cost or ''" placeholder="Leave empty to use the current cost"
+                    <span class="o_sb_box_label">Cost per unit<t t-if="!sel.tax_name">, before VAT</t></span>
+                    <input class="form-control form-control-sm o_sb_cost_input" t-att-class="{ 'is-invalid': sel.status_key === 'need_cost' }" inputmode="decimal" t-att-value="sel.unit_cost or ''"
+                           t-att-placeholder="sel.current_cost ? 'Last cost ' + fmt(sel.current_cost) : 'From the invoice'"
                            t-on-change="(ev) => this.setUnitCost(sel, ev)" aria-label="Cost per unit"/>
                 </div>
 
@@ -400,8 +413,10 @@
                 <p t-if="sel.status_key === 'ready' and !book.can_post" class="small text-muted mb-0">Waiting for a supervisor to post.</p>
                 <p t-if="sel.state === 'posted' and (sel.reason === 'filling' or sel.reason === 'production')" class="small text-muted mb-0">
                     To undo a filling or batch, unbuild its manufacturing order in Manufacturing.</p>
+                <p t-if="sel.state === 'draft' and sel.reason === 'received'" class="small text-muted mb-0">
+                    Posting makes the purchase order, receives it and adds the stock, all in one step.</p>
                 <p t-if="sel.state === 'posted' and sel.reason === 'received'" class="small text-muted mb-0">
-                    To send goods back, return the receipt to the supplier in Inventory.</p>
+                    <t t-if="sel.purchase">On purchase order <t t-esc="sel.purchase"/>. </t>To send goods back, return the receipt to the supplier in Inventory.</p>
             </aside>
         </div>
 

@@ -57,7 +57,7 @@ class StockBookExport(http.Controller):
             for i, v in enumerate([row["uom"], row["reason_label"], row["partner_name"]], 6):
                 log.write(r, i, v, cell)
             log.write(r, 9, row["onhand_after"], num)
-            for i, v in enumerate([row["status"], row["posted_by"], row["note"]], 10):
+            for i, v in enumerate([row["status"], row["posted_by"], row["note_print"]], 10):
                 log.write(r, i, v, cell)
             r += 1
             for comp in row["components"]:

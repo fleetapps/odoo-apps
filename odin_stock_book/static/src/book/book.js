@@ -10,6 +10,7 @@ import { debounce } from "@web/core/utils/timing";
 import { download } from "@web/core/network/download";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { parseAmount, parseDay } from "./utils";
+import { PurchaseDialog } from "./purchase_dialog";
 
 const WITH_PARTNER = new Set(["sale", "return", "received"]);
 // The order Enter moves through the entry row.
@@ -761,6 +762,12 @@ export class StockBook extends Component {
             this.state.newRow = blankRow(row.date);
             this.state.suggest = null;
             this.tellMoved(saved);
+            if (saved.status_key === "need_cost") {
+                // The cost is in the side panel: open it there, ready to type.
+                this.state.selectedId = saved.id;
+                this.later(() => document.querySelector(".o_sb_cost_input")?.focus(), 50);
+                return;
+            }
             if (saved.components.length) {
                 this.notification.add(_t("%(n)s components from the recipe: check them, then post.",
                     { n: saved.components.length }), { type: "info" });
@@ -844,6 +851,10 @@ export class StockBook extends Component {
         } else if (ev.key === "/" && !typing) {
             ev.preventDefault();
             this.root.el.querySelector(".o_sb_search input")?.focus();
+        } else if (ev.key === "p" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey
+                   && this.state.book && !this.state.book.empty && !document.querySelector(".o_dialog")) {
+            ev.preventDefault();
+            this.openPurchase();
         } else if (ev.key === "n" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey) {
             ev.preventDefault();
             this.focusNew("item");
@@ -931,6 +942,38 @@ export class StockBook extends Component {
         const name = row.product ? row.product.name : _t("Line");
         this.notifyUndo(_t("%s: line cancelled.", name), () => this.mutate(
             () => this.orm.call("odin.stock.book", "book_restore", [[row.id]]), { flash: [row.id], reveal: true }));
+    }
+
+    /** A whole LPO or invoice in one window; its lines land on the book. */
+    openPurchase() {
+        this.dialog.add(PurchaseDialog, {
+            warehouseId: this.state.warehouseId || this.state.book?.warehouse?.id || false,
+            onSaved: (result) => this.purchaseSaved(result),
+        });
+    }
+
+    async purchaseSaved(result) {
+        await this.load();
+        this.flashRows(result.ids, true);
+        const money = result.total ? ` · ${this.fmt(result.total, 2)}` : "";
+        const paid = result.paid_from ? _t(", paid from %s", result.paid_from) : _t(", not paid yet");
+        const text = result.posted
+            ? _t("%(order)s (%(ref)s): %(n)s lines received, bill %(bill)s%(paid)s%(money)s", {
+                order: result.order, ref: result.purchase_ref, n: result.ids.length, bill: result.bill, paid, money,
+            })
+            : _t("%(ref)s: %(n)s lines waiting for a supervisor to post", { ref: result.purchase_ref, n: result.ids.length });
+        this.notification.add(text, { type: "success" });
+        if (!result.date.startsWith(this.monthPrefix)) {
+            this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
+        }
+    }
+
+    /** Received but not billed: their stock is not in the accounts yet. */
+    openToBill() {
+        this.action.doAction({
+            type: "ir.actions.act_window", name: _t("Purchases to bill"), res_model: "purchase.order",
+            views: [[false, "list"], [false, "form"]], domain: [["invoice_status", "=", "to invoice"]],
+        });
     }
 
     async openDocument(row) {

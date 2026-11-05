@@ -35,7 +35,7 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
   |---|---|---|
   | Bottle filling | Added | Manufacturing order (filling) |
   | Production batch | Added | Manufacturing order (batch) |
-  | Received | Added | Receipt from the supplier (optional cost per unit) |
+  | Received | Added | Confirmed purchase order and its validated receipt (supplier and cost per unit required) |
   | Customer return | Added | Return from the customer |
   | Sale | Removed | Delivery to the customer |
   | Spoiled / Sample or gift / Used in-house | Removed | Scrap |
@@ -74,6 +74,44 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * Components follow the recipe as the manufacturing order will: kits are opened
   up into what they contain, recipe lines for other variants are left out, and
   a recipe written in grams for an item stocked in kilograms uses kilograms.
+
+## Purchases
+
+Goods bought and in the store take one line and one *Post*: type the item, the
+quantity, the supplier and the cost per unit before VAT. Posting makes the
+purchase order, confirms it and validates its receipt, so the stock goes up, the
+cost is recorded and the order shows in Purchases, ready to bill. Lines posted
+together for one supplier on one day share one order. A quick line has no invoice
+number, so it is not billed: use *Add purchase* for that.
+
+**Add purchase** is the same thing for a whole LPO or invoice, in one window: the
+supplier, the LPO or invoice number, the date, and the items with quantity, cost
+and VAT, with the subtotal, VAT and total as Odoo will compute them. *Save and
+receive* makes one purchase order with the number as its Vendor Reference, and
+adds one posted line per item here. A number already used for that supplier is
+refused, so a delivery cannot go in twice. Storekeepers *Save for posting*: the
+lines wait, carrying the same number, and post together as one order.
+
+The window also does the accounting, in the same step and the same transaction,
+so either all of it happens or none of it: a posted vendor bill in Vendor Bills,
+dated and numbered from the paper, and the payment from the journal chosen in
+*Paid from* (or *Not paid yet*, which leaves the bill open). Purchases paid from
+a petty cash float go through the Petty Cash book instead, which receives the stock
+itself; entering them in both would count them twice. In Odoo 19 a receipt
+alone makes no journal entry: stock reaches the accounts with its bill. Lines
+received another way show in *N to bill* on the book until they are billed.
+
+A line can be something not kept in stock, such as transport: it goes on the
+order and the bill, to its product's expense account, and not into stock or the
+item's cost. At least one line must be stock; a purchase with none is a bill to
+enter in Accounting.
+
+Inline lines read the cost as before VAT and take the VAT last used for the item
+or supplier, never one included in the price. In the window the VAT on each line
+says how its cost is read.
+
+A receipt validated in Purchases, or a return to the supplier, adds its own
+posted line here. Enter a delivery in one place or the other, not both.
 
 ## Stock sheet
 

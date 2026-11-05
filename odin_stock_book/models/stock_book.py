@@ -182,6 +182,7 @@ class StockBook(models.AbstractModel):
             needle = search.lower()
             rows = [r for r in rows if needle in " ".join(filter(None, [
                 r["ref"], r["product"] and r["product"]["display_name"], r["partner_name"], r["note"],
+                r["purchase_ref"], r["purchase"],
                 r["reason_label"]] + [c["product"]["display_name"] for c in r["components"]])).lower()]
 
         per_month = dict.fromkeys(range(1, 13), 0)
@@ -204,7 +205,17 @@ class StockBook(models.AbstractModel):
             "out_in_recipes": self._out_in_recipes(wh),
             "reasons": [{"key": k, "label": v[1], "direction": v[0]} for k, v in REASONS.items()],
             "can_post": self._is_supervisor(),
+            "to_bill": self._orders_to_bill(),
         }
+
+    @api.model
+    def _orders_to_bill(self):
+        """Received but not billed: the stock is not in the accounts until
+        they are. Shown to those who can open them."""
+        if not self.env.user.has_group("purchase.group_purchase_user"):
+            return 0
+        return self.env["purchase.order"].search_count(
+            [("company_id", "=", self.env.company.id), ("invoice_status", "=", "to invoice")])
 
     @api.model
     def _row(self, line, status, onhand, comp_onhand, reversed_by=None):
@@ -226,6 +237,10 @@ class StockBook(models.AbstractModel):
                 "unlimited": line._unlimited(c.product_id),
             } for c in line.component_ids],
             "posted_by": line.posted_by_id.name or "", "has_document": bool(line.move_ids),
+            "purchase": line.purchase_id.sudo().name or "", "current_cost": line.product_id.standard_price,
+            "purchase_ref": line.purchase_ref or "", "tax_name": line.tax_id.name or "",
+            "bill": line.bill_id.sudo().name or "", "paid_from": line.stock_purchase_id.pay_journal_id.sudo().name or "",
+            "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
             "can_reverse": line.state == "posted" and line.reason in REVERSE and not reversed_by,
         }
@@ -290,11 +305,228 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_post(self, ids, allow_short=False):
         lines = self.env["odin.stock.line"].browse(ids).exists().filtered(lambda l: l.state == "draft")
+        lines |= lines._purchase_siblings()
         if not allow_short:
             lines = lines.filtered(lambda l: l._status()[0] == "ready")
         lines.action_post(allow_short=allow_short)
         posted = lines.filtered(lambda l: l.state == "posted").sorted("ref")
         return {"count": len(posted), "refs": posted.mapped("ref")}
+
+    # ------------------------------------------------------------ add purchase
+    @api.model
+    def _purchase_taxes(self):
+        """Purchase VAT to choose from. Withholding is left out: it is taken
+        when paying, on top of the VAT, not instead of it."""
+        return self.env["account.tax"].search([
+            ("type_tax_use", "=", "purchase"), ("company_id", "=", self.env.company.id),
+            ("amount", ">=", 0)], order="sequence, id")
+
+    @api.model
+    def _purchase_pay_journals(self):
+        """Journals a purchase can be paid from: those whose payments reach the
+        ledger. A float kept by the Petty Cash book has no outstanding account:
+        what it pays for goes through that book, which receives the stock itself."""
+        journals = self.env["account.journal"].sudo().search(
+            [("company_id", "=", self.env.company.id), ("type", "in", ("bank", "cash"))], order="sequence, id")
+        return journals.filtered(lambda j: j.outbound_payment_method_line_ids[:1].payment_account_id)
+
+    @api.model
+    def book_purchase_options(self):
+        taxes = self._purchase_taxes()
+        journals = self._purchase_pay_journals()
+        names = journals.mapped("name")
+        return {
+            # Two journals of one name are told apart by their code.
+            "journals": [{"id": j.id, "label": f"{j.name} ({j.code})" if names.count(j.name) > 1 else j.name}
+                         for j in journals],
+            "taxes": [{"id": t.id, "label": _("%s (included in price)", t.name) if t.price_include and t.amount else t.name}
+                      for t in taxes],
+            "today": fields.Date.to_string(fields.Date.context_today(self)),
+            "can_post": self._is_supervisor(), "currency": self.env.company.currency_id.name,
+        }
+
+    @api.model
+    def book_purchase_suppliers(self, text):
+        """Contacts for the Supplier box, suppliers first, and whether the
+        words typed are a new one: a supplier is picked, never guessed."""
+        name = " ".join((text or "").split())
+        if not name:
+            return {"items": [], "can_create": False}
+        partners = self.env["res.partner"].search([("name", "ilike", name), ("parent_id", "=", False)],
+                                                  order="supplier_rank desc, name", limit=8)
+        exact = partners.filtered(lambda p: p.name.casefold() == name.casefold())
+        return {"items": [{"id": p.id, "name": p.name} for p in partners], "can_create": not exact}
+
+    @api.model
+    def book_purchase_products(self, text, warehouse_id=False):
+        """Items for a purchase line: stock first, then what is bought but not
+        stocked (transport, labour), which goes on the bill only."""
+        result = [{**item, "stock": True} for item in self.book_suggest_products(text, warehouse_id)]
+        domain = [("is_storable", "=", False), ("purchase_ok", "=", True)]
+        for word in (text or "").split():
+            domain += ["|", ("default_code", "ilike", word), ("name", "ilike", word)]
+        if (text or "").split():
+            result += [{**self._product(p), "stock": False, "tracked": False, "onhand": 0.0}
+                       for p in self.env["product.product"].search(domain, limit=4, order="name")]
+        return result
+
+    @api.model
+    def book_purchase_item(self, product_id, partner_id=False):
+        """What a new line starts with: the usual VAT, and the last price as
+        a hint. Never typed in for the user: the cost comes from the paper."""
+        product = self.env["product.product"].browse(product_id).exists()
+        partner = self.env["res.partner"].browse(partner_id or []).exists()
+        Line = self.env["odin.stock.line"]
+        # Never one included in the price unless chosen on the line: the cost
+        # is typed before VAT, however the item's own default reads.
+        tax = Line._net_purchase_tax(Line._usual_purchase_tax(product, partner, self.env.company), self.env.company)
+        if tax not in self._purchase_taxes():
+            tax = self.env["account.tax"]
+        last = self.env["purchase.order.line"].sudo().search(
+            [("company_id", "=", self.env.company.id), ("state", "=", "purchase"), ("product_id", "=", product.id)]
+            + ([("partner_id", "=", partner.id)] if partner else []), order="id desc", limit=1)
+        return {"tax_id": tax.id or False, "last_cost": last.price_unit or product.standard_price}
+
+    @api.model
+    def book_purchase_check(self, partner_id, ref):
+        """Why this number cannot be used, as soon as it is typed; False if it can."""
+        partner = self.env["res.partner"].browse(partner_id or []).exists()
+        try:
+            self.env["odin.stock.line"]._check_purchase_ref(partner, ref, self.env.company)
+            self._check_purchase_waiting(partner, ref)
+        except UserError as error:
+            return str(error)
+        return False
+
+    @api.model
+    def _check_purchase_waiting(self, partner, ref):
+        ref = " ".join((ref or "").split())
+        waiting = self.env["odin.stock.line"].search(
+            [("state", "=", "draft"), ("reason", "=", "received"), ("company_id", "=", self.env.company.id),
+             ("partner_id", "=", partner.id), ("purchase_ref", "=ilike", _escape_like(ref))], limit=1)
+        if waiting:
+            raise UserError(_("%(ref)s from %(supplier)s is already on the book, waiting to be posted.",
+                              ref=ref, supplier=partner.display_name))
+
+    @api.model
+    def _purchase_tax_lines(self, rows, partner):
+        Tax = self.env["account.tax"]
+        Product = self.env["product.product"]
+        company = self.env.company
+        allowed = self._purchase_taxes()
+        base_lines = []
+        for row in rows:
+            tax = allowed.filtered(lambda t: t.id == row.get("tax_id"))
+            base_lines.append(Tax._prepare_base_line_for_taxes_computation(
+                None, price_unit=row.get("cost") or 0.0, quantity=row.get("qty") or 0.0, tax_ids=tax,
+                product_id=Product.browse(row.get("product_id") or []).exists(), partner_id=partner,
+                currency_id=company.currency_id, rate=1.0,
+            ))
+        Tax._add_tax_details_in_base_lines(base_lines, company)
+        Tax._round_base_lines_tax_details(base_lines, company)
+        return base_lines
+
+    @api.model
+    def book_purchase_totals(self, rows, partner_id=False):
+        """Subtotal, VAT and total by Odoo's own tax computation, the same
+        as the purchase order will show."""
+        partner = self.env["res.partner"].browse(partner_id or []).exists()
+        base_lines = self._purchase_tax_lines(rows, partner)
+        summary = self.env["account.tax"]._get_tax_totals_summary(
+            base_lines=base_lines, currency=self.env.company.currency_id, company=self.env.company)
+        return {
+            "lines": [line["tax_details"]["total_excluded_currency"] for line in base_lines],
+            "subtotal": summary["base_amount_currency"], "vat": summary["tax_amount_currency"],
+            "total": summary["total_amount_currency"],
+        }
+
+    @api.model
+    def book_purchase_save(self, values, post=True):
+        """One LPO from the purchase window, as Stock Book lines: posted at
+        once by a supervisor, left for one otherwise. All of it or none."""
+        Line = self.env["odin.stock.line"]
+        company = self.env.company
+        wh = self._warehouse(values.get("warehouse_id"))
+        if not wh:
+            raise UserError(_("Create a warehouse first."))
+        ref = " ".join((values.get("purchase_ref") or "").split())
+        if not ref:
+            raise UserError(_("Type the LPO or invoice number."))
+        partner = self.env["res.partner"].browse(values.get("partner_id") or []).exists()
+        name = " ".join((values.get("partner_name") or "").split())
+        if not partner and not name:
+            raise UserError(_("Pick the supplier."))
+        day = fields.Date.to_date(values.get("date"))
+        if not day:
+            raise UserError(_("Type the date."))
+        if day > fields.Date.context_today(self):
+            raise UserError(_("Goods received cannot be dated ahead: %s.", day.strftime("%d %b %Y")))
+        rows = values.get("lines") or []
+        if not rows:
+            raise UserError(_("Add at least one item."))
+        allowed = self._purchase_taxes()
+        journal = self.env["account.journal"].sudo().browse(values.get("pay_journal_id") or []).exists()
+        if journal and journal not in self._purchase_pay_journals():
+            raise UserError(_("Choose where it was paid from."))
+        vals_list = []
+        charges = []
+        for number, row in enumerate(rows, 1):
+            product = self.env["product.product"].browse(row.get("product_id") or []).exists()
+            if not product or not (product.is_storable or product.purchase_ok):
+                raise UserError(_("Line %s: pick an item that can be bought.", number))
+            if product.tracking != "none":
+                raise UserError(_("%s is tracked by lot or serial number. Receive it in Purchases, where the numbers "
+                                  "are entered.", product.display_name))
+            if (row.get("qty") or 0) <= 0:
+                raise UserError(_("%s: type the quantity.", product.display_name))
+            if (row.get("cost") or 0) <= 0:
+                raise UserError(_("%s: type the cost per unit.", product.display_name))
+            if row.get("tax_id") not in allowed.ids:
+                raise UserError(_("%s: choose the VAT.", product.display_name))
+            if not product.is_storable:
+                charges.append(Command.create({
+                    "product_id": product.id, "name": (row.get("note") or "").strip() or False, "qty": row["qty"],
+                    "unit_cost": row["cost"], "tax_id": row["tax_id"],
+                }))
+                continue
+            vals_list.append({
+                "company_id": company.id, "warehouse_id": wh.id, "date": day, "reason": "received",
+                "product_id": product.id, "qty_in": row["qty"], "unit_cost": row["cost"],
+                "tax_id": row["tax_id"],
+                "purchase_ref": ref, "note": row.get("note") or False,
+            })
+        if not vals_list:
+            raise UserError(_("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter "
+                              "it in Accounting."))
+        if not partner:
+            # Asked for by name in the window: as typed. Sudo as the book does
+            # when posting: supervisors need not create contacts in general.
+            Partner = self.env["res.partner"]
+            partner = Partner.search([("name", "=ilike", _escape_like(name)), ("parent_id", "=", False)], limit=1) \
+                or Partner.sudo().create({"name": name, "company_id": False, "supplier_rank": 1}).sudo(False)
+        Line._lock_purchase_supplier(partner)
+        Line._check_purchase_ref(partner, ref, company)
+        self._check_purchase_waiting(partner, ref)
+        window = self.env["odin.stock.purchase"].create({
+            "company_id": company.id, "warehouse_id": wh.id, "partner_id": partner.id, "purchase_ref": ref,
+            "date": day, "pay_journal_id": journal.id or False, "charge_ids": charges,
+        })
+        for vals in vals_list:
+            vals.update(partner_id=partner.id, partner_name=partner.name, stock_purchase_id=window.id)
+        lines = Line.with_context(odin_stock_book_posting=True).create(vals_list).with_context(
+            odin_stock_book_posting=False)
+        posted = bool(post and self._is_supervisor())
+        if posted:
+            lines.action_post()
+        order = lines.purchase_id[:1].sudo()
+        bill = window.sudo().bill_id
+        return {
+            "bill": bill.name or "", "payment_state": bill.payment_state or "",
+            "paid_from": journal.name or "",
+            "ids": lines.ids, "refs": lines.mapped("ref") if posted else [], "posted": posted,
+            "order": order.name or "", "order_id": order.id or False, "total": order.amount_total,
+            "purchase_ref": ref, "date": fields.Date.to_string(day),
+        }
 
     @api.model
     def book_cancel(self, ids):

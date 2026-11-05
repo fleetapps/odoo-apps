@@ -29,6 +29,11 @@
         <field name="model_id" ref="model_odin_stock_line"/>
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="odin_stock_purchase_rule_company" model="ir.rule">
+        <field name="name">Stock Book purchase: multi-company</field>
+        <field name="model_id" ref="model_odin_stock_purchase"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="odin_stock_line_component_rule_company" model="ir.rule">
         <field name="name">Stock Book component: multi-company</field>
         <field name="model_id" ref="model_odin_stock_line_component"/>

@@ -9,15 +9,16 @@
 The MOVEMENT LOG and MAIN INVENTORY sheets the store keeps, inside Odoo: date,
 item, added, removed, reason, customer, on hand after - typed in the last row.
 Bottle filling and production batches fill their components from the recipe;
-posting creates the manufacturing order, delivery, return, receipt or scrap.
+posting creates the manufacturing order, delivery, return, purchase order with
+its receipt, or scrap.
 See README.md.
 """,
-    "version": "19.0.1.2.0",
+    "version": "19.0.1.3.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",
     "license": "LGPL-3",
-    "depends": ["stock_account", "mrp", "mail"],
+    "depends": ["stock_account", "purchase_stock", "mrp", "mail"],
     "external_dependencies": {"python": ["xlsxwriter"]},
     "data": [
         "security/stock_book_security.xml",

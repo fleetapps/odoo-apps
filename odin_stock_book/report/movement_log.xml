@@ -85,7 +85,7 @@
                                             <t t-if="r['state'] == 'posted'" t-out="r['posted_by']"/>
                                             <t t-else=""><strong>Not posted</strong><div class="o_sb_print_muted" t-out="r['status']"/></t>
                                         </td>
-                                        <td class="o_sb_print_note" t-out="r['note']"/>
+                                        <td class="o_sb_print_note" t-out="r['note_print']"/>
                                     </tr>
                                     <tr t-foreach="r['components']" t-as="c" class="o_sb_print_comp">
                                         <td/>

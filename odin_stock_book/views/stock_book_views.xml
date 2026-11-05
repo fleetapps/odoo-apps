@@ -47,7 +47,9 @@
                         <group>
                             <field name="partner_name" readonly="state != 'draft'"/>
                             <field name="bom_id" readonly="state != 'draft'"/>
+                            <field name="purchase_ref" invisible="reason != 'received'" readonly="state != 'draft'"/>
                             <field name="unit_cost" invisible="reason != 'received'" readonly="state != 'draft'"/>
+                            <field name="tax_id" invisible="reason != 'received'" readonly="state != 'draft'" options="{'no_create': True}"/>
                             <field name="warehouse_id" readonly="state != 'draft'"/>
                             <field name="note"/>
                             <field name="reverses_id" invisible="not reverses_id"/>
@@ -66,6 +68,8 @@
                         <field name="posted_by_id"/>
                         <field name="posted_on"/>
                         <field name="production_id"/>
+                        <field name="purchase_id" invisible="not purchase_id"/>
+                        <field name="bill_id" invisible="not bill_id"/>
                         <field name="picking_id"/>
                         <field name="scrap_id"/>
                     </group>

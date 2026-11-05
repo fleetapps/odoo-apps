@@ -11,7 +11,7 @@ from odoo.tools import float_compare, float_is_zero
 REASONS = {
     "filling": ("in", "Bottle filling", "Manufacturing order (filling)", "FIL"),
     "production": ("in", "Production batch", "Manufacturing order (batch)", "PRD"),
-    "received": ("in", "Received", "Receipt from supplier", "IN"),
+    "received": ("in", "Received", "Purchase order and receipt", "IN"),
     "return": ("in", "Customer return", "Return from customer", "RET"),
     "sale": ("out", "Sale", "Delivery to customer", "OUT"),
     "spoiled": ("out", "Spoiled", "Scrap", "SCR"),
@@ -20,7 +20,7 @@ REASONS = {
     "correction": ("both", "Correction", "Inventory adjustment", "ADJ"),
 }
 REASON_SELECTION = [(key, value[1]) for key, value in REASONS.items()]
-NEEDS_PARTNER = {"sale", "return"}
+NEEDS_PARTNER = {"sale", "return", "received"}
 MAKES = {"filling", "production"}
 SEQUENCE_CODE = "odin.stock.line.%s"
 
@@ -33,10 +33,10 @@ REVERSE = {"sale": "return", "return": "sale", "spoiled": "correction", "sample"
 # call from outside, which would turn a posted line back into a draft, or
 # mark a draft posted without its stock moves.
 SYSTEM_FIELDS = {"state", "ref", "onhand_after", "posted_by_id", "posted_on", "production_id", "picking_id",
-                 "scrap_id", "move_ids", "partner_id"}
+                 "scrap_id", "move_ids", "partner_id", "purchase_line_id", "stock_purchase_id"}
 # What a posted (or cancelled) line keeps as it was.
 LOCKED_FIELDS = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id",
-                 "partner_name", "unit_cost", "company_id", "reverses_id"}
+                 "partner_name", "unit_cost", "company_id", "reverses_id", "purchase_ref", "tax_id"}
 
 STATUS = {
     "need_product": ("Pick the item", "warning"),
@@ -46,6 +46,8 @@ STATUS = {
     "tracked": ("Needs lot numbers", "danger"),
     "need_recipe": ("No recipe", "danger"),
     "need_partner": ("Which customer?", "warning"),
+    "need_supplier": ("Which supplier?", "warning"),
+    "need_cost": ("Cost per unit?", "warning"),
     "future": ("Dated ahead", "warning"),
     "short": ("Short", "danger"),
     "ready": ("Ready to post", "primary"),
@@ -53,11 +55,19 @@ STATUS = {
     "cancelled": ("Cancelled", "muted"),
 }
 NEED_KEYS = {"need_product", "need_reason", "need_qty", "wrong_way", "tracked", "need_recipe", "need_partner",
-             "future"}
+             "need_supplier", "need_cost", "future"}
 
 
 def _normal_name(name):
     return " ".join((name or "").split()).upper()
+
+
+def _normal_ref(ref):
+    return " ".join((ref or "").split())
+
+
+def _like(value):
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class StockBookLine(models.Model):
@@ -84,8 +94,21 @@ class StockBookLine(models.Model):
     partner_name = fields.Char(string="Customer / supplier", tracking=True)
     partner_id = fields.Many2one("res.partner", readonly=True, copy=False)
     note = fields.Char()
-    unit_cost = fields.Float(digits="Product Price", help="Received goods: cost per unit, if known. "
-                             "Left empty, the item's current cost is used.")
+    unit_cost = fields.Float(digits="Product Price", help="Received goods: cost per unit, as the VAT on the line "
+                             "reads it (before VAT unless that tax is included in the price). It becomes the price "
+                             "on the purchase order, and the receipt is valued at it without the VAT.")
+    purchase_ref = fields.Char(string="LPO / invoice no.", copy=False, index="btree_not_null",
+                               help="The number on the LPO or the supplier's invoice: the purchase order's Vendor "
+                               "Reference. Lines with the same number and supplier are one purchase order.")
+    tax_id = fields.Many2one("account.tax", string="VAT", copy=False, check_company=True,
+                             domain=[("type_tax_use", "=", "purchase")],
+                             help="Empty: the VAT this supplier and item usually have, added on top of the cost.")
+    purchase_line_id = fields.Many2one("purchase.order.line", readonly=True, copy=False, index="btree_not_null",
+                                       string="Purchase order line")
+    purchase_id = fields.Many2one(related="purchase_line_id.order_id", string="Purchase order")
+    stock_purchase_id = fields.Many2one("odin.stock.purchase", string="Purchase window entry", readonly=True, copy=False,
+                                        index="btree_not_null", ondelete="restrict")
+    bill_id = fields.Many2one(related="stock_purchase_id.bill_id", string="Vendor bill")
     bom_id = fields.Many2one("mrp.bom", string="Recipe", check_company=True)
     component_ids = fields.One2many("odin.stock.line.component", "line_id", copy=True)
     state = fields.Selection([("draft", "Draft"), ("posted", "Posted"), ("cancelled", "Cancelled")],
@@ -221,7 +244,13 @@ class StockBookLine(models.Model):
             return "need_recipe", *STATUS["need_recipe"], _("%s has no recipe (Bill of Materials).",
                                                             self.product_id.display_name)
         if self.reason in NEEDS_PARTNER and not (self.partner_name or "").strip():
+            if self.reason == "received":
+                return "need_supplier", *STATUS["need_supplier"], ""
             return "need_partner", *STATUS["need_partner"], ""
+        if self.reason == "received" and float_compare(self.unit_cost, 0.0, precision_digits=4) <= 0:
+            return "need_cost", *STATUS["need_cost"], _("Type what one %(unit)s cost%(vat)s.",
+                                                        unit=self.product_id.uom_id.name,
+                                                        vat="" if self.tax_id else _(", before VAT"))
         if self.date > fields.Date.context_today(self):
             return "future", *STATUS["future"], _("Dated %s: it can be posted on the day.",
                                                   self.date.strftime("%d %b %Y"))
@@ -261,6 +290,8 @@ class StockBookLine(models.Model):
             self._check_system_fields(vals, creating=True)
             if vals.get("partner_name"):
                 vals["partner_name"] = _normal_name(vals["partner_name"])
+            if vals.get("purchase_ref"):
+                vals["purchase_ref"] = _normal_ref(vals["purchase_ref"])
         lines = super().create(vals_list)
         lines._place_qty()
         lines._explode()
@@ -268,8 +299,18 @@ class StockBookLine(models.Model):
 
     def write(self, vals):
         self._check_system_fields(vals)
+        if {"partner_name", "date", "purchase_ref", "warehouse_id", "tax_id"} & vals.keys() \
+                and not self.env.context.get("odin_stock_book_posting") and self.filtered("stock_purchase_id"):
+            raise UserError(_("This line belongs to a whole LPO, entered in Add purchase. Cancel its lines and enter "
+                              "it again to change its supplier, number, date or VAT."))
+        if vals.get("purchase_ref"):
+            vals["purchase_ref"] = _normal_ref(vals["purchase_ref"])
         if vals.get("partner_name"):
             vals["partner_name"] = _normal_name(vals["partner_name"])
+        if "partner_name" in vals and not self.env.context.get("odin_stock_book_posting"):
+            # A supplier retyped by hand: the one picked earlier no longer holds.
+            self.filtered(lambda l: l.state == "draft").with_context(odin_stock_book_posting=True).write(
+                {"partner_id": False})
         if LOCKED_FIELDS & vals.keys() and self.filtered(lambda l: l.state != "draft"):
             raise UserError(_("A posted line cannot be changed. Add a Correction line instead."))
         result = super().write(vals)
@@ -311,7 +352,16 @@ class StockBookLine(models.Model):
         if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
             raise UserError(_("Only a Stock Book supervisor can post. Ask Operations to post it."))
         today = fields.Date.context_today(self)
-        for line in self.filtered(lambda l: l.state == "draft").sorted(lambda l: (l.date, l.id)):
+        drafts = self.filtered(lambda l: l.state == "draft")
+        # An LPO is posted whole, or a line left behind could never join it.
+        drafts = (drafts | drafts._purchase_siblings()).sorted(lambda l: (l.date, l.id))
+        # Received lines posted together for one supplier on one day, under
+        # one LPO number or none: one purchase order.
+        purchases = {}
+        for line in drafts.filtered(lambda l: l.reason == "received"):
+            key = line._purchase_key()
+            purchases[key] = purchases.get(key, self.browse()) | line
+        for line in drafts:
             key, label, _tone, detail = line._status()
             if key != "ready" and not (key == "short" and allow_short):
                 raise UserError(_("%(item)s: %(why)s. %(detail)s", item=line.product_id.display_name or _("Line"),
@@ -321,7 +371,10 @@ class StockBookLine(models.Model):
                 # Journal entries of a back-dated line go on its day too.
                 context["force_period_date"] = line.date
             line = line.with_context(**context)
-            line._assign_ref()
+            if line.reason == "received" and not line.purchase_line_id:
+                purchases[line._purchase_key()].with_context(**context)._post_purchase()
+            if not line.ref:
+                line._assign_ref()
             moves = getattr(line, f"_post_{'make' if line.reason in MAKES else line.reason}")()
             when = line._when()
             moves.write({"date": when})
@@ -345,8 +398,13 @@ class StockBookLine(models.Model):
             self.picking_id.date_done = when
         if self.scrap_id:
             self.scrap_id.date_done = when
+        if self.purchase_id:
+            self.purchase_id.sudo().date_approve = when
 
     def _partner(self):
+        if self.partner_id:
+            # Picked in the purchase window: that contact, not a namesake.
+            return self.partner_id
         name = (self.partner_name or "").strip()
         if not name:
             return self.env["res.partner"]
@@ -415,16 +473,20 @@ class StockBookLine(models.Model):
             })],
         })
         picking.action_confirm()
+        self._validate_picking(picking)
+        self.picking_id = picking
+        return picking.move_ids
+
+    def _validate_picking(self, picking):
+        """Everything arrived or left as typed: no backorder, no questions."""
         for move in picking.move_ids:
             move._set_quantity_done(move.product_uom_qty)
             move.picked = True
         result = picking.with_context(skip_backorder=True, picking_ids_not_to_backorder=picking.ids,
                                       skip_sms=True).button_validate()
         if picking.state != "done":
-            raise UserError(_("Odoo could not validate %(ref)s (%(what)s).", ref=self.ref,
+            raise UserError(_("Odoo could not validate %(ref)s (%(what)s).", ref=self[:1].ref,
                               what=isinstance(result, dict) and result.get("name") or picking.state))
-        self.picking_id = picking
-        return picking.move_ids
 
     def _post_sale(self):
         wh = self.warehouse_id
@@ -436,16 +498,156 @@ class StockBookLine(models.Model):
         return self._post_picking(wh.in_type_id, self.env.ref("stock.stock_location_customers"),
                                   self._location(), self._partner())
 
+    def _purchase_key(self):
+        self.ensure_one()
+        # An LPO is one order whatever dates its lines were changed to; without
+        # a number, one supplier's lines of one day are.
+        if self.stock_purchase_id:
+            return ("window", self.stock_purchase_id.id)
+        ref = _normal_ref(self.purchase_ref).casefold()
+        return (False if ref else self.date, self.company_id.id, self.warehouse_id.id,
+                self.partner_id.id or _normal_name(self.partner_name), ref)
+
+    def _purchase_siblings(self):
+        """The draft lines of the same LPOs as these lines."""
+        lines = self.filtered(lambda l: l.state == "draft" and l.reason == "received" and l.purchase_ref)
+        if not lines:
+            return self.browse()
+        keys = {line._purchase_key() for line in lines}
+        return self.search([("state", "=", "draft"), ("reason", "=", "received"),
+                            ("purchase_ref", "in", lines.mapped("purchase_ref"))]).filtered(
+            lambda l: l._purchase_key() in keys)
+
+    @api.model
+    def _check_purchase_ref(self, partner, ref, company):
+        """One supplier's number is one purchase, however many times it is
+        typed. Odoo only warns of this on a draft bill, once it has happened."""
+        ref = _normal_ref(ref)
+        if not ref or not partner:
+            return
+        order = self.env["purchase.order"].sudo().search([
+            ("company_id", "=", company.id), ("partner_id", "=", partner.id), ("state", "!=", "cancel"),
+            ("partner_ref", "=ilike", _like(ref))], limit=1)
+        if order:
+            raise UserError(_("%(ref)s from %(supplier)s is already in Purchases as %(order)s, so these goods may "
+                              "already be in stock. Check that order; to enter it again, cancel it first.",
+                              ref=ref, supplier=partner.display_name, order=order.name))
+        bill = self.env["account.move"].sudo().search([
+            ("company_id", "=", company.id), ("move_type", "=", "in_invoice"), ("state", "!=", "cancel"),
+            ("commercial_partner_id", "=", partner.commercial_partner_id.id), ("ref", "=ilike", _like(ref))], limit=1)
+        if bill:
+            raise UserError(_("%(ref)s from %(supplier)s is already billed in Accounting as %(bill)s, so it cannot "
+                              "be entered again.", ref=ref, supplier=partner.display_name, bill=bill.display_name))
+
+    @api.model
+    def _lock_purchase_supplier(self, partner):
+        """Two people saving one number at once: the second transaction fails
+        on this row, Odoo runs it again, and the number check then sees the
+        first one's order. A lock alone would not do: the check would still
+        read from before the first one committed."""
+        self.env.cr.execute("UPDATE res_partner SET write_date = write_date WHERE id = %s", (partner.id,))
+
+    @api.model
+    def _usual_purchase_tax(self, product, partner, company):
+        """The VAT last used for this item from this supplier, then for the
+        item, then from the supplier; the item's own only if none has been
+        bought yet."""
+        Order = self.env["purchase.order.line"].sudo()
+        base = [("company_id", "=", company.id), ("state", "=", "purchase"), ("tax_ids", "!=", False)]
+        searches = []
+        if product and partner:
+            searches.append([("product_id", "=", product.id), ("partner_id", "=", partner.id)])
+        if product:
+            searches.append([("product_id", "=", product.id)])
+        if partner:
+            searches.append([("partner_id", "=", partner.id)])
+        for domain in searches:
+            line = Order.search(base + domain, order="id desc", limit=1)
+            if line:
+                return line.tax_ids[:1].sudo(False)
+        return product.sudo().supplier_taxes_id._filter_taxes_by_company(company)[:1].sudo(False)
+
+    def _purchase_line_tax(self, partner):
+        """The VAT for the order line. Chosen on the line in the purchase
+        window. Otherwise the cost was typed before VAT, so the tax must not
+        be one included in the price, as many items default to: that would
+        read the cost as VAT-inclusive and undervalue the stock."""
+        self.ensure_one()
+        if self.tax_id:
+            return self.tax_id
+        tax = self._usual_purchase_tax(self.product_id, partner, self.company_id)
+        net = self._net_purchase_tax(tax, self.company_id)
+        if net.price_include and net.amount:
+            raise UserError(_("%(item)s defaults to %(tax)s, which is included in the price, and no purchase tax of "
+                              "the same rate is added on top. Enter it with Add purchase and choose its VAT.",
+                              item=self.product_id.display_name, tax=tax.name))
+        return net
+
+    @api.model
+    def _net_purchase_tax(self, tax, company):
+        """The same rate added on top of the price, where the tax given is
+        included in it. The tax itself if there is none."""
+        if not tax or not tax.price_include:
+            return tax
+        net = self.env["account.tax"].sudo().search([
+            ("company_id", "=", company.id), ("type_tax_use", "=", "purchase"), ("id", "!=", tax.id),
+            ("amount_type", "=", tax.amount_type), ("amount", "=", tax.amount)]).filtered(lambda t: not t.price_include)
+        return net[:1].sudo(False) or tax
+
+    def _post_purchase(self):
+        """One step for goods bought and in the store: a confirmed purchase
+        order and its validated receipt, made by Odoo's own purchase flow, so
+        the order shows in Purchases ready to bill, the received quantities
+        add up, and the order's price values the stock.
+
+        Sudo as the book does for what supervisors need not be allowed in
+        general: the user stays the one on the order and in the chatter."""
+        head = self[0]
+        warehouse = head.warehouse_id
+        if warehouse.reception_steps != "one_step":
+            raise UserError(_("%(warehouse)s receives in several steps, so goods would not reach stock from here. "
+                              "Receive this delivery in Purchases.", warehouse=warehouse.display_name))
+        partner = head._partner()
+        if head.purchase_ref:
+            self._lock_purchase_supplier(partner)
+        self._check_purchase_ref(partner, head.purchase_ref, head.company_id)
+        taxes = {line.id: line._purchase_line_tax(partner) for line in self}
+        for line in self:
+            line.partner_id = partner
+            line._assign_ref()
+        when = head._when()
+        window = head.stock_purchase_id
+        order = self.env["purchase.order"].sudo().create({
+            "partner_id": partner.id, "company_id": head.company_id.id,
+            "currency_id": head.company_id.currency_id.id, "picking_type_id": warehouse.in_type_id.id,
+            "date_order": when, "origin": ", ".join(self.mapped("ref")), "partner_ref": head.purchase_ref or False,
+            "order_line": [Command.create({
+                "product_id": line.product_id.id, "product_qty": line.qty_in,
+                "product_uom_id": line.product_id.uom_id.id, "price_unit": line.unit_cost, "date_planned": when,
+                # Always stated: left out, Odoo takes the item's default tax.
+                "tax_ids": [Command.set(taxes[line.id].ids)],
+            }) for line in self] + window._charge_order_lines(when),
+        })
+        # The other costs come after the stock lines, so zip stops at the last item.
+        for line, order_line in zip(self, order.order_line):
+            # Before the receipt is validated: the link says this receipt is
+            # the line's, so it is not logged a second time.
+            line.purchase_line_id = order_line.id
+        order.button_confirm()
+        if order.state != "purchase":
+            raise UserError(_("%(order)s needs approval, so it cannot be received from here. Approve it and "
+                              "receive it in Purchases.", order=order.display_name))
+        picking = order.picking_ids.filtered(lambda p: p.state not in ("done", "cancel"))
+        if len(picking) != 1:
+            raise UserError(_("%(order)s did not make one receipt. Receive it in Purchases.",
+                              order=order.display_name))
+        self._validate_picking(picking)
+        self.write({"picking_id": picking.id})
+        if window:
+            window._bill_and_pay(order)
+
     def _post_received(self):
-        wh = self.warehouse_id
-        moves = self._post_picking(wh.in_type_id, self.env.ref("stock.stock_location_suppliers"),
-                                   self._location(), self._partner())
-        if self.unit_cost:
-            # The cost typed on the line is the receipt's value (a manual
-            # value in Odoo 19, which only stock managers may write).
-            for move in moves.sudo():
-                move.value_manual = self.unit_cost * move.quantity
-        return moves
+        return self.purchase_line_id.sudo().move_ids.filtered(lambda m: m.state == "done").sudo(False)
 
     def _post_scrap(self):
         scrap = self.env["stock.scrap"].create({
@@ -489,7 +691,8 @@ class StockBookLine(models.Model):
 
     def action_open_document(self):
         self.ensure_one()
-        record = self.production_id or self.picking_id or self.scrap_id
+        purchase = self.purchase_id if self.env.user.has_group("purchase.group_purchase_user") else None
+        record = self.production_id or purchase or self.picking_id or self.scrap_id
         if not record:
             return {"type": "ir.actions.act_window", "res_model": "stock.move", "view_mode": "list,form",
                     "domain": [("id", "in", self.move_ids.ids)], "name": self.ref}
