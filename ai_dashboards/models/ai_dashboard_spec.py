@@ -29,7 +29,14 @@ SCHEMA_ID = "ai-dashboards/1"
 # addition is a schema change plus a renderer branch plus a documentation
 # update, and a vocabulary that grows on request ends up with six ways to draw
 # a bar chart.
-WIDGET_TYPES = {"kpi", "bar", "line", "pie", "donut", "table", "pivot"}
+WIDGET_TYPES = {"kpi", "bar", "line", "pie", "donut", "table", "pivot",
+                "pnl", "aging", "banks"}
+
+# Summary cards the server works out itself, each over the one model that holds
+# its answer: profit and loss from journal items, what is owed by due date from
+# invoices or bills, and the state of each bank from its journal.
+CARD_MODELS = {"pnl": "account.move.line", "aging": "account.move",
+               "banks": "account.journal"}
 
 # Widgets that plot one grouping against one measure, so exactly one group_by
 # is meaningful. `table` and `kpi` are the exceptions, handled below.
@@ -61,7 +68,7 @@ PIVOT_AXIS_CAP = 50
 TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets",
                   "compare"}
 WIDGET_KEYS = {"id", "type", "title", "span", "query", "format", "compare",
-               "drill", "color"}
+               "drill", "color", "period", "caption"}
 QUERY_KEYS = {"model", "domain", "group_by", "measures", "order", "limit"}
 FILTER_KEYS = {"key", "type", "label", "default", "field"}
 FORMAT_KEYS = {"kind", "decimals", "suffix", "negate"}
@@ -474,6 +481,27 @@ def _validate_widget(widget, index, seen_ids, env=None, scope=None):
                 "that is the number in each cell. It has %(n)s. Use a table if "
                 "you need several.", w=widget_id,
                 n=len(clean["query"]["measures"])))
+
+    if widget_type in CARD_MODELS:
+        if clean["query"]["model"] != CARD_MODELS[widget_type]:
+            _fail(_("Widget '%(w)s': a %(t)s card reads %(m)s.", w=widget_id,
+                    t=widget_type, m=CARD_MODELS[widget_type]))
+        if group_count:
+            _fail(_("Widget '%s' works out its own groups, so it must not "
+                    "group by anything.") % widget_id)
+    if widget.get("period") is not None:
+        # The card's own period, which the reader can change on the card.
+        if widget["period"] not in PERIODS:
+            _fail(_("Widget '%(w)s': period '%(p)s' is not one of: %(ok)s.",
+                    w=widget_id, p=widget["period"],
+                    ok=", ".join(sorted(PERIODS))))
+        if widget_type in ("aging", "banks"):
+            _fail(_("Widget '%s' shows today's position, so it has no period.")
+                  % widget_id)
+        clean["period"] = widget["period"]
+    if widget.get("caption"):
+        # With it, the card leads with its total, in these words under it.
+        clean["caption"] = _text(widget["caption"], _("%s caption") % what)
 
     if "color" in widget:
         color = widget["color"]
