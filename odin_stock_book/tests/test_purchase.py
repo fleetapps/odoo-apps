@@ -598,3 +598,101 @@ class TestStockBookPurchase(TestStockBook):
         with self.assertRaises(UserError):
             self.Book.with_user(keeper).book_post(line.ids)
         self.assertEqual(line.state, "draft")
+
+    # ------------------------------------------------------------ the journal entries, line by line
+    def _real_time_stock(self):
+        """As Rinz: storable goods valued in real time on a stock account."""
+        stock = self.env["account.account"].create({"code": "100199", "name": "Test Stock", "account_type": "asset_current",
+                                                    "reconcile": True})
+        category = self.env["product.category"].create({
+            "name": "Test Real Time", "property_valuation": "real_time", "property_cost_method": "fifo",
+            "property_stock_valuation_account_id": stock.id})
+        self.bottle.categ_id = category
+        return stock
+
+    def test_the_bill_books_stock_expense_vat_and_the_supplier(self):
+        stock = self._real_time_stock()
+        expense = self.env["account.account"].create({"code": "500199", "name": "Test Transport", "account_type": "expense"})
+        transport = self._service()
+        transport.property_account_expense_id = expense
+        result = self._window(ref="LPO-L1", lines=[
+            {"product_id": self.bottle.id, "qty": 10, "cost": 100, "tax_id": self.vat_net.id},
+            {"product_id": transport.id, "qty": 1, "cost": 500, "tax_id": self.vat_net.id},
+        ])
+        bill = self.env["purchase.order"].browse(result["order_id"]).invoice_ids
+        lines = bill.line_ids
+        self.assertEqual(sum(lines.filtered(lambda l: l.account_id == stock).mapped("debit")), 1000, "goods to stock")
+        self.assertEqual(sum(lines.filtered(lambda l: l.account_id == expense).mapped("debit")), 500, "transport to expense")
+        self.assertEqual(sum(lines.filtered(lambda l: l.display_type == "tax").mapped("debit")), 240, "VAT on both")
+        payable = lines.filtered(lambda l: l.account_id.account_type == "liability_payable")
+        self.assertEqual(sum(payable.mapped("credit")), 1740, "the supplier is owed the total")
+        self.assertEqual(payable.partner_id, self.supplier)
+        self.assertTrue(bill.currency_id.is_zero(sum(lines.mapped("debit")) - sum(lines.mapped("credit"))), "it balances")
+
+    def test_the_payment_clears_the_supplier_from_the_journal_chosen(self):
+        result = self._window(ref="LPO-L2", pay_journal_id=self.pay_journal.id, lines=[
+            {"product_id": self.bottle.id, "qty": 10, "cost": 100, "tax_id": self.vat_net.id}])
+        bill = self.env["purchase.order"].browse(result["order_id"]).invoice_ids
+        window = self.env["odin.stock.purchase"].search([("bill_id", "=", bill.id)])
+        lines = window.payment_id.move_id.line_ids
+        self.assertEqual(window.payment_id.move_id.journal_id, self.pay_journal)
+        self.assertEqual(sum(lines.filtered(lambda l: l.account_id == self.outstanding).mapped("credit")), 1160)
+        payable = bill.line_ids.filtered(lambda l: l.account_id.account_type == "liability_payable")
+        self.assertTrue(payable.reconciled, "the bill is settled by it")
+        self.assertEqual(bill.amount_residual, 0)
+
+    def test_stock_cost_and_value_after_a_second_price(self):
+        product = self.env["product.product"].create({
+            "name": "Second Price", "is_storable": True, "type": "consu", "categ_id": self.bottle.categ_id.id,
+            "standard_price": 1.0, "supplier_taxes_id": False})
+        for ref, cost in (("LPO-L3", 10), ("LPO-L4", 20)):
+            self._window(ref=ref, lines=[{"product_id": product.id, "qty": 10, "cost": cost, "tax_id": self.vat_net.id}])
+        self.assertEqual(self.onhand(product), 20)
+        self.assertEqual(product.standard_price, 15, "the average of what is on hand, by FIFO value")
+
+    # ------------------------------------------------------------ what the deep review turned up
+    def test_a_return_to_the_supplier_cannot_be_reversed_here(self):
+        line = self._received(qty=10, cost=2)
+        line.action_post()
+        wizard = self.env["stock.return.picking"].with_context(
+            active_id=line.picking_id.id, active_ids=line.picking_id.ids, active_model="stock.picking",
+        ).create({"picking_id": line.picking_id.id})
+        wizard.product_return_moves.quantity = 4
+        self._validate(self.env["stock.picking"].browse(wizard.action_create_returns()["res_id"]), qty=4)
+        back = self.Line.search([("purchase_line_id", "=", line.purchase_line_id.id), ("id", "!=", line.id)])
+        self.assertFalse(back._can_reverse())
+        with self.assertRaises(UserError):
+            back._reverse()
+
+    def test_editing_an_lpo_keeps_a_lines_note(self):
+        keeper = new_test_user(self.env, "lpo_note", groups="odin_stock_book.group_stock_book_user")
+        result = self.Book.with_user(keeper).book_purchase_save({
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-N1", "warehouse_id": self.wh.id,
+            "date": fields.Date.to_string(fields.Date.context_today(self.Line)),
+            "lines": [{"product_id": self.bottle.id, "qty": 2, "cost": 3, "tax_id": self.vat_net.id}],
+        })
+        self.Line.browse(result["ids"]).note = "Batch 2"
+        self.assertEqual(self.Book.book_purchase_load(result["ids"][0])["lines"][0]["note"], "Batch 2")
+
+    def test_made_here_filter_is_what_has_a_recipe(self):
+        self.env["stock.quant"]._update_available_quantity(self.carton, self.stock, -self.onhand(self.carton))
+        self.assertFalse([r for r in self.Book.get_recipes(group="made")["rows"] if r["product"]["id"] == self.carton.id])
+
+    def test_cancelling_and_restoring_an_lpo_line(self):
+        keeper = new_test_user(self.env, "lpo_cancel", groups="odin_stock_book.group_stock_book_user")
+        result = self.Book.with_user(keeper).book_purchase_save({
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-X1", "warehouse_id": self.wh.id,
+            "date": fields.Date.to_string(fields.Date.context_today(self.Line)),
+            "lines": [{"product_id": self.bottle.id, "qty": 2, "cost": 3, "tax_id": self.vat_net.id},
+                      {"product_id": self.carton.id, "qty": 4, "cost": 5, "tax_id": self.vat_net.id}],
+        })
+        one, two = self.Line.browse(result["ids"])
+        self.Book.book_cancel(two.ids)
+        self.Book.book_post(one.ids)
+        self.assertEqual((one.state, two.state), ("posted", "cancelled"))
+        self.assertEqual(one.purchase_id.amount_untaxed, 6, "only what was kept")
+        self.Book.book_restore(two.ids)
+        self.assertEqual(two.state, "draft")
+        result = self.Book.book_post(two.ids)
+        self.assertEqual(two.state, "draft", "its number is on an order already")
+        self.assertTrue(result["failed"], "and it says so")

@@ -706,14 +706,21 @@ class StockBookLine(models.Model):
         self.ensure_one()
         return self.copy({"date": date, "note": False})
 
+    def _can_reverse(self):
+        """A return to the supplier is undone in Purchases: a correction here
+        would add the stock back but leave the order's received quantity."""
+        self.ensure_one()
+        return self.state == "posted" and self.reason in REVERSE and not self.purchase_line_id
+
     def _reverse(self):
         """A draft that undoes this posted line: a sale comes back as a
         customer return, a scrap or correction as a correction the other
         way. Fillings and receipts are undone in Manufacturing (unbuild) and
         Inventory (return to the supplier)."""
         self.ensure_one()
-        if self.state != "posted" or self.reason not in REVERSE:
-            raise UserError(_("Only a posted sale, return, scrap or correction can be reversed here."))
+        if not self._can_reverse():
+            raise UserError(_("Only a posted sale, return, scrap or correction can be reversed here. A return to "
+                              "the supplier is undone in Purchases."))
         existing = self.search([("reverses_id", "=", self.id), ("state", "!=", "cancelled")], limit=1)
         if existing:
             raise UserError(_("%(ref)s is already reversed by %(other)s.", ref=self.ref,

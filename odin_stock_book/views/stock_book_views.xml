@@ -37,20 +37,21 @@
                     <div class="oe_title"><h1><field name="ref" placeholder="New movement"/></h1></div>
                     <group>
                         <group>
-                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="stock_purchase_id" invisible="1"/>
+                            <field name="date" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="product_id" readonly="state != 'draft'"/>
-                            <field name="reason" readonly="state != 'draft'"/>
+                            <field name="reason" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="qty_in" readonly="state != 'draft'"/>
                             <field name="qty_out" readonly="state != 'draft'"/>
                             <field name="uom_id"/>
                         </group>
                         <group>
-                            <field name="partner_name" readonly="state != 'draft'"/>
+                            <field name="partner_name" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="bom_id" readonly="state != 'draft'"/>
-                            <field name="purchase_ref" invisible="reason != 'received'" readonly="state != 'draft'"/>
+                            <field name="purchase_ref" invisible="reason != 'received'" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="unit_cost" invisible="reason != 'received'" readonly="state != 'draft'"/>
-                            <field name="tax_id" invisible="reason != 'received'" readonly="state != 'draft'" options="{'no_create': True}"/>
-                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="tax_id" invisible="reason != 'received'" readonly="state != 'draft' or stock_purchase_id" options="{'no_create': True}"/>
+                            <field name="warehouse_id" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="note"/>
                             <field name="reverses_id" invisible="not reverses_id"/>
                             <field name="onhand_after" invisible="state != 'posted'"/>

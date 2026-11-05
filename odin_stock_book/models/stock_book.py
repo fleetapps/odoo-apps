@@ -260,7 +260,7 @@ class StockBook(models.AbstractModel):
             "unbilled": order.invoice_status == "to invoice", "paid_from": line.stock_purchase_id.pay_journal_id.sudo().name or "",
             "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
-            "can_reverse": line.state == "posted" and line.reason in REVERSE and not reversed_by,
+            "can_reverse": line._can_reverse() and not reversed_by,
         }
 
     @api.model
@@ -299,7 +299,9 @@ class StockBook(models.AbstractModel):
         total_items, blocked = len(out), {bom for boms in recipes.values() for bom in boms}
         for word in (search or "").lower().split():
             out = out.filtered(lambda p: word in (p.default_code or "").lower() or word in p.name.lower())
-        if group:
+        if group == "made":
+            out = out.filtered(self._make_reason)
+        elif group:
             out = out.filtered(lambda p: (p.categ_id.complete_name or "").lower().startswith(group.lower()))
         today = fields.Date.context_today(self)
         recent = self._move_totals(wh, self._utc(today - timedelta(days=28)), self._utc(today + timedelta(days=1)))[1]
@@ -555,7 +557,7 @@ class StockBook(models.AbstractModel):
                                                    limit=1)
             partner = found
         rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": l.product_id.tracking != "none"},
-                 "qty": l.qty_in, "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": ""} for l in lines]
+                 "qty": l.qty_in, "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in lines]
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
                   "cost": c.unit_cost, "tax_id": c.tax_id.id or False, "note": c.name or ""} for c in window.charge_ids]
         return {

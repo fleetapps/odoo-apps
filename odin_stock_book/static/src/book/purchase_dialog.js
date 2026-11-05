@@ -1,4 +1,4 @@
-import { Component, onMounted, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, useExternalListener, useRef, useState } from "@odoo/owl";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
@@ -63,6 +63,13 @@ export class PurchaseDialog extends Component {
         onMounted(() => this.focus(this.firstCell));
         onWillUnmount(() => this.timers.forEach((t) => clearTimeout(t)));
         this.beforeDismiss = () => this.confirmDiscard();
+        // The list is placed from its input, so it closes if that moves, but
+        // not while its own items scroll.
+        useExternalListener(window, "scroll", (ev) => {
+            if (this.state.suggest && !ev.target?.closest?.(".o_sb_pd_suggest")) {
+                this.state.suggest = null;
+            }
+        }, { capture: true });
     }
 
     /** Start from a draft line, or from items a shortage asks for. */

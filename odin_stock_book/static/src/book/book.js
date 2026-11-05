@@ -18,6 +18,9 @@ const NEW_COLS = ["date", "item", "qty_in", "qty_out", "reason", "partner_name"]
 // How long the row just saved stays highlighted, and an Undo stays offered.
 const FLASH_MS = 1600;
 const UNDO_MS = 8000;
+// Lines posted per request: each batch is saved before the next, so a long bulk
+// post cannot run out of server time and lose all of it.
+const POST_BATCH = 25;
 
 function blankRow(date, keep = {}) {
     return { date, product: null, query: "", qty_in: "", qty_out: "", reason: keep.reason || "", partner_name: "" };
@@ -886,8 +889,28 @@ export class StockBook extends Component {
 
     // ------------------------------------------------------------ actions
     async post(ids, allowShort = false) {
-        const { count, refs, skipped, failed } = await this.mutate(
-            () => this.orm.call("odin.stock.book", "book_post", [ids], { allow_short: allowShort }), { flash: ids });
+        let count = 0;
+        const refs = [];
+        const skipped = [];
+        const failed = [];
+        for (let at = 0; at < ids.length; at += POST_BATCH) {
+            const batch = ids.slice(at, at + POST_BATCH);
+            try {
+                const result = await this.mutate(() => this.orm.call("odin.stock.book", "book_post", [batch],
+                    { allow_short: allowShort }), { flash: batch });
+                count += result.count;
+                refs.push(...result.refs);
+                skipped.push(...result.skipped);
+                failed.push(...result.failed);
+            } catch (error) {
+                // What went before is saved: say so, then show the error.
+                if (count) {
+                    this.notification.add(_t("%(n)s posted before this stopped. The rest are still drafts.", { n: count }),
+                        { type: "warning", sticky: true });
+                }
+                throw error;
+            }
+        }
         const shown = refs.length > 3 ? `${refs[0]} … ${refs[refs.length - 1]}` : refs.join(", ");
         if (count) {
             this.notification.add(_t("%(n)s posted: %(refs)s", { n: count, refs: shown }), { type: "success" });

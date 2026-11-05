@@ -548,7 +548,7 @@
         </section>
         <div class="o_sb_toolbar">
             <div class="btn-group btn-group-sm" role="group" aria-label="Show">
-                <t t-foreach="[['', 'All'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['Finished Goods', 'Made here']]" t-as="opt" t-key="opt[0]">
+                <t t-foreach="[['', 'All'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['made', 'Made here']]" t-as="opt" t-key="opt[0]">
                     <button class="btn" t-att-class="state.group === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
                 </t>
             </div>
