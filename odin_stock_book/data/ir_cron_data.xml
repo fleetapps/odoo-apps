@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo noupdate="1">
+    <!-- Off until book_ledger_setup turns it on: it posts to the ledger. -->
+    <record id="ir_cron_stock_book_close" model="ir.cron">
+        <field name="name">Stock Book: close the month's stock valuation</field>
+        <field name="model_id" ref="model_odin_stock_book"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_close_stock()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="nextcall" eval="(DateTime.now().replace(day=1, hour=0, minute=30, second=0) + relativedelta(months=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

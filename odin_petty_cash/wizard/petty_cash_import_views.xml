@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_petty_cash_import_form" model="ir.ui.view">
+        <field name="name">odin.petty.cash.import.form</field>
+        <field name="model">odin.petty.cash.import</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="state" invisible="1"/>
+                <group invisible="state != 'upload'">
+                    <field name="float_id" options="{'no_create': True}"/>
+                    <field name="statement_file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                    <field name="password" password="True"/>
+                </group>
+                <div invisible="state != 'upload'" class="text-muted">
+                    The PDF Safaricom emails you, or the same table as CSV or Excel. Payments already typed
+                    are matched by M-Pesa code, or by amount within a day, and get the real charge and balance.
+                    The rest come in as new rows to describe.
+                </div>
+                <div invisible="state != 'done'" class="alert alert-success" role="status">
+                    <field name="result"/>
+                </div>
+                <footer>
+                    <button invisible="state != 'upload'" name="action_import" type="object" string="Upload" class="btn-primary"/>
+                    <button invisible="state != 'done'" name="action_back_to_book" type="object" string="Open the book" class="btn-primary"/>
+                    <button string="Close" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
