@@ -106,6 +106,12 @@ class MCPEngine(models.AbstractModel):
             "periods": sorted(spec_lib.PERIODS),
             "filter_types": sorted(spec_lib.FILTER_TYPES),
             "format_kinds": sorted(spec_lib.FORMAT_KINDS),
+            "summary_cards": "pnl over account.move.line, aging over account.move (domain: unpaid invoices or bills, "
+                             "measure the residual), banks over account.journal: each works out its own groups. "
+                             "On a chart, `caption` leads with the total in those words; `period` gives a card its "
+                             "own period, which the reader can change on the card.",
+            "format_negate": "format {\"negate\": true} flips the sign on a kpi, line or bar: ledger balances "
+                             "read debit-positive, so a profit tile over account.move.line needs it.",
             "compare": {
                 "targets": sorted(spec_lib.COMPARE_TARGETS),
                 "comparable_types": sorted(spec_lib.COMPARABLE_TYPES),

@@ -6,10 +6,13 @@ that person, through the ordinary ORM — which is what makes a shared dashboard
 safe to share and impossible to leave stale. These tests hold that line.
 """
 import json
+from datetime import timedelta
 
+from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
+from ..models import ai_dashboard_spec as spec_lib
 from .test_spec import minimal
 
 
@@ -208,3 +211,69 @@ class TestUnsavedSpecOverride(TransactionCase):
         self.Render.with_user(self.owner).render(
             self.board.id, None, None, self._edited(title="Experiment"))
         self.assertEqual(self.board.last_render_ms, 0)
+
+    def test_negate_flips_a_kpi_and_a_series(self):
+        render = self.Render
+        self.assertEqual(render._negated({"format": {"negate": True}}, {"value": -40.0, "compare": 0})["value"], 40.0)
+        shaped = render._negated({"format": {"negate": True}},
+                                 {"series": [{"value": 5.0}, {"value": 0}], "compare_series": [2.0]})
+        self.assertEqual([p["value"] for p in shaped["series"]], [-5.0, 0])
+        self.assertEqual(shaped["compare_series"], [-2.0])
+        self.assertEqual(render._negated({"format": {}}, {"value": -40.0})["value"], -40.0)
+
+    # ------------------------------------------------------------ summary cards
+    def _card(self, widget, filters=None):
+        spec = minimal()
+        spec["widgets"] = [widget]
+        clean = spec_lib.validate(spec, self.env)
+        return self.Render._render_widget(clean["widgets"][0], clean, filters or {}, "none")
+
+    def test_card_period_is_its_own_and_the_reader_can_change_it(self):
+        widget = {"id": "c1", "type": "line", "title": "Partners", "span": 4, "period": "this_year",
+                  "caption": "New contacts",
+                  "query": {"model": "res.partner", "group_by": ["create_date:month"], "measures": ["__count"]}}
+        drawn = self._card(widget)
+        self.assertEqual(drawn["period"], "this_year")
+        self.assertEqual(drawn["caption"], "New contacts")
+        self.assertTrue(any(term[0] == "create_date" for term in drawn["domain"]))
+        changed = self._card(widget, {"__period:c1": "all_time"})
+        self.assertEqual(changed["period"], "all_time")
+        self.assertFalse(any(term[0] == "create_date" for term in changed["domain"]))
+
+    def test_pnl_card_is_income_less_expenses(self):
+        if "account.move" not in self.env:
+            self.skipTest("Accounting is not installed")
+        drawn = self._card({"id": "c2", "type": "pnl", "title": "P and L", "span": 4, "period": "all_time",
+                            "query": {"model": "account.move.line", "measures": ["balance:sum"]}})
+        self.assertNotIn("error", drawn)
+        self.assertEqual(drawn["value"], drawn["income"] - drawn["expenses"])
+
+    def test_aging_card_puts_an_invoice_in_its_bucket(self):
+        if "account.move" not in self.env:
+            self.skipTest("Accounting is not installed")
+        today = fields.Date.context_today(self.env.user)
+        partner = self.env["res.partner"].create({"name": "AID Debtor"})
+        invoice = self.env["account.move"].create({
+            "move_type": "out_invoice", "partner_id": partner.id, "invoice_date": today - timedelta(days=30),
+            "invoice_date_due": today - timedelta(days=10),
+            "invoice_line_ids": [(0, 0, {"name": "Test", "quantity": 1, "price_unit": 100, "tax_ids": [(6, 0, [])]})],
+        })
+        invoice.action_post()
+        drawn = self._card({"id": "c3", "type": "aging", "title": "Owed", "span": 4,
+                            "query": {"model": "account.move", "domain": [["partner_id", "=", partner.id],
+                                                                          ["state", "=", "posted"]],
+                                      "measures": ["amount_residual:sum"]}})
+        self.assertNotIn("error", drawn)
+        values = {point["label"]: point["value"] for point in drawn["series"]}
+        self.assertEqual(values["8-14 days"], 100)
+        self.assertEqual(drawn["value"], 100)
+
+    def test_banks_card_lists_each_journal(self):
+        if "account.journal" not in self.env:
+            self.skipTest("Accounting is not installed")
+        journals = self.env["account.journal"].search([("type", "in", ("bank", "cash"))])
+        drawn = self._card({"id": "c4", "type": "banks", "title": "Banks", "span": 4,
+                            "query": {"model": "account.journal", "domain": [["type", "in", ["bank", "cash"]]],
+                                      "measures": ["__count"]}})
+        self.assertNotIn("error", drawn)
+        self.assertEqual({b["id"] for b in drawn["banks"]}, set(journals.ids))

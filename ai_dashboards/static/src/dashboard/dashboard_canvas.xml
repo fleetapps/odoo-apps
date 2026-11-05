@@ -3,7 +3,7 @@
 
 <t t-name="ai_dashboards.Canvas">
     <div class="o_ai_dash" t-ref="root"
-         t-att-class="state.loading ? 'o_ai_dash--busy' : ''">
+         t-att-class="(state.loading ? 'o_ai_dash--busy ' : '') + (state.data and isCardBoard ? 'o_ai_dash--cards' : '')">
 
         <!-- Direct manipulation needs somewhere that says what has and has
              not been written down. The form's own save indicator is up in the
@@ -56,7 +56,7 @@
                         </option>
                     </select>
                 </div>
-                <div t-if="anyComparable" class="o_ai_dash_filter">
+                <div t-if="anyComparable and !isCardBoard" class="o_ai_dash_filter">
                     <label>Compare</label>
                     <select class="form-select form-select-sm"
                             t-on-change="(ev) => this.setCompare(ev.target.value)">
@@ -68,7 +68,7 @@
                     </select>
                 </div>
 
-                <div class="o_ai_dash_took text-muted">
+                <div t-if="!isCardBoard" class="o_ai_dash_took text-muted">
                     calculated in <t t-esc="state.data.took_ms"/>ms, as you
                 </div>
 
@@ -93,6 +93,7 @@
             <div class="o_ai_dash_grid">
                 <div t-foreach="widgets" t-as="widget" t-key="widget.id"
                      class="o_ai_dash_tile"
+                     t-att-class="isCard(widget) ? 'o_ai_dash_tile--card' : ''"
                      t-att-style="'grid-column: span ' + Math.min(12, widget.span || 6)">
 
                     <div class="o_ai_dash_tile_head">
@@ -107,6 +108,13 @@
                             t-att-class="showTools ? 'o_ai_dash_renamable' : ''"
                             t-att-title="showTools ? 'Double-click to rename' : undefined"
                             t-on-dblclick="() => this.startRename(widget.id)"/>
+
+                        <select t-if="widget.period and !showTools" class="o_ai_card_period" aria-label="Period"
+                                t-on-change="(ev) => this.setFilter('__period:' + widget.id, ev.target.value)">
+                            <option t-foreach="periodLabels" t-as="option" t-key="option[0]" t-att-value="option[0]"
+                                    t-att-selected="widget.period === option[0] ? 'selected' : undefined" t-esc="option[1]"/>
+                        </select>
+                        <span t-elif="widget.type === 'aging' and !showTools" class="o_ai_card_asof">As of today</span>
 
                         <div t-if="showTools" class="o_ai_dash_tools">
                             <button class="btn btn-sm btn-link" title="Move earlier"
@@ -158,6 +166,58 @@
                         <i class="fa fa-exclamation-triangle me-1"/>
                         <t t-esc="widget.error"/>
                     </div>
+
+                    <t t-elif="isCard(widget) and widget.type !== 'kpi'">
+                        <!-- A summary card: its total, then how that total is made up. -->
+                        <t t-if="widget.type === 'pnl'">
+                            <div class="o_ai_card_big" t-att-class="(widget.value &lt; 0 ? 'text-danger ' : '') + (widget.drill ? 'o_ai_dash_clickable' : '')"
+                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null"
+                                 t-esc="format(widget.value, widget)"/>
+                            <div class="o_ai_card_caption" t-esc="widget.caption or 'Net profit'"/>
+                            <div class="o_ai_pnl_row">
+                                <div class="o_ai_pnl_figure"><span t-esc="format(widget.income, widget)"/><small>Income</small></div>
+                                <div class="o_ai_pnl_track"><div class="o_ai_pnl_bar o_ai_pnl_bar--in" t-att-style="'width:' + pnlShare(widget, widget.income) + '%'"/></div>
+                            </div>
+                            <div class="o_ai_pnl_row">
+                                <div class="o_ai_pnl_figure"><span t-esc="format(widget.expenses, widget)"/><small>Expenses</small></div>
+                                <div class="o_ai_pnl_track"><div class="o_ai_pnl_bar o_ai_pnl_bar--out" t-att-style="'width:' + pnlShare(widget, widget.expenses) + '%'"/></div>
+                            </div>
+                        </t>
+                        <t t-elif="widget.type === 'banks'">
+                            <div t-foreach="widget.banks || []" t-as="bank" t-key="bank.id" class="o_ai_bank">
+                                <div class="o_ai_bank_head">
+                                    <strong t-esc="bank.name"/>
+                                    <span t-if="bank.review" class="o_ai_bank_review"><t t-esc="bank.review"/> to review</span>
+                                </div>
+                                <div class="o_ai_bank_line"><span>Bank balance</span><span t-esc="format(bank.bank, widget)"/></div>
+                                <div class="o_ai_bank_line"><span>In Odoo</span><span t-esc="format(bank.books, widget)"/></div>
+                            </div>
+                        </t>
+                        <t t-elif="['aging', 'donut', 'pie'].includes(widget.type)">
+                            <div class="o_ai_card_big" t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
+                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null" t-esc="format(total(widget), widget)"/>
+                            <div class="o_ai_card_caption" t-esc="widget.caption"/>
+                            <div class="o_ai_card_ring">
+                                <ul class="o_ai_card_legend">
+                                    <li t-foreach="(widget.series || []).slice(0, 8)" t-as="point" t-key="point_index">
+                                        <i t-att-style="'background:' + cardColor(point_index)"/>
+                                        <div>
+                                            <strong t-esc="format(point.value, widget)"/>
+                                            <small t-att-title="point.label" t-esc="point.label"/>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <div class="o_ai_card_donut"><canvas t-att-data-widget="widget.id"/></div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="o_ai_card_big" t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
+                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null" t-esc="format(total(widget), widget)"/>
+                            <div class="o_ai_card_caption" t-esc="widget.caption"/>
+                            <div t-if="!(widget.series || []).length" class="o_ai_card_none">Nothing in this period yet.</div>
+                            <div t-else="" class="o_ai_dash_chart o_ai_card_chart"><canvas t-att-data-widget="widget.id"/></div>
+                        </t>
+                    </t>
 
                     <t t-elif="widget.type === 'kpi'">
                         <div class="o_ai_dash_kpi"
@@ -312,7 +372,7 @@
                 </div>
             </div>
 
-            <p class="o_ai_dash_foot text-muted">
+            <p t-if="!isCardBoard" class="o_ai_dash_foot text-muted">
                 <i class="fa fa-lock me-1"/>
                 Every figure here was calculated just now, using your own Odoo
                 permissions.<t t-if="anyDrillable"> Click a bar, slice or number
