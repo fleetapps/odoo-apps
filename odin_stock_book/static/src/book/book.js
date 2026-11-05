@@ -35,6 +35,9 @@ function nextFrame() {
     return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
+/** The wording for one, or for several. */
+const few = (n, one, many) => (n === 1 ? one : many);
+
 export class StockBook extends Component {
     static template = "odin_stock_book.Book";
     static components = { Layout };
@@ -313,7 +316,12 @@ export class StockBook extends Component {
 
     get monthLabel() {
         const months = (this.state.book || this.state.sheet)?.months;
-        return months ? `${months[this.state.month - 1].label} ${this.state.year}` : "";
+        if (!months) {
+            return "";
+        }
+        // In sentences: "Nov 2026". The tabs keep the short capitals.
+        const label = months[this.state.month - 1].label;
+        return `${label[0]}${label.slice(1).toLowerCase()} ${this.state.year}`;
     }
 
     get monthPrefix() {
@@ -528,14 +536,14 @@ export class StockBook extends Component {
         if (field === "qty_in" || field === "qty_out") {
             value = parseAmount(value, NaN);
             if (Number.isNaN(value) || value < 0) {
-                this.notification.add(_t("Type a quantity, e.g. 240"), { type: "warning" });
+                this.notification.add(_t("Type a quantity, e.g. 240."), { type: "warning" });
                 ev.target.value = row[field] ? this.fmt(row[field]) : "";
                 return;
             }
         } else if (field === "date") {
             value = parseDay(value, this.state.year, this.state.month);
             if (!value) {
-                this.notification.add(_t("Type a day like 3, 3/11 or 3 Nov"), { type: "warning" });
+                this.notification.add(_t("Type a day like 3, 3/11 or 3 Nov."), { type: "warning" });
                 ev.target.value = this.shortDate(row.date);
                 return;
             }
@@ -551,7 +559,7 @@ export class StockBook extends Component {
     setUnitCost(row, ev) {
         const cost = parseAmount(ev.target.value, NaN);
         if (Number.isNaN(cost) || cost < 0) {
-            this.notification.add(_t("Type the cost per unit, e.g. 19"), { type: "warning" });
+            this.notification.add(_t("Type the cost per unit, e.g. 19."), { type: "warning" });
             return;
         }
         this.save(row, { unit_cost: cost });
@@ -560,7 +568,7 @@ export class StockBook extends Component {
     setComponent(row, comp, ev) {
         const qty = parseAmount(ev.target.value, NaN);
         if (Number.isNaN(qty) || qty < 0) {
-            this.notification.add(_t("Type a quantity, e.g. 240"), { type: "warning" });
+            this.notification.add(_t("Type a quantity, e.g. 240."), { type: "warning" });
             ev.target.value = this.fmt(comp.qty);
             return;
         }
@@ -576,7 +584,7 @@ export class StockBook extends Component {
     async resetComponents(row) {
         await this.mutate(() => this.orm.call("odin.stock.book", "book_reset_components", [row.id]),
             { flash: [row.id] });
-        this.notification.add(_t("Components back to the recipe"), { type: "info" });
+        this.notification.add(_t("Components reset to the recipe."), { type: "info" });
     }
 
     onCompSearch(ev) {
@@ -699,7 +707,7 @@ export class StockBook extends Component {
         }
         if (field === "item" && !row.product) {
             this.notification.add(row.query ? _t("No item matches “%s”. Try part of the name or the code.", row.query)
-                : _t("Type the item: a code or a name"), { type: "warning" });
+                : _t("Type the item: a code or a name."), { type: "warning" });
             return;
         }
         if (ev.ctrlKey || ev.metaKey || field === "partner_name") {
@@ -724,7 +732,7 @@ export class StockBook extends Component {
         if (value) {
             this.state.newRow.date = value;
         } else {
-            this.notification.add(_t("Type a day like 3, 3/11 or 3 Nov"), { type: "warning" });
+            this.notification.add(_t("Type a day like 3, 3/11 or 3 Nov."), { type: "warning" });
         }
         ev.target.value = this.shortDate(this.state.newRow.date);
     }
@@ -740,18 +748,18 @@ export class StockBook extends Component {
     newProblem() {
         const row = this.state.newRow;
         if (!row.product) {
-            return ["item", row.query ? _t("Pick the item from the list") : _t("Type the item: a code or a name")];
+            return ["item", row.query ? _t("Pick the item from the list.") : _t("Type the item: a code or a name.")];
         }
         const qtyIn = parseAmount(row.qty_in, NaN);
         const qtyOut = parseAmount(row.qty_out, NaN);
         if ((row.qty_in && Number.isNaN(qtyIn)) || (row.qty_out && Number.isNaN(qtyOut))) {
-            return [Number.isNaN(qtyIn) ? "qty_in" : "qty_out", _t("Type a quantity, e.g. 240")];
+            return [Number.isNaN(qtyIn) ? "qty_in" : "qty_out", _t("Type a quantity, e.g. 240.")];
         }
         if (!(qtyIn > 0) && !(qtyOut > 0)) {
-            return ["qty_in", _t("Type how many in Added or Removed")];
+            return ["qty_in", _t("Type how many in Added or Removed.")];
         }
         if (!row.reason) {
-            return ["reason", _t("Pick a reason")];
+            return ["reason", _t("Pick a reason.")];
         }
         return null;
     }
@@ -794,8 +802,8 @@ export class StockBook extends Component {
                 return;
             }
             if (saved.components.length) {
-                this.notification.add(_t("%(n)s components from the recipe: check them, then post.",
-                    { n: saved.components.length }), { type: "info" });
+                this.notification.add(few(saved.components.length, _t("1 component from the recipe: check it, then post."),
+                    _t("%s components from the recipe: check them, then post.", saved.components.length)), { type: "info" });
             } else if (saved.status_key !== "ready" && !saved.moved_to) {
                 this.notification.add(`${saved.product.name}: ${saved.status}. ${saved.detail}`, { type: "warning" });
             }
@@ -828,9 +836,9 @@ export class StockBook extends Component {
                 year: this.state.year, month: this.state.month, warehouse_id: this.state.warehouseId,
             }), { flash: (r) => r.ids });
             const skipped = result.skipped.map((s) => _t("Row %(row)s: %(why)s", s));
-            const lines = [_t("%s lines added as drafts.", result.created), ...result.notes, ...skipped];
+            const lines = [few(result.created, _t("1 line added as a draft."), _t("%s lines added as drafts.", result.created)), ...result.notes, ...skipped];
             const options = {
-                title: skipped.length ? _t("Pasted, %s rows left out", skipped.length) : _t("Pasted"),
+                title: skipped.length ? few(skipped.length, _t("Pasted, 1 row left out"), _t("Pasted, %s rows left out", skipped.length)) : _t("Pasted"),
                 type: skipped.length || result.notes.length ? "warning" : "success",
                 sticky: Boolean(skipped.length || result.notes.length), className: "o_sb_notice",
             };
@@ -920,11 +928,11 @@ export class StockBook extends Component {
         if (stayed.length) {
             const lines = stayed.slice(0, 10).map((s) => `${s.item}: ${s.why}`);
             this.notification.add(lines.join("\n") + (stayed.length > 10 ? "\n…" : ""), {
-                title: _t("%s lines were not posted", stayed.length), type: failed.length ? "danger" : "warning",
+                title: few(stayed.length, _t("1 line was not posted"), _t("%s lines were not posted", stayed.length)), type: failed.length ? "danger" : "warning",
                 sticky: true, className: "o_sb_notice",
             });
         } else if (!count) {
-            this.notification.add(_t("Nothing was ready to post"), { type: "warning" });
+            this.notification.add(_t("Nothing was ready to post."), { type: "warning" });
         }
     }
 
@@ -937,13 +945,13 @@ export class StockBook extends Component {
             byKind[r.posts_as] = (byKind[r.posts_as] || 0) + 1;
         }
         const body = [
-            _t("Posting %s lines creates:", ids.length),
+            few(ids.length, _t("Posting 1 line creates:"), _t("Posting %s lines creates:", ids.length)),
             ...Object.entries(byKind).map(([kind, n]) => `• ${n} × ${kind}`),
-            _t("Lines are posted in date order. Any that cannot go stay as drafts and are listed; the others still post."),
-            _t("Posted lines are locked; a mistake is fixed with a new line."),
+            _t("Lines post in date order. Any that cannot post stay as drafts and are listed; the others still post."),
+            _t("Posted lines are locked. A mistake is fixed with a new line."),
         ].join("\n");
         this.dialog.add(ConfirmationDialog, {
-            title: _t("Post %s lines?", ids.length),
+            title: few(ids.length, _t("Post 1 line?"), _t("Post %s lines?", ids.length)),
             body,
             confirmLabel: _t("Post %s", ids.length),
             confirm: () => this.post(ids),
@@ -955,7 +963,7 @@ export class StockBook extends Component {
     async discard(ids) {
         const { removed, kept } = await this.mutate(() => this.orm.call("odin.stock.book", "book_discard", [ids]));
         if (kept) {
-            this.notification.add(_t("%(removed)s removed; %(kept)s were posted meanwhile and stay.", { removed, kept }),
+            this.notification.add(_t("%(removed)s removed. %(kept)s posted in the meantime and stay.", { removed, kept }),
                 { type: "warning" });
         }
     }
@@ -1008,16 +1016,32 @@ export class StockBook extends Component {
      * ``lineId``: starting from a draft line, which saving replaces.
      * ``items``: starting with these items, from a shortage.
      */
-    openPurchase({ lineId = false, items = [] } = {}) {
+    openPurchase({ lineId = false, items = [], kind = "purchase", loaded = undefined } = {}) {
         this.dialog.add(PurchaseDialog, {
             warehouseId: this.state.warehouseId || this.state.book?.warehouse?.id || false,
-            lineId, items,
+            lineId, items, kind, loaded,
             onSaved: (result) => this.purchaseSaved(result),
         });
     }
 
     openPurchaseFor(row) {
-        this.openPurchase({ lineId: row.id });
+        this.openPurchase({ lineId: row.id, kind: row.reason === "sale" ? "sale" : "purchase" });
+    }
+
+    /** A saved purchase taken back in one step, then open again to correct. */
+    undoPurchase(row) {
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Undo %s?", row.purchase_ref || row.purchase),
+            body: _t("The payment and bill are cancelled, the goods leave stock again, and the order is cancelled. The documents stay, marked cancelled. It then opens again here, for you to correct or close."),
+            confirmLabel: _t("Undo purchase"),
+            confirm: async () => {
+                const result = await this.mutate(() => this.orm.call("odin.stock.book", "book_purchase_undo", [row.id]));
+                this.notification.add(_t("%(order)s (%(ref)s) undone.", { order: result.order, ref: result.purchase_ref }),
+                    { type: "success" });
+                this.openPurchase({ loaded: result.again });
+            },
+            cancel: () => {},
+        });
     }
 
     // ------------------------------------------------------------ what each status asks for
@@ -1027,7 +1051,8 @@ export class StockBook extends Component {
     }
 
     onPill(row) {
-        if (row.reason === "received" && ["need_cost", "need_supplier"].includes(row.status_key)) {
+        if ((row.reason === "received" && ["need_cost", "need_supplier"].includes(row.status_key))
+                || row.status_key === "need_invoice") {
             this.openPurchaseFor(row);
             return;
         }
@@ -1074,15 +1099,15 @@ export class StockBook extends Component {
         const month = this.monthLabel;
         const texts = {
             need: n ? {
-                title: _t("%(n)s lines in %(month)s are missing something", { n, month }),
+                title: few(n, _t("1 line in %s is missing something", month), _t("%(n)s lines in %(month)s are missing something", { n, month })),
                 text: _t("Each line's status says what. Click the status to fill it in."),
             } : { title: _t("Nothing is missing in %s", month), text: _t("Every line has what it needs.") },
             short: n ? {
-                title: _t("%(n)s lines in %(month)s use more than is on hand", { n, month }),
-                text: _t("Receive what is missing or count it, and they become ready. If the stock really is there, open a line to post it anyway."),
+                title: few(n, _t("1 line in %s uses more than is on hand", month), _t("%(n)s lines in %(month)s use more than is on hand", { n, month })),
+                text: _t("Buy or make what is missing, or count it, and the lines become ready. If the stock really is there, open a line and post it anyway."),
             } : { title: _t("Nothing is short in %s", month), text: _t("Every line has enough on hand.") },
             ready: n ? {
-                title: _t("%(n)s lines in %(month)s are ready to post", { n, month }),
+                title: few(n, _t("1 line in %s is ready to post", month), _t("%(n)s lines in %(month)s are ready to post", { n, month })),
                 text: this.state.book.can_post ? _t("Posting creates the real documents and locks each line.")
                     : _t("A supervisor posts them."),
             } : { title: _t("Nothing is waiting to post in %s", month), text: "" },
@@ -1125,13 +1150,26 @@ export class StockBook extends Component {
         if (this.state.view === "log") {
             this.flashRows(result.ids, true);
         }
-        const money = result.total ? ` · ${this.fmt(result.total, 2)}` : "";
+        if (result.kind === "sale") {
+            const lines = few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length));
+            const paidIn = result.paid_from ? _t(", paid into %s", result.paid_from) : "";
+            this.notification.add(result.posted
+                ? _t("%(order)s (%(ref)s): %(lines)s delivered, invoice %(invoice)s%(paid)s", {
+                    order: result.order, ref: result.purchase_ref, lines, invoice: result.invoice || _t("none, free goods"), paid: paidIn })
+                : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref }), { type: "success" });
+            if (!result.date.startsWith(this.monthPrefix)) {
+                this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
+            }
+            return;
+        }
+        const money = result.total ? ` · ${this.state.book?.currency || ""} ${this.fmt(result.total, 2)}` : "";
         const paid = result.paid_from ? _t(", paid from %s", result.paid_from) : _t(", not paid yet");
         const text = result.posted
-            ? _t("%(order)s (%(ref)s): %(n)s lines received, bill %(bill)s%(paid)s%(money)s", {
-                order: result.order, ref: result.purchase_ref, n: result.ids.length, bill: result.bill, paid, money,
+            ? _t("%(order)s (%(ref)s): %(lines)s received, bill %(bill)s%(paid)s%(money)s", {
+                order: result.order, ref: result.purchase_ref, bill: result.bill, paid, money,
+                lines: few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length)),
             })
-            : _t("%(ref)s: %(n)s lines waiting for a supervisor to post", { ref: result.purchase_ref, n: result.ids.length });
+            : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref });
         this.notification.add(text, { type: "success" });
         if (!result.date.startsWith(this.monthPrefix)) {
             this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
@@ -1180,7 +1218,7 @@ export class StockBook extends Component {
         const raw = ev.target.value.trim();
         const qty = raw === "" ? null : parseAmount(raw, NaN);
         if (qty !== null && (Number.isNaN(qty) || qty < 0)) {
-            this.notification.add(_t("Type what is on the shelf, e.g. 412"), { type: "warning" });
+            this.notification.add(_t("Type what is on the shelf, e.g. 412."), { type: "warning" });
             ev.target.value = row.counted === null ? "" : this.fmt(row.counted);
             return;
         }
@@ -1219,7 +1257,7 @@ export class StockBook extends Component {
             return;
         }
         this.state.countConflicts = null;
-        this.notification.add(_t("Count posted: %s items adjusted", result.applied), { type: "success" });
+        this.notification.add(few(result.applied, _t("Count posted: 1 item adjusted."), _t("Count posted: %s items adjusted.", result.applied)), { type: "success" });
     }
 }
 

@@ -26,6 +26,8 @@ class StockBookPurchase(models.Model):
     order_id = fields.Many2one("purchase.order", readonly=True, copy=False)
     bill_id = fields.Many2one("account.move", readonly=True, copy=False)
     payment_id = fields.Many2one("account.payment", readonly=True, copy=False)
+    undone_on = fields.Datetime(readonly=True, copy=False)
+    undone_by_id = fields.Many2one("res.users", readonly=True, copy=False)
 
     def unlink(self):
         if self.filtered("order_id"):
@@ -79,6 +81,56 @@ class StockBookPurchase(models.Model):
                               "purchase as not paid yet and pay the bill in Accounting.",
                               journal=journal.display_name))
         return payment
+
+
+    def _undo(self):
+        """The whole purchase taken back at once, in the order Odoo requires:
+        the payment off the bill, the bill cancelled, the goods returned, the
+        order cancelled. All of it or none. Each document stays, cancelled, and
+        the goods going back are on the movement log."""
+        self.ensure_one()
+        if self.undone_on:
+            raise UserError(_("%s is already undone.", self.purchase_ref))
+        order = self.order_id.sudo()
+        if not order:
+            raise UserError(_("This purchase is not posted yet."))
+        bill, payment = self.bill_id.sudo(), self.payment_id.sudo()
+        if payment.is_matched:
+            raise UserError(_("%(payment)s is matched with a bank statement line. Undo that match in Accounting first.",
+                              payment=payment.display_name))
+        Line = self.env["odin.stock.line"]
+        for line in self.line_ids.filtered(lambda l: l.state == "posted"):
+            onhand = Line._available(line.product_id, line.warehouse_id)[line.product_id.id]
+            if onhand < line.qty_in:
+                raise UserError(_("%(item)s has been used: %(onhand)s on hand, %(qty)s to return. Nothing was undone.",
+                                  item=line.product_id.display_name, onhand=onhand, qty=line.qty_in))
+        if payment:
+            payment.action_draft()
+            payment.action_cancel()
+        if bill:
+            if bill.payment_state not in ("not_paid", "invoicing_legacy"):
+                raise UserError(_("%(bill)s has another payment on it. Remove it in Accounting first.",
+                                  bill=bill.display_name))
+            bill.button_draft()
+            bill.button_cancel()
+        for picking in order.picking_ids.filtered(
+                lambda p: p.state == "done" and p.picking_type_id.code == "incoming"):
+            self._return_picking(picking)
+        if order.locked:
+            order.button_unlock()
+        order.button_cancel()
+        self.write({"undone_on": fields.Datetime.now(), "undone_by_id": self.env.user.id})
+
+    def _return_picking(self, picking):
+        """Odoo's Return button, everything received, validated at once. Not
+        in the book's posting context: the return goes on the log by itself."""
+        wizard = self.env["stock.return.picking"].sudo().with_context(
+            active_id=picking.id, active_ids=picking.ids, active_model="stock.picking",
+        ).create({"picking_id": picking.id})
+        for row in wizard.product_return_moves:
+            row.quantity = row.move_id.quantity
+        back = wizard._create_return()
+        self.env["odin.stock.line"].browse()._validate_picking(back)
 
 
 class StockBookPurchaseCharge(models.Model):

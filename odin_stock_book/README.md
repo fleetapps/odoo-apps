@@ -183,3 +183,18 @@ turned back into a draft or renumbered by hand, from the form or over the API.
 The upgrade starts each reason's numbering after the highest reference already
 in the book, renumbered lines included, and warns in the log about any
 reference two lines still share.
+
+## Stock in the accounts
+
+- **Add purchase** and **Add sale** make Odoo's own documents in one step: order, receipt or delivery, bill or invoice, and payment. The customer invoice posts the cost of sales.
+- Scrap and corrections post to `500106 Stock Losses & Adjustments`, through the account on the Inventory adjustment location.
+- On the first of each month, a scheduled task runs Odoo's Stock Closing for the month before, bringing the Stock account to the value of the stock. Odoo's own monthly schedule does not fire: it filters on two periods at once at month end.
+- **Undo purchase** cancels the payment and bill, returns the goods and cancels the order, all or nothing. It is refused if the goods are used, or the payment is matched with a bank statement.
+- Every stock change made outside the book lands on the movement log, posted.
+
+For past data, as an accounting administrator (each only reports until `dry_run=False`):
+
+- `book_bill_imported`: bills orders whose receipts were cancelled, with no stock added.
+- `book_ledger_setup`: the account above, the monthly closing, and invoices required on sales.
+- `book_stock_closing`: Odoo's Stock Closing, previewed then posted.
+- `book_log_missing`: logs past moves that are not on the book.

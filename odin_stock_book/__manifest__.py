@@ -13,17 +13,18 @@ posting creates the manufacturing order, delivery, return, purchase order with
 its receipt, or scrap.
 See README.md.
 """,
-    "version": "19.0.1.4.1",
+    "version": "19.0.1.5.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",
     "license": "LGPL-3",
-    "depends": ["stock_account", "purchase_stock", "mrp", "mail"],
+    "depends": ["stock_account", "purchase_stock", "sale_stock", "mrp", "mail"],
     "external_dependencies": {"python": ["xlsxwriter"]},
     "data": [
         "security/stock_book_security.xml",
         "security/ir.model.access.csv",
         "data/ir_sequence_data.xml",
+        "data/ir_cron_data.xml",
         "views/stock_book_views.xml",
         "views/menus.xml",
         "report/movement_log.xml",

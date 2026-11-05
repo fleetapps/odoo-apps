@@ -48,9 +48,9 @@
                         <group>
                             <field name="partner_name" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="bom_id" readonly="state != 'draft'"/>
-                            <field name="purchase_ref" invisible="reason != 'received'" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="purchase_ref" invisible="reason not in ('received', 'sale')" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="unit_cost" invisible="reason != 'received'" readonly="state != 'draft'"/>
-                            <field name="tax_id" invisible="reason != 'received'" readonly="state != 'draft' or stock_purchase_id" options="{'no_create': True}"/>
+                            <field name="tax_id" invisible="reason not in ('received', 'sale')" readonly="state != 'draft' or stock_purchase_id" options="{'no_create': True}"/>
                             <field name="warehouse_id" readonly="state != 'draft' or stock_purchase_id"/>
                             <field name="note"/>
                             <field name="reverses_id" invisible="not reverses_id"/>

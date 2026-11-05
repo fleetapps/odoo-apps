@@ -33,10 +33,11 @@ REVERSE = {"sale": "return", "return": "sale", "spoiled": "correction", "sample"
 # call from outside, which would turn a posted line back into a draft, or
 # mark a draft posted without its stock moves.
 SYSTEM_FIELDS = {"state", "ref", "onhand_after", "posted_by_id", "posted_on", "production_id", "picking_id",
-                 "scrap_id", "move_ids", "partner_id", "purchase_line_id", "stock_purchase_id"}
+                 "scrap_id", "move_ids", "partner_id", "purchase_line_id", "stock_purchase_id", "sale_line_id",
+                 "stock_sale_id"}
 # What a posted (or cancelled) line keeps as it was.
 LOCKED_FIELDS = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id",
-                 "partner_name", "unit_cost", "company_id", "reverses_id", "purchase_ref", "tax_id"}
+                 "partner_name", "unit_cost", "company_id", "reverses_id", "purchase_ref", "tax_id", "unit_price"}
 
 STATUS = {
     "need_product": ("Pick the item", "warning"),
@@ -48,14 +49,15 @@ STATUS = {
     "need_partner": ("Which customer?", "warning"),
     "need_supplier": ("Which supplier?", "warning"),
     "need_cost": ("Cost per unit?", "warning"),
-    "future": ("Dated ahead", "warning"),
+    "need_invoice": ("Invoice details?", "warning"),
+    "future": ("Future date", "warning"),
     "short": ("Short", "danger"),
     "ready": ("Ready to post", "primary"),
     "posted": ("Posted", "success"),
     "cancelled": ("Cancelled", "muted"),
 }
 NEED_KEYS = {"need_product", "need_reason", "need_qty", "wrong_way", "tracked", "need_recipe", "need_partner",
-             "need_supplier", "need_cost", "future"}
+             "need_supplier", "need_cost", "need_invoice", "future"}
 
 
 def _normal_name(name):
@@ -109,6 +111,12 @@ class StockBookLine(models.Model):
     stock_purchase_id = fields.Many2one("odin.stock.purchase", string="Purchase window entry", readonly=True, copy=False,
                                         index="btree_not_null", ondelete="restrict")
     bill_id = fields.Many2one(related="stock_purchase_id.bill_id", string="Vendor bill")
+    unit_price = fields.Float(digits="Product Price", help="Sales: price per unit on the customer's invoice.")
+    sale_line_id = fields.Many2one("sale.order.line", readonly=True, copy=False, index="btree_not_null",
+                                   string="Sales order line")
+    stock_sale_id = fields.Many2one("odin.stock.sale", string="Sale window entry", readonly=True, copy=False,
+                                    index="btree_not_null", ondelete="restrict")
+    invoice_id = fields.Many2one(related="stock_sale_id.invoice_id", string="Customer invoice")
     bom_id = fields.Many2one("mrp.bom", string="Recipe", check_company=True)
     component_ids = fields.One2many("odin.stock.line.component", "line_id", copy=True)
     state = fields.Selection([("draft", "Draft"), ("posted", "Posted"), ("cancelled", "Cancelled")],
@@ -251,6 +259,9 @@ class StockBookLine(models.Model):
             return "need_cost", *STATUS["need_cost"], _("Type what one %(unit)s cost%(vat)s.",
                                                         unit=self.product_id.uom_id.name,
                                                         vat="" if self.tax_id else _(", before VAT"))
+        if self.reason == "sale" and not self.stock_sale_id and self.company_id.odin_sale_needs_invoice:
+            return "need_invoice", *STATUS["need_invoice"], _("Add the invoice number, price and VAT, so the sale "
+                                                              "reaches the accounts.")
         if self.date > fields.Date.context_today(self):
             return "future", *STATUS["future"], _("Dated %s: it can be posted on the day.",
                                                   self.date.strftime("%d %b %Y"))
@@ -300,9 +311,10 @@ class StockBookLine(models.Model):
     def write(self, vals):
         self._check_system_fields(vals)
         if {"partner_name", "date", "purchase_ref", "warehouse_id", "tax_id", "reason"} & vals.keys() \
-                and not self.env.context.get("odin_stock_book_posting") and self.filtered("stock_purchase_id"):
-            raise UserError(_("This line belongs to a whole LPO. Change its supplier, number, date or VAT with "
-                              "Edit purchase."))
+                and not self.env.context.get("odin_stock_book_posting") \
+                and self.filtered(lambda l: l.stock_purchase_id or l.stock_sale_id):
+            raise UserError(_("This line belongs to a whole LPO or invoice. Change its partner, number, date or VAT "
+                              "with Edit."))
         if vals.get("purchase_ref"):
             vals["purchase_ref"] = _normal_ref(vals["purchase_ref"])
         if vals.get("partner_name"):
@@ -350,11 +362,12 @@ class StockBookLine(models.Model):
 
     def action_post(self, allow_short=False):
         if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
-            raise UserError(_("Only a Stock Book supervisor can post. Ask Operations to post it."))
+            raise UserError(_("Only a Stock Book supervisor can post. Ask a supervisor to post it."))
         today = fields.Date.context_today(self)
         drafts = self.filtered(lambda l: l.state == "draft")
         # An LPO is posted whole, or a line left behind could never join it.
-        drafts = (drafts | drafts._purchase_siblings()).sorted(lambda l: (l.date, l.id))
+        drafts = (drafts | drafts._purchase_siblings() | drafts.stock_sale_id.line_ids.filtered(
+            lambda l: l.state == "draft")).sorted(lambda l: (l.date, l.id))
         # Received lines posted together for one supplier on one day, under
         # one LPO number or none: one purchase order.
         purchases = {}
@@ -489,6 +502,8 @@ class StockBookLine(models.Model):
                               what=isinstance(result, dict) and result.get("name") or picking.state))
 
     def _post_sale(self):
+        if self.stock_sale_id:
+            return self.stock_sale_id._deliver(self)
         wh = self.warehouse_id
         return self._post_picking(wh.out_type_id, self._location(),
                                   self.env.ref("stock.stock_location_customers"), self._partner())
@@ -530,7 +545,7 @@ class StockBookLine(models.Model):
             ("partner_ref", "=ilike", _like(ref))], limit=1)
         if order:
             raise UserError(_("%(ref)s from %(supplier)s is already in Purchases as %(order)s, so these goods may "
-                              "already be in stock. Check that order; to enter it again, cancel it first.",
+                              "already be in stock. Open that order to check it; to enter it again, cancel it first.",
                               ref=ref, supplier=partner.display_name, order=order.name))
         bill = self.env["account.move"].sudo().search([
             ("company_id", "=", company.id), ("move_type", "=", "in_invoice"), ("state", "!=", "cancel"),
@@ -710,7 +725,8 @@ class StockBookLine(models.Model):
         """A return to the supplier is undone in Purchases: a correction here
         would add the stock back but leave the order's received quantity."""
         self.ensure_one()
-        return self.state == "posted" and self.reason in REVERSE and not self.purchase_line_id
+        return self.state == "posted" and self.reason in REVERSE and not self.purchase_line_id \
+            and not self.stock_sale_id
 
     def _reverse(self):
         """A draft that undoes this posted line: a sale comes back as a
@@ -750,7 +766,7 @@ class StockBookComponent(models.Model):
     from_recipe = fields.Boolean(readonly=True)
 
     def _check_draft(self, lines):
-        if lines.filtered(lambda l: l.state != "draft"):
+        if not self.env.context.get("odin_stock_book_posting") and lines.filtered(lambda l: l.state != "draft"):
             raise UserError(_("A posted line cannot be changed. Add a Correction line instead."))
 
     @api.model_create_multi

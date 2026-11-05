@@ -235,13 +235,22 @@ class StockBook(models.AbstractModel):
         order = line.purchase_id.sudo()
         # Billed in the window, or from Purchases afterwards.
         bill = order.invoice_ids.filtered(lambda m: m.state == "posted")[:1] or order.invoice_ids[:1]
+        sale = line.stock_sale_id.sudo()
+        bill = bill or sale.invoice_id
+        undone = line.stock_purchase_id.sudo().undone_on
         return {
             "id": line.id, "date": fields.Date.to_string(line.date), "ref": line.ref or "",
             "reason": line.reason or "", "reason_label": REASONS[line.reason][1] if line.reason else "",
             "posts_as": _("Purchase order, receipt, bill and payment") if line.stock_purchase_id.pay_journal_id
             else _("Purchase order, receipt and bill") if line.stock_purchase_id
+            else _("Sales order, delivery, invoice and payment") if sale.pay_journal_id
+            else _("Sales order, delivery and invoice") if sale
             else REASONS[line.reason][2] if line.reason else "",
-            "window": bool(line.stock_purchase_id),
+            "window": bool(line.stock_purchase_id or line.stock_sale_id),
+            "undone": bool(undone),
+            "can_undo": bool(line.state == "posted" and line.stock_purchase_id.order_id and not undone
+                             and self._is_supervisor()),
+            "unit_price": line.unit_price,
             "direction": REASONS[line.reason][0] if line.reason else "both",
             "product": self._product(line.product_id), "uom": line.uom_id.name or "",
             "qty_in": line.qty_in, "qty_out": line.qty_out, "partner_name": line.partner_name or "",
@@ -257,7 +266,8 @@ class StockBook(models.AbstractModel):
             "purchase": line.purchase_id.sudo().name or "", "current_cost": line.product_id.standard_price,
             "purchase_ref": line.purchase_ref or "", "tax_name": line.tax_id.name or "",
             "bill": bill.name or "", "bill_id": bill.id or False,
-            "unbilled": order.invoice_status == "to invoice", "paid_from": line.stock_purchase_id.pay_journal_id.sudo().name or "",
+            "unbilled": order.invoice_status == "to invoice" and not undone,
+            "paid_from": (line.stock_purchase_id.pay_journal_id or line.stock_sale_id.pay_journal_id).sudo().name or "",
             "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
             "can_reverse": line._can_reverse() and not reversed_by,
@@ -384,9 +394,9 @@ class StockBook(models.AbstractModel):
         the use after it through, as the page projected. One that cannot go
         stays a draft and is reported; the others are not held back by it."""
         if not self._is_supervisor():
-            raise UserError(_("Only a Stock Book supervisor can post. Ask Operations to post it."))
+            raise UserError(_("Only a Stock Book supervisor can post. Ask a supervisor to post it."))
         lines = self.env["odin.stock.line"].browse(ids).exists().filtered(lambda l: l.state == "draft")
-        lines |= lines._purchase_siblings()
+        lines |= lines._purchase_siblings() | lines.stock_sale_id.line_ids.filtered(lambda l: l.state == "draft")
         skipped, failed = [], []
         for line in lines.sorted(lambda l: (l.date, l.id)):
             if line.state != "draft":
@@ -400,6 +410,8 @@ class StockBook(models.AbstractModel):
                 purchase = line._purchase_key()
                 batch = lines.filtered(lambda l: l.state == "draft" and l.reason == "received"
                                        and l._purchase_key() == purchase and l._status()[0] == "ready") | line
+            elif line.stock_sale_id:
+                batch = lines.filtered(lambda l: l.state == "draft" and l.stock_sale_id == line.stock_sale_id)
             try:
                 with self.env.cr.savepoint():
                     batch.action_post(allow_short=allow_short)
@@ -437,7 +449,7 @@ class StockBook(models.AbstractModel):
             # Two journals of one name are told apart by their code.
             "journals": [{"id": j.id, "label": f"{j.name} ({j.code})" if names.count(j.name) > 1 else j.name}
                          for j in journals],
-            "taxes": [{"id": t.id, "label": _("%s (included in price)", t.name) if t.price_include and t.amount else t.name}
+            "taxes": [{"id": t.id, "label": _("%s (incl.)", t.name) if t.price_include and t.amount else t.name}
                       for t in taxes],
             "today": fields.Date.to_string(fields.Date.context_today(self)),
             "can_post": self._is_supervisor(), "currency": self.env.company.currency_id.name,
@@ -603,7 +615,7 @@ class StockBook(models.AbstractModel):
         if not day:
             raise UserError(_("Type the date."))
         if day > fields.Date.context_today(self):
-            raise UserError(_("Goods received cannot be dated ahead: %s.", day.strftime("%d %b %Y")))
+            raise UserError(_("The date received cannot be in the future: %s.", day.strftime("%d %b %Y")))
         rows = values.get("lines") or []
         if not rows:
             raise UserError(_("Add at least one item."))
@@ -1025,3 +1037,30 @@ class StockBook(models.AbstractModel):
             raise UserError(_("Odoo asked a question while posting the count (%s). Post it from Inventory > "
                               "Physical Inventory instead.", result.get("name") or result.get("res_model")))
         return {"applied": len(quants)}
+
+    # ------------------------------------------------------------ undo a purchase
+    @api.model
+    def book_purchase_undo(self, line_id):
+        """A saved purchase taken back in one step, and what it was, so it can
+        be entered again correctly."""
+        if not self._is_supervisor():
+            raise UserError(_("Only a Stock Book supervisor can undo a purchase."))
+        line = self.env["odin.stock.line"].browse(line_id).exists()
+        window = line.stock_purchase_id
+        if not window:
+            raise UserError(_("Only a purchase made with Add purchase can be undone here."))
+        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_in,
+                 "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
+        rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
+                  "cost": c.unit_cost, "tax_id": c.tax_id.id or False, "note": c.name or ""} for c in window.charge_ids]
+        again = {
+            "supplier": {"id": window.partner_id.id, "name": window.partner_id.name},
+            "supplier_query": window.partner_id.name, "purchase_ref": window.purchase_ref,
+            "date": fields.Date.to_string(window.date),
+            "paid": str(window.pay_journal_id.id) if window.pay_journal_id else "none",
+            "lines": rows, "replace_ids": [], "edit": False,
+        }
+        order = window.order_id.sudo().name
+        window._undo()
+        return {"order": order, "purchase_ref": window.purchase_ref, "again": again}

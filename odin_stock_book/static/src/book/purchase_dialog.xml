@@ -5,26 +5,26 @@
             <div class="o_sb_pd" t-ref="root">
                 <div class="o_sb_pd_head">
                     <div class="o_sb_pd_field">
-                        <label for="o_sb_pd_supplier">Supplier</label>
+                        <label for="o_sb_pd_supplier" t-esc="words.partner"/>
                         <input id="o_sb_pd_supplier" data-pd="supplier" class="form-control" autocomplete="off"
                                t-att-class="{ 'is-invalid': state.tried and !state.supplier }" t-att-value="state.supplierQuery"
-                               placeholder="Type to find the supplier" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
+                               t-att-placeholder="words.partnerHint" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
                                t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickSupplier(item))"/>
                     </div>
                     <div class="o_sb_pd_field">
-                        <label for="o_sb_pd_ref">LPO / invoice no.</label>
+                        <label for="o_sb_pd_ref" t-esc="words.ref"/>
                         <input id="o_sb_pd_ref" data-pd="ref" class="form-control" autocomplete="off"
                                t-att-class="{ 'is-invalid': state.refProblem or (state.tried and !state.ref.trim()) }" t-att-value="state.ref"
-                               placeholder="As on the paper" t-on-input="onRefInput" t-on-change="checkRef" t-on-keydown="onRefKey"/>
+                               placeholder="e.g. 26173777" t-on-input="onRefInput" t-on-change="checkRef" t-on-keydown="onRefKey"/>
                     </div>
                     <div class="o_sb_pd_field">
-                        <label for="o_sb_pd_date">Date received</label>
+                        <label for="o_sb_pd_date" t-esc="words.date"/>
                         <input id="o_sb_pd_date" data-pd="date" type="date" class="form-control" t-att-max="state.options.today"
                                t-att-class="{ 'is-invalid': state.tried and (!state.date or state.date > state.options.today) }"
                                t-att-value="state.date" t-on-change="(ev) => this.state.date = ev.target.value"/>
                     </div>
                     <div class="o_sb_pd_field">
-                        <label for="o_sb_pd_paid">Paid from</label>
+                        <label for="o_sb_pd_paid" t-esc="words.paid"/>
                         <select id="o_sb_pd_paid" data-pd="paid" class="form-select" t-att-class="{ 'is-invalid': state.tried and !state.paid }" t-on-change="onPaid" t-on-keydown="onPaidKey">
                             <option value="" t-att-selected="!state.paid">Choose</option>
                             <option t-foreach="state.options.journals" t-as="journal" t-key="journal.id" t-att-value="journal.id" t-att-selected="'' + journal.id === state.paid" t-esc="journal.label"/>
@@ -39,7 +39,7 @@
                         <span role="columnheader">Item</span>
                         <span role="columnheader" class="o_sb_pd_num">Quantity</span>
                         <span role="columnheader">Unit</span>
-                        <span role="columnheader" class="o_sb_pd_num">Unit cost</span>
+                        <span role="columnheader" class="o_sb_pd_num" t-esc="words.cost"/>
                         <span role="columnheader">VAT</span>
                         <span role="columnheader" class="o_sb_pd_num">Before VAT</span>
                         <span/>
@@ -47,17 +47,17 @@
                     <div t-foreach="state.lines" t-as="line" t-key="line.key" class="o_sb_pd_row" role="row">
                         <div class="o_sb_pd_item" data-label="Item">
                             <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'product-' + line.key" t-att-value="line.query" t-att-title="line.query"
-                                   t-att-class="{ 'is-invalid': missing(line, 'product') }" placeholder="Code or name; transport too" aria-label="Item"
+                                   t-att-class="{ 'is-invalid': missing(line, 'product') }" t-att-placeholder="words.itemHint" aria-label="Item"
                                    t-on-input="(ev) => this.onItemInput(line, ev)" t-on-blur="onBlurSuggest"
                                    t-on-keydown="(ev) => this.onItemKey(line, ev)"/>
-                            <input t-if="line.product and !line.product.stock" class="form-control form-control-sm o_sb_pd_note" t-att-value="line.note" placeholder="What for (shows on the bill)" aria-label="Description"
+                            <input t-if="line.product and !line.product.stock" class="form-control form-control-sm o_sb_pd_note" t-att-value="line.note" t-att-placeholder="words.noteHint" aria-label="Description"
                                    t-on-input="(ev) => line.note = ev.target.value"/>
                         </div>
                         <div data-label="Quantity"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'qty-' + line.key" t-att-value="line.qty"
                                t-att-class="{ 'is-invalid': missing(line, 'qty') }" aria-label="Quantity" t-on-input="(ev) => this.onNumber(line, 'qty', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'qty', ev)"/></div>
                         <div class="o_sb_pd_unit" data-label="Unit" t-esc="line.product ? line.product.uom : ''"/>
-                        <div data-label="Unit cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
-                               t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + amount(line.lastCost) : ''" aria-label="Unit cost"
+                        <div t-att-data-label="words.cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
+                               t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + amount(line.lastCost) : ''" t-att-aria-label="words.cost"
                                t-on-input="(ev) => this.onNumber(line, 'cost', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'cost', ev)"/></div>
                         <div data-label="VAT">
                             <select class="form-select form-select-sm" t-att-data-pd="'tax-' + line.key" t-att-class="{ 'is-invalid': missing(line, 'tax') }" aria-label="VAT" t-on-change="(ev) => this.onTax(line, ev)">
@@ -72,7 +72,7 @@
 
                 <ul t-if="state.suggest" class="dropdown-menu o_sb_pd_suggest" t-att-style="suggestStyle" role="listbox">
                     <li t-if="state.suggest.none" class="o_sb_pd_none">No item matches. Try part of the name or the code.</li>
-                    <li t-if="state.suggest.empty" class="o_sb_pd_none">No supplier matches.</li>
+                    <li t-if="state.suggest.empty" class="o_sb_pd_none" t-esc="words.noPartner"/>
                     <t t-if="state.suggest.kind === 'supplier'">
                         <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
                             t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
@@ -82,8 +82,8 @@
                         <li t-foreach="state.suggest.items" t-as="item" t-key="item.id" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_off: item.tracked }"
                             t-on-mousedown.prevent="() => this.pickItem(suggestLine, item)">
                             <t t-esc="item.label"/>
-                            <small t-if="item.stock === false">Not stock: on the bill only</small>
-                            <small t-elif="item.tracked">Tracked by lot: receive it in Purchases</small>
+                            <small t-if="item.stock === false" t-esc="words.notStock"/>
+                            <small t-elif="item.tracked">Tracked by lot: use Purchases or Sales</small>
                             <small t-else=""><t t-esc="amount(item.onhand)"/> <t t-esc="item.uom"/> on hand</small>
                         </li>
                     </t>

@@ -23,6 +23,15 @@ const blankLine = () => ({
 });
 const isBlank = (line) => !line.product && !line.query && !line.qty && !line.cost;
 
+const SERVER = {
+    purchase: { options: "book_purchase_options", partners: "book_purchase_suppliers", products: "book_purchase_products",
+                item: "book_purchase_item", check: "book_purchase_check", totals: "book_purchase_totals",
+                load: "book_purchase_load", save: "book_purchase_save" },
+    sale: { options: "book_sale_options", partners: "book_sale_customers", products: "book_sale_products",
+            item: "book_sale_item", check: "book_sale_check", totals: "book_sale_totals",
+            load: "book_sale_load", save: "book_sale_save" },
+};
+
 /**
  * One LPO or invoice, entered once: supplier, number, date, items. What Odoo's
  * purchase order asks for, on one screen; saving makes the lines the book
@@ -37,6 +46,10 @@ export class PurchaseDialog extends Component {
         lineId: { type: [Number, Boolean], optional: true },
         // Items to start with, from a shortage.
         items: { type: Array, optional: true },
+        // "purchase" or "sale": the same window, and Odoo's own documents for each.
+        kind: { type: String, optional: true },
+        // What to start from when it is no longer a draft: an undone purchase.
+        loaded: { type: Object, optional: true },
         onSaved: Function,
         close: Function,
     };
@@ -45,6 +58,19 @@ export class PurchaseDialog extends Component {
         this.orm = useService("orm");
         this.dialogService = useService("dialog");
         this.root = useRef("root");
+        this.isSale = this.props.kind === "sale";
+        this.server = SERVER[this.isSale ? "sale" : "purchase"];
+        this.words = this.isSale ? {
+            partner: _t("Customer"), partnerHint: _t("Type to find the customer"), noPartner: _t("No customer matches."),
+            ref: _t("Invoice no."), date: _t("Date delivered"), paid: _t("Paid into"), cost: _t("Unit price"),
+            document: _t("invoice"), notStock: _t("Not stock: on the invoice only"),
+            noteHint: _t("What for? Shows on the invoice"), itemHint: _t("Code or name, e.g. bleach or delivery"),
+        } : {
+            partner: _t("Supplier"), partnerHint: _t("Type to find the supplier"), noPartner: _t("No supplier matches."),
+            ref: _t("LPO / invoice no."), date: _t("Date received"), paid: _t("Paid from"), cost: _t("Unit cost"),
+            document: _t("bill"), notStock: _t("Not stock: on the bill only"),
+            noteHint: _t("What for? Shows on the bill"), itemHint: _t("Code or name, e.g. salt or transport"),
+        };
         this.state = useState({
             options: { taxes: [], journals: [], today: "", can_post: false, currency: "" },
             supplier: null, supplierQuery: "", ref: "", date: "", refProblem: "", paid: "",
@@ -55,7 +81,7 @@ export class PurchaseDialog extends Component {
         this.refSeq = 0;
         this.timers = new Set();
         onWillStart(async () => {
-            this.state.options = await this.orm.call("odin.stock.book", "book_purchase_options", []);
+            this.state.options = await this.orm.call("odin.stock.book", this.server.options, []);
             this.state.date = this.state.options.today;
             await this.prefill();
             this.snapshot = this.fingerprint;
@@ -74,8 +100,8 @@ export class PurchaseDialog extends Component {
 
     /** Start from a draft line, or from items a shortage asks for. */
     async prefill() {
-        if (this.props.lineId) {
-            const data = await this.orm.call("odin.stock.book", "book_purchase_load", [this.props.lineId]);
+        if (this.props.lineId || this.props.loaded) {
+            const data = this.props.loaded || await this.orm.call("odin.stock.book", this.server.load, [this.props.lineId]);
             this.state.supplier = data.supplier || null;
             this.state.supplierQuery = data.supplier_query || "";
             this.state.ref = data.purchase_ref;
@@ -116,6 +142,9 @@ export class PurchaseDialog extends Component {
     }
 
     get title() {
+        if (this.isSale) {
+            return this.state.edit ? _t("Edit sale") : this.props.lineId ? _t("Complete sale") : _t("Add sale");
+        }
         if (this.state.edit) {
             return _t("Edit purchase");
         }
@@ -184,7 +213,9 @@ export class PurchaseDialog extends Component {
         if (!(parseAmount(line.qty, NaN) > 0)) {
             return "qty";
         }
-        if (!(parseAmount(line.cost, NaN) > 0)) {
+        // A sale may be free, a replacement say, when 0 is typed.
+        const cost = parseAmount(line.cost, NaN);
+        if (!(this.isSale ? cost >= 0 : cost > 0)) {
             return "cost";
         }
         return line.taxId ? null : "tax";
@@ -198,10 +229,10 @@ export class PurchaseDialog extends Component {
     /** The first thing still missing: [cell, message]. */
     get problem() {
         if (!this.state.supplier) {
-            return ["supplier", _t("Pick the supplier.")];
+            return ["supplier", this.isSale ? _t("Pick the customer.") : _t("Pick the supplier.")];
         }
         if (!this.state.ref.trim()) {
-            return ["ref", _t("Type the LPO or invoice number.")];
+            return ["ref", this.isSale ? _t("Type the invoice number.") : _t("Type the LPO or invoice number.")];
         }
         if (this.state.refProblem) {
             return ["ref", this.state.refProblem];
@@ -210,25 +241,28 @@ export class PurchaseDialog extends Component {
             return ["date", _t("Type the date.")];
         }
         if (this.state.date > this.state.options.today) {
-            return ["date", _t("Goods received cannot be dated ahead.")];
+            return ["date", this.isSale ? _t("The delivery date cannot be in the future.")
+                : _t("The date received cannot be in the future.")];
         }
         if (!this.items.length) {
             return [`product-${this.state.lines[0].key}`, _t("Add at least one item.")];
         }
         const firstProblemLine = this.items.find((line) => this.lineProblem(line));
         if (!firstProblemLine && !this.hasStock) {
-            return [`product-${this.state.lines[0].key}`, _t("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter it in Accounting.")];
+            return [`product-${this.state.lines[0].key}`, this.isSale ? _t("Add at least one item kept in stock. A sale with no stock in it is an invoice: enter it in Accounting.")
+                : _t("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter it in Accounting.")];
         }
         for (const [index, line] of this.items.entries()) {
             const what = this.lineProblem(line);
             if (what) {
                 const words = { product: _t("pick the item from the list"), qty: _t("type the quantity"),
-                                cost: _t("type the cost per unit"), tax: _t("choose the VAT") };
+                                cost: this.isSale ? _t("type the price per unit") : _t("type the cost per unit"), tax: _t("choose the VAT") };
                 return [`${what}-${line.key}`, _t("Line %(n)s: %(what)s.", { n: index + 1, what: words[what] })];
             }
         }
         if (!this.state.paid) {
-            return ["paid", _t("Say where it was paid from, or that it is not paid yet.")];
+            return ["paid", this.isSale ? _t("Say where it was paid into, or that it is not paid yet.")
+                : _t("Say where it was paid from, or that it is not paid yet.")];
         }
         return null;
     }
@@ -248,13 +282,13 @@ export class PurchaseDialog extends Component {
             this.state.suggest = null;
             return;
         }
-        const { items, can_create } = await this.orm.call("odin.stock.book", "book_purchase_suppliers", [text]);
+        const { items, can_create } = await this.orm.call("odin.stock.book", this.server.partners, [text]);
         if (this.state.supplierQuery !== text) {
             return;
         }
         const options = items.map((item) => ({ ...item, label: item.name }));
         if (can_create) {
-            options.push({ create: text.trim(), label: _t('Create "%s" as a new supplier', text.trim()) });
+            options.push({ create: text.trim(), label: this.isSale ? _t("Create “%s” as a new customer", text.trim()) : _t("Create “%s” as a new supplier", text.trim()) });
         }
         // A new supplier is chosen on purpose, never by typing a name wrong
         // and pressing Enter: with no match, nothing starts selected.
@@ -301,7 +335,7 @@ export class PurchaseDialog extends Component {
 
     async loadDefaults(line) {
         const product = line.product;
-        const defaults = await this.orm.call("odin.stock.book", "book_purchase_item", [product.id],
+        const defaults = await this.orm.call("odin.stock.book", this.server.item, [product.id],
             { partner_id: this.state.supplier?.id || false });
         if (line.product !== product) {
             return;
@@ -347,7 +381,7 @@ export class PurchaseDialog extends Component {
             return;
         }
         // The purchase's own number, while it is being edited, is not a duplicate.
-        const problem = await this.orm.call("odin.stock.book", "book_purchase_check",
+        const problem = await this.orm.call("odin.stock.book", this.server.check,
             [this.state.supplier.id, ref], { ignore_ids: this.state.replaceIds });
         if (seq === this.refSeq) {
             this.state.refProblem = problem || "";
@@ -367,7 +401,7 @@ export class PurchaseDialog extends Component {
             this.state.suggest = null;
             return;
         }
-        const items = await this.orm.call("odin.stock.book", "book_purchase_products", [text],
+        const items = await this.orm.call("odin.stock.book", this.server.products, [text],
             { warehouse_id: this.props.warehouseId || false });
         if (line.query !== text) {
             return;
@@ -514,7 +548,7 @@ export class PurchaseDialog extends Component {
             this.state.totals = null;
             return;
         }
-        const totals = await this.orm.call("odin.stock.book", "book_purchase_totals",
+        const totals = await this.orm.call("odin.stock.book", this.server.totals,
             [lines.map((line) => this.linePayload(line))], { partner_id: this.state.supplier?.id || false });
         if (seq !== this.totalsSeq) {
             return;
@@ -531,13 +565,25 @@ export class PurchaseDialog extends Component {
         if (!this.state.options.can_post) {
             return _t("Save for posting");
         }
+        if (this.isSale) {
+            return this.state.totals ? _t("Save and deliver · %s", this.money(this.state.totals.total)) : _t("Save and deliver");
+        }
         return this.state.totals ? _t("Save and receive · %s", this.money(this.state.totals.total)) : _t("Save and receive");
     }
 
     get saveHelp() {
+        if (this.isSale) {
+            return this.state.options.can_post
+                ? (this.state.paid === "none"
+                    ? _t("Creates the order, delivery and invoice, with the invoice left unpaid. Final once saved. Ctrl+Enter saves.")
+                    : _t("Creates the order, delivery, invoice and payment. Final once saved. Ctrl+Enter saves."))
+                : _t("Waits on the book for a supervisor, who posts it with its invoice.");
+        }
         return this.state.options.can_post
-            ? _t("Order, stock, bill and payment, all at once. Final once saved. Ctrl+Enter saves.")
-            : _t("Waits on the book for a supervisor, who posts it with its bill and payment.");
+            ? (this.state.paid === "none"
+                ? _t("Creates the order, stock and bill, with the bill left unpaid. Final once saved. Ctrl+Enter saves.")
+                : _t("Creates the order, stock, bill and payment. Final once saved. Ctrl+Enter saves."))
+            : _t("Waits on the book for a supervisor, who posts it with its bill.");
     }
 
     // ------------------------------------------------------------ save
@@ -554,7 +600,7 @@ export class PurchaseDialog extends Component {
         }
         this.state.saving = true;
         try {
-            const result = await this.orm.call("odin.stock.book", "book_purchase_save", [{
+            const result = await this.orm.call("odin.stock.book", this.server.save, [{
                 warehouse_id: this.props.warehouseId || false,
                 partner_id: this.state.supplier.id, partner_name: this.state.supplier.name,
                 purchase_ref: this.state.ref.trim(), date: this.state.date,
