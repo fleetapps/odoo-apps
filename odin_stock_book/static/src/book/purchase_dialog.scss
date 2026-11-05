@@ -35,7 +35,10 @@
 
 // The lines scroll by themselves, so the totals and Save stay in sight.
 .o_sb_pd_lines {
-    max-height: max(14rem, calc(100vh - 27rem));
+    // Two properties, not max(): Odoo compiles with libsass, which takes max()
+    // for its own function and fails the whole bundle on rem and calc.
+    min-height: 14rem;
+    max-height: calc(100vh - 27rem);
     overflow-y: auto;
     overflow-x: hidden;
 }
