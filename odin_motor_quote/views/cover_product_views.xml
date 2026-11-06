@@ -6,15 +6,22 @@
         <field name="model">odin.cover.product</field>
         <field name="inherit_id" ref="odin_medical_quote.view_cover_product_form"/>
         <field name="arch" type="xml">
-            <group name="covers" position="inside">
+            <!-- Period and Name on quotes are the base form's, shared with the
+                 classes quoted on the standard screen. -->
+            <field name="per_person" position="before">
                 <field name="class_id" invisible="line != 'motor'" required="line == 'motor'"
                        options="{'no_open': True}"
                        placeholder="e.g. Pick-up (commercial)"/>
                 <field name="cover" widget="radio" options="{'horizontal': true}"
                        invisible="line != 'motor'" required="line == 'motor'"/>
-                <field name="period_months" invisible="line != 'motor'" required="line == 'motor'"/>
+            </field>
+            <field name="period_months" position="attributes">
+                <attribute name="required">line == 'motor'</attribute>
+            </field>
+            <field name="period_months" position="after">
                 <field name="max_age" invisible="line != 'motor'"/>
-                <field name="quote_label" invisible="line != 'motor'" placeholder="Only if the insurer has two products for this vehicle"/>
+            </field>
+            <group name="covers" position="inside">
                 <field name="ask_tonnage" invisible="1"/>
                 <field name="ask_seats" invisible="1"/>
             </group>

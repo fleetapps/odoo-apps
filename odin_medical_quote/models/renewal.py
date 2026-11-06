@@ -95,7 +95,8 @@ class Renewal(models.Model):
 
     @api.model
     def _selection_line(self):
-        return self.env["odin.quote.comparison"]._fields["odin_quote_type"].selection
+        """The insurance classes (Cover Quotes ▸ Products ▸ Insurance classes)."""
+        return self.env["odin.insurance.class"]._odin_selection()
 
     @api.depends("partner_id", "lead_id.contact_name", "lead_id.partner_name", "lead_id.name")
     def _compute_client_name(self):
@@ -383,13 +384,8 @@ class Renewal(models.Model):
             self.state = "in_progress"
         comparison = self.comparison_id
         if comparison and comparison.odin_builder_params and comparison.odin_from_builder:
-            tag, name = comparison._odin_builder_tags()[comparison.odin_quote_type or "medical"]
-            return {
-                "type": "ir.actions.client",
-                "tag": tag,
-                "name": name,
-                "params": {"lead_id": lead.id, "prefill_comparison_id": comparison.id},
-            }
+            return comparison._odin_builder_action(
+                lead_id=lead.id, prefill_comparison_id=comparison.id)
         return lead.action_odin_new_quote()
 
     def action_odin_open_lead(self):

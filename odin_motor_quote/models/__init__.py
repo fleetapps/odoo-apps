@@ -1,3 +1,4 @@
+from . import insurance_class
 from . import motor_class
 from . import motor_rate
 from . import cover_product

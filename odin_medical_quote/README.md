@@ -21,15 +21,16 @@ on the rate cards already in Odoo.
 ## The screen
 
 Cover Quotes opens on **Quotes**. To start a quote:
-* **New quote** asks what is being quoted (Medical, Motor...) and opens its
-  form;
-* the Quotes list's **New ▾** has one entry per type;
+* **New quote** asks which insurance class is being quoted (Medical, Motor,
+  Accident...) and opens its form;
+* the Quotes list's **New ▾** has one entry per class;
 * **Insurance quote** on any CRM lead or opportunity asks the same question
   and opens that form with the lead's client filled in. The lead's
   **Insurance quotes** button lists its quotes.
 
-Each insurance line adds itself to both choices; `odin_motor_quote` adds
-Motor. Four steps on one page:
+Both lists are the insurance classes switched on in **Cover Quotes ▸
+Products ▸ Insurance classes** (see [Insurance classes](#insurance-classes)).
+Medical's form is this one, in four steps on one page:
 
 1. **Client and cover details.** *Customer source*: a new prospect (name,
    phone, email), an existing customer, or a lead or
@@ -242,6 +243,81 @@ editable in CRM ▸ Configuration ▸ Activity Types, however the quote was
 accepted. Changing *Handled by* moves the to-do. *Waiting to be placed*
 lists accepted quotes whose to-do is still open.
 
+## Insurance classes
+
+**Cover Quotes ▸ Products ▸ Insurance classes** is what the office quotes.
+Each class is a button in New quote, an entry in the Quotes list's New ▾,
+the **Class** of a product, and the Class of every quote and renewal of it
+(the Quotes register groups and filters by it). Sales Administrators keep the
+list; salespeople read it.
+
+* **Medical** comes with this module and **Motor** with `odin_motor_quote`.
+  They keep their own screens, which know families and vehicles. Rename
+  them, describe them, change their icon or order, or switch one off to take
+  it out of New quote. They cannot be deleted.
+* **A class you add** -- Accident, Fire, Travel, WIBA -- is quoted on the
+  **standard screen**. On the class, say what its quote asks besides the
+  client:
+  * **an amount** and what to call it (*Sum insured*, *Annual wages*,
+    *Limit of indemnity*);
+  * **how many people** and what to call them (*People covered*,
+    *Travellers*), for cover priced per person;
+  * **a line of details** and what to call it (*Occupation*, *Destination*),
+    printed on the quotation.
+
+  It appears in New quote as soon as it is saved. Until it has products,
+  its button says *no products yet* and cannot be opened.
+
+A class is referred to by a code made from its name when it is created
+(`accident`), so renaming *Accident* to *Personal Accident* renames it on
+every product, quote and renewal and moves nothing. A class with products or
+quotes is archived, not deleted: it leaves New quote and new products, and
+what was filed under it keeps its name, marked *(archived)*.
+
+### Products of a class you add
+
+In **Cover Quotes ▸ Products**, New, pick the class: the form asks for what
+the standard screen prices.
+
+* **Bands** of the amount. Each has a rate (% of the amount) and a minimum
+  premium, or a fixed premium, and an optional name (*Plan A*). The quote
+  uses the band the amount falls in; outside every band the insurer is
+  listed as unable to quote, with the reason (*Amounts up to 500,000.*). One
+  band with no amounts applies to every quote. A class that asks for no
+  amount has one band with a fixed premium.
+* **Priced per person**: each band's premium is for one person and is
+  charged for everyone covered.
+* **Extras**: always included, or for the client to add. A rate on the
+  amount with a minimum, or a fixed price, per person or per policy.
+* **What it pays out** (one per line, *Death: 1,000,000*) is printed under
+  the cover in *What's covered*; **Terms on the quote** after the plans.
+* **Period**, for cover shorter than a year (not renewed); **Name on
+  quotes**, where the product's name is not what the client should read.
+* **Try it** prices an amount and a number of people exactly as the quote
+  screen does; **Check before quoting** points out overlapping bands, a rate
+  where the class asks for no amount, a rate that looks a hundred times too
+  high.
+
+### The standard screen
+
+The same four steps as Medical and Motor, with the class's questions in
+step 1, then every insurer's product in the class priced side by side --
+cheapest first, extras to tick, insurers that cannot quote listed with the
+reason -- the comparison with discount, levies, stamp duty and policy charge,
+and the save: contact, opportunity tagged with the class (*Accident*), one
+quotation per insurer, the quote. Edit quote, Print, Send by email (the
+template *Insurance quote: send to the client*), Share on WhatsApp (the PDF:
+the client's own online page is for medical and motor quotes), Client
+accepted and declined, hand-over and renewals all work as they do for
+Medical; the quotation prints *Cover details* (the class, the amount, the
+people, the details) where a medical quotation prints the members.
+
+The premium and extras go on the quotation and invoice as the class's own
+product, *Accident premium*, made with the class and given the levies of
+the company's other premiums (set its taxes in Sales ▸ Products if this
+class's differ, or pick another product on the class). Stamp duty is
+*Stamp duty* (`FEE-STAMP-GENERAL`, 40).
+
 ## How a premium is priced
 
 From the quotation templates and their products, read the way the rate
@@ -330,6 +406,11 @@ upgrade installs `odin_medical_quote` with it.
 
 ## Tests
 
+`tests/test_classes.py` adds an Accident class with two insurers' products
+and covers the class list (codes, renames, archiving, deleting), products
+(bands, per person, extras, checks, Try it), pricing, totals, saving,
+editing, the quotation, Client accepted, the renewal and a browser tour from
+New quote. The rest of
 `tests/` builds a small rate card in the shape of the real ones and covers
 the name parser, pricing by family size, role and band, refusals, the limit
 range and insurer filter, totals with discounts, saving to Contacts and CRM,

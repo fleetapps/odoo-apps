@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: the name, description, icon and order are the office's to
+         change in Cover Quotes ▸ Products ▸ Insurance classes. The code ties
+         every medical product, quote and renewal to it. -->
+    <data noupdate="1">
+        <record id="insurance_class_medical" model="odin.insurance.class">
+            <field name="name">Medical</field>
+            <field name="code">medical</field>
+            <field name="engine">medical</field>
+            <field name="description">Individual and family medical cover</field>
+            <field name="icon">fa-heartbeat</field>
+            <field name="sequence">10</field>
+        </record>
+    </data>
+</odoo>

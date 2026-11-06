@@ -203,11 +203,15 @@ export class MedicalQuote extends Component {
         return Object.fromEntries(keep.map((key) => [key, this.state[key]]));
     }
 
+    /** What get_setup is asked with: the lead, and for the standard screen
+     * the insurance class. */
+    setupKwargs() {
+        return { lead_id: this.params.lead_id || false };
+    }
+
     async start() {
         const params = this.params;
-        this.state.setup = await this.orm.call(this.model, "get_setup", [], {
-            lead_id: params.lead_id || false,
-        });
+        this.state.setup = await this.orm.call(this.model, "get_setup", [], this.setupKwargs());
         const restored = this.props.state?.quote;
         if (restored) {
             Object.assign(this.state, restored);

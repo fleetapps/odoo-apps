@@ -8,11 +8,25 @@
               action="action_quote_new"
               sequence="11"/>
 
-    <!-- What the office sells, and what is coming up for renewal. -->
-    <menuitem id="menu_cover_products"
+    <!-- What the office sells (each insurer's products, and the classes
+         they are filed under) and what is coming up for renewal. A record,
+         not a menuitem, so the action Products used to open is taken off
+         now that it holds two entries. -->
+    <record id="menu_cover_products" model="ir.ui.menu">
+        <field name="name">Products</field>
+        <field name="parent_id" ref="odin_client_quote.menu_quote_root"/>
+        <field name="action" eval="False"/>
+        <field name="sequence">20</field>
+    </record>
+    <menuitem id="menu_cover_product_list"
               name="Products"
-              parent="odin_client_quote.menu_quote_root"
+              parent="menu_cover_products"
               action="action_cover_product"
+              sequence="10"/>
+    <menuitem id="menu_insurance_classes"
+              name="Insurance classes"
+              parent="menu_cover_products"
+              action="action_insurance_class"
               sequence="20"/>
 
     <menuitem id="menu_renewals"

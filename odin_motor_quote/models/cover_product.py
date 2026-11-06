@@ -26,7 +26,6 @@ SHARED = (
 class CoverProduct(models.Model):
     _inherit = "odin.cover.product"
 
-    line = fields.Selection(selection_add=[("motor", "Motor")], ondelete={"motor": "cascade"})
     class_id = fields.Many2one(
         "odin.motor.class", string="Vehicle type", ondelete="restrict", tracking=True)
     cover = fields.Selection(COVERS, default="comprehensive", tracking=True)

@@ -29,9 +29,9 @@ class QuoteComparison(models.Model):
         ondelete="set null", copy=False,
     )
     odin_quote_type = fields.Selection(
-        [("medical", "Medical")], string="Type", default="medical", required=True,
+        selection="_odin_selection_class", string="Class", default="medical", required=True,
         index=True, copy=False,
-        help="The insurance line quoted: it decides the screen Edit quote opens "
+        help="The insurance class quoted: it decides the screen Edit quote opens "
         "and what the quotation prints about the risk.")
     odin_builder_params = fields.Json(
         string="Quote builder input", copy=False,
@@ -73,6 +73,20 @@ class QuoteComparison(models.Model):
     odin_placement_pending = fields.Boolean(
         string="Waiting to be placed", compute="_compute_odin_placement_pending",
         search="_search_odin_placement_pending")
+
+    @api.model
+    def _odin_selection_class(self):
+        return self.env["odin.insurance.class"]._odin_selection()
+
+    def _odin_class(self):
+        """The insurance class quoted."""
+        self.ensure_one()
+        return self.env["odin.insurance.class"]._odin_get(self.odin_quote_type)
+
+    def _odin_is_general(self):
+        """Quoted on the standard screen: a class the office added."""
+        self.ensure_one()
+        return self._odin_class().engine == "general"
 
     @api.depends("odin_builder_params")
     def _compute_odin_from_builder(self):
@@ -193,20 +207,16 @@ class QuoteComparison(models.Model):
                 )
 
     def _odin_builder_tags(self):
-        """The screen each type of quote is made and edited on."""
-        return {"medical": ("odin_medical_quote", _("Add Medical Quote"))}
+        """The screen each class of quote is made and edited on."""
+        return self.env["odin.insurance.class"]._odin_builder_tags()
 
     def _odin_builder_action(self, **params):
-        tag, name = self._odin_builder_tags()[self[:1].odin_quote_type or "medical"]
-        return {
-            "type": "ir.actions.client",
-            "tag": tag,
-            "name": name,
-            "params": params,
-        }
+        """The class's quote screen, with ``params``."""
+        return self.env["odin.insurance.class"]._odin_get(
+            self[:1].odin_quote_type)._odin_builder_action(**params)
 
     def action_odin_edit(self):
-        """Reopen the quote in Add Medical Quote, as it was saved."""
+        """Reopen the quote on its class's screen, as it was saved."""
         self.ensure_one()
         if self.state == "accepted":
             raise UserError(_("%s has been accepted and can no longer change.", self.name))
@@ -355,8 +365,7 @@ class QuoteComparison(models.Model):
     def _odin_export_filename(self):
         self.ensure_one()
         return _("%(line)s quotation - %(client)s - %(ref)s",
-                 line=dict(self._fields["odin_quote_type"]._description_selection(self.env)).get(
-                     self.odin_quote_type, ""),
+                 line=self._odin_class().name or "",
                  client=self.partner_id.name or "", ref=self.name)
 
     def _whatsapp_message(self, link=False):
@@ -404,6 +413,9 @@ class QuoteComparison(models.Model):
 
     def _odin_email_template(self):
         """The email a quote of this type goes out with."""
+        if self[:1] and self[:1]._odin_is_general():
+            return self.env.ref("odin_medical_quote.mail_template_general_quote",
+                                raise_if_not_found=False)
         return self.env.ref("odin_medical_quote.mail_template_medical_quote",
                             raise_if_not_found=False)
 
@@ -454,6 +466,8 @@ class QuoteComparison(models.Model):
         cover = (self.odin_builder_params or {}).get("cover") or {}
         if not cover:
             return [(d.label, d.value) for d in self.detail_ids if (d.label or "").strip()]
+        if self._odin_is_general():
+            return self._odin_export_general()
 
         def date(value):
             return self._odin_export_date(fields.Date.to_date(value)) if value else ""
@@ -490,7 +504,29 @@ class QuoteComparison(models.Model):
 
     def _odin_export_member_headings(self):
         """The heading and table title of the who-or-what-is-covered block."""
+        if self[:1] and self[:1]._odin_is_general():
+            return _("Cover details"), _("What this quotation is for")
         return _("Member details"), _("People included in this quotation")
+
+    def _odin_export_general(self):
+        """A quote of a class the office added: the class, and the amount,
+        people and details as entered."""
+        self.ensure_one()
+        cover = (self.odin_builder_params or {}).get("cover") or {}
+        klass = self._odin_class()
+        pairs = [(_("Cover"), klass.name)]
+        if klass.ask_amount and cover.get("amount") not in (None, "", False):
+            try:
+                amount = float(str(cover["amount"]).replace(",", ""))
+            except ValueError:
+                amount = 0.0
+            pairs.append((klass.amount_label or _("Sum insured"),
+                          formatLang(self.env, amount, digits=0)))
+        if klass.ask_people and cover.get("people"):
+            pairs.append((klass.people_label or _("People covered"), str(cover["people"])))
+        if (cover.get("details") or "").strip():
+            pairs.append((klass.details_label or _("Details"), cover["details"].strip()))
+        return pairs
 
     def _odin_export_member_rows(self, columns=2):
         """The member details in rows of ``columns`` label/value pairs."""
@@ -719,3 +755,13 @@ class QuoteComparisonPlan(models.Model):
         for plan in self:
             plan.odin_plan_label = plan.order_id._odin_plan_label() if plan.order_id else False
             plan.odin_plan_text = plan.order_id._odin_plan_text() if plan.order_id else False
+
+    @api.depends("order_id.odin_cover_product_id")
+    def _compute_heading(self):
+        """A column of a class the office added is headed by its insurer,
+        then the product."""
+        general = self.filtered("order_id.odin_cover_product_id")
+        for plan in general:
+            plan.name = plan.order_id._odin_insurer_label()
+            plan.subtitle = plan.order_id._odin_plan_name()
+        super(QuoteComparisonPlan, self - general)._compute_heading()

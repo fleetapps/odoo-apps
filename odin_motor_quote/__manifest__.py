@@ -16,13 +16,14 @@ offers, levies and stamp duty -- compared and saved as one quote.
 Rates live in Cover Quotes ▸ Configuration ▸ Motor rates: one line per
 insurer, vehicle type, cover and band. See README.md.
 """,
-    "version": "19.0.1.1.1",
+    "version": "19.0.1.2.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
     "depends": ["odin_medical_quote"],
     "data": [
         "security/ir.model.access.csv",
+        "data/insurance_class_data.xml",
         "data/motor_class_data.xml",
         "data/product_data.xml",
         "data/mail_template_data.xml",
