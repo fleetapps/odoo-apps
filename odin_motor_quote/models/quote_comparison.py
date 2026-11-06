@@ -1,17 +1,9 @@
-from odoo import _, api, fields, models
+from odoo import _, api, models
 from odoo.tools import formatLang
 
 
 class QuoteComparison(models.Model):
     _inherit = "odin.quote.comparison"
-
-    odin_quote_type = fields.Selection(
-        selection_add=[("motor", "Motor")], ondelete={"motor": "set default"})
-
-    def _odin_builder_tags(self):
-        tags = super()._odin_builder_tags()
-        tags["motor"] = ("odin_motor_quote", _("Add Motor Quote"))
-        return tags
 
     def _odin_email_template(self):
         if self.odin_quote_type == "motor":

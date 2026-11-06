@@ -35,6 +35,9 @@ class QuoteComparison(models.Model):
     odin_callback_requested = fields.Datetime(
         string="Asked for a call", copy=False, readonly=True,
         help="When the client pressed Talk to an advisor on their quote.")
+    odin_has_online_page = fields.Boolean(
+        compute="_compute_odin_has_online_page",
+        help="Medical and motor quotes have a page of their own for the client.")
     odin_online_url = fields.Char(
         string="Client's link", compute="_compute_odin_online_url",
         help="The client's own page for this quote: the plans in plain words, "
@@ -86,8 +89,15 @@ class QuoteComparison(models.Model):
         return self
 
     def _odin_online_models(self):
-        """The online page of each type of quote (motor adds its own)."""
+        """The online page of each type of quote (motor adds its own). A
+        class the office added has none: its quote is shared as the PDF."""
         return {"medical": "odin.medical.quote.online"}
+
+    @api.depends("odin_quote_type")
+    def _compute_odin_has_online_page(self):
+        models = self._odin_online_models()
+        for comparison in self:
+            comparison.odin_has_online_page = comparison.odin_quote_type in models
 
     def _odin_online(self):
         self.ensure_one()
@@ -112,7 +122,7 @@ class QuoteComparison(models.Model):
         in plain words on a phone, the PDF, Talk to an advisor -- rather than
         a bare PDF."""
         self.ensure_one()
-        if self.odin_from_builder and self.plan_ids:
+        if self.odin_from_builder and self.plan_ids and self.odin_has_online_page:
             return self._odin_online_url()
         return super()._whatsapp_page_url()
 
@@ -129,5 +139,8 @@ class QuoteComparison(models.Model):
 
     def action_odin_online_link(self):
         """Make the client's link, so it can be copied and sent."""
+        if not all(self.mapped("odin_has_online_page")):
+            raise UserError(_("Only medical and motor quotes have a page for the client. "
+                              "Send this one by email or WhatsApp: the PDF goes with it."))
         self._odin_online_ensure_token()
         return True

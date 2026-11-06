@@ -9,15 +9,21 @@
                     What are you quoting<t t-if="leadName"> for <b t-esc="leadName"/></t>?
                 </p>
                 <div class="o_quote_new_types">
-                    <button t-foreach="types" t-as="type" t-key="type.key" type="button"
-                            class="o_quote_new_type" t-on-click="() => this.open(type)">
+                    <button t-foreach="state.types" t-as="type" t-key="type.id" type="button"
+                            class="o_quote_new_type" t-att-class="{'o_quote_new_empty': !type.available}"
+                            t-att-disabled="!type.available" t-att-data-class="type.code"
+                            t-on-click="() => this.open(type)">
                         <i class="fa" t-att-class="type.icon"/>
                         <span>
                             <b t-esc="type.name"/>
-                            <small t-esc="type.description"/>
+                            <small t-if="type.available" t-esc="type.description"/>
+                            <small t-else="" t-esc="noProducts(type)"/>
                         </span>
-                        <i class="fa fa-angle-right ms-auto"/>
+                        <i t-if="type.available" class="fa fa-angle-right ms-auto"/>
                     </button>
+                    <p t-if="state.loaded and !state.types.length" class="text-muted">
+                        No insurance class is switched on. Add one in Cover Quotes ▸ Products ▸ Insurance classes.
+                    </p>
                 </div>
             </div>
         </div>
@@ -30,7 +36,8 @@
                     New <i class="fa fa-caret-down ms-1"/>
                 </button>
                 <t t-set-slot="content">
-                    <DropdownItem t-foreach="quoteTypes" t-as="type" t-key="type.key"
+                    <DropdownItem t-foreach="quoteTypes" t-as="type" t-key="type.id"
+                                  class="type.available ? '' : 'text-muted'"
                                   onSelected="() => this.newQuote(type)">
                         <i class="fa fa-fw me-2" t-att-class="type.icon"/><t t-esc="type.name"/> quote
                     </DropdownItem>

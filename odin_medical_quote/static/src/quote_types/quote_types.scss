@@ -48,10 +48,19 @@
             color: var(--text-muted, #6c757d);
         }
 
-        &:hover,
+        &:hover:not(:disabled),
         &:focus-visible {
             border-color: var(--primary, #714b67);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        &.o_quote_new_empty {
+            cursor: default;
+            opacity: 0.7;
+
+            > .fa:first-child {
+                color: var(--text-muted, #6c757d);
+            }
         }
     }
 }
