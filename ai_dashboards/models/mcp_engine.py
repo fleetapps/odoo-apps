@@ -105,6 +105,43 @@ class MCPEngine(models.AbstractModel):
             "date_granularities": sorted(spec_lib.DATE_GRANULARITIES),
             "periods": sorted(spec_lib.PERIODS),
             "filter_types": sorted(spec_lib.FILTER_TYPES),
+            "filters": {
+                "note": _(
+                    "Top-level `filters` become controls above the tiles that "
+                    "the reader changes without editing anything. Each one "
+                    "applies to every tile whose model has its field and "
+                    "passes the others by, so one Vendor filter can narrow "
+                    "purchase orders and bills together. Keys may not start "
+                    "with an underscore. A tile with its own `period` keeps "
+                    "it instead of a page date_range, and aging and banks "
+                    "cards take no period at all; every other filter still "
+                    "reaches them."),
+                "date_range": _(
+                    "A period picker. `default` is one of `periods`; `field` "
+                    "is optional and names the date field, falling back per "
+                    "tile to that model's usual date."),
+                "many2one": _(
+                    "A record picker — vendor, customer, product, "
+                    "salesperson. `field` is a many2one directly on the "
+                    "tiles' model (\"partner_id\", not \"order_id.partner_id\"). "
+                    "The reader may pick several; tiles show any of them. "
+                    "Optional `domain` narrows the records offered, e.g. "
+                    "[[\"supplier_rank\", \">\", 0]] for vendors only. "
+                    "Optional `default` is a record id or a list of ids."),
+                "selection": _(
+                    "A dropdown over a selection field such as `state`, with "
+                    "an \"All\" choice. Optional `default` is one of the "
+                    "field's values."),
+                "examples": [
+                    {"key": "period", "type": "date_range", "label": "Period",
+                     "default": "this_year", "field": "date_order"},
+                    {"key": "vendor", "type": "many2one", "label": "Vendor",
+                     "field": "partner_id",
+                     "domain": [["supplier_rank", ">", 0]]},
+                    {"key": "status", "type": "selection", "label": "Status",
+                     "field": "state"},
+                ],
+            },
             "format_kinds": sorted(spec_lib.FORMAT_KINDS),
             "summary_cards": "pnl over account.move.line, aging over account.move (domain: unpaid invoices or bills, "
                              "measure the residual), banks over account.journal: each works out its own groups. "
@@ -145,6 +182,11 @@ class MCPEngine(models.AbstractModel):
                 _("Prefer a top-level `compare` over setting it per widget: "
                   "one dashboard-wide comparison is what a person means when "
                   "they ask to see something against last year."),
+                _("Give a dashboard the filters its reader will reach for: a "
+                  "Period almost always, and a many2one filter for whoever "
+                  "the figures are about — vendor, customer, product, "
+                  "salesperson — when the tiles share that field. A filter "
+                  "whose field is on none of the tiles is refused."),
                 _("You can only build over models this connection may already "
                   "read. Call list_models to see them."),
             ],
@@ -158,7 +200,9 @@ class MCPEngine(models.AbstractModel):
             "description": "Order intake and top customers for the period.",
             "compare": {"to": "previous_year"},
             "filters": [{"key": "period", "type": "date_range",
-                         "label": "Period", "default": "this_year"}],
+                         "label": "Period", "default": "this_year"},
+                        {"key": "customer", "type": "many2one",
+                         "label": "Customer", "field": "partner_id"}],
             "widgets": [
                 {"id": "total", "type": "kpi", "title": "Order intake",
                  "span": 3,

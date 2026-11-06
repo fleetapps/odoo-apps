@@ -75,6 +75,9 @@ class AIDashboardRender(models.AbstractModel):
         # asks of a dashboard, not a property of it.
         compare_mode = filter_values.get("__compare") or \
             (spec.get("compare") or {}).get("to") or "none"
+        # Worked out once, as the person looking: which records a vendor
+        # filter offers, which values a status filter has, in their language.
+        spec = dict(spec, filters=self._resolve_filters(spec, filter_values))
 
         widgets = []
         for widget in spec.get("widgets", []):
@@ -144,6 +147,7 @@ class AIDashboardRender(models.AbstractModel):
         "fixing" a dashboard that was working.
         """
         rows = []
+        spec = dict(spec, filters=self._resolve_filters(spec))
         for widget in spec.get("widgets", [])[:limit]:
             rendered = self._render_widget(widget, spec, {}, "none")
             row = {
@@ -214,10 +218,14 @@ class AIDashboardRender(models.AbstractModel):
         model_name = query.get("model")
         if widget.get("period"):
             # Its own period, changed on the card, in place of the page's.
-            key = "__period:%s" % widget.get("id")
-            base["period"] = filter_values.get(key) or widget["period"]
-            spec = dict(spec, filters=[{"key": key, "type": "date_range",
-                                        "default": widget["period"]}])
+            chosen = filter_values.get(spec_lib.card_period_key(widget.get("id")))
+            base["period"] = chosen if chosen in spec_lib.PERIODS \
+                else widget["period"]
+        # Only the filters that reach this tile: a card's own period replaces
+        # the page's, a position card takes none, and everything else — a
+        # vendor, a status — still applies. Replacing the whole list, as this
+        # used to, silently dropped every other filter from those cards.
+        spec = dict(spec, filters=spec_lib.filters_for_widget(widget, spec))
 
         if model_name not in self.env:
             return dict(base, error=_(
@@ -530,25 +538,109 @@ class AIDashboardRender(models.AbstractModel):
 
     # -------------------------------------------------------------- filters
     def _effective_domain(self, query, spec, filter_values):
-        """The widget's own domain, narrowed by whatever the viewer selected."""
+        """The widget's own domain, narrowed by whatever the viewer selected.
+
+        ``spec`` carries the filters that reach this tile (see
+        `spec_lib.filters_for_widget`). Each one is applied only where it
+        means something: a vendor filter passes by a tile over bank journals
+        rather than breaking it, and a period lands on whichever date field
+        this tile's model actually has.
+
+        Everything is appended at the end, unprefixed, which is the shape
+        `_shift_window` relies on to compare against an earlier period.
+        """
         domain = list(query.get("domain") or [])
+        model_name = query["model"]
         for flt in spec.get("filters", []):
-            key = flt.get("key")
-            chosen = filter_values.get(key, flt.get("default"))
-            if chosen in (None, "", "all_time"):
+            chosen = spec_lib.filter_value(flt, filter_values)
+            if chosen is None:
                 continue
             if flt.get("type") == "date_range":
-                field = flt.get("field") or self._date_field(query["model"])
-                if not field:
-                    continue
-                window = self._period_bounds(chosen)
+                field = self._date_field_for(model_name, flt.get("field"))
+                window = self._period_bounds(chosen) if field else None
                 if window:
                     start, end = window
                     domain += [[field, ">=", fields.Date.to_string(start)],
                                [field, "<", fields.Date.to_string(end)]]
-            elif flt.get("field"):
-                domain += [[flt["field"], "=", chosen]]
+                continue
+            meta = self._filter_meta(model_name, flt)
+            if not meta:
+                continue
+            if flt["type"] == "many2one":
+                domain.append([flt["field"], "in", chosen])
+            elif chosen in {value for value, _label in meta.get("selection") or []}:
+                # A value the field does not have would match nothing and say
+                # nothing about why; ignoring it shows the honest total.
+                domain.append([flt["field"], "=", chosen])
         return domain
+
+    def _filter_meta(self, model_name, flt):
+        """The field a many2one or selection filter lands on in this model.
+
+        None when it should pass this tile by: the model has no such field,
+        has it as a different kind of field, or — for a many2one — points it
+        at different records than the picker offers (a ``partner_id`` that is
+        a company here and a contact there is not the same question). Asked
+        through ``fields_get`` as the viewer, so a field their groups hide is
+        treated as absent rather than raising half-way through a page.
+        """
+        name = flt.get("field")
+        if not name:
+            return None
+        meta = self.env[model_name].fields_get(
+            [name], attributes=["type", "relation", "selection", "searchable"],
+        ).get(name)
+        if not meta or meta.get("type") != flt.get("type") \
+                or not meta.get("searchable"):
+            return None
+        if flt.get("relation") and meta.get("relation") != flt["relation"]:
+            return None
+        return meta
+
+    def _resolve_filters(self, spec, filter_values=None):
+        """Each filter as the person looking at the dashboard needs it.
+
+        Adds what the filter bar draws from — the records a many2one picker
+        offers, a selection's values in the reader's language, the value in
+        force right now — taken from the first tile, in order, whose model has
+        the field and that this person may read. A filter none of their tiles
+        can answer is marked unavailable rather than offered and ignored.
+        """
+        resolved = []
+        for flt in spec.get("filters") or []:
+            out = dict(flt)
+            if flt.get("type") == "date_range":
+                out["value"] = spec_lib.filter_value(flt, filter_values) \
+                    or "all_time"
+                resolved.append(out)
+                continue
+            meta = None
+            for widget in spec.get("widgets") or []:
+                model_name = (widget.get("query") or {}).get("model")
+                if model_name not in self.env \
+                        or not self.env[model_name].has_access("read"):
+                    continue
+                meta = self._filter_meta(model_name, flt)
+                if meta:
+                    break
+            if flt.get("type") == "many2one" and meta and not self.env[
+                    meta["relation"]].has_access("read"):
+                # They could not search the picker's records, so a picker
+                # would only ever show them an error.
+                meta = None
+            out["available"] = bool(meta)
+            if not meta:
+                out["value"] = [] if flt.get("type") == "many2one" else ""
+            elif flt["type"] == "many2one":
+                out["relation"] = meta["relation"]
+                out["value"] = spec_lib.filter_value(flt, filter_values) or []
+            else:
+                out["options"] = [list(pair) for pair in meta.get("selection") or []]
+                value = spec_lib.filter_value(flt, filter_values)
+                out["value"] = value if value in {
+                    pair[0] for pair in out["options"]} else ""
+            resolved.append(out)
+        return resolved
 
     def _rolling_fields(self, query, spec, filter_values):
         """The date fields a rolling period ("last 30 days") is windowing.
@@ -561,9 +653,8 @@ class AIDashboardRender(models.AbstractModel):
         for flt in spec.get("filters", []):
             if flt.get("type") != "date_range":
                 continue
-            chosen = filter_values.get(flt.get("key"), flt.get("default"))
-            if chosen in ROLLING_PERIODS:
-                rolling.add(flt.get("field") or self._date_field(query["model"]))
+            if spec_lib.filter_value(flt, filter_values) in ROLLING_PERIODS:
+                rolling.add(self._date_field_for(query["model"], flt.get("field")))
         return rolling
 
     @api.model
@@ -640,6 +731,21 @@ class AIDashboardRender(models.AbstractModel):
             except (ValueError, TypeError):
                 return None
         return None
+
+    def _date_field_for(self, model_name, preferred=None):
+        """The date field a period lands on in this model.
+
+        The one the spec names when this model has it; otherwise the model's
+        own usual date. A dashboard mixing purchase orders (``date_order``)
+        and bills (``date``) under one Period filter should window both, not
+        break the bills tile on a field it does not have.
+        """
+        if preferred:
+            field = self.env[model_name]._fields.get(preferred)
+            if field and field.type in ("date", "datetime") \
+                    and (field.store or field.search):
+                return preferred
+        return self._date_field(model_name)
 
     def _date_field(self, model_name):
         """The field a date filter applies to when the spec does not say.
@@ -727,7 +833,9 @@ class AIDashboardRender(models.AbstractModel):
             raise UserError(_("This tile does not open its records."))
 
         query = widget["query"]
-        domain = self._effective_domain(query, spec, filter_values or {})
+        domain = self._effective_domain(
+            query, self._drill_spec(spec, widget, filter_values),
+            filter_values or {})
         group_by = query.get("group_by") or []
         if raw_value is not None and group_by:
             field = spec_lib._field_root(group_by[0])
@@ -766,7 +874,9 @@ class AIDashboardRender(models.AbstractModel):
             raise UserError(_("This tile does not open its records."))
 
         query = widget["query"]
-        domain = self._effective_domain(query, spec, filter_values or {})
+        domain = self._effective_domain(
+            query, self._drill_spec(spec, widget, filter_values),
+            filter_values or {})
         for spec_name, value in zip(query.get("group_by") or [],
                                     (row_value, col_value)):
             field = spec_lib._field_root(spec_name)
@@ -783,6 +893,16 @@ class AIDashboardRender(models.AbstractModel):
             "context": {"create": False},
             "target": "current",
         }
+
+    def _drill_spec(self, spec, widget, filter_values):
+        """The spec as the tile saw it when it was drawn.
+
+        The records behind a number have to be the ones that made it: the
+        same resolved filters, narrowed to the ones that reach this tile, so a
+        card with its own period opens that period and not the page's.
+        """
+        spec = dict(spec, filters=self._resolve_filters(spec, filter_values))
+        return dict(spec, filters=spec_lib.filters_for_widget(widget, spec))
 
     def _segment_domain(self, field, granularity, raw_value):
         """Narrow to the clicked slice of the first grouping."""

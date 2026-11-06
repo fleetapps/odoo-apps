@@ -56,7 +56,16 @@ is sent, so one shared dashboard mails each person their own figures.
 
 **Compare.** Switch the whole dashboard to last year or the previous period.
 
+**Filter.** Above the tiles, the controls the assistant gave this dashboard: a
+*Period*, a record picker such as *Vendor* or *Customer* (pick several, or
+search with *Search More…*), and lists such as *Status*. Each filter narrows
+every tile whose records have that field and leaves the others as they are;
+a card with its own period keeps it, and the aging (what is owed) and bank
+cards always show today's position. *Reset* puts every filter back to how the dashboard starts.
+Ask the assistant to add one — *"add a vendor filter"* — like any other change.
+
 **Drill through.** Click a bar to get the records behind it in a normal list.
+The list carries the same filters as the tile you clicked.
 
 **Revert.** Every save is a version; *History* restores any of them.
 
