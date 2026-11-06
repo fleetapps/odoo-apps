@@ -188,3 +188,21 @@ class TestMotorSave(MotorCase):
     def test_rate_no_longer_fits(self):
         with self.assertRaisesRegex(UserError, "cannot quote this vehicle"):
             self.save(cover=self.car(year=self.year - 30))
+
+
+@tagged("post_install", "-at_install")
+class TestMotorClass(MotorCase):
+    """Motor is an insurance class like any other, quoted on its own screen."""
+
+    def test_motor_is_a_class(self):
+        motor = self.env.ref("odin_motor_quote.insurance_class_motor")
+        self.assertEqual((motor.code, motor.engine), ("motor", "motor"))
+        types = {t["code"]: t for t in
+                 self.env["odin.insurance.class"].with_user(self.agent).odin_quote_types()}
+        self.assertEqual(types["motor"]["action"]["tag"], "odin_motor_quote")
+        self.assertEqual(types["motor"]["action"]["name"], "Add Motor Quote")
+        options = dict(self.env["odin.cover.product"]._fields["line"]._description_selection(self.env))
+        self.assertEqual(options["motor"], "Motor")
+        self.assertEqual(self.definite_private.product_id.odin_engine, "motor")
+        with self.assertRaisesRegex(UserError, "cannot be deleted"):
+            motor.unlink()

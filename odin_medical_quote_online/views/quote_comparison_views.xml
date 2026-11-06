@@ -18,6 +18,7 @@
                        decoration-danger="state in ('draft', 'sent')"/>
                 <field name="odin_contact_by" invisible="not odin_contact_by"/>
                 <field name="odin_contact_when" invisible="not odin_callback_requested"/>
+                <field name="odin_has_online_page" invisible="1"/>
                 <field name="odin_online_url" widget="CopyClipboardChar"
                        invisible="not odin_online_url"/>
             </xpath>
@@ -27,7 +28,7 @@
                         invisible="odin_channel != 'online' or user_id or state not in ('draft', 'sent')"
                         help="Nobody has picked this online quote up yet: take it, with its opportunity and the to-do to contact the client."/>
                 <button name="action_odin_online_link" type="object" string="Client's link"
-                        invisible="odin_online_url or not odin_from_builder or not plan_ids"
+                        invisible="odin_online_url or not odin_from_builder or not plan_ids or not odin_has_online_page"
                         help="A private page for the client: their plans in plain words, the PDF and Talk to an advisor. Copy it to send it however you like."/>
             </xpath>
         </field>

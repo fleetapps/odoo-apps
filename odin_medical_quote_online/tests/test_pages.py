@@ -36,7 +36,7 @@ class TestOnlinePages(OnlineCase, HttpCase):
         cover = self.Online._whole_money(200000, comparison.plan_ids.order_id[:1].currency_id)
         for text in ("Hi Grace, here is your quote", comparison.name, "Test Afya Insurer",
                      '%s <span class="o_oq_cover_what">hospital cover' % cover, "Afya · Plan 1",
-                     "Doctor visits &amp; medicines", "Talk to an advisor"):
+                     "Outpatient", "Talk to an advisor"):
             self.assertIn(text, page.text)
         self.assertNotIn("Below 70", page.text)
         self.assertNotIn("Hospital stays", page.text, "the cover heads the card, not listed again")

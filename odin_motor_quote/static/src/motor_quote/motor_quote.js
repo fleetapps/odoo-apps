@@ -1,7 +1,6 @@
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { MedicalQuote, amount } from "@odin_medical_quote/medical_quote/medical_quote";
-import { quoteTypes } from "@odin_medical_quote/quote_types/quote_types";
 
 const PERIODS = { 12: _t("1 year"), 6: _t("6 months"), 1: _t("1 month") };
 
@@ -161,12 +160,3 @@ export class MotorQuote extends MedicalQuote {
 }
 
 registry.category("actions").add("odin_motor_quote", MotorQuote);
-
-quoteTypes.add("motor", {
-    sequence: 20,
-    name: _t("Motor"),
-    description: _t("Private cars, commercial vehicles, PSVs and motorcycles"),
-    icon: "fa-car",
-    action: "odin_motor_quote.action_motor_quote",
-    tag: "odin_motor_quote",
-});

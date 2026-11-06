@@ -29,23 +29,30 @@ cancels the others, marks the opportunity won and creates the invoice -- the
 full premium or a deposit. **Client declined** marks the opportunity lost and
 cancels the quotations.
 
+Insurance classes (Cover Quotes ▸ Products ▸ Insurance classes) are what
+New quote offers: Medical, Motor with odin_motor_quote, and any class the
+office adds itself -- Accident, Fire, Travel -- quoted on a standard screen
+from each insurer's bands and extras, and compared and saved the same way.
+
 Premiums come from the rate cards already in Odoo: quotation templates and
 their products. How each product is priced (by family size, per person by
 role and age band, or once per policy) is read from its name and can be
 corrected on the product. See README.md.
 """,
-    "version": "19.0.1.6.0",
+    "version": "19.0.1.7.0",
     "category": "Sales/Sales",
     "author": "Fleet Apps",
     "license": "GPL-3",
     "depends": ["odin_client_quote", "sale_crm"],
     "data": [
         "security/ir.model.access.csv",
+        "data/insurance_class_data.xml",
         "data/product_data.xml",
         "report/medical_quotation.xml",
         "report/insurance_invoice.xml",
         "data/mail_template_data.xml",
         "data/mail_activity_data.xml",
+        "data/general_quote_data.xml",
         "views/product_template_views.xml",
         "views/sale_order_template_views.xml",
         "views/medical_quote_actions.xml",
@@ -54,6 +61,7 @@ corrected on the product. See README.md.
         "views/crm_lead_views.xml",
         "views/res_config_settings_views.xml",
         "views/cover_product_views.xml",
+        "views/insurance_class_views.xml",
         "wizard/cover_placed_views.xml",
         "views/renewal_views.xml",
         "data/renewal_data.xml",

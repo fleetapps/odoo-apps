@@ -37,11 +37,21 @@
                                 class="oe_stat_button" string="Template" invisible="not template_id"
                                 groups="base.group_no_one"/>
                     </div>
+                    <field name="odin_engine" invisible="1"/>
+                    <field name="odin_ask_amount" invisible="1"/>
+                    <field name="odin_ask_people" invisible="1"/>
                     <field name="line" widget="radio" options="{'horizontal': true}"
-                           readonly="id" class="mb-2"/>
+                           readonly="id and odin_engine != 'general'" class="mb-2"/>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name" placeholder="e.g. APA Jamii Plus – Family KES 1,000,000"/></h1>
+                    </div>
+                    <div class="alert alert-light border mb-3" role="status"
+                         invisible="odin_engine != 'general'">
+                        One insurer's cover for this class. Give it its bands (a rate on the
+                        <field name="odin_amount_label" class="oe_inline" readonly="1"/> with a minimum,
+                        or a fixed premium) and any extras: New quote prices it beside the other
+                        insurers' products in the class.
                     </div>
                     <group>
                         <group name="basics">
@@ -53,6 +63,10 @@
                             <field name="plan_type" widget="radio" invisible="line != 'medical'"
                                    required="line == 'medical'"/>
                             <field name="summary" invisible="line != 'medical'" string="Summary"/>
+                            <field name="per_person" invisible="odin_engine != 'general' or not odin_ask_people"/>
+                            <field name="period_months" invisible="odin_engine in ('medical', False)"/>
+                            <field name="quote_label" invisible="odin_engine in ('medical', False)"
+                                   placeholder="Only if the client should read another name"/>
                         </group>
                     </group>
                     <div name="checks" class="alert alert-warning" role="alert" invisible="not warning_html">
@@ -80,6 +94,48 @@
                                     </list>
                                 </field>
                             </div>
+                            <div invisible="odin_engine != 'general'">
+                                <p class="text-muted" invisible="not odin_ask_amount">
+                                    One row per band of the amount: a rate on it and its minimum premium,
+                                    or a fixed premium. Up to 0 is no upper limit; a single row with no
+                                    amounts applies to every quote.
+                                    <span invisible="not per_person">Premiums are per person.</span>
+                                </p>
+                                <p class="text-muted" invisible="odin_ask_amount">
+                                    The class asks for no amount: give one row with its fixed premium.
+                                    <span invisible="not per_person">It is per person.</span>
+                                </p>
+                                <field name="band_ids">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="label" optional="show" placeholder="e.g. Plan A"/>
+                                        <field name="amount_min" column_invisible="not parent.odin_ask_amount"/>
+                                        <field name="amount_max" column_invisible="not parent.odin_ask_amount"/>
+                                        <field name="rate" column_invisible="not parent.odin_ask_amount"/>
+                                        <field name="min_premium" column_invisible="not parent.odin_ask_amount"/>
+                                        <field name="flat_premium"/>
+                                    </list>
+                                </field>
+                            </div>
+                        </page>
+                        <page name="general_extras" string="Extras" invisible="odin_engine != 'general'">
+                            <p class="text-muted">
+                                What the insurer adds: always included, or for the client to add. A rate on
+                                the amount with a minimum, or a fixed price.
+                            </p>
+                            <field name="extra_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="name" placeholder="e.g. Medical expenses"/>
+                                    <field name="offered"/>
+                                    <field name="rate" column_invisible="not parent.odin_ask_amount"/>
+                                    <field name="min_amount" column_invisible="not parent.odin_ask_amount"/>
+                                    <field name="amount"/>
+                                    <field name="per_person" column_invisible="not parent.odin_ask_people"/>
+                                </list>
+                            </field>
                         </page>
                         <page name="try" string="Try it">
                             <p class="text-muted">
@@ -92,12 +148,22 @@
                                     <field name="try_children"/>
                                 </group>
                             </group>
-                            <group name="try_inputs"/>
+                            <group name="try_inputs">
+                                <group invisible="odin_engine != 'general'">
+                                    <field name="try_amount" invisible="not odin_ask_amount"
+                                           string="Amount"/>
+                                    <field name="try_people" invisible="not odin_ask_people"/>
+                                </group>
+                            </group>
                             <field name="try_html" nolabel="1"/>
                         </page>
                         <page name="terms" string="Benefits and terms">
                             <field name="terms" invisible="line != 'medical'"
                                    placeholder="Terms printed on the quotation: waiting periods, eligibility, exclusions, how to pay..."/>
+                            <group invisible="odin_engine != 'general'">
+                                <field name="benefits" placeholder="One per line, e.g.&#10;Death: 1,000,000&#10;Permanent total disablement: 1,000,000&#10;Medical expenses: 100,000"/>
+                            </group>
+                            <label for="note" string="Terms on the quote" invisible="odin_engine != 'general'"/>
                             <field name="note" invisible="line == 'medical'"
                                    placeholder="Printed with the quote: excess, conditions, what is included..."/>
                         </page>
@@ -115,6 +181,7 @@
             <search string="Products">
                 <field name="name"/>
                 <field name="insurer_id"/>
+                <field name="line"/>
                 <filter name="filter_medical" string="Medical" domain="[('line', '=', 'medical')]"/>
                 <filter name="filter_motor" string="Motor" domain="[('line', '=', 'motor')]"/>
                 <separator/>
@@ -133,8 +200,9 @@
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Add an insurer's cover</p>
-            <p>Choose Medical or Motor, the insurer, and type the rates as the insurer's sheet
-               prints them. Once saved, it is offered in New quote.</p>
+            <p>Choose the class (Medical, Motor, or one you added in Insurance classes), the
+               insurer, and type the rates as the insurer's sheet prints them. Once saved, it is
+               offered in New quote.</p>
         </field>
     </record>
 

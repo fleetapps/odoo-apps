@@ -1,4 +1,4 @@
-import { Component } from "@odoo/owl";
+import { Component, onWillStart, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -8,25 +8,25 @@ import { ListController } from "@web/views/list/list_controller";
 import { listView } from "@web/views/list/list_view";
 
 /**
- * The kinds of quote the office makes. Each insurance line adds itself here
- * (medical below, motor from its own module) and appears in New quote and
- * in the Quotes list's New menu.
+ * The kinds of quote the office makes are its insurance classes (Cover
+ * Quotes ▸ Products ▸ Insurance classes): Medical, Motor, and any class it
+ * adds itself. Each comes back with the screen that quotes it.
  */
-export const quoteTypes = registry.category("odin_quote_types");
+export function loadQuoteTypes(orm) {
+    return orm.call("odin.insurance.class", "odin_quote_types", []);
+}
 
-quoteTypes.add("medical", {
-    sequence: 10,
-    name: _t("Medical"),
-    description: _t("Individual and family medical cover"),
-    icon: "fa-heartbeat",
-    action: "odin_medical_quote.action_medical_quote",
-    tag: "odin_medical_quote",
-});
+/** The screen for ``type``, for ``leadId``'s client when there is one. */
+export function quoteAction(type, leadId = false) {
+    const params = { ...(type.action.params || {}) };
+    if (leadId) {
+        params.lead_id = leadId;
+    }
+    return { ...type.action, params };
+}
 
-function sortedTypes() {
-    return quoteTypes.getEntries()
-        .map(([key, type]) => ({ key, ...type }))
-        .sort((a, b) => a.sequence - b.sequence);
+function noProducts(type) {
+    return _t("%s has no products yet: add them in Cover Quotes ▸ Products.", type.name);
 }
 
 /**
@@ -39,40 +39,48 @@ export class QuoteNew extends Component {
 
     setup() {
         this.action = useService("action");
-        this.types = sortedTypes();
+        this.orm = useService("orm");
+        this.state = useState({ types: [], loaded: false });
         const params = (this.props.action && this.props.action.params) || {};
         this.leadId = params.lead_id || false;
         this.leadName = params.lead_name || "";
+        this.noProducts = noProducts;
+        onWillStart(async () => {
+            this.state.types = await loadQuoteTypes(this.orm);
+            this.state.loaded = true;
+        });
     }
 
     open(type) {
-        if (this.leadId) {
-            this.action.doAction({
-                type: "ir.actions.client",
-                tag: type.tag,
-                name: _t("%s quote", type.name),
-                params: { lead_id: this.leadId },
-            });
+        if (!type.available) {
             return;
         }
-        this.action.doAction(type.action);
+        this.action.doAction(quoteAction(type, this.leadId));
     }
 }
 
 registry.category("actions").add("odin_quote_new", QuoteNew);
 
-/** The Quotes list, with one New button that asks which kind. */
+/** The Quotes list, with one New button that asks which class. */
 export class QuoteListController extends ListController {
     static template = "odin_medical_quote.QuoteListView";
     static components = { ...ListController.components, Dropdown, DropdownItem };
 
     setup() {
         super.setup();
-        this.quoteTypes = sortedTypes();
+        this.notification = useService("notification");
+        this.quoteTypes = [];
+        onWillStart(async () => {
+            this.quoteTypes = await loadQuoteTypes(this.orm);
+        });
     }
 
     newQuote(type) {
-        this.actionService.doAction(type.action);
+        if (!type.available) {
+            this.notification.add(noProducts(type), { type: "info" });
+            return;
+        }
+        this.actionService.doAction(quoteAction(type));
     }
 }
 

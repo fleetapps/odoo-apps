@@ -1,9 +1,15 @@
-from odoo import _, api, models
+from odoo import _, api, fields, models
 from odoo.tools.misc import formatLang
 
 
 class SaleOrder(models.Model):
     _inherit = "sale.order"
+
+    odin_cover_product_id = fields.Many2one(
+        "odin.cover.product", string="Cover product", readonly=True, copy=False,
+        index="btree_not_null",
+        help="The insurer's product this quotation was priced from, for a class quoted "
+        "on the standard screen (Accident, Fire...).")
 
     @api.depends("name", "sale_order_template_id", "amount_total")
     @api.depends_context("odin_plan_label")
@@ -22,14 +28,27 @@ class SaleOrder(models.Model):
 
     # -- how a quoted plan is named; motor quotes name theirs by rate ------
 
-    def _odin_plan_label(self):
-        """``APA Jamii Plus – Family Cover (KES 500,000)``: the plan quoted."""
+    def _odin_general_name(self):
+        """The product of a standard-class quotation as quotes name it."""
         self.ensure_one()
+        product = self.odin_cover_product_id
+        return product.quote_label or product.name or ""
+
+    def _odin_plan_label(self):
+        """``APA Jamii Plus – Family Cover (KES 500,000)``: the plan quoted;
+        ``APA Insurance – Personal Accident`` for a class the office added."""
+        self.ensure_one()
+        product = self.odin_cover_product_id
+        if product:
+            name, insurer = self._odin_general_name(), product.insurer_id.name or ""
+            return name if not insurer or name.startswith(insurer) else "%s – %s" % (insurer, name)
         template = self.sale_order_template_id
         return template._odin_client_title() if template else ""
 
     def _odin_insurer_label(self):
         self.ensure_one()
+        if self.odin_cover_product_id:
+            return self.odin_cover_product_id.insurer_id.name or ""
         template = self.sale_order_template_id
         return template._odin_insurer_name() if template else ""
 
@@ -37,6 +56,8 @@ class SaleOrder(models.Model):
         """``J Care · Premier (KES 1,000,000)``: the product and plan, as a
         column of the quotation heads them under the insurer's name."""
         self.ensure_one()
+        if self.odin_cover_product_id:
+            return self._odin_general_name()
         template = self.sale_order_template_id
         if not template:
             return ""
@@ -84,16 +105,23 @@ class SaleOrder(models.Model):
     # -- what a renewal needs to know about what was sold ----------------------
 
     def _odin_policy_months(self):
-        """How long the cover sold runs: medical plans are annual."""
+        """How long the cover sold runs: medical plans are annual, a product
+        of a class the office added says."""
         self.ensure_one()
+        if self.odin_cover_product_id:
+            return self.odin_cover_product_id.period_months or 12
         return 12
 
     def _odin_insurer_partner(self):
         self.ensure_one()
+        if self.odin_cover_product_id:
+            return self.odin_cover_product_id.insurer_id
         return self.sale_order_template_id.odin_insurer_id
 
     def _odin_cover_product(self):
         self.ensure_one()
+        if self.odin_cover_product_id:
+            return self.odin_cover_product_id
         template = self.sale_order_template_id
         if not template:
             return self.env["odin.cover.product"]

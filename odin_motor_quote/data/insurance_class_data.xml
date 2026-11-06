@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: the name, description, icon and order are the office's to
+         change in Cover Quotes ▸ Products ▸ Insurance classes. The code ties
+         every motor product, quote and renewal to it. -->
+    <data noupdate="1">
+        <record id="insurance_class_motor" model="odin.insurance.class">
+            <field name="name">Motor</field>
+            <field name="code">motor</field>
+            <field name="engine">motor</field>
+            <field name="description">Private cars, commercial vehicles, PSVs and motorcycles</field>
+            <field name="icon">fa-car</field>
+            <field name="sequence">20</field>
+        </record>
+    </data>
+</odoo>

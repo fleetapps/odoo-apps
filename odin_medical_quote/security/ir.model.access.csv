@@ -7,3 +7,9 @@ access_cover_table_manager,odin.cover.table manager,model_odin_cover_table,sales
 access_renewal_user,odin.renewal user,model_odin_renewal,sales_team.group_sale_salesman,1,1,1,0
 access_renewal_manager,odin.renewal manager,model_odin_renewal,sales_team.group_sale_manager,1,1,1,1
 access_renewal_placed_user,odin.renewal.placed user,model_odin_renewal_placed,sales_team.group_sale_salesman,1,1,1,1
+access_insurance_class_user,odin.insurance.class user,model_odin_insurance_class,sales_team.group_sale_salesman,1,0,0,0
+access_insurance_class_manager,odin.insurance.class manager,model_odin_insurance_class,sales_team.group_sale_manager,1,1,1,1
+access_cover_band_user,odin.cover.band user,model_odin_cover_band,sales_team.group_sale_salesman,1,0,0,0
+access_cover_band_manager,odin.cover.band manager,model_odin_cover_band,sales_team.group_sale_manager,1,1,1,1
+access_cover_extra_user,odin.cover.extra user,model_odin_cover_extra,sales_team.group_sale_salesman,1,0,0,0
+access_cover_extra_manager,odin.cover.extra manager,model_odin_cover_extra,sales_team.group_sale_manager,1,1,1,1

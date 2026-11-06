@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Cover Quotes ▸ Products ▸ Insurance classes. What the office quotes:
+        each class is a button in New quote, an entry in the Quotes list's
+        New menu and a Class on products. Sales Administrators add one
+        (Accident, Fire, Travel...) and it is quoted on the standard screen
+        as soon as it has products.
+    -->
+    <record id="view_insurance_class_list" model="ir.ui.view">
+        <field name="name">odin.insurance.class.list</field>
+        <field name="model">odin.insurance.class</field>
+        <field name="arch" type="xml">
+            <list string="Insurance classes" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="description"/>
+                <field name="engine" string="Quoted on" widget="badge"/>
+                <field name="product_count"/>
+                <field name="active" widget="boolean_toggle" string="On"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_insurance_class_form" model="ir.ui.view">
+        <field name="name">odin.insurance.class.form</field>
+        <field name="model">odin.insurance.class</field>
+        <field name="arch" type="xml">
+            <form string="Insurance class">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_odin_products" type="object" class="oe_stat_button"
+                                icon="fa-cubes" invisible="not id">
+                            <field name="product_count" widget="statinfo" string="Products"/>
+                        </button>
+                        <button name="action_odin_quotes" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="not id">
+                            <field name="quote_count" widget="statinfo" string="Quotes"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Off" bg_color="text-bg-secondary" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name" string="Class"/>
+                        <h1><field name="name" placeholder="e.g. Accident"/></h1>
+                    </div>
+                    <group>
+                        <group name="new_quote" string="In New quote">
+                            <field name="description" placeholder="e.g. Personal accident cover for individuals and groups"/>
+                            <field name="icon"/>
+                            <field name="engine" readonly="1"/>
+                        </group>
+                        <group name="invoicing" string="On quotations and invoices"
+                               invisible="engine != 'general'">
+                            <field name="product_id" context="{'default_type': 'service', 'default_sale_ok': True}"/>
+                        </group>
+                    </group>
+                    <div name="general" invisible="engine != 'general'">
+                        <separator string="What the quote asks"/>
+                        <p class="text-muted">
+                            Every quote asks who the client is. Then what is set here, and every
+                            insurer's product in this class is priced on it, side by side.
+                        </p>
+                        <group>
+                            <group>
+                                <field name="ask_amount"/>
+                                <field name="amount_label" invisible="not ask_amount" required="ask_amount"
+                                       placeholder="e.g. Sum insured, Annual wages, Limit of indemnity"/>
+                                <field name="ask_people"/>
+                                <field name="people_label" invisible="not ask_people" required="ask_people"
+                                       placeholder="e.g. People covered, Travellers, Employees"/>
+                                <field name="details_label" placeholder="e.g. Occupation, Destination"/>
+                            </group>
+                            <group>
+                                <div class="text-muted" colspan="2">
+                                    <p class="mb-1"><b>An amount</b>: each product has bands of it, with a
+                                        rate on it and a minimum premium, or a fixed premium.</p>
+                                    <p class="mb-1"><b>People</b>: a product priced per person charges its
+                                        premium for each of them.</p>
+                                    <p class="mb-0"><b>Details</b>: a line of text the quotation prints,
+                                        left empty if the agent has nothing to add.</p>
+                                </div>
+                            </group>
+                        </group>
+                    </div>
+                    <div class="alert alert-info mt-3" role="status" invisible="engine == 'general'">
+                        This class has its own quote screen: what it asks is built in. Rename it,
+                        describe it, change its icon and order, or switch it off here.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_insurance_class_search" model="ir.ui.view">
+        <field name="name">odin.insurance.class.search</field>
+        <field name="model">odin.insurance.class</field>
+        <field name="arch" type="xml">
+            <search string="Insurance classes">
+                <field name="name"/>
+                <filter name="filter_off" string="Off" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_insurance_class" model="ir.actions.act_window">
+        <field name="name">Insurance classes</field>
+        <field name="res_model">odin.insurance.class</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a class of insurance</p>
+            <p>Accident, Fire, Travel... Say what its quote asks, then add each insurer's
+               product in Products: the class appears in New quote with them.</p>
+        </field>
+    </record>
+</odoo>

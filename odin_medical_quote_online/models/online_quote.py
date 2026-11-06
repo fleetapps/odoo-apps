@@ -42,9 +42,9 @@ _lt = LazyTranslate(__name__)
 #: The cover a stranger can ask for, in plain words. Anything else a plan
 #: offers (riders and their brand names) is left to the advisor.
 BENEFITS = {
-    "outpatient": (_lt("Doctor visits & medicines"),
+    "outpatient": (_lt("Outpatient"),
                    _lt("Clinic visits, prescriptions and tests when you are not admitted")),
-    "maternity": (_lt("Pregnancy & birth"), _lt("Antenatal care and delivery")),
+    "maternity": (_lt("Maternity"), _lt("Antenatal care and delivery")),
     "dental": (_lt("Dental care"), _lt("Check-ups, fillings and extractions")),
     "optical": (_lt("Eyes & glasses"), _lt("Eye tests, glasses and lenses")),
 }
