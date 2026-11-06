@@ -271,6 +271,8 @@ class StockBook(models.AbstractModel):
             "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
             "can_reverse": line._can_reverse() and not reversed_by,
+            "can_remove": bool(line.state == "posted" and (line.reverses_id or reversed_by)
+                               and self._is_supervisor() and line._removal_pair()),
         }
 
     @api.model
@@ -727,6 +729,17 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_reverse(self, line_id):
         return self.env["odin.stock.line"].browse(line_id)._reverse().id
+
+    @api.model
+    def book_remove_pair(self, line_id):
+        """A posted line off the book with the line that reverses it. Returns
+        the ids removed, for the undo."""
+        return self.env["odin.stock.line"].browse(line_id).action_remove_pair()
+
+    @api.model
+    def book_restore_pair(self, ids):
+        """Undo of Remove pair."""
+        return self.env["odin.stock.line"].browse(ids).action_restore_pair()
 
     @api.model
     def book_suggest_products(self, text, warehouse_id=False):

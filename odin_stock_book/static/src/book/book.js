@@ -993,6 +993,23 @@ export class StockBook extends Component {
         });
     }
 
+    /** A posted line and the line that reverses it, off the book together. */
+    removePair(row) {
+        const other = row.reverses || row.reversed_by;
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Remove %(ref)s and %(other)s?", { ref: row.ref, other }),
+            body: _t("The two lines cancel each other out, so both come off the Stock Book. Their stock moves and journal entries stay as they are, and stock on hand does not change."),
+            confirmLabel: _t("Remove both"),
+            confirm: async () => {
+                this.state.selectedId = null;
+                const ids = await this.mutate(() => this.orm.call("odin.stock.book", "book_remove_pair", [row.id]));
+                this.notifyUndo(_t("%(ref)s and %(other)s removed.", { ref: row.ref, other }), () => this.mutate(
+                    () => this.orm.call("odin.stock.book", "book_restore_pair", [ids]), { flash: ids, reveal: true }));
+            },
+            cancel: () => {},
+        });
+    }
+
     /** A short line: go and count the item that is short. */
     countItem(product) {
         return this.navigate(() => {

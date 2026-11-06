@@ -91,6 +91,8 @@
                 <filter name="draft" string="Not posted" domain="[('state', '=', 'draft')]"/>
                 <filter name="posted" string="Posted" domain="[('state', '=', 'posted')]"/>
                 <separator/>
+                <filter name="removed" string="Removed with their reversal" domain="[('active', '=', False)]"/>
+                <separator/>
                 <filter name="date" string="Date" date="date"/>
                 <group>
                     <filter name="by_reason" string="Reason" context="{'group_by': 'reason'}"/>

@@ -252,7 +252,9 @@ class StockBook(models.AbstractModel):
             domain.append(("date", ">=", fields.Datetime.to_datetime(date_from)))
         Move = self.env["stock.move"].sudo()
         moves = Move.search(domain, order="date, id")
-        logged = set(self.env["odin.stock.line"].sudo().search([("move_ids", "!=", False)]).move_ids.ids)
+        # Lines removed from the book with their reversal still log their moves.
+        logged = set(self.env["odin.stock.line"].sudo().with_context(active_test=False).search(
+            [("move_ids", "!=", False)]).move_ids.ids)
         missing = moves.filtered(lambda m: m.id not in logged)._stock_book_crossing()
         missing = missing.filtered(lambda m: not m.raw_material_production_id)
         kinds = {}

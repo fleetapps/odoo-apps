@@ -459,6 +459,8 @@
                             title="The same movement again, as a new draft">Copy</button>
                     <button t-if="sel.can_reverse" class="btn btn-link" t-on-click="() => this.reverseLine(sel)"
                             title="Adds the line that undoes this one">Reverse</button>
+                    <button t-if="sel.can_remove" class="btn btn-link text-danger" t-on-click="() => this.removePair(sel)"
+                            title="Takes this line and the line that reverses it off the book; stock does not change">Remove pair</button>
                     <button class="btn btn-link" t-on-click="() => this.openForm(sel)">Full form</button>
                     <button t-if="sel.state === 'draft'" class="btn btn-link text-danger ms-auto" t-on-click="() => this.cancel(sel)">Cancel line</button>
                 </div>
