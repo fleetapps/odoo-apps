@@ -34,7 +34,7 @@ REVERSE = {"sale": "return", "return": "sale", "spoiled": "correction", "sample"
 # mark a draft posted without its stock moves.
 SYSTEM_FIELDS = {"state", "ref", "onhand_after", "posted_by_id", "posted_on", "production_id", "picking_id",
                  "scrap_id", "move_ids", "partner_id", "purchase_line_id", "stock_purchase_id", "sale_line_id",
-                 "stock_sale_id"}
+                 "stock_sale_id", "active"}
 # What a posted (or cancelled) line keeps as it was.
 LOCKED_FIELDS = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id",
                  "partner_name", "unit_cost", "company_id", "reverses_id", "purchase_ref", "tax_id", "unit_price"}
@@ -131,6 +131,10 @@ class StockBookLine(models.Model):
     move_ids = fields.Many2many("stock.move", readonly=True, copy=False)
     reverses_id = fields.Many2one("odin.stock.line", string="Reverses", readonly=True, copy=False, index="btree_not_null",
                                   help="The posted line this one undoes.")
+    # Off only for a posted line removed from the book with the line that
+    # reverses it (action_remove_pair): the two cancel out, their stock moves
+    # stay, and the line is kept so those moves still count as logged.
+    active = fields.Boolean(default=True, copy=False)
 
     _ref_unique = models.UniqueIndex("(ref) WHERE ref IS NOT NULL", "Another movement already has this reference.")
 
@@ -725,7 +729,7 @@ class StockBookLine(models.Model):
         """A return to the supplier is undone in Purchases: a correction here
         would add the stock back but leave the order's received quantity."""
         self.ensure_one()
-        return self.state == "posted" and self.reason in REVERSE and not self.purchase_line_id \
+        return self.state == "posted" and self.active and self.reason in REVERSE and not self.purchase_line_id \
             and not self.stock_sale_id
 
     def _reverse(self):
@@ -737,7 +741,8 @@ class StockBookLine(models.Model):
         if not self._can_reverse():
             raise UserError(_("Only a posted sale, return, scrap or correction can be reversed here. A return to "
                               "the supplier is undone in Purchases."))
-        existing = self.search([("reverses_id", "=", self.id), ("state", "!=", "cancelled")], limit=1)
+        existing = self.with_context(active_test=False).search(
+            [("reverses_id", "=", self.id), ("state", "!=", "cancelled")], limit=1)
         if existing:
             raise UserError(_("%(ref)s is already reversed by %(other)s.", ref=self.ref,
                               other=existing.ref or _("a draft line")))
@@ -748,6 +753,72 @@ class StockBookLine(models.Model):
             "partner_name": self.partner_name, "reverses_id": self.id,
             "note": _("Reverses %s", self.ref),
         })
+
+    # ------------------------------------------------------------ remove a reversed pair
+    def _removal_pair(self):
+        """This posted line and the posted line that exactly undoes it (or the
+        line it undoes), when the two cancel out and nothing else hangs on
+        them. Empty otherwise."""
+        self.ensure_one()
+        empty = self.browse()
+        if self.state != "posted" or not self.active:
+            return empty
+        Lines = self.with_context(active_test=False)
+        if self.reverses_id:
+            original, reversal = self.reverses_id, self
+        else:
+            reversal = Lines.search([("reverses_id", "=", self.id), ("state", "!=", "cancelled")])
+            if len(reversal) != 1:
+                return empty
+            original = self
+        if original.reverses_id or original.state != "posted" or reversal.state != "posted" \
+                or not (original.active and reversal.active):
+            return empty
+        # Exactly one live reversal, and the reversal not itself undone.
+        if Lines.search_count([("reverses_id", "in", (original | reversal).ids), ("state", "!=", "cancelled")]) != 1:
+            return empty
+        if (original.product_id, original.warehouse_id, original.company_id) != \
+                (reversal.product_id, reversal.warehouse_id, reversal.company_id):
+            return empty
+        digits = 4
+        if float_compare(original.qty_out, reversal.qty_in, precision_digits=digits) \
+                or float_compare(original.qty_in, reversal.qty_out, precision_digits=digits):
+            return empty
+        if (original | reversal).filtered(lambda l: l.stock_purchase_id or l.stock_sale_id or l.purchase_line_id):
+            return empty
+        return original | reversal
+
+    def action_remove_pair(self):
+        """Take posted lines off the book together with the lines that reverse
+        them: a mistake and its correction, which cancel out. The lines are
+        archived, not deleted: their stock moves and journal entries stay as
+        they are, and still count as logged."""
+        if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
+            raise UserError(_("Only a Stock Book supervisor can remove lines."))
+        pairs = self.browse()
+        for line in self:
+            pair = line._removal_pair()
+            if not pair:
+                raise UserError(_("%(ref)s can only be removed with the posted line that exactly reverses it (or "
+                                  "the one it reverses), and only while neither belongs to an LPO or invoice.",
+                                  ref=line.ref or _("This line")))
+            pairs |= pair
+        for line in pairs:
+            other = (pairs & (line.reverses_id | pairs.filtered(lambda l: l.reverses_id == line)))[:1]
+            line.message_post(body=_("Removed from the Stock Book together with %s, which cancels it out. Its stock "
+                                     "moves stay as they are.", other.ref))
+        pairs.with_context(odin_stock_book_posting=True).write({"active": False})
+        return pairs.ids
+
+    def action_restore_pair(self):
+        """Undo of Remove: removed lines back on the book."""
+        if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
+            raise UserError(_("Only a Stock Book supervisor can restore lines."))
+        lines = self.with_context(active_test=False).filtered(lambda l: not l.active and l.state == "posted")
+        lines.with_context(odin_stock_book_posting=True).write({"active": True})
+        for line in lines:
+            line.message_post(body=_("Back on the Stock Book."))
+        return lines.ids
 
 
 class StockBookComponent(models.Model):

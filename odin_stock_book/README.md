@@ -66,6 +66,12 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
   back as a customer return), noted with the reference it reverses. A filling
   is undone by unbuilding its order in Manufacturing, a receipt by returning it
   to the supplier in Inventory.
+* **Remove pair** (supervisors): once a mistake and the line reversing it are
+  both posted and cancel out exactly, the two come off the book together, with
+  Undo in the notice. They are archived, not deleted: their stock moves and
+  journal entries stay, stock on hand does not change, and their moves still
+  count as logged. *All movements* shows them under *Removed with their
+  reversal*. Lines of an LPO or invoice window are undone there instead.
 * Items tracked by lot or serial number are posted and counted in Inventory,
   where the numbers are entered; the book says so before posting.
 * Items a recipe uses that nobody counts, such as tap water: tick *Never short in

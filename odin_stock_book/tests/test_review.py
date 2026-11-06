@@ -238,6 +238,53 @@ class TestStockBookReview(TestStockBook):
         self.assertEqual(again.component_ids.filtered(lambda c: c.product_id == self.bottle).qty, 24,
                          "a copy takes the recipe again")
 
+    def test_remove_a_reversed_pair(self):
+        missing = self.Book.book_log_missing()["moves"]
+        used = self.Line.create({"product_id": self.bottle.id, "reason": "used", "qty_out": 7})
+        used.action_post()
+        self.assertFalse(used._removal_pair(), "not reversed yet")
+        with self.assertRaises(UserError):
+            used.action_remove_pair()
+        back = self.Line.browse(self.Book.book_reverse(used.id))
+        self.assertFalse(used._removal_pair(), "the reversal is still a draft")
+        back.action_post()
+        self.assertEqual(self.onhand(self.bottle), 1000)
+        self.assertEqual(used._removal_pair(), used | back)
+        self.assertEqual(back._removal_pair(), used | back)
+        row = next(r for r in self.Book.get_book()["rows"] if r["id"] == used.id)
+        self.assertTrue(row["can_remove"])
+        with self.assertRaises(UserError):
+            self.Book.with_user(self.storekeeper).book_remove_pair(used.id)
+        with self.assertRaises(UserError, msg="not by Odoo's own Archive"):
+            used.action_archive()
+
+        # As on site: a Stock Book supervisor who is not an Inventory administrator.
+        ids = self.Book.with_user(self.supervisor).book_remove_pair(back.id)
+        self.assertEqual(set(ids), {used.id, back.id})
+        self.assertFalse(used.active or back.active)
+        self.assertEqual((used.state, back.state), ("posted", "posted"))
+        self.assertTrue(used.scrap_id and back.move_ids, "documents stay")
+        self.assertEqual(self.onhand(self.bottle), 1000)
+        shown = {r["id"] for r in self.Book.get_book()["rows"]}
+        self.assertFalse({used.id, back.id} & shown)
+        self.assertEqual(self.Book.book_log_missing()["moves"], missing, "their moves still count as logged")
+        with self.assertRaises(UserError):
+            self.Book.book_reverse(used.id)
+
+        self.assertEqual(set(self.Book.with_user(self.supervisor).book_restore_pair(ids)), {used.id, back.id})
+        self.assertTrue(used.active and back.active)
+        self.assertTrue({used.id, back.id} <= {r["id"] for r in self.Book.get_book()["rows"]})
+
+    def test_remove_pair_needs_an_exact_reversal(self):
+        used = self.Line.create({"product_id": self.bottle.id, "reason": "used", "qty_out": 7})
+        used.action_post()
+        back = self.Line.browse(self.Book.book_reverse(used.id))
+        back.qty_in = 5
+        back.action_post()
+        self.assertFalse(used._removal_pair())
+        with self.assertRaises(UserError):
+            back.action_remove_pair()
+
     def test_partner_names_stay_in_their_company(self):
         other = self.env["res.company"].create({"name": "Other Co"})
         other_wh = self.env["stock.warehouse"].search([("company_id", "=", other.id)], limit=1)
