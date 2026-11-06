@@ -2,6 +2,7 @@ from . import test_spec
 from . import test_render
 from . import test_compare
 from . import test_filters
+from . import test_suggest
 from . import test_pivot
 from . import test_tools
 from . import test_versions

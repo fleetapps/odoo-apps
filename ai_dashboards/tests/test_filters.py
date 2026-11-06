@@ -9,6 +9,7 @@ dashboard that works.
 """
 import json
 
+from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
 from ..models import ai_dashboard_spec as spec_lib
@@ -243,6 +244,20 @@ class TestFilterRender(TransactionCase):
         self.assertTrue(self.Render._filter_meta("res.partner", flt))
         self.assertIsNone(self.Render._filter_meta("res.partner.category", flt))
 
+    def test_a_record_filter_also_lands_on_a_many2many_of_the_same_records(self):
+        """Tags, or the analytic accounts a journal item is spread across."""
+        flt = {"key": "tag", "type": "many2one", "field": "category_id",
+               "relation": "res.partner.category"}
+        name, meta = self.Render._filter_meta("res.partner", flt)
+        self.assertEqual((name, meta["type"]), ("category_id", "many2many"))
+        board = self._board(with_filters(
+            {"key": "tag", "type": "many2one", "label": "Tag",
+             "field": "category_id"}, widgets=[PARTNER_KPI]))
+        tag = self.env["res.partner.category"].create({"name": "AID Tag"})
+        self.env["res.partner"].search([("name", "=", "AID Filter UG")]).category_id = tag
+        tile, _out = self._kpi(board, {"tag": [tag.id]})
+        self.assertEqual(tile["value"], 1)
+
     def test_the_payload_tells_the_bar_what_to_draw(self):
         board = self._board(with_filters(
             COUNTRY, ADDRESS, widgets=[PARTNER_KPI]))
@@ -297,7 +312,9 @@ class TestFilterRender(TransactionCase):
         windows = [t for t in drawn["domain"] if t[0] == "create_date"]
         self.assertEqual(len(windows), 2, "the card's period, not two periods")
         start, _end = self.Render._period_bounds("this_year")
-        self.assertIn(["create_date", ">=", str(start)], drawn["domain"])
+        self.assertIn(["create_date", ">=",
+                       self.Render._bound("res.partner", "create_date", start)],
+                      drawn["domain"])
 
     # ------------------------------------------------------------ drilling
     def test_the_records_behind_a_tile_are_the_filtered_ones(self):
@@ -318,4 +335,56 @@ class TestFilterRender(TransactionCase):
             board.id, "card", None,
             {spec_lib.card_period_key("card"): "last_year"})
         start, _end = self.Render._period_bounds("last_year")
-        self.assertIn(["create_date", ">=", str(start)], action["domain"])
+        self.assertIn(["create_date", ">=",
+                       self.Render._bound("res.partner", "create_date", start)],
+                      action["domain"])
+
+    # ---------------------------------------------------------- time zones
+    def test_a_datetime_window_starts_at_local_midnight(self):
+        """Nairobi is UTC+3: October starts at 21:00 UTC on 30 September,
+        or orders placed between midnight and 3am land in September."""
+        render = self.Render.with_context(tz="Africa/Nairobi")
+        day = fields.Date.to_date("2026-10-01")
+        self.assertEqual(render._bound("res.partner", "create_date", day),
+                         "2026-09-30 21:00:00")
+        self.assertEqual(render._local_date("2026-09-30 21:00:00"), day)
+        # A date field is a calendar date wherever you are.
+        self.assertEqual(render._edge(day, False), "2026-10-01")
+        # UTC needs no conversion, and keeps the readable form.
+        self.assertEqual(self.Render.with_context(tz="UTC")._bound(
+            "res.partner", "create_date", day), "2026-10-01")
+
+    def test_the_previous_period_of_a_local_month_is_the_local_month_before(self):
+        render = self.Render.with_context(tz="Africa/Nairobi")
+        october = [["create_date", ">=", "2026-09-30 21:00:00"],
+                   ["create_date", "<", "2026-10-31 21:00:00"]]
+        self.assertEqual(render._shift_window(october, "previous_period"),
+                         [["create_date", ">=", "2026-08-31 21:00:00"],
+                          ["create_date", "<", "2026-09-30 21:00:00"]])
+
+    def test_reads_group_in_the_readers_zone_even_without_one_in_context(self):
+        """Scheduled emails arrive with no tz in context; months must still
+        be the reader's months."""
+        user = self.env["res.users"].create({
+            "name": "AID Nairobi", "login": "ai_dash_nairobi",
+            "tz": "Africa/Nairobi",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])]})
+        context = self.Render.with_user(user).with_context(tz=False)._company_context()
+        self.assertEqual(context.get("tz"), "Africa/Nairobi")
+
+    # ------------------------------------------------------------ portability
+    def test_an_imported_dashboard_keeps_its_tiles_and_leaves_what_cannot_land(self):
+        """A filter on another database's analytic plan, and a default vendor
+        id from another database, must not come along — and must not stop
+        the import either."""
+        spec = with_filters(
+            dict(COUNTRY, default=[self.kenya.id]),
+            {"key": "vehicle", "type": "many2one", "label": "Vehicles",
+             "field": "x_plan999_id"},
+            widgets=[PARTNER_KPI])
+        new_id = self.env["ai.dashboard"].action_import_spec(
+            {"name": "Imported", "spec": spec})
+        stored = self.env["ai.dashboard"].browse(new_id).spec()
+        self.assertEqual([f["key"] for f in stored["filters"]], ["country"])
+        self.assertNotIn("default", stored["filters"][0])
+        self.assertEqual(len(stored["widgets"]), 1)

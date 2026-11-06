@@ -13,8 +13,9 @@ question, and the question is asked afresh, by whoever is asking.
 """
 import logging
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as dt_time, timedelta
 
+import pytz
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
@@ -69,21 +70,28 @@ class AIDashboardRender(models.AbstractModel):
             spec = dashboard.spec()
         started = time.time()
 
-        filter_values = filter_values or {}
+        filter_values = filter_values if isinstance(filter_values, dict) else {}
         # View-time choice beats the spec's default, exactly like the period
         # filter: "show me everything against last year" is a question somebody
-        # asks of a dashboard, not a property of it.
-        compare_mode = filter_values.get("__compare") or \
-            (spec.get("compare") or {}).get("to") or "none"
+        # asks of a dashboard, not a property of it. A value nobody offers is
+        # ignored rather than treated as "previous period" by the fall-through
+        # in _shift_window.
+        compare_mode = filter_values.get("__compare")
+        if compare_mode not in spec_lib.COMPARE_TARGETS:
+            compare_mode = (spec.get("compare") or {}).get("to") or "none"
         # Worked out once, as the person looking: which records a vendor
         # filter offers, which values a status filter has, in their language.
         spec = dict(spec, filters=self._resolve_filters(spec, filter_values))
 
+        # Paging comes from the client too; anything that is not a mapping of
+        # tile id to offsets is ignored rather than taking the page down.
+        offsets = offsets if isinstance(offsets, dict) else {}
         widgets = []
         for widget in spec.get("widgets", []):
+            page = offsets.get(widget.get("id"))
             widgets.append(self._render_widget(
                 widget, spec, filter_values, compare_mode,
-                (offsets or {}).get(widget.get("id")) or {}))
+                page if isinstance(page, dict) else {}))
 
         elapsed = int((time.time() - started) * 1000)
         # An unsaved variant is not this dashboard, so its timing is not this
@@ -531,9 +539,14 @@ class AIDashboardRender(models.AbstractModel):
 
         kept = [t for t in tail
                 if not (t[0] == field and t[1] in (">=", ">", "<", "<="))]
+        # Written back the way they were found: a window on a datetime field
+        # is held as the UTC instants of local midnight, and its earlier
+        # period has to be too, or it would be three hours off in Nairobi.
+        as_datetime = any(isinstance(t[2], str) and len(t[2]) > 10
+                          for t in bounds)
         return head + kept + [
-            [field, ">=", fields.Date.to_string(start)],
-            [field, "<", fields.Date.to_string(end)],
+            [field, ">=", self._edge(start, as_datetime)],
+            [field, "<", self._edge(end, as_datetime)],
         ]
 
     # -------------------------------------------------------------- filters
@@ -552,50 +565,77 @@ class AIDashboardRender(models.AbstractModel):
         domain = list(query.get("domain") or [])
         model_name = query["model"]
         for flt in spec.get("filters", []):
+            if flt.get("available") is False:
+                # The bar told this reader the filter is not theirs to use, so
+                # it must not narrow their figures out of sight either — a
+                # default vendor they cannot see would otherwise filter every
+                # tile while the bar showed nothing.
+                continue
             chosen = spec_lib.filter_value(flt, filter_values)
             if chosen is None:
                 continue
             if flt.get("type") == "date_range":
-                field = self._date_field_for(model_name, flt.get("field"))
+                field = self._date_field_for(
+                    model_name, spec_lib.field_for(flt, model_name))
                 window = self._period_bounds(chosen) if field else None
                 if window:
                     start, end = window
-                    domain += [[field, ">=", fields.Date.to_string(start)],
-                               [field, "<", fields.Date.to_string(end)]]
+                    domain += [[field, ">=", self._bound(model_name, field, start)],
+                               [field, "<", self._bound(model_name, field, end)]]
                 continue
-            meta = self._filter_meta(model_name, flt)
-            if not meta:
+            found = self._filter_meta(model_name, flt)
+            if not found:
                 continue
+            name, meta = found
             if flt["type"] == "many2one":
-                domain.append([flt["field"], "in", chosen])
+                domain.append([name, "in", chosen])
             elif chosen in {value for value, _label in meta.get("selection") or []}:
-                # A value the field does not have would match nothing and say
-                # nothing about why; ignoring it shows the honest total.
-                domain.append([flt["field"], "=", chosen])
+                # A value this model's field does not have would match nothing
+                # and say nothing about why — "posted" means nothing to a sale
+                # order — so this tile shows its honest total instead.
+                domain.append([name, "=", chosen])
         return domain
 
     def _filter_meta(self, model_name, flt):
-        """The field a many2one or selection filter lands on in this model.
+        """Where a many2one or selection filter lands in this model.
 
-        None when it should pass this tile by: the model has no such field,
-        has it as a different kind of field, or — for a many2one — points it
-        at different records than the picker offers (a ``partner_id`` that is
-        a company here and a contact there is not the same question). Asked
-        through ``fields_get`` as the viewer, so a field their groups hide is
-        treated as absent rather than raising half-way through a page.
+        Returns ``(field name, fields_get description)``, or None when the
+        filter should pass this tile by. A record filter lands on a many2one
+        or a many2many of the same records — journal items carry their
+        analytic plans in ``distribution_analytic_account_ids``, so a Vehicle
+        filter narrows spend as well as the analytic lines — and matches any
+        of the picked records either way. It passes by when the model has no
+        such field, has it
+        as a different kind of field, or — for a many2one — points it at
+        different records than the picker offers (``parent_id`` is a company
+        on a partner and a parent tag on a tag). The field is the spec's
+        per-model override when it names one — ``order_partner_id`` on sale
+        order lines is the customer that ``partner_id`` is everywhere else —
+        and ``field`` otherwise. Asked through ``fields_get`` as the viewer,
+        so a field their groups hide is treated as absent rather than
+        raising half-way through a page.
         """
-        name = flt.get("field")
+        name = spec_lib.field_for(flt, model_name)
         if not name:
             return None
         meta = self.env[model_name].fields_get(
             [name], attributes=["type", "relation", "selection", "searchable"],
         ).get(name)
-        if not meta or meta.get("type") != flt.get("type") \
+        if not meta or meta.get("type") not in spec_lib.LANDS_ON.get(
+                flt.get("type"), (flt.get("type"),)) \
                 or not meta.get("searchable"):
             return None
         if flt.get("relation") and meta.get("relation") != flt["relation"]:
             return None
-        return meta
+        if flt.get("options") is not None and {
+                value for value, _label in meta.get("selection") or []} != {
+                pair[0] for pair in flt["options"]}:
+            # A status means the same thing only where the field offers the
+            # same values as the dropdown: "draft" is a sale order's word and
+            # an invoice's too, and picking it from a list of order statuses
+            # must not quietly narrow the invoices.
+            return None
+        return name, meta
 
     def _resolve_filters(self, spec, filter_values=None):
         """Each filter as the person looking at the dashboard needs it.
@@ -612,6 +652,7 @@ class AIDashboardRender(models.AbstractModel):
             if flt.get("type") == "date_range":
                 out["value"] = spec_lib.filter_value(flt, filter_values) \
                     or "all_time"
+                out["display"] = self._period_label(out["value"])
                 resolved.append(out)
                 continue
             meta = None
@@ -620,8 +661,9 @@ class AIDashboardRender(models.AbstractModel):
                 if model_name not in self.env \
                         or not self.env[model_name].has_access("read"):
                     continue
-                meta = self._filter_meta(model_name, flt)
-                if meta:
+                found = self._filter_meta(model_name, flt)
+                if found:
+                    meta = found[1]
                     break
             if flt.get("type") == "many2one" and meta and not self.env[
                     meta["relation"]].has_access("read"):
@@ -634,11 +676,18 @@ class AIDashboardRender(models.AbstractModel):
             elif flt["type"] == "many2one":
                 out["relation"] = meta["relation"]
                 out["value"] = spec_lib.filter_value(flt, filter_values) or []
+                if out["value"]:
+                    # Searched rather than browsed, so a record the reader may
+                    # not see is left out of the words instead of raising.
+                    out["display"] = ", ".join(self.env[meta["relation"]].search(
+                        [("id", "in", out["value"])]).mapped("display_name"))
             else:
                 out["options"] = [list(pair) for pair in meta.get("selection") or []]
                 value = spec_lib.filter_value(flt, filter_values)
                 out["value"] = value if value in {
                     pair[0] for pair in out["options"]} else ""
+                if out["value"]:
+                    out["display"] = dict(out["options"]).get(out["value"])
             resolved.append(out)
         return resolved
 
@@ -654,8 +703,22 @@ class AIDashboardRender(models.AbstractModel):
             if flt.get("type") != "date_range":
                 continue
             if spec_lib.filter_value(flt, filter_values) in ROLLING_PERIODS:
-                rolling.add(self._date_field_for(query["model"], flt.get("field")))
+                rolling.add(self._date_field_for(
+                    query["model"], spec_lib.field_for(flt, query["model"])))
         return rolling
+
+    def _period_label(self, period):
+        """A period in words, for places the canvas does not draw: email."""
+        return {
+            "today": _("Today"), "this_week": _("This week"),
+            "last_week": _("Last week"), "last_7_days": _("Last 7 days"),
+            "this_month": _("This month"), "last_month": _("Last month"),
+            "last_30_days": _("Last 30 days"),
+            "this_quarter": _("This quarter"),
+            "last_quarter": _("Last quarter"),
+            "last_90_days": _("Last 90 days"), "this_year": _("This year"),
+            "last_year": _("Last year"), "all_time": _("All time"),
+        }.get(period, period)
 
     @api.model
     def _period_bounds(self, period):
@@ -699,6 +762,57 @@ class AIDashboardRender(models.AbstractModel):
                 return today - timedelta(days=days), today + timedelta(days=1)
         return None
 
+    # ----------------------------------------------------------- time zones
+    def _tz(self):
+        """The reader's time zone, from the same place Odoo groups by.
+
+        ``_read_group`` buckets a datetime field by month in the *context*
+        time zone only (odoo/orm/fields_temporal.py), so windows are cut in
+        that zone too, and `_company_context` puts the user's zone into the
+        context for reads that arrive without one — the scheduled emails —
+        so a month means the same thing on screen and in the inbox.
+        """
+        name = self.env.context.get("tz") or self.env.user.tz
+        return pytz.timezone(name) if name in pytz.all_timezones_set else None
+
+    def _edge(self, day, as_datetime):
+        """One edge of a date window: a date, or the UTC instant it begins.
+
+        A datetime column holds UTC. "October" for someone in Nairobi starts
+        at 21:00 UTC on 30 September, and comparing against the bare date
+        would move every order placed between midnight and 3am into the
+        previous day — and on the 1st, into the previous month. This is the
+        same conversion Odoo's own read_group applies to datetime ranges.
+        """
+        tz = self._tz() if as_datetime else None
+        if tz:
+            start = tz.localize(datetime.combine(day, dt_time.min)) \
+                .astimezone(pytz.utc).replace(tzinfo=None)
+            if start != datetime.combine(day, dt_time.min):
+                return fields.Datetime.to_string(start)
+        # A date, or a zone that is UTC that day: the bare date already means
+        # midnight UTC, and stays as readable in a drill-down's domain.
+        return fields.Date.to_string(day)
+
+    def _bound(self, model_name, field, day):
+        """An edge of a date window, in the form ``field`` stores."""
+        meta = self.env[model_name]._fields.get(field)
+        return self._edge(day, bool(meta) and meta.type == "datetime")
+
+    def _local_date(self, value):
+        """The reader's calendar date for a window edge, whichever form."""
+        if isinstance(value, str) and len(value) > 10:
+            try:
+                value = fields.Datetime.to_datetime(value)
+            except (ValueError, TypeError):
+                return None
+        if isinstance(value, datetime):
+            tz = self._tz()
+            if tz:
+                value = pytz.utc.localize(value).astimezone(tz)
+            return value.date()
+        return self._as_date(value)
+
     def _domain_window(self, domain):
         """Find the date window a domain already expresses, for comparisons."""
         starts = {}
@@ -707,7 +821,7 @@ class AIDashboardRender(models.AbstractModel):
             if not isinstance(term, list) or len(term) != 3:
                 continue
             field, operator, value = term
-            parsed = self._as_date(value)
+            parsed = self._local_date(value)
             if parsed is None:
                 continue
             if operator in (">=", ">"):
@@ -751,19 +865,28 @@ class AIDashboardRender(models.AbstractModel):
         """The field a date filter applies to when the spec does not say.
 
         Ordered by how likely each is to be the one a business means.
+        Searchable is enough — it only ever goes into a domain, never a
+        grouping. Requiring a stored column skipped ``date`` on bank
+        statement lines, which is related to their journal entry's date, and
+        windowed them by ``create_date`` instead: a year of petty cash
+        imported in one afternoon then all landed in that afternoon's month.
         """
         model = self.env[model_name]
-        for candidate in ("date", "date_order", "invoice_date", "date_deadline",
-                          "date_start", "scheduled_date", "create_date"):
+        for candidate in spec_lib.DATE_FIELD_ORDER:
             field = model._fields.get(candidate)
-            if field and field.store and field.type in ("date", "datetime"):
+            if field and field.type in ("date", "datetime") \
+                    and (field.store or field.search):
                 return candidate
         return None
 
     # --------------------------------------------------------------- helpers
     def _company_context(self):
-        return {"allowed_company_ids": self.env.companies.ids
-                or self.env.company.ids}
+        context = {"allowed_company_ids": self.env.companies.ids
+                   or self.env.company.ids}
+        tz = self._tz()
+        if tz:
+            context["tz"] = tz.zone
+        return context
 
     def _currency(self):
         currency = self.env.company.currency_id
@@ -841,7 +964,8 @@ class AIDashboardRender(models.AbstractModel):
             field = spec_lib._field_root(group_by[0])
             granularity = (group_by[0].split(":", 1)[1]
                            if ":" in group_by[0] else None)
-            domain += self._segment_domain(field, granularity, raw_value)
+            domain += self._segment_domain(field, granularity, raw_value,
+                                           query["model"])
 
         return {
             "type": "ir.actions.act_window",
@@ -882,7 +1006,8 @@ class AIDashboardRender(models.AbstractModel):
             field = spec_lib._field_root(spec_name)
             granularity = (spec_name.split(":", 1)[1]
                            if ":" in spec_name else None)
-            domain += self._segment_domain(field, granularity, value)
+            domain += self._segment_domain(field, granularity, value,
+                                           query["model"])
         return {
             "type": "ir.actions.act_window",
             "name": _("%(widget)s — %(dashboard)s",
@@ -904,8 +1029,14 @@ class AIDashboardRender(models.AbstractModel):
         spec = dict(spec, filters=self._resolve_filters(spec, filter_values))
         return dict(spec, filters=spec_lib.filters_for_widget(widget, spec))
 
-    def _segment_domain(self, field, granularity, raw_value):
-        """Narrow to the clicked slice of the first grouping."""
+    def _segment_domain(self, field, granularity, raw_value, model_name=None):
+        """Narrow to the clicked slice of the first grouping.
+
+        A date bucket is the reader's local calendar unit — that is how
+        `_read_group` grouped it — so on a datetime field its edges are the
+        UTC instants of local midnight, or the list opened would not hold the
+        records the bar was drawn from.
+        """
         if granularity:
             start = self._as_date(raw_value)
             if start is None:
@@ -915,6 +1046,9 @@ class AIDashboardRender(models.AbstractModel):
                      "quarter": relativedelta(months=3),
                      "year": relativedelta(years=1)}
             end = start + spans.get(granularity, relativedelta(months=1))
+            if model_name:
+                return [[field, ">=", self._bound(model_name, field, start)],
+                        [field, "<", self._bound(model_name, field, end)]]
             return [[field, ">=", fields.Date.to_string(start)],
                     [field, "<", fields.Date.to_string(end)]]
         if raw_value in (False, None):
