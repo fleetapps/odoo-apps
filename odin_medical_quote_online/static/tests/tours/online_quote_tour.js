@@ -17,8 +17,8 @@ registry.category("web_tour.tours").add("odin_medical_quote_online_tour", {
         { trigger: "#oq_age", run: "edit 36" },
         { trigger: ".o_oq_next", run: "click" },
         { trigger: ".o_oq_for:contains(you (36))" },
-        { trigger: ".o_oq_chip:contains(Doctor visits)", run: "click" },
-        { trigger: ".o_oq_plan:contains(Test Afya Insurer):contains(Doctor visits)" },
+        { trigger: ".o_oq_chip:contains(Outpatient)", run: "click" },
+        { trigger: ".o_oq_plan:contains(Test Afya Insurer):contains(Outpatient)" },
         {
             trigger: ".o_oq_plan:contains(Test Afya Insurer) .o_oq_choose",
             run: "click",
