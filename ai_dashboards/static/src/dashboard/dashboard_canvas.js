@@ -7,6 +7,8 @@ import { standardFieldProps } from "@web/views/fields/standard_field_props";
 import { useRecordObserver } from "@web/model/relational_model/utils";
 import { useService } from "@web/core/utils/hooks";
 import { Dropdown } from "@web/core/dropdown/dropdown";
+import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
+import { KeepLast } from "@web/core/utils/concurrency";
 import { _t } from "@web/core/l10n/translation";
 
 // Chart.js ships with Odoo but is lazy-loaded rather than sitting in
@@ -26,11 +28,25 @@ const CHART_TYPES = ["bar", "line", "pie", "donut", "aging"];
 const CARD_TYPES = ["pnl", "aging", "banks"];
 // A card's green, then what sits beside it.
 const CARD_PALETTE = ["#2ca01c", "#0077c5", "#ffb000", "#00b7c3", "#ff8000", "#7d2ae8", "#d52b1e", "#8d9096"];
-const PERIOD_LABELS = {
-    this_month: "This month", last_month: "Last month", last_30_days: "Last 30 days",
-    this_quarter: "This quarter", last_quarter: "Last quarter",
-    this_year: "This year", last_year: "Last year", all_time: "All time",
-};
+// Every period the server knows, in the order a person scans them: shortest
+// first, each "this" beside its "last", and "All time" at the end. The same
+// list serves the page's Period filter and a card's own period, so a card set
+// to "this week" by the assistant can still show what it is set to.
+const PERIOD_OPTIONS = [
+    ["today", _t("Today")],
+    ["this_week", _t("This week")],
+    ["last_week", _t("Last week")],
+    ["last_7_days", _t("Last 7 days")],
+    ["this_month", _t("This month")],
+    ["last_month", _t("Last month")],
+    ["last_30_days", _t("Last 30 days")],
+    ["this_quarter", _t("This quarter")],
+    ["last_quarter", _t("Last quarter")],
+    ["last_90_days", _t("Last 90 days")],
+    ["this_year", _t("This year")],
+    ["last_year", _t("Last year")],
+    ["all_time", _t("All time")],
+];
 // Which figures a tile needs. Two types in the same family are drawn from the
 // same payload, so switching between them is instant and local; crossing
 // families needs the server to shape the data differently. This one table is
@@ -75,7 +91,7 @@ const FORMAT_LABELS = {
 
 export class AIDashboardCanvas extends Component {
     static template = "ai_dashboards.Canvas";
-    static components = { Dropdown };
+    static components = { Dropdown, MultiRecordSelector };
     static props = { ...standardFieldProps };
 
     setup() {
@@ -83,6 +99,11 @@ export class AIDashboardCanvas extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.rootRef = useRef("root");
+        // Only the newest answer is ever drawn. Picking three vendors in
+        // quick succession sends three requests that can come back in any
+        // order; without this the second could land last and the screen
+        // would show figures for a selection nobody is looking at any more.
+        this.keepLast = new KeepLast();
 
         this.state = useState({
             loading: true,
@@ -270,7 +291,7 @@ export class AIDashboardCanvas extends Component {
                 this.state.data = null;
                 return;
             }
-            this.state.data = await this.orm.call(
+            this.state.data = await this.keepLast.add(this.orm.call(
                 "ai.dashboard.render",
                 "render",
                 [this.dashboardId, this.state.filters, this.state.offsets,
@@ -278,7 +299,7 @@ export class AIDashboardCanvas extends Component {
                  // stored. Without this, editing a tile into a shape the
                  // stored spec does not have redraws the stored one.
                  this.hasUnsavedEdits ? this.spec : null]
-            );
+            ));
         } catch (error) {
             this.state.error =
                 (error && error.data && error.data.message) ||
@@ -290,6 +311,78 @@ export class AIDashboardCanvas extends Component {
 
     async setFilter(key, value) {
         this.state.filters = { ...this.state.filters, [key]: value };
+        await this.load();
+    }
+
+    // -------------------------------------------------------- filter bar
+    /** The filters to draw, as the server resolved them for this reader. */
+    get filterBar() {
+        return (this.state.data && this.state.data.filters) || [];
+    }
+
+    get periodOptions() {
+        return PERIOD_OPTIONS;
+    }
+
+    /** What an empty record picker says. Translated at render time, not at
+     *  import, so the picker receives the plain string its props expect. */
+    get allPlaceholder() {
+        return _t("All");
+    }
+
+    /**
+     * What a filter shows right now.
+     *
+     * The reader's own choice the instant they make it, and the server's
+     * resolved value otherwise. Reading only the server's would leave a
+     * control showing the old choice until the new figures arrive, which
+     * reads as the click not having taken.
+     */
+    filterValue(flt) {
+        return flt.key in this.state.filters ? this.state.filters[flt.key] : flt.value;
+    }
+
+    /** A many2one filter's records, as the ids MultiRecordSelector takes. */
+    recordIds(flt) {
+        const value = this.filterValue(flt);
+        return (Array.isArray(value) ? value : []).filter(
+            (id) => Number.isInteger(id) && id > 0
+        );
+    }
+
+    /** Whether a filter is narrowing the figures, so it can say so.
+     *  A period always applies, so it is never singled out. */
+    isNarrowed(flt) {
+        if (flt.available === false) {
+            return false;
+        }
+        if (flt.type === "many2one") {
+            return this.recordIds(flt).length > 0;
+        }
+        if (flt.type === "selection") {
+            return Boolean(this.filterValue(flt));
+        }
+        return false;
+    }
+
+    filterInputId(flt) {
+        return `o_ai_dash_filter_${this.dashboardId}_${flt.key}`;
+    }
+
+    /** Whether the reader has moved any filter from where the dashboard
+     *  starts, which is the only time "Reset" means anything. */
+    get canResetFilters() {
+        return this.filterBar.some((flt) => flt.key in this.state.filters);
+    }
+
+    /** Back to the dashboard's own defaults, in one request. The comparison
+     *  and each card's period are separate choices and stay as they are. */
+    async resetFilters() {
+        const kept = { ...this.state.filters };
+        for (const flt of this.filterBar) {
+            delete kept[flt.key];
+        }
+        this.state.filters = kept;
         await this.load();
     }
 
@@ -391,10 +484,6 @@ export class AIDashboardCanvas extends Component {
                 this.charts.set(widget.id, new Chart(canvas, this.config(widget)));
             }
         }
-    }
-
-    get periodLabels() {
-        return Object.entries(PERIOD_LABELS);
     }
 
     get isCardBoard() {
