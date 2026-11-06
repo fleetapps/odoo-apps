@@ -238,7 +238,7 @@
             </xpath>
             <xpath expr="//filter[@name='group_partner']" position="before">
                 <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
-                <filter name="group_type" string="Type" context="{'group_by': 'odin_quote_type'}"/>
+                <filter name="group_type" string="Class" context="{'group_by': 'odin_quote_type'}"/>
             </xpath>
             <xpath expr="//filter[@name='group_user']" position="attributes">
                 <attribute name="string">Salesperson</attribute>

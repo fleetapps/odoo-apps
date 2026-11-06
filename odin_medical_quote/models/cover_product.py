@@ -12,7 +12,9 @@ one table of the insurer's rate card (*Jamii Plus Outpatient – KES 100,000
 per Person*): how it is priced, what it pays out, and one row per person,
 age band or family size. Tables are shared: the seven Jamii Plus family
 plans use the same outpatient tables, so a rate changed once is changed for
-all of them, as it is on the card. Motor adds itself in odin_motor_quote.
+all of them, as it is on the card. Motor adds itself in odin_motor_quote;
+a class the office adds itself (Accident, Fire...) is priced on bands of an
+amount, in cover_general.py.
 """
 
 import re
@@ -54,8 +56,10 @@ class CoverProduct(models.Model):
 
     name = fields.Char(required=True, tracking=True)
     line = fields.Selection(
-        [("medical", "Medical")], string="Class", required=True, default="medical",
-        tracking=True, help="The insurance line: it decides the questions New quote asks.")
+        selection="_odin_selection_class", string="Class", required=True, default="medical",
+        tracking=True, index=True,
+        help="The insurance class (Cover Quotes ▸ Products ▸ Insurance classes): it "
+        "decides the questions New quote asks.")
     insurer_id = fields.Many2one(
         "res.partner", string="Insurer", required=True, index=True, tracking=True,
         domain=[("is_company", "=", True)])
@@ -87,6 +91,10 @@ class CoverProduct(models.Model):
     try_principal_age = fields.Integer(string="Principal's age", default=35)
     try_spouse_age = fields.Integer(string="Spouse's age", help="0: no spouse.")
     try_children = fields.Integer(string="Children")
+
+    @api.model
+    def _odin_selection_class(self):
+        return self.env["odin.insurance.class"]._odin_selection()
 
     # -- reading ------------------------------------------------------------
 

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- 1. Client and what is insured, as the class asks ================== -->
+    <t t-name="odin_medical_quote.GeneralQuote.Details">
+        <section class="o_mq_card">
+            <div class="o_mq_card_head">
+                <span class="o_mq_badge">1</span>
+                <div class="flex-grow-1">
+                    <h2>Client and cover</h2>
+                    <p t-if="state.coverOpen">Who the quote is for, and what to insure.</p>
+                    <p t-else="" class="o_mq_summary" role="button" t-on-click="editDetails">
+                        <b t-esc="customerSummary"/> · <t t-esc="coverSummary"/>
+                    </p>
+                </div>
+                <button t-if="!state.coverOpen" class="btn btn-secondary o_mq_edit_details"
+                        t-on-click="editDetails">
+                    <i class="fa fa-pencil me-1"/>Edit details
+                </button>
+            </div>
+
+            <div t-if="state.coverOpen" class="o_mq_card_body">
+                <t t-call="odin_medical_quote.QuoteClient"/>
+
+                <h3><i t-if="insuranceClass.icon" class="fa me-2" t-att-class="insuranceClass.icon"/><t t-esc="insuranceClass.name"/> cover</h3>
+                <div class="o_mq_grid" t-on-change="onCoverChange">
+                    <div class="o_mq_field" t-if="insuranceClass.ask_amount">
+                        <label for="mq_amount"><t t-esc="insuranceClass.amount_label"/> <span class="o_mq_req">*</span></label>
+                        <input id="mq_amount" type="number" min="0" step="50000" class="form-control"
+                               placeholder="e.g. 1000000" t-model="state.cover.amount"/>
+                    </div>
+                    <div class="o_mq_field" t-if="insuranceClass.ask_people">
+                        <label for="mq_people"><t t-esc="insuranceClass.people_label"/> <span class="o_mq_req">*</span></label>
+                        <input id="mq_people" type="number" min="1" class="form-control"
+                               t-model="state.cover.people"/>
+                    </div>
+                    <div class="o_mq_field o_mq_wide">
+                        <label for="mq_details" t-esc="insuranceClass.details_label"/>
+                        <input id="mq_details" class="form-control" t-model="state.cover.details"/>
+                    </div>
+                </div>
+
+                <div class="o_mq_actions">
+                    <button class="btn btn-primary o_mq_find" t-on-click="search" t-att-disabled="state.searching">
+                        <i t-if="state.searching" class="fa fa-circle-o-notch fa-spin me-1"/>
+                        <i t-else="" class="fa fa-search me-1"/>
+                        <t t-if="state.results">Update prices</t><t t-else="">Find insurers</t>
+                    </button>
+                    <button t-if="state.results and !state.coverDirty" class="btn btn-link"
+                            t-on-click="() => state.coverOpen = false">Done</button>
+                </div>
+            </div>
+            <div t-if="state.coverDirty and !state.coverOpen" class="o_mq_dirty" role="alert">
+                The cover details changed.
+                <button class="btn btn-sm btn-primary ms-2" t-on-click="search">Update prices</button>
+            </div>
+        </section>
+    </t>
+</templates>

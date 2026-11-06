@@ -6,7 +6,9 @@
         <field name="inherit_id" ref="odin_medical_quote.view_cover_product_form"/>
         <field name="arch" type="xml">
             <group name="basics" position="inside">
-                <field name="odin_online"/>
+                <!-- Online quote pages are for medical and motor: a class the
+                     office added is quoted by an agent. -->
+                <field name="odin_online" invisible="odin_engine == 'general'"/>
             </group>
         </field>
     </record>
