@@ -16,11 +16,16 @@
     }
 
     // ------------------------------------------------------------ filters
+    // One row of controls that wraps, each a label and its control at the
+    // same height, so a Period, a Vendor and a Status read as one toolbar
+    // rather than three widgets that happened to land together.
     .o_ai_dash_filters {
+        --o-ai-filter-height: calc(1.5em + .5rem + 2 * var(--border-width, 1px));
+
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: .75rem;
+        gap: .5rem 1rem;
         margin-bottom: var(--o-ai-gap);
     }
 
@@ -28,9 +33,80 @@
         display: flex;
         align-items: center;
         gap: .4rem;
+        min-width: 0;
 
-        label { margin: 0; font-size: .85rem; color: var(--gray-600, #6c757d); }
-        select { width: auto; text-transform: capitalize; }
+        select {
+            width: auto;
+            min-width: 8.5rem;
+        }
+    }
+
+    .o_ai_dash_filter_label {
+        margin: 0;
+        font-size: .85rem;
+        color: var(--gray-600, #6c757d);
+        white-space: nowrap;
+    }
+
+    // A filter that is narrowing the figures says so in its label: easy to
+    // spot at a glance, quiet enough not to compete with the tiles.
+    .o_ai_dash_filter--set .o_ai_dash_filter_label {
+        color: var(--gray-900, #212529);
+        font-weight: 600;
+    }
+
+    .o_ai_dash_filter_na {
+        font-size: .8rem;
+        font-style: italic;
+    }
+
+    // Odoo's record picker draws as a form field — underlined, borderless.
+    // In a toolbar beside boxed selects that reads as a different kind of
+    // control, so here it takes the same box, height and focus colour as a
+    // small select. A fixed width keeps the bar from shifting each time a
+    // vendor is added; the picks wrap inside the box once they fill it.
+    .o_ai_dash_filter_records {
+        width: 22rem;
+        max-width: 100%;
+
+        .o_multi_record_selector {
+            min-height: var(--o-ai-filter-height);
+            padding: .125rem .5rem;
+            border: var(--border-width, 1px) solid var(--border-color, #dee2e6);
+            border-radius: var(--border-radius-sm, .25rem);
+            background-color: var(--body-bg, #fff);
+            font-size: .875rem;
+            align-items: center;
+
+            &:focus-within {
+                border-color: var(--primary, #714b67);
+            }
+
+            // In a form Odoo gives the search box a line of its own under
+            // the picked records. In a one-line toolbar that doubles the
+            // box's height the moment anything is picked, so here it sits
+            // beside them and takes whatever room is left.
+            .o_record_autocomplete_with_caret {
+                min-width: 3rem;
+                flex: 1 1 3rem;
+            }
+
+            input {
+                border: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+        }
+    }
+
+    .o_ai_dash_filter--set .o_multi_record_selector {
+        border-color: var(--gray-500, #adb5bd);
+    }
+
+    .o_ai_dash_reset {
+        padding-left: 0;
+        padding-right: 0;
+        white-space: nowrap;
     }
 
     // Unsaved work says so where the work happened, not only up in the
@@ -450,5 +526,17 @@
             grid-column: span 12 !important;
         }
         .o_ai_dash_tools { opacity: 1; }
+
+        // Each filter takes the full width, label above its control, so a
+        // picker with three vendors in it is still readable on a phone.
+        .o_ai_dash_filter {
+            flex: 1 1 100%;
+            flex-direction: column;
+            align-items: stretch;
+            gap: .2rem;
+
+            select { width: 100%; }
+        }
+        .o_ai_dash_filter_records { width: 100%; max-width: 100%; }
     }
 }
