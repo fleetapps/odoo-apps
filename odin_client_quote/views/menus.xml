@@ -21,13 +21,17 @@
          file, and a menu cannot name a parent that does not exist yet. -->
 
 
-    <!-- Instalment plans, templates, raw motor rates: kept for whoever
-         supports the office (developer mode), out of everyone else's way.
-         Staff keep what they sell in Products. -->
+    <!-- Instalment plans, templates, raw motor rates: for Sales
+         administrators, the only ones who can edit them anyway. Staff keep
+         what they sell in Products.
+         Not base.group_no_one: Odoo shows a Technical Features menu only in
+         developer mode, so an administrator who was not in debug mode lost
+         Configuration while colleagues in debug mode kept it. A menuitem's
+         groups= only adds groups on upgrade, hence the explicit removal. -->
     <menuitem id="menu_quote_configuration"
               name="Configuration"
               parent="menu_quote_root"
-              groups="base.group_no_one"
+              groups="-base.group_no_one,sales_team.group_sale_manager"
               sequence="90"/>
 
     <menuitem id="menu_quote_instalment_app"
