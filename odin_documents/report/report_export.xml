@@ -137,7 +137,8 @@
                                     <td t-out="product.hs_code or ''"/>
                                     <td t-out="((product.doc_brand or company.doc_brand) if product.hs_code else '') or ''"/>
                                     <td t-out="(product.name or line.name or '').upper()"/>
-                                    <td t-out="product.doc_pack_size or line.product_uom_id.name or ''"/>
+                                    <td t-out="product._doc_pack_size() or line.product_uom_id.name or ''" t-if="product"/>
+                                    <td t-else="" t-out="line.product_uom_id.name or ''"/>
                                     <td t-out="product.country_of_origin.code or ''"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(line.quantity)"/>
                                     <td class="o_odoc_num" t-out="unit[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
@@ -206,6 +207,7 @@
                 <t t-set="partner" t-value="o.partner_id.commercial_partner_id"/>
                 <t t-set="rows" t-value="o._doc_lines()"/>
                 <t t-set="totals" t-value="o._doc_totals()"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <h2 class="o_odoc_title">Export Packing List</h2>
@@ -224,13 +226,13 @@
                             </tr>
                             <tr>
                                 <th>Invoice no.</th>
-                                <td t-out="', '.join(o._doc_invoices().mapped('name'))"/>
+                                <td t-out="refs['invoices']"/>
                                 <th>Consignee</th>
                                 <td t-out="(partner.name or '').upper()"/>
                             </tr>
                             <tr>
                                 <th>Customer order no.</th>
-                                <td t-out="o.sale_id.client_order_ref or o.origin or ''"/>
+                                <td t-out="refs['customer_ref'] or refs['order']"/>
                                 <th>Destination</th>
                                 <td t-out="', '.join(o._doc_address(o.partner_id))"/>
                             </tr>
@@ -254,6 +256,7 @@
                                     <th class="o_odoc_num">Cartons</th>
                                     <th class="o_odoc_num">Net kg</th>
                                     <th class="o_odoc_num">Gross kg</th>
+                                    <th>Pallet</th>
                                     <th>Batch</th>
                                 </tr>
                             </thead>
@@ -263,12 +266,13 @@
                                     <td t-out="row['product'].default_code or ''"/>
                                     <td t-out="row['product'].hs_code or ''"/>
                                     <td t-out="(row['product'].name or '').upper()"/>
-                                    <td t-out="row['product'].doc_pack_size or row['uom']"/>
+                                    <td t-out="row['pack'] or row['uom']"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(row['qty'])"/>
                                     <td class="o_odoc_num" t-out="row['product'].doc_carton_qty or ''"/>
                                     <td class="o_odoc_num" t-out="row['cartons'] or ''"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(row['net']) if row['net'] else ''"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(row['gross']) if row['gross'] else ''"/>
+                                    <td t-out="row['pallet']"/>
                                     <td t-out="row['lots']"/>
                                 </tr>
                             </tbody>
@@ -280,6 +284,7 @@
                                     <td class="o_odoc_num" t-out="totals['cartons'] or ''"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(totals['net']) if totals['net'] else ''"/>
                                     <td class="o_odoc_num" t-out="o._doc_qty(totals['gross']) if totals['gross'] else ''"/>
+                                    <td/>
                                     <td/>
                                 </tr>
                             </tfoot>

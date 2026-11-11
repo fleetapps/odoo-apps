@@ -16,6 +16,7 @@
                     <th class="o_odoc_num" t-out="qty_label or 'Qty'"/>
                     <th>Unit</th>
                     <th t-if="show_cartons" class="o_odoc_num">Cartons</th>
+                    <th t-if="show_cartons and any(row['pallet'] for row in rows)">Pallet</th>
                     <th>Batch</th>
                     <th t-if="show_remarks">Remarks</th>
                 </tr>
@@ -29,6 +30,7 @@
                     <td class="o_odoc_num" t-out="o._doc_qty(row['qty'])"/>
                     <td t-out="row['uom']"/>
                     <td t-if="show_cartons" class="o_odoc_num" t-out="row['cartons'] or ''"/>
+                    <td t-if="show_cartons and any(r['pallet'] for r in rows)" t-out="row['pallet']"/>
                     <td t-out="row['lots']"/>
                     <td t-if="show_remarks"/>
                 </tr>
@@ -41,6 +43,7 @@
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
                 <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -54,9 +57,9 @@
                                     <t t-set="doc_title" t-value="'Delivery Note'"/>
                                     <t t-set="meta" t-value="[('Delivery no.', o.name),
                                         ('Date', o._doc_date((o.date_done or o.scheduled_date))),
-                                        ('Order no.', o.sale_id.name or o.origin),
-                                        ('Customer order no.', o.sale_id.client_order_ref),
-                                        ('Invoice no.', ', '.join(o._doc_invoices().mapped('name'))),
+                                        ('Order no.', refs['order']),
+                                        ('Customer order no.', refs['customer_ref']),
+                                        ('Invoice no.', refs['invoices']),
                                         ('Vehicle / driver', o.doc_vehicle)]"/>
                                     <t t-call="odin_documents.title"/>
                                 </td>
@@ -88,6 +91,7 @@
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
                 <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -101,9 +105,9 @@
                                     <t t-set="doc_title" t-value="'Goods Received Note'"/>
                                     <t t-set="meta" t-value="[('GRN no.', o.name),
                                         ('Date received', o._doc_date((o.date_done or o.scheduled_date))),
-                                        ('Purchase order', o.purchase_id.name or o.origin),
+                                        ('Purchase order', refs['order']),
                                         ('Supplier delivery note', o.doc_supplier_ref),
-                                        ('Supplier ref.', o.purchase_id.partner_ref),
+                                        ('Supplier ref.', refs['supplier_ref']),
                                         ('Vehicle / driver', o.doc_vehicle)]"/>
                                     <t t-call="odin_documents.title"/>
                                 </td>
@@ -134,6 +138,7 @@
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
                 <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -148,7 +153,7 @@
                                     <t t-set="meta" t-value="[('Return no.', o.name),
                                         ('Date', o._doc_date((o.date_done or o.scheduled_date))),
                                         ('Against GRN', o.return_id.name),
-                                        ('Purchase order', o.purchase_id.name or o.return_id.purchase_id.name or o.origin)]"/>
+                                        ('Purchase order', refs['order'])]"/>
                                     <t t-call="odin_documents.title"/>
                                 </td>
                             </tr>
@@ -179,6 +184,7 @@
                 <t t-set="company" t-value="o._doc_company()"/>
                 <t t-set="doc_number" t-value="o.name"/>
                 <t t-set="delivery" t-value="o.return_id"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -193,8 +199,8 @@
                                     <t t-set="meta" t-value="[('Note no.', o.name),
                                         ('Date', o._doc_date((o.date_done or o.scheduled_date))),
                                         ('Against delivery', delivery.name),
-                                        ('Invoice no.', ', '.join(delivery._doc_invoices().mapped('name')) if delivery else ''),
-                                        ('Order no.', delivery.sale_id.name or o.origin)]"/>
+                                        ('Invoice no.', refs['invoices']),
+                                        ('Order no.', refs['order'])]"/>
                                     <t t-call="odin_documents.title"/>
                                 </td>
                             </tr>
@@ -225,6 +231,7 @@
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
                 <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <t t-set="doc_title" t-value="'Transfer Form'"/>

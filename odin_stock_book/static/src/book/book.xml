@@ -451,6 +451,10 @@
                     <button t-if="book.can_post and sel.status_key === 'ready'" class="btn btn-success" t-on-click="() => this.post([sel.id])"><i class="fa fa-check me-1"/>Post</button>
                     <button t-if="book.can_post and sel.status_key === 'short'" class="btn btn-warning" t-on-click="() => this.post([sel.id], true)"
                             title="Posts even though stock goes below zero; count it soon">Post anyway</button>
+                    <button t-foreach="state.documents[sel.id] or []" t-as="doc" t-key="doc.report_id + '-' + doc.res_id"
+                            class="btn btn-secondary" t-on-click="() => this.printDocument(sel.id, doc)" t-att-title="doc.ref">
+                        <i class="fa fa-print me-1"/><t t-esc="doc.label"/>
+                    </button>
                     <button t-if="sel.has_document" class="btn btn-link" t-on-click="() => this.openDocument(sel)"><t t-esc="sel.purchase ? 'Open purchase order' : 'Open in Odoo'"/></button>
                     <button t-if="sel.bill_id and book.can_open_bill" class="btn btn-link" t-on-click="() => this.openBill(sel)" t-esc="sel.reason === 'sale' ? 'Open invoice' : 'Open bill'"/>
                     <button t-if="sel.can_undo" class="btn btn-link text-danger" t-on-click="() => this.undoPurchase(sel)"

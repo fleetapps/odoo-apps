@@ -1,14 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Where the documents' own fields are typed: on the invoice (export rate,
-     next to the currency), the transfer (pallets, weights, references), the
-     product (export details, next to the HS code) and the department (code
-     on numbers). -->
+<!-- Where people print the documents and type what they need: a Print
+     button for each document on the record it belongs to; on a delivery,
+     a Packing tab (cartons, pallets, weights) and packing columns on its
+     lines; on a receipt or a return, the supplier's note or the reason,
+     beside the source document. -->
 <odoo>
+    <!-- Deliveries, receipts, returns, transfers -->
+    <record id="view_picking_form_documents" model="ir.ui.view">
+        <field name="name">stock.picking.form.odin_documents</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='do_print_picking']" position="after">
+                <button name="action_doc_print" type="object" string="Print Delivery Note" context="{'doc_code': 'delivery_note'}"
+                        invisible="picking_type_code != 'outgoing' or return_id"/>
+                <button name="action_doc_print" type="object" string="Print Packing List" context="{'doc_code': 'export_packing_list'}"
+                        invisible="picking_type_code != 'outgoing' or return_id or not doc_is_export"/>
+                <button name="action_doc_print" type="object" string="Print GRN" context="{'doc_code': 'grn'}"
+                        invisible="picking_type_code != 'incoming' or return_id"/>
+                <button name="action_doc_print" type="object" string="Print Return Note" context="{'doc_code': 'goods_return_note'}"
+                        invisible="picking_type_code != 'outgoing' or not return_id"/>
+                <button name="action_doc_print" type="object" string="Print Replacement Note" context="{'doc_code': 'replacement_note'}"
+                        invisible="picking_type_code != 'incoming' or not return_id"/>
+                <button name="action_doc_print" type="object" string="Print Transfer Form" context="{'doc_code': 'transfer_form'}"
+                        invisible="picking_type_code != 'internal'"/>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="return_id" invisible="1"/>
+                <field name="doc_is_export" invisible="1"/>
+                <field name="doc_supplier_ref" invisible="picking_type_code != 'incoming' or return_id"
+                       placeholder="Printed on the GRN"/>
+                <field name="doc_reason" invisible="not return_id" placeholder="Why the goods come or go back"/>
+                <field name="doc_vehicle" invisible="picking_type_code == 'internal'" placeholder="e.g. KDA 123B, John"/>
+            </xpath>
+            <xpath expr="//field[@name='move_ids']/list/field[@name='quantity']" position="after">
+                <field name="doc_cartons" optional="show" column_invisible="parent.picking_type_code != 'outgoing'"/>
+                <field name="doc_pallet" optional="show" column_invisible="parent.picking_type_code != 'outgoing'"/>
+                <field name="doc_net_weight" optional="hide" column_invisible="parent.picking_type_code != 'outgoing'"/>
+                <field name="doc_gross_weight" optional="show" column_invisible="parent.picking_type_code != 'outgoing'"/>
+            </xpath>
+            <xpath expr="//page[@name='operations']" position="after">
+                <page string="Packing" name="odin_packing" invisible="picking_type_code != 'outgoing'">
+                    <div class="alert alert-warning mb-2" role="alert" invisible="not doc_packing_warning">
+                        <strong>Some products are missing what the packing list needs.</strong>
+                        <field name="doc_packing_warning" readonly="1" class="d-block mt-1"/>
+                        <button name="action_doc_open_products" type="object" class="btn btn-link p-0"
+                                string="Fill them in on the products"/>
+                    </div>
+                    <p class="text-muted mb-2">
+                        Cartons and weights work themselves out from each product's units per carton, net weight
+                        and weight. Type over them on the Operations lines as packed and weighed, with the pallet
+                        each line is on; 0 goes back to the product's figure.
+                    </p>
+                    <group>
+                        <group string="Packed">
+                            <field name="doc_total_cartons"/>
+                            <field name="doc_pallets"/>
+                            <field name="doc_cbm"/>
+                        </group>
+                        <group string="Weight">
+                            <field name="doc_total_net"/>
+                            <field name="doc_total_gross"/>
+                        </group>
+                    </group>
+                    <div class="d-flex gap-2">
+                        <button name="action_doc_print" type="object" class="btn btn-primary" string="Print Delivery Note"
+                                context="{'doc_code': 'delivery_note'}" invisible="return_id"/>
+                        <button name="action_doc_print" type="object" class="btn btn-primary" string="Print Packing List"
+                                context="{'doc_code': 'export_packing_list'}" invisible="return_id or not doc_is_export"/>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Invoices: Print already prints the company's invoice, commercial
+         invoice or credit note; a paid invoice also has its receipt. The
+         export rate sits under the currency. -->
     <record id="view_move_form_documents" model="ir.ui.view">
         <field name="name">account.move.form.odin_documents</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="payment_state" invisible="1"/>
+                <button name="action_doc_print" type="object" string="Print Receipt" context="{'doc_code': 'sales_receipt'}"
+                        invisible="move_type != 'out_invoice' or state != 'posted' or payment_state not in ('paid', 'in_payment', 'partial')"/>
+            </xpath>
             <xpath expr="//div[@name='currency_div']" position="after">
                 <field name="doc_is_export" invisible="1"/>
                 <div name="odin_export_rate" class="d-flex gap-1 align-items-baseline"
@@ -28,30 +106,57 @@
         </field>
     </record>
 
-    <record id="view_picking_form_documents" model="ir.ui.view">
-        <field name="name">stock.picking.form.odin_documents</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock.view_picking_form"/>
+    <record id="view_order_form_documents" model="ir.ui.view">
+        <field name="name">sale.order.form.odin_documents</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='extra']" position="inside">
-                <group string="On the printed documents" name="odin_documents">
-                    <field name="return_id" invisible="1"/>
-                    <field name="picking_type_code" invisible="1"/>
-                    <group>
-                        <field name="doc_supplier_ref" invisible="picking_type_code != 'incoming' or return_id"/>
-                        <field name="doc_vehicle" invisible="picking_type_code == 'internal'"/>
-                        <field name="doc_reason" invisible="not return_id" placeholder="Why the goods come or go back"/>
-                    </group>
-                    <group invisible="picking_type_code != 'outgoing'">
-                        <field name="doc_is_export" invisible="1"/>
-                        <field name="doc_pallets"/>
-                        <field name="doc_cbm"/>
-                    </group>
-                </group>
+            <xpath expr="//header" position="inside">
+                <button name="action_doc_print" type="object" string="Print Estimate" context="{'doc_code': 'estimate'}"
+                        invisible="state not in ('draft', 'sent')"/>
+                <button name="action_doc_print" type="object" string="Print Pro Forma" context="{'doc_code': 'proforma'}"
+                        invisible="state == 'cancel'"/>
             </xpath>
         </field>
     </record>
 
+    <!-- Print (the RFQ) is Odoo's own button; a confirmed order prints its PO -->
+    <record id="purchase_order_form_documents" model="ir.ui.view">
+        <field name="name">purchase.order.form.odin_documents</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_doc_print" type="object" string="Print PO" context="{'doc_code': 'purchase_order'}"
+                        invisible="state not in ('purchase', 'done')"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_purchase_request_form_documents" model="ir.ui.view">
+        <field name="name">purchase.request.form.odin_documents</field>
+        <field name="model">purchase.request</field>
+        <field name="inherit_id" ref="purchase_request.view_purchase_request_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_doc_print" type="object" string="Print Requisition" context="{'doc_code': 'requisition'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Physical Inventory: select the lines, then Print Count Sheet -->
+    <record id="view_stock_quant_inventory_documents" model="ir.ui.view">
+        <field name="name">stock.quant.inventory.list.odin_documents</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_inventory_editable"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_doc_print" type="object" string="Print Count Sheet" context="{'doc_code': 'stock_count'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Products: what the export documents need, beside the HS code -->
     <record id="product_template_form_documents" model="ir.ui.view">
         <field name="name">product.template.form.odin_documents</field>
         <field name="model">product.template</field>
@@ -60,7 +165,7 @@
             <xpath expr="//field[@name='country_of_origin']" position="after">
                 <field name="doc_kebs_permit"/>
                 <field name="doc_brand"/>
-                <field name="doc_pack_size" placeholder="e.g. 0.5 L"/>
+                <field name="doc_pack_size" placeholder="From the name, e.g. 0.5 L"/>
                 <field name="doc_net_weight"/>
                 <field name="doc_carton_qty"/>
             </xpath>

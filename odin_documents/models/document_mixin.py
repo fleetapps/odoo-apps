@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.tools import float_round
 
 
@@ -11,6 +12,15 @@ class DocumentMixin(models.AbstractModel):
 
     _name = "odin.document.mixin"
     _description = "Business document helpers"
+
+    def action_doc_print(self):
+        """A Print button: the document named in the button's context
+        (doc_code), for these records."""
+        code = self.env.context.get("doc_code")
+        report = self._doc_type(code).report_id if code else False
+        if not report:
+            raise UserError(_("This document has no report to print: see Documents > Configuration."))
+        return report.report_action(self)
 
     def _doc_company(self):
         company = self[:1].company_id if "company_id" in self._fields else self.env["res.company"]

@@ -119,7 +119,8 @@ class AccountMove(models.Model):
         return ", ".join(parts) or "Various, as listed below"
 
     def _doc_orders(self):
-        return self.invoice_line_ids.sale_line_ids.order_id
+        """Read with sudo: whoever prints the invoice need not open sales orders."""
+        return self.sudo().invoice_line_ids.sale_line_ids.order_id
 
     def _doc_pickings(self):
         return self._doc_orders().picking_ids.filtered(
@@ -157,6 +158,14 @@ class AccountMove(models.Model):
 
     def _doc_vat_label(self, line):
         return ", ".join(line.tax_ids.mapped("name")) or "0%"
+
+
+    def _get_action_with_base_document_layout_configurator(self, report_action):
+        """Print on an invoice: the company's documents print on their own
+        letterhead, so an administrator is not sent to Odoo's layout first."""
+        if str(report_action.get("report_name", "")).startswith("odin_documents."):
+            return report_action
+        return super()._get_action_with_base_document_layout_configurator(report_action)
 
 
 class AccountMoveSend(models.AbstractModel):

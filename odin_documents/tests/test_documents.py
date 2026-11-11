@@ -220,6 +220,48 @@ class TestDocuments(AccountTestInvoicingCommon):
         for text in ("Export Packing List", "34013000", "13.44", "0.8 CBM", "customs authorities"):
             self.assertIn(text, html)
 
+    def test_packing_follows_the_product_and_keeps_what_is_typed(self):
+        delivery = self.picking(self.warehouse.out_type_id, self.r4, qty=30)
+        move = delivery.move_ids
+        self.assertEqual((move.doc_cartons, move.doc_net_weight), (3, 15.0), "30 / 12 per carton, rounded up")
+        move.doc_cartons = 4
+        move.doc_pallet = "1"
+        move.doc_gross_weight = 18.2
+        self.product_a.doc_net_weight = 0.6
+        self.assertEqual((move.doc_cartons, move.doc_gross_weight), (4, 18.2), "what was typed stays")
+        self.assertAlmostEqual(move.doc_net_weight, 18.0, msg="what was not typed follows the product")
+        move.doc_cartons = 0
+        self.assertEqual(move.doc_cartons, 3, "0 goes back to the product's figure")
+        move.doc_net_weight = 18.0  # the product's own figure: not kept as typed
+        self.assertFalse(move.doc_net_typed)
+        self.assertEqual((delivery.doc_total_cartons, round(delivery.doc_total_gross, 2)), (3, 18.2))
+        self.assertFalse(delivery.doc_packing_warning)
+        html = self.render("action_report_export_packing_list", delivery)
+        self.assertIn("18.2", html)
+        self.assertIn("0.5 L", html)
+
+    def test_packing_says_which_products_lack_data(self):
+        bare = self.env["product.product"].create({"name": "Bleach 20 Litre", "is_storable": True})
+        delivery = self.picking(self.warehouse.out_type_id, self.r4)
+        delivery.move_ids = [Command.create({
+            "product_id": bare.id, "product_uom_qty": 2, "product_uom": bare.uom_id.id,
+            "location_id": delivery.location_id.id, "location_dest_id": delivery.location_dest_id.id})]
+        self.assertIn("Bleach 20 Litre", delivery.doc_packing_warning)
+        self.assertNotIn(self.product_a.name, delivery.doc_packing_warning)
+        self.assertEqual(bare._doc_pack_size(), "20 L", "read from the name")
+        self.assertIn(bare.product_tmpl_id, self.env["product.template"].search(
+            delivery.action_doc_open_products()["domain"]))
+
+    def test_print_buttons_print_the_document_for_the_record(self):
+        delivery = self.picking(self.warehouse.out_type_id, self.r4)
+        action = delivery.with_context(doc_code="export_packing_list").action_doc_print()
+        self.assertEqual(action["report_name"], "odin_documents.report_export_packing_list")
+        self.assertFalse(self.company.external_report_layout_id)
+        self.assertEqual(self.local_invoice().action_print_pdf().get("report_name"), "odin_documents.report_sales_invoice",
+                         "the invoice's own Print prints the company's invoice, without Odoo's layout wizard first")
+        with self.assertRaises(UserError):
+            delivery.with_context(doc_code="nothing").action_doc_print()
+
     # ------------------------------------------------------------ stock and purchases
     def test_stock_documents(self):
         delivery = self.picking(self.warehouse.out_type_id, self.partner_a)
@@ -239,6 +281,17 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertIn("Goods Replacement Note", self.render("action_report_replacement_note", returned))
         transfer = self.picking(self.warehouse.int_type_id, False, qty=5)
         self.assertIn("Transfer Form", self.render("action_report_transfer_form", transfer))
+
+    def test_a_storekeeper_prints_the_delivery_note_of_a_sale(self):
+        order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "LPO-77",
+                                               "order_line": [Command.create({"product_id": self.product_a.id,
+                                                                              "product_uom_qty": 6, "price_unit": 199.0})]})
+        order.action_confirm()
+        storekeeper = new_test_user(self.env, "doc_storekeeper", groups="stock.group_stock_user")
+        html, _kind = self.Report.with_user(storekeeper)._render_qweb_html(
+            "odin_documents.action_report_delivery_note", order.picking_ids.ids)
+        self.assertIn("LPO-77", html.decode(), "the customer's order number, without sales rights")
+        self.assertIn(order.name, html.decode())
 
     def test_count_sheet_is_one_document_for_the_lines_counted(self):
         Quant = self.env["stock.quant"]

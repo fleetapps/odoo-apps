@@ -29,6 +29,29 @@ receipt never offers a delivery note.
 | Requisition Form | A purchase request |
 | Memo | Written in the app |
 
+## Print buttons
+
+Each record has a button for its documents, so no one has to find them in a
+menu: **Print Delivery Note**, **Print Packing List** (export), **Print GRN**,
+**Print Return Note**, **Print Replacement Note** and **Print Transfer Form**
+on transfers; **Print Estimate** and **Print Pro Forma** on quotations;
+**Print PO** on confirmed purchase orders (Print is the RFQ); **Print
+Requisition** on purchase requests; **Print Receipt** on paid invoices (Print
+is the invoice, commercial invoice or credit note); **Print Count Sheet** on
+the lines selected in Physical Inventory. The Stock Book prints them too: a
+posted line's panel, and the notice after Add sale or Add purchase.
+
+## Packing
+
+A delivery has a **Packing** tab, and its Operations lines have Cartons,
+Pallet and weight columns. Cartons and weights work themselves out from each
+product's units per carton, net weight and weight; type over them as packed
+and weighed (0 goes back to the product's figure), and type the pallet each
+line is on and the delivery's pallets and volume. The tab lists the products
+still missing what the packing list needs, with a link to fill them in. The
+pack size prints from the product's Pack size or, when empty, from its name
+(500 Ml prints 0.5 L).
+
 ## What is filled in from where
 
 - **Letterhead**: the company's name, address, KRA PIN (Tax ID), phone, email,
@@ -41,7 +64,7 @@ receipt never offers a delivery note.
 - **Export**: HS code and country of origin (product, Inventory tab, Odoo's
   own fields), KEBS permit, brand, pack size, net weight and units per carton
   (same place); gross weight is the product's Weight. Pallets and volume are
-  typed on the delivery (Additional Info).
+  typed on the delivery's Packing tab.
 
 ## Export invoices
 
