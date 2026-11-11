@@ -148,6 +148,22 @@ class TestStockBookLedger(TestStockBookPurchase):
         self.assertEqual(self.Line.search_count([("sale_line_id", "=", order.order_line.id)]), 1,
                          "the book's own delivery is not logged twice")
 
+    def test_a_price_typed_over_the_pricelist_is_what_the_customer_is_invoiced(self):
+        self.env.user.group_ids += self.env.ref("product.group_product_pricelist")
+        pricelist = self.env["product.pricelist"].create({"name": "Chandarana", "item_ids": [
+            Command.create({"applied_on": "1_product", "product_tmpl_id": self.fg.product_tmpl_id.id,
+                            "compute_price": "fixed", "fixed_price": 120})]})
+        values = self._sale_values()
+        customer = self.env["res.partner"].browse(values["partner_id"])
+        customer.property_product_pricelist = pricelist
+        self.assertEqual(self.Book.book_sale_item(self.fg.id, customer.id, 2)["price"], 120.0)
+        values["lines"][0]["cost"] = 110.0
+        line = self.Line.browse(self.Book.book_sale_save(values)["ids"])
+        order = line.stock_sale_id.order_id
+        self.assertEqual(order.pricelist_id, pricelist)
+        self.assertEqual(order.order_line.price_unit, 110.0, "the order keeps the price typed, not the pricelist's")
+        self.assertEqual(line.invoice_id.invoice_line_ids.price_unit, 110.0)
+
     def test_free_sale_delivers_without_an_invoice(self):
         values = self._sale_values()
         values["lines"][0]["cost"] = 0
