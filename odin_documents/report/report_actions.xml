@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Each document is offered in the Print menu only on the records it is
+     printed from (the report's domain). The invoice documents are invoice
+     reports: Send & Print and the portal use them too. -->
+<odoo>
+    <record id="paperformat_portrait" model="report.paperformat">
+        <field name="name">Business Documents: A4 portrait</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">42</field>
+        <field name="margin_bottom">22</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">36</field>
+        <field name="dpi">90</field>
+    </record>
+    <record id="paperformat_landscape" model="report.paperformat">
+        <field name="name">Business Documents: A4 landscape</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">34</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Sales -->
+    <record id="action_report_estimate" model="ir.actions.report">
+        <field name="name">Estimate</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_estimate</field>
+        <field name="report_file">odin_documents.report_estimate</field>
+        <field name="print_report_name">'Estimate - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('state', 'in', ('draft', 'sent'))]</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_proforma" model="ir.actions.report">
+        <field name="name">Pro Forma Invoice</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_proforma</field>
+        <field name="report_file">odin_documents.report_proforma</field>
+        <field name="print_report_name">'Pro Forma - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('state', '!=', 'cancel')]</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_sales_invoice" model="ir.actions.report">
+        <field name="name">Sales Invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_sales_invoice</field>
+        <field name="report_file">odin_documents.report_sales_invoice</field>
+        <field name="print_report_name">(object._get_report_base_filename())</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="is_invoice_report" eval="True"/>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('doc_is_export', '=', False)]</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_credit_note" model="ir.actions.report">
+        <field name="name">Credit Note</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_credit_note</field>
+        <field name="report_file">odin_documents.report_credit_note</field>
+        <field name="print_report_name">(object._get_report_base_filename())</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="is_invoice_report" eval="True"/>
+        <field name="domain">[('move_type', '=', 'out_refund')]</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_sales_receipt" model="ir.actions.report">
+        <field name="name">Sales Receipt</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_sales_receipt</field>
+        <field name="report_file">odin_documents.report_sales_receipt</field>
+        <field name="print_report_name">'Receipt - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ('paid', 'in_payment', 'partial'))]</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_delivery_note" model="ir.actions.report">
+        <field name="name">Delivery Note</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_delivery_note</field>
+        <field name="report_file">odin_documents.report_delivery_note</field>
+        <field name="print_report_name">'Delivery Note - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '=', False)]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_replacement_note" model="ir.actions.report">
+        <field name="name">Goods Replacement Note</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_replacement_note</field>
+        <field name="report_file">odin_documents.report_replacement_note</field>
+        <field name="print_report_name">'Replacement Note - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('picking_type_code', '=', 'incoming'), ('return_id', '!=', False)]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Export -->
+    <record id="action_report_commercial_invoice" model="ir.actions.report">
+        <field name="name">Commercial Invoice</field>
+        <field name="model">account.move</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_commercial_invoice</field>
+        <field name="report_file">odin_documents.report_commercial_invoice</field>
+        <field name="print_report_name">'Commercial Invoice - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_landscape"/>
+        <field name="is_invoice_report" eval="True"/>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('doc_is_export', '=', True)]</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_export_packing_list" model="ir.actions.report">
+        <field name="name">Export Packing List</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_export_packing_list</field>
+        <field name="report_file">odin_documents.report_export_packing_list</field>
+        <field name="print_report_name">'Export Packing List - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_landscape"/>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '=', False), ('doc_is_export', '=', True)]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Purchases -->
+    <record id="action_report_rfq" model="ir.actions.report">
+        <field name="name">Request for Quotation</field>
+        <field name="model">purchase.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_rfq</field>
+        <field name="report_file">odin_documents.report_rfq</field>
+        <field name="print_report_name">'RFQ - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('state', 'in', ('draft', 'sent', 'to approve'))]</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_purchase_order" model="ir.actions.report">
+        <field name="name">Purchase Order</field>
+        <field name="model">purchase.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_purchase_order</field>
+        <field name="report_file">odin_documents.report_purchase_order</field>
+        <field name="print_report_name">'Purchase Order - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('state', 'in', ('purchase', 'done'))]</field>
+        <field name="binding_model_id" ref="purchase.model_purchase_order"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_grn" model="ir.actions.report">
+        <field name="name">Goods Received Note</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_grn</field>
+        <field name="report_file">odin_documents.report_grn</field>
+        <field name="print_report_name">'GRN - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('picking_type_code', '=', 'incoming'), ('return_id', '=', False)]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_goods_return_note" model="ir.actions.report">
+        <field name="name">Goods Return Note</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_goods_return_note</field>
+        <field name="report_file">odin_documents.report_goods_return_note</field>
+        <field name="print_report_name">'Goods Return Note - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '!=', False)]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_requisition" model="ir.actions.report">
+        <field name="name">Requisition Form</field>
+        <field name="model">purchase.request</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_requisition</field>
+        <field name="report_file">odin_documents.report_requisition</field>
+        <field name="print_report_name">'Requisition - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="binding_model_id" ref="purchase_request.model_purchase_request"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Stock -->
+    <record id="action_report_transfer_form" model="ir.actions.report">
+        <field name="name">Transfer Form</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_transfer_form</field>
+        <field name="report_file">odin_documents.report_transfer_form</field>
+        <field name="print_report_name">'Transfer Form - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="domain">[('picking_type_code', '=', 'internal')]</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_stock_count" model="ir.actions.report">
+        <field name="name">Stock Count Sheet</field>
+        <field name="model">stock.quant</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_stock_count</field>
+        <field name="report_file">odin_documents.report_stock_count</field>
+        <field name="print_report_name">'Stock Count Sheet'</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="binding_model_id" ref="stock.model_stock_quant"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Internal -->
+    <record id="action_report_memo" model="ir.actions.report">
+        <field name="name">Memo</field>
+        <field name="model">odin.document.memo</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">odin_documents.report_memo</field>
+        <field name="report_file">odin_documents.report_memo</field>
+        <field name="print_report_name">'Memo - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_portrait"/>
+        <field name="attachment">(object.state == 'issued') and ('Memo %s.pdf' % object.name.replace('/', '-'))</field>
+        <field name="attachment_use" eval="True"/>
+        <field name="binding_model_id" ref="model_odin_document_memo"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

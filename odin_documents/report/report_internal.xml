@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Internal documents: the memo. Once issued, its PDF is kept and every
+     reprint is that same copy. -->
+<odoo>
+    <template id="report_memo">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <h2 class="o_odoc_title" t-out="{'issued': 'Memo', 'cancelled': 'Memo (cancelled)'}.get(o.state, 'Draft Memo')"/>
+                        <table class="o_odoc_grid">
+                            <tr>
+                                <th>Memo no.</th>
+                                <td t-out="o.name if o.state != 'draft' else ''"/>
+                                <th>Date</th>
+                                <td t-out="o._doc_date(o.date)"/>
+                            </tr>
+                            <tr>
+                                <th>To</th>
+                                <td t-out="o.to"/>
+                                <th>From</th>
+                                <td t-out="', '.join(p for p in (o.author_id.name, o.department_id.name) if p)"/>
+                            </tr>
+                            <tr>
+                                <th>Subject</th>
+                                <td colspan="3"><strong t-out="o.subject"/></td>
+                            </tr>
+                        </table>
+                        <div class="o_odoc_body" t-out="o.body"/>
+                        <t t-set="terms" t-value="o._doc_terms('memo')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <div class="o_odoc_signoff">
+                            <table class="o_odoc_boxes">
+                                <tr>
+                                    <td>
+                                        <div class="o_odoc_label">Authorised by</div>
+                                        <div class="o_odoc_line">Name: <t t-out="o.approved_by_id.name or ''"/></div>
+                                        <div class="o_odoc_line">Signature:</div>
+                                        <div class="o_odoc_line">Date: <t t-out="o._doc_date(o.issued_on)"/></div>
+                                    </td>
+                                    <td class="o_odoc_stamp">
+                                        <div class="o_odoc_label">Company stamp</div>
+                                        <img t-if="company.doc_stamp and o.state == 'issued'" t-att-src="image_data_uri(company.doc_stamp)" alt="Stamp"/>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div t-if="o.needs_acknowledgement" class="o_odoc_signoff">
+                            <div class="o_odoc_label">Acknowledgement of receipt</div>
+                            <table class="o_odoc_table">
+                                <thead>
+                                    <tr><th>No</th><th>Name</th><th>Signature</th><th>Date</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="range(1, 13)" t-as="n">
+                                        <td t-out="n"/><td/><td/><td/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

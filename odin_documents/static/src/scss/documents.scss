@@ -1,0 +1,105 @@
+// The company's document formats: bordered tables, bold capitals for the
+// title and the company, labels in small capitals.
+$odoc-line: #8a8a8a;
+$odoc-head: #e9ecef;
+
+.o_odoc_header {
+    .o_odoc_letterhead {
+        width: 100%;
+        border-bottom: 2px solid #222;
+        margin-bottom: 4px;
+        td { vertical-align: top; padding-bottom: 4px; }
+    }
+    .o_odoc_logo_cell { width: 35%; }
+    .o_odoc_logo { max-height: 90px; max-width: 220px; }
+    .o_odoc_company {
+        text-align: right;
+        font-size: 9pt;
+        line-height: 1.3;
+    }
+    .o_odoc_company_name { font-size: 13pt; font-weight: bold; letter-spacing: 0.5px; }
+}
+
+.o_odoc {
+    font-size: 9.5pt;
+
+    .o_odoc_title {
+        text-align: center;
+        font-weight: bold;
+        text-decoration: underline;
+        text-transform: uppercase;
+        font-size: 15pt;
+        margin: 6px 0 10px;
+    }
+    .o_odoc_label {
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 8.5pt;
+        margin-bottom: 2px;
+    }
+    .o_odoc_meta {
+        th { padding: 1px 8px 1px 0; text-transform: uppercase; font-size: 8.5pt; white-space: nowrap; }
+        td { padding: 1px 0; }
+    }
+    .o_odoc_cols {
+        width: 100%;
+        margin-bottom: 8px;
+        > tbody > tr > td, > tr > td { vertical-align: top; width: 50%; padding-right: 12px; }
+    }
+    .o_odoc_party_name { font-weight: bold; }
+    .o_odoc_table, .o_odoc_grid {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 6px 0;
+        th, td { border: 1px solid $odoc-line; padding: 3px 4px; vertical-align: top; }
+        th { background: $odoc-head; text-transform: uppercase; font-size: 8pt; }
+        .o_odoc_num { text-align: right; white-space: nowrap; }
+        .o_odoc_section td { font-weight: bold; background: #f6f6f6; }
+        .o_odoc_note td { font-style: italic; }
+        tfoot td { font-weight: bold; }
+    }
+    .o_odoc_grid th { text-align: left; width: 22%; }
+    .o_odoc_totals {
+        margin-left: auto;
+        min-width: 45%;
+        border-collapse: collapse;
+        th, td { padding: 2px 6px; border-bottom: 1px solid #ddd; }
+        td { text-align: right; white-space: nowrap; }
+        .o_odoc_grand th, .o_odoc_grand td { font-weight: bold; border-top: 2px solid #222; border-bottom: 2px solid #222; }
+    }
+    .o_odoc_words { margin: 6px 0; text-transform: uppercase; }
+    .o_odoc_pay {
+        width: 100%;
+        margin: 8px 0;
+        border: 1px dashed $odoc-line;
+        td { padding: 4px 8px; vertical-align: top; }
+    }
+    .o_odoc_terms {
+        margin-top: 10px;
+        font-size: 8pt;
+        page-break-inside: avoid;
+        ol, ul { padding-left: 16px; margin-bottom: 0; }
+    }
+    .o_odoc_signoff {
+        margin-top: 12px;
+        page-break-inside: avoid;
+        .o_odoc_ack { margin-bottom: 6px; }
+    }
+    .o_odoc_boxes {
+        width: 100%;
+        border-collapse: collapse;
+        td { border: 1px solid $odoc-line; padding: 4px 6px; vertical-align: top; }
+        .o_odoc_line { border-bottom: 1px dotted $odoc-line; padding-top: 10px; }
+        .o_odoc_stamp { width: 22%; img { max-width: 100%; max-height: 90px; } }
+    }
+    .o_odoc_body { margin: 8px 0; }
+    .o_odoc_notice { color: #a94442; font-style: italic; margin: 4px 0; }
+}
+
+.o_odoc_footer {
+    text-align: center;
+    font-size: 8pt;
+    border-top: 1px solid #222;
+    padding-top: 2px;
+    .o_odoc_page { color: #666; }
+}

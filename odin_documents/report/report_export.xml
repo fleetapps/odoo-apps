@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Export documents: the commercial invoice (two currencies and the rate
+     between them, HS codes, KEBS permits, weights) and the export packing
+     list customs inspect against it. -->
+<odoo>
+    <template id="report_commercial_invoice">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="local" t-value="company.currency_id"/>
+                <t t-set="foreign" t-value="o.doc_foreign_currency_id"/>
+                <t t-set="two" t-value="bool(foreign and o.doc_exchange_rate and foreign != local)"/>
+                <t t-set="partner" t-value="o.commercial_partner_id"/>
+                <t t-set="bank" t-value="o._doc_export_bank()"/>
+                <t t-set="weights" t-value="o._doc_weights()"/>
+                <t t-set="pickings" t-value="o._doc_pickings()"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <h2 class="o_odoc_title" t-out="'Commercial Invoice' if o.state == 'posted' else 'Draft Commercial Invoice'"/>
+                        <table class="o_odoc_grid">
+                            <tr>
+                                <th>Invoice date</th>
+                                <td t-out="o._doc_date(o.invoice_date)"/>
+                                <th>Seller</th>
+                                <td t-out="(company.name or '').upper()"/>
+                            </tr>
+                            <tr>
+                                <th>Invoice no.</th>
+                                <td t-out="o.name if o.state == 'posted' else ''"/>
+                                <th>Postal address</th>
+                                <td t-out="', '.join(p for p in (company.zip, company.city, company.country_id.name) if p)"/>
+                            </tr>
+                            <tr>
+                                <th>Customer no.</th>
+                                <td t-out="partner.ref or ''"/>
+                                <th>Physical address</th>
+                                <td t-out="', '.join(p for p in (company.street, company.street2, company.city, company.country_id.name) if p)"/>
+                            </tr>
+                            <tr>
+                                <th>Tax ID</th>
+                                <td t-out="partner.vat or ''"/>
+                                <th>KRA PIN</th>
+                                <td t-out="company.vat or ''"/>
+                            </tr>
+                            <tr>
+                                <th>Customer name</th>
+                                <td t-out="(partner.name or '').upper()"/>
+                                <th>Contact details</th>
+                                <td>
+                                    <div t-out="company.phone or ''"/>
+                                    <div t-out="company.email or ''"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Customer address</th>
+                                <td colspan="3" t-out="', '.join(o._doc_address(o.partner_shipping_id or partner))"/>
+                            </tr>
+                            <tr>
+                                <th>Customer contact</th>
+                                <td colspan="3" t-out="' / '.join(p for p in (partner.email, partner.phone) if p)"/>
+                            </tr>
+                        </table>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>Bank</th>
+                                    <th>Bank account</th>
+                                    <th>SWIFT</th>
+                                    <th>Payment terms</th>
+                                    <th>Country of origin</th>
+                                    <th>Country of supply</th>
+                                    <th>Export for</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td t-out="bank.bank_id.name or ''"/>
+                                    <td>
+                                        <t t-out="bank.acc_number or ''"/>
+                                        <t t-if="bank.currency_id"> (<t t-out="bank.currency_id.name"/>)</t>
+                                    </td>
+                                    <td t-out="bank.bank_id.bic or ''"/>
+                                    <td t-out="o.invoice_payment_term_id.name or ''"/>
+                                    <td t-out="(company.country_id.name or '').upper()"/>
+                                    <td t-out="(company.country_id.name or '').upper()"/>
+                                    <td t-out="' - '.join(p for p in ((o.partner_shipping_id or partner).city, (o.partner_shipping_id or partner).country_id.name) if p).upper()"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>Delivery note no.</th>
+                                    <th>Customer order no.</th>
+                                    <th>Conditions of sale</th>
+                                    <th>Total no. &amp; kind</th>
+                                    <th>Description of goods</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td t-out="', '.join(pickings.mapped('name'))"/>
+                                    <td t-out="o._doc_order_ref()"/>
+                                    <td t-out="o._doc_conditions().upper()"/>
+                                    <td t-out="o._doc_kind()"/>
+                                    <td t-out="(o.doc_goods_description or 'Various, as listed below').upper()"/>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-set="lines" t-value="o._doc_lines(with_notes=False)"/>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>KEBS permit</th>
+                                    <th>HS code</th>
+                                    <th>Brand</th>
+                                    <th>Product</th>
+                                    <th>Pack</th>
+                                    <th>Origin</th>
+                                    <th class="o_odoc_num">Qty</th>
+                                    <th class="o_odoc_num">Unit price <t t-out="local.name"/></th>
+                                    <th t-if="two" class="o_odoc_num">Unit price <t t-out="foreign.name"/></th>
+                                    <th class="o_odoc_num">Value <t t-out="local.name"/></th>
+                                    <th t-if="two" class="o_odoc_num">Value <t t-out="foreign.name"/></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="lines" t-as="line">
+                                    <t t-set="product" t-value="line.product_id"/>
+                                    <t t-set="unit" t-value="o._doc_two_currencies(line.price_unit)"/>
+                                    <t t-set="value" t-value="o._doc_two_currencies(line.price_subtotal)"/>
+                                    <td t-out="line_index + 1"/>
+                                    <td t-out="product.doc_kebs_permit or ''"/>
+                                    <td t-out="product.hs_code or ''"/>
+                                    <td t-out="((product.doc_brand or company.doc_brand) if product.hs_code else '') or ''"/>
+                                    <td t-out="(product.name or line.name or '').upper()"/>
+                                    <td t-out="product._doc_pack_size() or line.product_uom_id.name or ''" t-if="product"/>
+                                    <td t-else="" t-out="line.product_uom_id.name or ''"/>
+                                    <td t-out="product.country_of_origin.code or ''"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(line.quantity)"/>
+                                    <td class="o_odoc_num" t-out="unit[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
+                                    <td t-if="two" class="o_odoc_num" t-out="unit[1]" t-options="{'widget': 'monetary', 'display_currency': foreign}"/>
+                                    <td class="o_odoc_num" t-out="value[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
+                                    <td t-if="two" class="o_odoc_num" t-out="value[1]" t-options="{'widget': 'monetary', 'display_currency': foreign}"/>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-set="base" t-value="o._doc_two_currencies(o.amount_untaxed)"/>
+                        <t t-set="vat" t-value="o._doc_two_currencies(o.amount_tax)"/>
+                        <t t-set="grand" t-value="o._doc_two_currencies(o.amount_total)"/>
+                        <table class="o_odoc_table">
+                            <tr>
+                                <th>Total qty</th>
+                                <td class="o_odoc_num" t-out="o._doc_qty(sum(lines.filtered('product_id.hs_code').mapped('quantity')))"/>
+                                <th>Base amount</th>
+                                <td class="o_odoc_num" t-out="base[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
+                                <td t-if="two" class="o_odoc_num" t-out="base[1]" t-options="{'widget': 'monetary', 'display_currency': foreign}"/>
+                            </tr>
+                            <tr>
+                                <th>Net weight</th>
+                                <td class="o_odoc_num"><t t-if="weights[0]" t-out="o._doc_qty(weights[0])"/><t t-if="weights[0]"> kg</t></td>
+                                <th>VAT</th>
+                                <td class="o_odoc_num" t-out="vat[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
+                                <td t-if="two" class="o_odoc_num" t-out="vat[1]" t-options="{'widget': 'monetary', 'display_currency': foreign}"/>
+                            </tr>
+                            <tr>
+                                <th>Gross weight</th>
+                                <td class="o_odoc_num"><t t-if="weights[1]" t-out="o._doc_qty(weights[1])"/><t t-if="weights[1]"> kg</t></td>
+                                <th>Total</th>
+                                <td class="o_odoc_num" t-out="grand[0]" t-options="{'widget': 'monetary', 'display_currency': local}"/>
+                                <td t-if="two" class="o_odoc_num" t-out="grand[1]" t-options="{'widget': 'monetary', 'display_currency': foreign}"/>
+                            </tr>
+                            <tr>
+                                <th>Freight charges</th>
+                                <td t-out="company.doc_freight_terms or ''"/>
+                                <th>Exchange rate</th>
+                                <td t-att-colspan="2 if two else 1" t-out="o._doc_rate_text()"/>
+                            </tr>
+                        </table>
+                        <p class="o_odoc_words">
+                            <strong>Amount in words:</strong> <span t-out="o._doc_words(grand[0], local)"/>
+                        </p>
+                        <p class="o_odoc_words" t-if="two">
+                            <strong>Amount in words:</strong> <span t-out="o._doc_words(grand[1], foreign)"/>
+                        </p>
+                        <t t-set="terms" t-value="o._doc_terms('commercial_invoice')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Authorised by']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('commercial_invoice')"/>
+                        <t t-set="stamp" t-value="True"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_export_packing_list">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="partner" t-value="o.partner_id.commercial_partner_id"/>
+                <t t-set="rows" t-value="o._doc_lines()"/>
+                <t t-set="totals" t-value="o._doc_totals()"/>
+                <t t-set="refs" t-value="o._doc_refs()"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <h2 class="o_odoc_title">Export Packing List</h2>
+                        <table class="o_odoc_grid">
+                            <tr>
+                                <th>Packing list no.</th>
+                                <td t-out="o.name"/>
+                                <th>Exporter</th>
+                                <td t-out="(company.name or '').upper()"/>
+                            </tr>
+                            <tr>
+                                <th>Date</th>
+                                <td t-out="o._doc_date((o.date_done or o.scheduled_date))"/>
+                                <th>KRA PIN</th>
+                                <td t-out="company.vat or ''"/>
+                            </tr>
+                            <tr>
+                                <th>Invoice no.</th>
+                                <td t-out="refs['invoices']"/>
+                                <th>Consignee</th>
+                                <td t-out="(partner.name or '').upper()"/>
+                            </tr>
+                            <tr>
+                                <th>Customer order no.</th>
+                                <td t-out="refs['customer_ref'] or refs['order']"/>
+                                <th>Destination</th>
+                                <td t-out="', '.join(o._doc_address(o.partner_id))"/>
+                            </tr>
+                            <tr>
+                                <th>Vehicle / driver</th>
+                                <td t-out="o.doc_vehicle or ''"/>
+                                <th>Consignee tax ID</th>
+                                <td t-out="partner.vat or ''"/>
+                            </tr>
+                        </table>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Code</th>
+                                    <th>HS code</th>
+                                    <th>Product</th>
+                                    <th>Pack</th>
+                                    <th class="o_odoc_num">Qty</th>
+                                    <th class="o_odoc_num">Per carton</th>
+                                    <th class="o_odoc_num">Cartons</th>
+                                    <th class="o_odoc_num">Net kg</th>
+                                    <th class="o_odoc_num">Gross kg</th>
+                                    <th>Pallet</th>
+                                    <th>Batch</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="row">
+                                    <td t-out="row_index + 1"/>
+                                    <td t-out="row['product'].default_code or ''"/>
+                                    <td t-out="row['product'].hs_code or ''"/>
+                                    <td t-out="(row['product'].name or '').upper()"/>
+                                    <td t-out="row['pack'] or row['uom']"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(row['qty'])"/>
+                                    <td class="o_odoc_num" t-out="row['product'].doc_carton_qty or ''"/>
+                                    <td class="o_odoc_num" t-out="row['cartons'] or ''"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(row['net']) if row['net'] else ''"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(row['gross']) if row['gross'] else ''"/>
+                                    <td t-out="row['pallet']"/>
+                                    <td t-out="row['lots']"/>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5">Totals</td>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(totals['qty'])"/>
+                                    <td/>
+                                    <td class="o_odoc_num" t-out="totals['cartons'] or ''"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(totals['net']) if totals['net'] else ''"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(totals['gross']) if totals['gross'] else ''"/>
+                                    <td/>
+                                    <td/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <table class="o_odoc_grid">
+                            <tr>
+                                <th>Total cartons</th>
+                                <td t-out="totals['cartons'] or ''"/>
+                                <th>Total pallets</th>
+                                <td t-out="o.doc_pallets or ''"/>
+                            </tr>
+                            <tr>
+                                <th>Net weight</th>
+                                <td><t t-if="totals['net']"><t t-out="o._doc_qty(totals['net'])"/> kg</t></td>
+                                <th>Gross weight</th>
+                                <td><t t-if="totals['gross']"><t t-out="o._doc_qty(totals['gross'])"/> kg</t></td>
+                            </tr>
+                            <tr>
+                                <th>Volume</th>
+                                <td><t t-if="o.doc_cbm"><t t-out="o._doc_qty(o.doc_cbm)"/> CBM</t></td>
+                                <th>Country of origin</th>
+                                <td t-out="(company.country_id.name or '').upper()"/>
+                            </tr>
+                        </table>
+                        <t t-set="terms" t-value="o._doc_terms('export_packing_list')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Packed by', 'Checked by']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('export_packing_list')"/>
+                        <t t-set="stamp" t-value="True"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

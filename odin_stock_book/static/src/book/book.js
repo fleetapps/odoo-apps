@@ -53,7 +53,7 @@ export class StockBook extends Component {
         this.state = useState({
             view: params.view || "log", loading: true, book: null, sheet: null, count: null, recipes: null, picked: {},
             year: false, month: false, reason: "", status: "", search: "", group: "",
-            selectedId: null, open: {}, newRow: null, suggest: null, saving: false,
+            selectedId: null, open: {}, newRow: null, suggest: null, saving: false, documents: {},
             compSearch: { query: "", results: [] }, confirmCount: false, countConflicts: null,
             warehouseId: params.warehouse_id || false, warehouses: [], pasting: false,
             // Crispness: what is being saved, what is being switched to, and
@@ -152,6 +152,11 @@ export class StockBook extends Component {
         this.state.loading = false;
         if (this.state.selectedId && !this.selected) {
             this.state.selectedId = null;
+        }
+        // A line posted while selected now prints its documents.
+        const selected = this.selected;
+        if (selected && selected.state === "posted" && !this.state.documents[selected.id]?.length) {
+            this.loadDocuments(selected.id);
         }
         if (atEnd && view === "log") {
             // Reading the newest lines, like a chat: stay at the end.
@@ -472,6 +477,33 @@ export class StockBook extends Component {
     select(row) {
         this.state.selectedId = this.state.selectedId === row.id ? null : row.id;
         this.state.compSearch = { query: "", results: [] };
+        if (this.state.selectedId && row.state === "posted") {
+            this.loadDocuments(row.id);
+        }
+    }
+
+    // ------------------------------------------------------------ documents
+    /** The documents a posted line prints (Business Documents installed):
+     * its delivery note or GRN, invoice, purchase order. */
+    async loadDocuments(lineId) {
+        const documents = await this.orm.call("odin.stock.line", "book_documents", [[lineId]]);
+        this.state.documents = { ...this.state.documents, [lineId]: documents };
+        return documents;
+    }
+
+    async printDocument(lineId, doc) {
+        const action = await this.orm.call("odin.stock.line", "book_print_document",
+            [[lineId], doc.report_id, doc.res_model, doc.res_id]);
+        await this.action.doAction(action);
+    }
+
+    /** Print buttons for a notification, after a sale or purchase posts. */
+    async printButtons(lineId) {
+        const documents = lineId ? await this.loadDocuments(lineId) : [];
+        return documents.map((doc) => ({
+            name: _t("Print %s", doc.label),
+            onClick: () => this.printDocument(lineId, doc),
+        }));
     }
 
     toggle(row) {
@@ -1167,13 +1199,15 @@ export class StockBook extends Component {
         if (this.state.view === "log") {
             this.flashRows(result.ids, true);
         }
+        const buttons = result.posted ? await this.printButtons(result.ids[0]) : [];
         if (result.kind === "sale") {
             const lines = few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length));
             const paidIn = result.paid_from ? _t(", paid into %s", result.paid_from) : "";
             this.notification.add(result.posted
                 ? _t("%(order)s (%(ref)s): %(lines)s delivered, invoice %(invoice)s%(paid)s", {
                     order: result.order, ref: result.purchase_ref, lines, invoice: result.invoice || _t("none, free goods"), paid: paidIn })
-                : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref }), { type: "success" });
+                : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref }),
+                { type: "success", buttons, sticky: buttons.length > 0 });
             if (!result.date.startsWith(this.monthPrefix)) {
                 this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
             }
@@ -1187,7 +1221,7 @@ export class StockBook extends Component {
                 lines: few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length)),
             })
             : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref });
-        this.notification.add(text, { type: "success" });
+        this.notification.add(text, { type: "success", buttons, sticky: buttons.length > 0 });
         if (!result.date.startsWith(this.monthPrefix)) {
             this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
         }
