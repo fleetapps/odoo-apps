@@ -99,6 +99,8 @@
                         <Dropdown>
                             <button class="btn btn-sm btn-light border" aria-label="Export"><i class="fa fa-file-excel-o me-1"/>Export</button>
                             <t t-set-slot="content">
+                                <DropdownItem onSelected="() => this.exportXlsxDay(0)">Today (<t t-esc="shortDate(exportDay(0))"/>)</DropdownItem>
+                                <DropdownItem onSelected="() => this.exportXlsxDay(1)">Yesterday (<t t-esc="shortDate(exportDay(1))"/>)</DropdownItem>
                                 <DropdownItem onSelected="() => this.exportXlsx('month')">This month (<t t-esc="monthLabel"/>)</DropdownItem>
                                 <DropdownItem onSelected="() => this.exportXlsx('year')">Whole <t t-esc="state.book.year"/>, a tab per month</DropdownItem>
                             </t>
@@ -178,8 +180,13 @@
                                                        inputmode="decimal" t-on-change="(ev) => this.onCellChange(ev, row, 'amount')" aria-label="Paid"/>
                                                 <t t-else="" t-esc="fmt(row.amount)"/>
                                             </td>
-                                            <td class="o_pc_num o_pc_muted o_pc_c_charge">
-                                                <t t-esc="fmt(row.charge, true)"/>
+                                            <td class="o_pc_num o_pc_c_charge" t-att-class="{ o_pc_muted: !(draft and row.kind === 'payment' and !row.charge_from_statement) }">
+                                                <input t-if="draft and row.kind === 'payment' and !row.charge_from_statement" class="o_pc_cell o_pc_num"
+                                                       t-att-class="{ o_pc_charge_typed: row.charge_manual }"
+                                                       t-att-value="fmt(row.charge, !row.charge_manual)" inputmode="decimal" placeholder="0.00"
+                                                       t-att-title="row.charge_manual ? 'Typed in. Clear it to use the M-Pesa tariff again.' : 'Filled in from the M-Pesa tariff. Type over it to change it.'"
+                                                       t-on-change="(ev) => this.onCellChange(ev, row, 'charge')" aria-label="Charges"/>
+                                                <t t-else="" t-esc="fmt(row.charge, true)"/>
                                                 <i t-if="row.charge_from_statement" class="fa fa-check o_pc_tick" title="From the statement"/>
                                             </td>
                                             <td class="o_pc_num o_pc_c_total"><t t-if="row.kind !== 'topup'" t-esc="fmt(row.total)"/></td>
@@ -256,7 +263,10 @@
                                             t-on-input="(ev) => this.onNewInput('mpesa_code', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'mpesa_code')" aria-label="New M-Pesa code"/></td>
                                         <td class="o_pc_num"><input class="o_pc_cell o_pc_num" data-field="amount" t-att-value="nr.amount" placeholder="0.00" inputmode="decimal"
                                             t-on-input="(ev) => this.onNewInput('amount', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'amount')" aria-label="New amount"/></td>
-                                        <td class="o_pc_num o_pc_muted o_pc_c_charge" t-esc="fmt(newCharge, true)"/>
+                                        <td class="o_pc_num o_pc_c_charge"><input class="o_pc_cell o_pc_num" data-field="charge" t-att-value="nr.charge"
+                                            t-att-placeholder="fmt(newTariffCharge, true) or '0.00'" inputmode="decimal"
+                                            title="Filled in from the M-Pesa tariff. Type over it to change it."
+                                            t-on-input="(ev) => this.onNewInput('charge', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'charge')" aria-label="New charges"/></td>
                                         <td class="o_pc_num o_pc_muted o_pc_c_total" t-esc="nr.amount ? fmt(newAmount + newCharge) : ''"/>
                                         <td/>
                                         <td class="o_pc_c_cat"><span class="o_pc_cat" t-att-class="{ 'text-muted': !nr.category }" t-esc="nr.category || (nr.description ? 'No rule matched' : '')"/></td>

@@ -46,7 +46,8 @@ class PettyCashImport(models.TransientModel):
         reopened, charge_notes = [], []
         for tx in txs:
             day = tx["time"].date()
-            values = {"statement_balance": tx["balance"], "charge_from_statement": True, "charge": tx["charge"]}
+            values = {"statement_balance": tx["balance"], "charge_from_statement": True, "charge": tx["charge"],
+                      "charge_manual": False}
             line = Line.search([("float_id", "=", flt.id), ("mpesa_code", "=", tx["code"])], limit=1)
             if line and line.state == "cancelled":
                 # The money left the float: the voucher cannot stay cancelled.

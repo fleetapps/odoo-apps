@@ -218,6 +218,25 @@ class PettyCashFloat(models.Model):
             "today": fields.Date.to_string(today),
         }
 
+    @api.model
+    def get_book_day(self, float_id, day):
+        """One day of the book, for the export: the balance brought forward
+        from the day before, the day's rows, and the balance carried forward,
+        each the same figure the month's page shows."""
+        day = fields.Date.to_date(day)
+        book = self.get_book(float_id, day.year, day.month)
+        if book.get("empty"):
+            raise UserError(_("There is no petty cash float to export."))
+        key = fields.Date.to_string(day)
+        # The month's rows are in date order, each with its running balance.
+        before = [r for r in book["rows"] if r["date"] < key]
+        rows = [r for r in book["rows"] if r["date"] == key]
+        opening = before[-1]["balance"] if before else book["opening"]
+        return {
+            "float": book["float"], "day": key, "rows": rows,
+            "opening": opening, "closing": rows[-1]["balance"] if rows else opening,
+        }
+
     def _rule_domain(self):
         self.ensure_one()
         return [("company_id", "=", self.company_id.id), ("match_label", "!=", False),
