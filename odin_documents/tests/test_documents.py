@@ -29,10 +29,11 @@ class TestDocuments(AccountTestInvoicingCommon):
         cls.usd = cls.setup_other_currency("USD", rates=[("2026-01-01", 1 / 125.0)])
         bank = cls.env["res.bank"].create({"name": "Prime Bank Limited", "bic": "PRIEKENX", "street": "Riverside Drive"})
         Account = cls.env["res.partner.bank"]
+        # Trusted ("Send Money"), as Odoo 19 requires before an invoice naming them is posted.
         Account.create({"acc_number": "3000184558", "partner_id": cls.company.partner_id.id, "bank_id": bank.id,
-                        "currency_id": cls.company.currency_id.id})
+                        "currency_id": cls.company.currency_id.id, "allow_out_payment": True})
         Account.create({"acc_number": "3001232272", "partner_id": cls.company.partner_id.id, "bank_id": bank.id,
-                        "currency_id": cls.usd.id})
+                        "currency_id": cls.usd.id, "allow_out_payment": True})
         kenya, rwanda = cls.env.ref("base.ke"), cls.env.ref("base.rw")
         cls.partner_a.write({"country_id": kenya.id, "city": "Nairobi", "vat": "P000000001A"})
         cls.r4 = cls.env["res.partner"].create({
@@ -254,8 +255,9 @@ class TestDocuments(AccountTestInvoicingCommon):
     def test_rfq_purchase_order_and_requisition(self):
         order = self.env["purchase.order"].create({"partner_id": self.partner_b.id, "order_line": [
             Command.create({"product_id": self.product_a.id, "product_qty": 10, "price_unit": 50.0})]})
-        self.assertEqual(order.print_quotation()["report_name"], "odin_documents.report_rfq",
-                         "the Print RFQ button prints the company's RFQ")
+        self.assertFalse(self.company.external_report_layout_id)
+        self.assertEqual(order.print_quotation().get("report_name"), "odin_documents.report_rfq",
+                         "Print RFQ prints the company's RFQ, without asking to choose Odoo's layout first")
         self.assertIn("Request for Quotation", self.render("action_report_rfq", order))
         order.button_confirm()
         html = self.render("action_report_purchase_order", order)

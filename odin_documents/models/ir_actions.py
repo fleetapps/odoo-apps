@@ -44,6 +44,13 @@ class IrActionsActions(models.Model):
 class IrActionsReport(models.Model):
     _inherit = "ir.actions.report"
 
+    def report_action(self, docids, data=None, config=True):
+        """These documents print on their own letterhead: an administrator is
+        not sent to choose Odoo's document layout first."""
+        if self and all((report.report_name or "").startswith("odin_documents.") for report in self):
+            config = False
+        return super().report_action(docids, data=data, config=config)
+
     def _render_qweb_pdf(self, report_ref, res_ids=None, data=None):
         result = super()._render_qweb_pdf(report_ref, res_ids=res_ids, data=data)
         ids = [res_ids] if isinstance(res_ids, int) else list(res_ids or [])
