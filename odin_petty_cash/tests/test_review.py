@@ -97,6 +97,44 @@ class TestPettyCashReview(TestPettyCash):
         line.phone = "0723413614"
         self.assertEqual((line.charge, line.total), (0.0, 4800.0), "the charge its entry posted")
 
+    # ------------------------------------------------------------ charges typed in the book
+    def test_a_charge_typed_in_the_book_stays(self):
+        Line = self.Line.with_user(self.cashier)
+        row = Line.book_save(False, {"float_id": self.flt.id, "date": "2026-11-04", "description": "fuel kdu",
+                                     "amount": 4800, "phone": "0723413614"})
+        self.assertEqual((row["charge"], row["charge_manual"]), (57.0, False), "the tariff fills it in")
+        row = Line.book_save(row["id"], {"charge": 40})
+        self.assertEqual((row["charge"], row["total"], row["charge_manual"]), (40.0, 4840.0, True))
+        Line.book_save(row["id"], {"amount": 4000})
+        Line.book_save(row["id"], {"phone": "0711111111"})
+        self.assertEqual(self.Line.browse(row["id"]).charge, 40.0, "a new amount or phone does not undo it")
+        row = Line.book_save(row["id"], {"charge": 0})
+        self.assertEqual((row["charge"], row["charge_manual"]), (0.0, True), "no charge is a charge too")
+        row = Line.book_save(row["id"], {"charge": False})
+        self.assertEqual((row["charge"], row["charge_manual"]), (57.0, False), "cleared: the tariff again")
+
+    def test_a_new_row_carries_its_typed_charge_into_the_entry(self):
+        # Pay bill: no tariff, so the charge is typed with the row.
+        row = self.Line.book_save(False, {"float_id": self.flt.id, "date": "2026-11-04", "description": "fuel kdu",
+                                          "amount": 2000, "charge": 25})
+        line = self.Line.browse(row["id"])
+        self.assertEqual((line.charge, line.total, line.charge_manual), (25.0, 2025.0, True))
+        line.action_approve()
+        self.assertEqual(line.move_id.line_ids.filtered(lambda l: l.account_id == self.charges).debit, 25.0)
+        with self.assertRaises(UserError):
+            self.Line.book_save(line.id, {"charge": 30})
+        self.assertEqual(line.charge, 25.0, "approved: locked, as its entry has it")
+
+    def test_the_statement_charge_is_not_typed_over(self):
+        line = self.voucher(amount=200, mpesa_code="UK30R1H2AS")
+        self.Line.book_save(line.id, {"charge": 5})
+        self.upload(HEAD + "UK30R1H2AS,2026-11-03 10:30:00,Pay Bill to 400200 - SHELL,Completed,,200.00,1000.00\n"
+                    + "UK30R1H2AS,2026-11-03 10:30:00,Pay Bill Charge,Completed,,10.00,990.00\n")
+        self.assertEqual((line.charge, line.charge_from_statement, line.charge_manual), (10.0, True, False),
+                         "the statement's real charge replaces a typed one")
+        self.Line.book_save(line.id, {"charge": 3})
+        self.assertEqual(line.charge, 10.0, "Safaricom's figure stays")
+
     # ------------------------------------------------------------ balances
     def test_cancelled_vouchers_do_not_move_the_balance(self):
         self.env["odin.petty.cash.float"].action_add_float(self.flt.id, 10000, False, False, "2026-11-01")
