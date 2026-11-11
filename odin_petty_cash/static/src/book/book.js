@@ -76,12 +76,12 @@ const MPESA_CODE = /^[A-Za-z0-9]{10}$/;
 
 // Columns a person types into, in the sheet's order. Enter and Tab move along
 // this list; the last one saves the row.
-const EDIT_COLS = ["date", "description", "paid_to", "phone", "method", "mpesa_code", "amount"];
+const EDIT_COLS = ["date", "description", "paid_to", "phone", "method", "mpesa_code", "amount", "charge"];
 const NEED = ["need_amount", "need_description", "need_category", "need_receipt"];
 
 function blankRow(today, keep = {}) {
     return { date: keep.date || today, description: "", paid_to: "", phone: "", method: keep.method || "mpesa",
-             mpesa_code: "", amount: "", category: "", needs_stock: false };
+             mpesa_code: "", amount: "", charge: "", category: "", needs_stock: false };
 }
 
 export class PettyCashBook extends Component {
@@ -193,6 +193,20 @@ export class PettyCashBook extends Component {
         });
     }
 
+    /** Today (0) or yesterday (1) by the server's clock in the user's time
+     * zone, whichever month is open: the day the menu shows is the day exported. */
+    exportDay(daysBack) {
+        const [y, m, d] = this.state.book.today.split("-").map(Number);
+        return new Date(Date.UTC(y, m - 1, d - daysBack)).toISOString().slice(0, 10);
+    }
+
+    async exportXlsxDay(daysBack) {
+        await download({
+            url: "/odin_petty_cash/export",
+            data: { float_id: this.state.floatId, scope: "day", day: this.exportDay(daysBack) },
+        });
+    }
+
     // ------------------------------------------------------------ navigation
     async setMonth(month) {
         this.state.month = month;
@@ -258,7 +272,16 @@ export class PettyCashBook extends Component {
                 return;
             }
         }
-        if (String(row[field] ?? "") === String(value ?? "")) {
+        if (field === "charge") {
+            // Blank puts the tariff back; anything typed, 0 included, stays.
+            value = String(value).trim() === "" ? false : parseAmount(value, NaN);
+            if (Number.isNaN(value) || value < 0) {
+                return;
+            }
+            if (value === false ? !row.charge_manual : row.charge_manual && value === row.charge) {
+                return;
+            }
+        } else if (String(row[field] ?? "") === String(value ?? "")) {
             return;
         }
         try {
@@ -275,6 +298,16 @@ export class PettyCashBook extends Component {
         if (field === "mpesa_code" && value && !MPESA_CODE.test(value.trim())) {
             this.notification.add(_t("M-Pesa codes are 10 letters and digits, like UK30R1F8QM"), { type: "warning" });
             ev.target.value = row.mpesa_code;
+            return;
+        }
+        if (field === "charge" && value.trim() === "" && !row.charge_manual) {
+            // Already the tariff's: nothing to put back.
+            ev.target.value = this.fmt(row.charge, true);
+            return;
+        }
+        if (field === "charge" && value.trim() !== "" && !(parseAmount(value, NaN) >= 0)) {
+            this.notification.add(_t("Type the charge as a number, e.g. 13"), { type: "warning" });
+            ev.target.value = this.fmt(row.charge, !row.charge_manual);
             return;
         }
         if (field === "date") {
@@ -334,9 +367,15 @@ export class PettyCashBook extends Component {
         return parseAmount(this.state.newRow.amount);
     }
 
-    get newCharge() {
+    /** What the tariff would charge on the new row: the charge cell's hint. */
+    get newTariffCharge() {
         const row = this.state.newRow;
         return sendMoneyCharge(this.newAmount, row.phone, row.method);
+    }
+
+    get newCharge() {
+        const typed = this.state.newRow.charge;
+        return typed === "" ? this.newTariffCharge : parseAmount(typed);
     }
 
     async previewRule() {
@@ -422,7 +461,7 @@ export class PettyCashBook extends Component {
                 this.onNewDate(ev);
             }
             const at = EDIT_COLS.indexOf(field);
-            if (field === "amount" || (ev.ctrlKey || ev.metaKey)) {
+            if (field === "amount" || field === "charge" || (ev.ctrlKey || ev.metaKey)) {
                 this.saveNew();
             } else {
                 let next = EDIT_COLS[at + 1];
@@ -458,6 +497,10 @@ export class PettyCashBook extends Component {
         if (row.amount !== "" && (Number.isNaN(amount) || amount < 0)) {
             return ["amount", _t("Paid must be a number, e.g. 1500")];
         }
+        const charge = parseAmount(row.charge, NaN);
+        if (row.charge !== "" && (Number.isNaN(charge) || charge < 0)) {
+            return ["charge", _t("Charges must be a number, e.g. 13")];
+        }
         if (row.mpesa_code && !MPESA_CODE.test(row.mpesa_code.trim())) {
             return ["mpesa_code", _t("M-Pesa codes are 10 letters and digits, like UK30R1F8QM")];
         }
@@ -485,6 +528,7 @@ export class PettyCashBook extends Component {
                 float_id: this.state.floatId, date: row.date, description: row.description,
                 paid_to: row.paid_to, phone: row.phone, method: row.method,
                 mpesa_code: row.mpesa_code || false, amount,
+                ...(row.charge === "" ? {} : { charge: parseAmount(row.charge) }),
             }]);
             this.state.newRow = blankRow(this.defaultDate(), row);
             this.state.suggest = null;

@@ -64,6 +64,10 @@ class PettyCashLine(models.Model):
     charge = fields.Monetary(string="Charges", compute="_compute_charge", store=True, readonly=False,
                              precompute=True)
     charge_from_statement = fields.Boolean(readonly=True, copy=False)
+    charge_manual = fields.Boolean(
+        string="Charge typed in", copy=False,
+        help="Typed in the book: the tariff no longer fills it in when the amount, phone or method changes. "
+             "Clear the charge in the book to use the tariff again.")
     total = fields.Monetary(compute="_compute_total", store=True)
     signed_total = fields.Monetary(compute="_compute_total", store=True,
                                    help="Effect on the float: top-ups add, payments take away.")
@@ -98,20 +102,29 @@ class PettyCashLine(models.Model):
         "(float_id, voucher) WHERE voucher IS NOT NULL", "Another voucher of this float has this number.")
 
     # ------------------------------------------------------------ computes
-    @api.depends("amount", "method", "phone", "kind")
+    @api.depends("amount", "method", "phone", "kind", "charge_manual")
     def _compute_charge(self):
         for line in self:
             # An approved voucher keeps the charge its entry has (the statement
-            # adding a phone number later must not change it).
-            if line.charge_from_statement or line.state == "posted":
+            # adding a phone number later must not change it), and a charge
+            # someone typed stays as they typed it.
+            if line.charge_from_statement or line.state == "posted" or line.charge_manual:
                 continue
-            # Sending to a phone has a known tariff; pay bill and till charges
-            # vary and arrive with the statement.
-            phone = re.sub(r"\D", "", line.phone or "")
-            if line.kind == "payment" and line.method == "mpesa" and len(phone) >= 9 and line.amount:
-                line.charge = send_money_charge(line.amount)
-            elif line.method == "cash" or line.kind == "topup":
-                line.charge = 0.0
+            charge = line._tariff_charge()
+            if charge is not None:
+                line.charge = charge
+
+    def _tariff_charge(self):
+        """The charge the book fills in. Sending to a phone has a known tariff;
+        cash and top-ups have none; pay bill and till charges vary and arrive
+        with the statement (None: not known yet)."""
+        self.ensure_one()
+        phone = re.sub(r"\D", "", self.phone or "")
+        if self.kind == "payment" and self.method == "mpesa" and len(phone) >= 9 and self.amount:
+            return send_money_charge(self.amount)
+        if self.method == "cash" or self.kind == "topup":
+            return 0.0
+        return None
 
     @api.depends("amount", "charge", "kind")
     def _compute_total(self):
@@ -424,7 +437,7 @@ class PettyCashLine(models.Model):
             "kind": self.kind, "description": self.description or "", "paid_to": self.paid_to or "",
             "phone": self.phone or "", "method": self.method, "mpesa_code": self.mpesa_code or "",
             "amount": self.amount, "charge": self.charge, "total": self.total,
-            "charge_from_statement": self.charge_from_statement,
+            "charge_from_statement": self.charge_from_statement, "charge_manual": self.charge_manual,
             "category": self.rule_id.name.removeprefix("Auto: ") if self.rule_id else (
                 self.account_id.display_name if self.account_id else ""),
             "rule_id": self.rule_id.id, "account": self.account_id.display_name or "",
@@ -447,10 +460,20 @@ class PettyCashLine(models.Model):
         allowed = {"date", "description", "paid_to", "phone", "method", "mpesa_code", "amount", "charge",
                    "rule_id", "product_id", "quantity", "kind", "float_id"}
         values = {k: v for k, v in values.items() if k in allowed}
-        if "charge" in values and line_id:
+        if "charge" in values:
             line = self.browse(line_id)
             if line.charge_from_statement:
+                # Safaricom's own figure: the statement sets it, not the book.
                 values.pop("charge")
+            elif values["charge"] is False or values["charge"] is None or values["charge"] == "":
+                # Cleared: the tariff fills it in again.
+                values["charge_manual"] = False
+                if line_id:
+                    values["charge"] = line._tariff_charge() or 0.0
+                else:
+                    values.pop("charge")
+            else:
+                values["charge_manual"] = True
         if line_id:
             line = self.browse(line_id)
             line.write(values)

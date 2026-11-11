@@ -16,7 +16,9 @@ with the same columns and a tab per month.
   their order: the description first, then description + payee. It can be changed
   per row.
 * **Charges fill in** for send-money payments (Safaricom tariff); pay bill and till
-  charges come with the statement.
+  charges come with the statement. Type over a draft's charge in the book to change
+  it: it then stays when the amount or phone changes (clear it for the tariff again).
+  A charge from the statement is Safaricom's own and is not typed over.
 * **Each row says what it still needs**: amount, what for, category, product and
   quantity (stock bought with petty cash), receipt (cash payments). Ready rows are
   approved one by one from the side panel, or all at once.
@@ -31,7 +33,8 @@ with the same columns and a tab per month.
   or by amount within a day, and get the real charge and the statement balance;
   payments nobody typed come in as rows to describe. The book shows whether the
   float balance agrees with the statement.
-* **Export** the month, or the whole year with a tab per month, to Excel.
+* **Export** today, yesterday, the month, or the whole year with a tab per month, to
+  Excel. A day comes with its balance brought forward and carried forward.
 
 ## Set up
 
