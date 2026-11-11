@@ -3,6 +3,7 @@ from unittest.mock import patch
 from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
+from odoo.tools import mute_logger
 
 from .test_purchase import TestStockBookPurchase
 
@@ -246,7 +247,8 @@ class TestStockBookLedger(TestStockBookPurchase):
 
     def test_a_missing_line_cannot_stop_the_stock_move(self):
         before = self.onhand(self.bottle)
-        with patch.object(type(self.env["stock.move"]), "_make_stock_book_line", side_effect=ValueError("broken")):
+        with patch.object(type(self.env["stock.move"]), "_make_stock_book_line", side_effect=ValueError("broken")), \
+                mute_logger("odoo.addons.odin_stock_book.models.purchase"):
             self.env["stock.scrap"].create({"product_id": self.bottle.id, "scrap_qty": 1, "location_id": self.stock.id,
                                             "product_uom_id": self.bottle.uom_id.id}).do_scrap()
         self.assertEqual(self.onhand(self.bottle), before - 1)

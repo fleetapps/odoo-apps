@@ -3,6 +3,7 @@ import base64
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import new_test_user, tagged
+from odoo.tools import mute_logger
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
@@ -103,7 +104,7 @@ class TestPettyCash(AccountTestInvoicingCommon):
         self.assertEqual(book["rows"][-1]["balance"], 50000 - 500)
         self.assertEqual(book["counts"]["ready"], 1)
         self.assertEqual(book["months"][10]["count"], 2)
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception), mute_logger("odoo.sql_db"):
             with self.env.cr.savepoint():
                 self.Line.create({"float_id": self.flt.id, "description": "dup", "amount": 1, "mpesa_code": "uk30r1f8qm"})
 
