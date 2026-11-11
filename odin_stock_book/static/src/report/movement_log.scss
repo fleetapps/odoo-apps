@@ -1,0 +1,168 @@
+// The printed movement log. Plain values only: the PDF engine (wkhtmltopdf)
+// knows neither CSS variables nor flexbox, so the layout is tables.
+.o_sb_print {
+    font-size: 8.5pt;
+    color: #1f2328;
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    h2 {
+        margin: 0;
+        font-size: 15pt;
+        font-weight: 700;
+    }
+}
+
+.o_sb_print_head {
+    margin-bottom: 3mm;
+
+    td {
+        vertical-align: bottom;
+        padding: 0;
+    }
+}
+
+.o_sb_print_period {
+    font-size: 10.5pt;
+    font-weight: 600;
+}
+
+.o_sb_print_counts {
+    text-align: right;
+    font-size: 9pt;
+}
+
+.o_sb_print_muted {
+    color: #5c636a;
+    font-size: 7.5pt;
+}
+
+.o_sb_print_warn {
+    margin: 0 0 3mm;
+    padding: 2mm 3mm;
+    border: 1px solid #b7791f;
+    background: #fff8e6;
+    color: #6b4a00;
+}
+
+.o_sb_print_log {
+    margin-bottom: 4mm;
+
+    thead {
+        display: table-header-group; // the heading again on every page
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    th {
+        padding: 1.6mm 1.2mm;
+        border-bottom: 1.5px solid #1f2328;
+        font-size: 7pt;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 1.2mm;
+        border-bottom: 1px solid #d0d7de;
+        vertical-align: top;
+    }
+}
+
+.o_sb_print_day td {
+    padding-top: 2.4mm;
+    border-bottom: 1px solid #8c959f;
+    background: #f3f4f6;
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.o_sb_print_draft td {
+    background: #fffaf0;
+}
+
+.o_sb_print_comp td {
+    padding-top: 0.6mm;
+    padding-bottom: 0.6mm;
+    border-bottom: 1px dotted #d0d7de;
+    color: #424a53;
+    font-size: 7.5pt;
+}
+
+.o_sb_print_comp_item {
+    padding-left: 5mm !important;
+}
+
+.o_sb_print_num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.o_sb_print_ref,
+.o_sb_print_code {
+    font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace;
+    font-size: 7.5pt;
+    white-space: nowrap;
+}
+
+.o_sb_print_code {
+    margin-right: 1.5mm;
+    color: #424a53;
+}
+
+// Shares of the page width: the item gets what is left (about a quarter).
+.o_sb_print_log {
+    .o_sb_print_ref { width: 10%; }
+    .o_sb_print_num { width: 6.5%; }
+    .o_sb_print_unit { width: 4.5%; }
+    .o_sb_print_reason { width: 9%; }
+    .o_sb_print_partner { width: 13%; }
+    .o_sb_print_state { width: 9.5%; }
+    .o_sb_print_note { width: 10%; }
+}
+
+.o_sb_print_foot {
+    page-break-inside: avoid;
+    margin-top: 2mm;
+
+    > tbody > tr > td,
+    > tr > td {
+        vertical-align: top;
+        padding: 0 4mm 0 0;
+    }
+
+    .o_sb_print_summary td {
+        padding: 0.6mm 0;
+        border-bottom: 1px solid #eaeef2;
+    }
+}
+
+.o_sb_print_summary { width: 30%; }
+.o_sb_print_sign { width: 35%; }
+
+.o_sb_print_label {
+    margin-bottom: 1.5mm;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #5c636a;
+}
+
+.o_sb_print_line_field {
+    margin-top: 5mm;
+    padding-top: 0.8mm;
+    border-top: 1px solid #1f2328;
+    font-size: 7pt;
+    color: #5c636a;
+}

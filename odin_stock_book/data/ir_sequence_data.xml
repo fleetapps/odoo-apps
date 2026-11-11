@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One numbering per reason, restarting each year: FIL/2026/0014, OUT/2026/0112.
+     Gapless (no_gap): the number is taken under a row lock when a line is
+     posted, so lines posted together or by two supervisors at once never
+     share one, and a post that fails gives its number back. -->
+<odoo noupdate="1">
+    <record id="seq_stock_line_fil" model="ir.sequence">
+        <field name="name">Stock Book: Bottle filling</field>
+        <field name="code">odin.stock.line.FIL</field>
+        <field name="prefix">FIL/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_prd" model="ir.sequence">
+        <field name="name">Stock Book: Production batch</field>
+        <field name="code">odin.stock.line.PRD</field>
+        <field name="prefix">PRD/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_in" model="ir.sequence">
+        <field name="name">Stock Book: Received</field>
+        <field name="code">odin.stock.line.IN</field>
+        <field name="prefix">IN/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_ret" model="ir.sequence">
+        <field name="name">Stock Book: Customer return</field>
+        <field name="code">odin.stock.line.RET</field>
+        <field name="prefix">RET/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_out" model="ir.sequence">
+        <field name="name">Stock Book: Sale</field>
+        <field name="code">odin.stock.line.OUT</field>
+        <field name="prefix">OUT/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_scr" model="ir.sequence">
+        <field name="name">Stock Book: Spoiled</field>
+        <field name="code">odin.stock.line.SCR</field>
+        <field name="prefix">SCR/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_smp" model="ir.sequence">
+        <field name="name">Stock Book: Sample / gift</field>
+        <field name="code">odin.stock.line.SMP</field>
+        <field name="prefix">SMP/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_use" model="ir.sequence">
+        <field name="name">Stock Book: Used in-house</field>
+        <field name="code">odin.stock.line.USE</field>
+        <field name="prefix">USE/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+    <record id="seq_stock_line_adj" model="ir.sequence">
+        <field name="name">Stock Book: Correction</field>
+        <field name="code">odin.stock.line.ADJ</field>
+        <field name="prefix">ADJ/%(range_year)s/</field>
+        <field name="padding">4</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="implementation">no_gap</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

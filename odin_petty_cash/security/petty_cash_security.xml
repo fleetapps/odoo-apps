@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cashiers type vouchers and upload statements; approvers approve and post,
+     and set up floats. Accountants (account.group_account_manager) are
+     approvers. Record rules keep each company to its own floats. -->
+<odoo>
+    <record id="res_groups_privilege_petty_cash" model="res.groups.privilege">
+        <field name="name">Petty Cash</field>
+        <field name="category_id" ref="base.module_category_accounting"/>
+    </record>
+    <record id="group_petty_cash_user" model="res.groups">
+        <field name="name">Cashier</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_petty_cash"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_petty_cash_approver" model="res.groups">
+        <field name="name">Approver</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_petty_cash"/>
+        <field name="implied_ids" eval="[(4, ref('group_petty_cash_user'))]"/>
+    </record>
+    <record id="account.group_account_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_petty_cash_approver'))]"/>
+    </record>
+    <record id="base.user_admin" model="res.users">
+        <field name="group_ids" eval="[(4, ref('group_petty_cash_approver'))]"/>
+    </record>
+
+    <record id="odin_petty_cash_float_rule_company" model="ir.rule">
+        <field name="name">Petty cash float: multi-company</field>
+        <field name="model_id" ref="model_odin_petty_cash_float"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="odin_petty_cash_line_rule_company" model="ir.rule">
+        <field name="name">Petty cash voucher: multi-company</field>
+        <field name="model_id" ref="model_odin_petty_cash_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

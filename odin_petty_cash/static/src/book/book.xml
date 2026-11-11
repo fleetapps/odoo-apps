@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Root carries o_action so the action manager sizes it; the book then
+         splits into summary, toolbar, the sheet (scrolls on its own) beside
+         the detail panel, and the month tabs pinned at the bottom. -->
+    <t t-name="odin_petty_cash.Book">
+        <div class="o_action o_pc" t-ref="root">
+            <Layout display="{ controlPanel: {} }" className="'o_pc_content'">
+                <t t-set-slot="layout-buttons">
+                    <div t-if="state.book and !state.book.empty" class="d-flex flex-wrap gap-1">
+                        <button class="btn btn-primary" t-on-click="() => this.focusNew('description')" data-tooltip="Shortcut: N">
+                            <i class="fa fa-plus me-1"/>Payment
+                        </button>
+                        <button t-if="state.book.can_approve and state.book.counts.ready" class="btn btn-success" t-on-click="approveAll">
+                            <i class="fa fa-check me-1"/>Approve <t t-esc="state.book.counts.ready"/> ready
+                        </button>
+                    </div>
+                </t>
+
+                <div t-if="state.loading" class="o_pc_loading text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
+
+                <div t-elif="state.book.empty" class="o_pc_empty">
+                    <img src="/odin_petty_cash/static/description/icon.png" alt="" width="72" height="72"/>
+                    <h2>Set up your petty cash float</h2>
+                    <p class="text-muted">Pick the cash journal the float posts to, the M-Pesa charges account, and who approves.
+                        Then the book opens here, one month per tab.</p>
+                    <button t-if="state.book.can_configure" class="btn btn-primary" t-on-click="configure">Set up a float</button>
+                    <p t-else="" class="text-muted">Ask an approver to set up the float.</p>
+                </div>
+
+                <t t-else="">
+                    <t t-set="book" t-value="state.book"/>
+                    <t t-set="cur" t-value="book.float.currency"/>
+
+                    <!-- Summary -->
+                    <section class="o_pc_summary">
+                        <div class="o_pc_kpi o_pc_kpi_balance">
+                            <span class="o_pc_kpi_label">Float balance</span>
+                            <span class="o_pc_kpi_value"><small t-esc="cur"/> <t t-esc="fmt(book.float.projected_balance)"/></span>
+                            <span class="o_pc_kpi_sub">
+                                <t t-if="statementDiff === null">Posted <t t-esc="fmt(book.float.book_balance)"/> · no statement yet</t>
+                                <t t-elif="statementDiff === 0"><i class="fa fa-check-circle text-success me-1"/>Matches the M-Pesa statement</t>
+                                <t t-else=""><i class="fa fa-exclamation-circle text-warning me-1"/>Statement says <t t-esc="fmt(book.float.statement_balance)"/> (<t t-esc="fmt(statementDiff)"/> apart)</t>
+                            </span>
+                        </div>
+                        <div class="o_pc_kpi">
+                            <span class="o_pc_kpi_label">Spent in <t t-esc="monthLabel"/></span>
+                            <span class="o_pc_kpi_value"><small t-esc="cur"/> <t t-esc="fmt(book.spent)"/></span>
+                            <span class="o_pc_kpi_sub">Float added <t t-esc="fmt(book.received)"/></span>
+                        </div>
+                        <button class="o_pc_kpi o_pc_kpi_click" t-att-class="{ o_pc_kpi_on: state.filter === 'need', o_pc_kpi_warn: book.counts.need }" t-on-click="() => this.setFilter('need')">
+                            <span class="o_pc_kpi_label">Needs something</span>
+                            <span class="o_pc_kpi_value" t-esc="book.counts.need"/>
+                            <span class="o_pc_kpi_sub">description, category or receipt</span>
+                        </button>
+                        <button t-if="book.counts.stock" class="o_pc_kpi o_pc_kpi_click o_pc_kpi_info" t-att-class="{ o_pc_kpi_on: state.filter === 'stock' }" t-on-click="() => this.setFilter('stock')">
+                            <span class="o_pc_kpi_label">Stock to receive</span>
+                            <span class="o_pc_kpi_value" t-esc="book.counts.stock"/>
+                            <span class="o_pc_kpi_sub">add product and quantity</span>
+                        </button>
+                        <button class="o_pc_kpi o_pc_kpi_click" t-att-class="{ o_pc_kpi_on: state.filter === 'ready' }" t-on-click="() => this.setFilter('ready')">
+                            <span class="o_pc_kpi_label">Ready to approve</span>
+                            <span class="o_pc_kpi_value" t-esc="book.counts.ready"/>
+                            <span class="o_pc_kpi_sub"><t t-esc="book.counts.posted"/> approved this month</span>
+                        </button>
+                    </section>
+
+                    <!-- Toolbar -->
+                    <div class="o_pc_toolbar">
+                        <select t-if="book.floats.length > 1" class="form-select form-select-sm w-auto" t-on-change="setFloat" aria-label="Float">
+                            <t t-foreach="book.floats" t-as="f" t-key="f.id">
+                                <option t-att-value="f.id" t-att-selected="f.id === book.float.id" t-esc="f.name"/>
+                            </t>
+                        </select>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Show">
+                            <button class="btn" t-att-class="state.filter === '' ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setFilter('')">All</button>
+                            <button class="btn" t-att-class="state.filter === 'need' ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setFilter('need')">Needs something</button>
+                            <button class="btn" t-att-class="state.filter === 'ready' ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setFilter('ready')">Ready</button>
+                            <button class="btn" t-att-class="state.filter === 'posted' ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setFilter('posted')">Approved</button>
+                        </div>
+                        <div class="o_pc_search">
+                            <i class="fa fa-search"/>
+                            <input class="form-control form-control-sm" placeholder="Search description, payee, code…  ( / )"
+                                   t-att-value="state.search" t-on-input="onSearch" aria-label="Search"/>
+                        </div>
+                        <button t-if="book.older_open.count" class="btn btn-sm btn-warning" t-on-click="openOlder"
+                                title="Vouchers from earlier months that are not approved yet">
+                            <i class="fa fa-history me-1"/><t t-esc="book.older_open.count"/> open from earlier months
+                        </button>
+                        <span class="o_pc_hint text-muted d-none d-xxl-inline">Type in the last row · Enter moves on · Enter on Paid saves</span>
+                        <div class="o_pc_toolbar_end">
+                        <button class="btn btn-sm btn-light border" t-on-click="openTopup">
+                            <i class="fa fa-arrow-down me-1"/>Add float
+                        </button>
+                        <button class="btn btn-sm btn-light border" t-on-click="uploadStatement">
+                            <i class="fa fa-upload me-1"/>Upload statement
+                        </button>
+                        <Dropdown>
+                            <button class="btn btn-sm btn-light border" aria-label="Export"><i class="fa fa-file-excel-o me-1"/>Export</button>
+                            <t t-set-slot="content">
+                                <DropdownItem onSelected="() => this.exportXlsxDay(0)">Today (<t t-esc="shortDate(exportDay(0))"/>)</DropdownItem>
+                                <DropdownItem onSelected="() => this.exportXlsxDay(1)">Yesterday (<t t-esc="shortDate(exportDay(1))"/>)</DropdownItem>
+                                <DropdownItem onSelected="() => this.exportXlsx('month')">This month (<t t-esc="monthLabel"/>)</DropdownItem>
+                                <DropdownItem onSelected="() => this.exportXlsx('year')">Whole <t t-esc="state.book.year"/>, a tab per month</DropdownItem>
+                            </t>
+                        </Dropdown>
+                        </div>
+                    </div>
+
+                    <div class="o_pc_body" t-att-class="{ o_pc_with_panel: selected }">
+                        <!-- The sheet -->
+                        <div class="o_pc_sheet">
+                            <table class="o_pc_table">
+                                <thead>
+                                    <tr>
+                                        <th class="o_pc_c_date">Date</th>
+                                        <th class="o_pc_c_voucher">Voucher</th>
+                                        <th class="o_pc_c_desc">Description</th>
+                                        <th class="o_pc_c_payee">Paid to</th>
+                                        <th class="o_pc_c_phone">Phone</th>
+                                        <th class="o_pc_c_method">Method</th>
+                                        <th class="o_pc_c_code">M-Pesa code</th>
+                                        <th class="o_pc_num o_pc_c_paid">Paid</th>
+                                        <th class="o_pc_num o_pc_c_charge">Charges</th>
+                                        <th class="o_pc_num o_pc_c_total">Total</th>
+                                        <th class="o_pc_num o_pc_c_bal">Balance</th>
+                                        <th class="o_pc_c_cat">Category</th>
+                                        <th class="o_pc_c_status">Status</th>
+                                        <th class="o_pc_c_open"/>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="o_pc_bf">
+                                        <td t-esc="shortDate(monthStart)"/><td/>
+                                        <td>Balance b/f</td><td/><td class="o_pc_c_phone"/><td class="o_pc_c_method"/><td/><td/>
+                                        <td class="o_pc_c_charge"/><td class="o_pc_c_total"/>
+                                        <td class="o_pc_num" t-esc="fmt(book.opening)"/>
+                                        <td/><td/><td/>
+                                    </tr>
+                                    <t t-foreach="rows" t-as="row" t-key="row.id">
+                                        <t t-set="draft" t-value="row.state === 'draft'"/>
+                                        <tr t-attf-class="o_pc_row o_pc_tone_{{row.tone}} {{row.id === state.selectedId ? 'o_pc_selected' : ''}} {{row.kind === 'topup' ? 'o_pc_topup' : ''}} {{draft ? 'o_pc_draft' : 'o_pc_locked'}}"
+                                            t-on-click="(ev) => this.onRowClick(ev, row)">
+                                            <td class="o_pc_c_date">
+                                                <input t-if="draft" class="o_pc_cell" t-att-value="shortDate(row.date)" t-on-change="(ev) => this.onCellChange(ev, row, 'date')" aria-label="Date"/>
+                                                <t t-else="" t-esc="shortDate(row.date)"/>
+                                            </td>
+                                            <td class="o_pc_c_voucher"><span class="o_pc_mono" t-esc="row.voucher.split('/').pop()" t-att-title="row.voucher"/></td>
+                                            <td class="o_pc_c_desc">
+                                                <input t-if="draft" class="o_pc_cell" t-att-class="{ o_pc_missing: !row.description }" t-att-value="row.description"
+                                                       placeholder="What was it for?" t-on-change="(ev) => this.onCellChange(ev, row, 'description')" aria-label="Description"/>
+                                                <t t-else="" t-esc="row.description"/>
+                                            </td>
+                                            <td class="o_pc_c_payee">
+                                                <input t-if="draft" class="o_pc_cell" t-att-value="row.paid_to" t-on-change="(ev) => this.onCellChange(ev, row, 'paid_to')" aria-label="Paid to"/>
+                                                <t t-else="" t-esc="row.paid_to"/>
+                                                <span t-if="row.source !== 'manual'" class="o_pc_src" t-att-title="row.source === 'statement' ? 'Came from the M-Pesa statement' : 'Confirmed by the M-Pesa statement'">
+                                                    <i class="fa fa-mobile"/>
+                                                </span>
+                                            </td>
+                                            <td class="o_pc_c_phone">
+                                                <input t-if="draft" class="o_pc_cell o_pc_mono" t-att-value="row.phone" t-on-change="(ev) => this.onCellChange(ev, row, 'phone')" aria-label="Phone"/>
+                                                <span t-else="" class="o_pc_mono" t-esc="row.phone"/>
+                                            </td>
+                                            <td class="o_pc_c_method">
+                                                <button t-if="draft" class="o_pc_method" t-att-class="{ o_pc_method_cash: row.method === 'cash' }"
+                                                        t-on-click="() => this.toggleMethod(row)" title="Click to switch M-Pesa / Cash" aria-label="Method">
+                                                    <t t-esc="row.method === 'cash' ? 'Cash' : 'M-Pesa'"/>
+                                                </button>
+                                                <span t-else="" class="o_pc_method o_pc_method_ro" t-att-class="{ o_pc_method_cash: row.method === 'cash' }" t-esc="row.method === 'cash' ? 'Cash' : 'M-Pesa'"/>
+                                            </td>
+                                            <td class="o_pc_c_code">
+                                                <input t-if="draft" class="o_pc_cell o_pc_mono" t-att-value="row.mpesa_code" t-on-change="(ev) => this.onCellChange(ev, row, 'mpesa_code')" aria-label="M-Pesa code"/>
+                                                <span t-else="" class="o_pc_mono" t-esc="row.mpesa_code"/>
+                                            </td>
+                                            <td class="o_pc_num">
+                                                <t t-if="row.kind === 'topup'"><span class="o_pc_in">+<t t-esc="fmt(row.amount)"/></span></t>
+                                                <input t-elif="draft" class="o_pc_cell o_pc_num" t-att-class="{ o_pc_missing: !row.amount }" t-att-value="row.amount ? fmt(row.amount) : ''"
+                                                       inputmode="decimal" t-on-change="(ev) => this.onCellChange(ev, row, 'amount')" aria-label="Paid"/>
+                                                <t t-else="" t-esc="fmt(row.amount)"/>
+                                            </td>
+                                            <td class="o_pc_num o_pc_c_charge" t-att-class="{ o_pc_muted: !(draft and row.kind === 'payment' and !row.charge_from_statement) }">
+                                                <input t-if="draft and row.kind === 'payment' and !row.charge_from_statement" class="o_pc_cell o_pc_num"
+                                                       t-att-class="{ o_pc_charge_typed: row.charge_manual }"
+                                                       t-att-value="fmt(row.charge, !row.charge_manual)" inputmode="decimal" placeholder="0.00"
+                                                       t-att-title="row.charge_manual ? 'Typed in. Clear it to use the M-Pesa tariff again.' : 'Filled in from the M-Pesa tariff. Type over it to change it.'"
+                                                       t-on-change="(ev) => this.onCellChange(ev, row, 'charge')" aria-label="Charges"/>
+                                                <t t-else="" t-esc="fmt(row.charge, true)"/>
+                                                <i t-if="row.charge_from_statement" class="fa fa-check o_pc_tick" title="From the statement"/>
+                                            </td>
+                                            <td class="o_pc_num o_pc_c_total"><t t-if="row.kind !== 'topup'" t-esc="fmt(row.total)"/></td>
+                                            <td class="o_pc_num o_pc_bal">
+                                                <t t-esc="fmt(row.balance)"/>
+                                                <i t-if="row.statement_balance !== null and Math.abs(row.statement_balance - row.balance) &lt; 0.005"
+                                                   class="fa fa-check-circle o_pc_tick" title="Same as the M-Pesa statement"/>
+                                            </td>
+                                            <td class="o_pc_c_cat">
+                                                <select t-if="draft and row.kind === 'payment'" class="o_pc_cell o_pc_cat_select" t-att-class="{ o_pc_missing: !row.category }"
+                                                        t-on-change="(ev) => this.setRule(row, ev.target.value)" aria-label="Category">
+                                                    <option value="0" t-att-selected="!row.rule_id"><t t-esc="row.rule_id ? '' : (row.category || '—')"/></option>
+                                                    <t t-foreach="book.rules" t-as="rule" t-key="rule.id">
+                                                        <option t-att-value="rule.id" t-att-selected="rule.id === row.rule_id" t-esc="rule.name"/>
+                                                    </t>
+                                                </select>
+                                                <span t-else="" class="o_pc_cat" t-esc="row.category" t-att-title="row.account"/>
+                                            </td>
+                                            <td class="o_pc_c_status">
+                                                <span t-attf-class="o_pc_pill o_pc_pill_{{row.tone}}" t-att-title="row.status">
+                                                    <i t-if="row.receipts" class="fa fa-paperclip me-1"/><t t-esc="shortStatus(row)"/>
+                                                </span>
+                                                <span t-if="row.approved_by" class="o_pc_appr" t-esc="row.approved_by"/>
+                                            </td>
+                                            <td class="o_pc_c_open">
+                                                <button class="o_pc_open_btn" t-on-click="() => this.select(row)" t-att-aria-label="'Open ' + row.voucher" title="Details, receipts, approve">
+                                                    <i class="fa fa-chevron-right"/>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </t>
+
+                                    <!-- The entry row: always there, like the next empty line of the sheet -->
+                                    <tr t-if="state.newRow and !state.filter and !state.search" class="o_pc_new">
+                                        <t t-set="nr" t-value="state.newRow"/>
+                                        <td class="o_pc_c_date"><input class="o_pc_cell" data-field="date" t-att-value="shortDate(nr.date)" title="Type 3, 3/11 or 3 Nov"
+                                            t-on-change="onNewDate" t-on-keydown="(ev) => this.onNewKeydown(ev, 'date')" aria-label="New date"/></td>
+                                        <td class="o_pc_c_voucher"><span class="o_pc_new_mark">new</span></td>
+                                        <td class="o_pc_c_desc o_pc_has_suggest">
+                                            <input class="o_pc_cell" data-field="description" t-att-value="nr.description" placeholder="What was it for?"
+                                                   t-on-input="(ev) => this.onNewInput('description', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'description')"
+                                                   t-on-blur="() => this.onNewBlur('description')" autocomplete="off" aria-label="New description"/>
+                                            <ul t-if="state.suggest and state.suggest.field === 'description'" class="o_pc_suggest">
+                                                <t t-foreach="state.suggest.items" t-as="item" t-key="item_index">
+                                                    <li t-att-class="{ active: item_index === state.suggest.index }" t-on-mousedown.prevent="() => this.pickSuggestion(item)" t-esc="item"/>
+                                                </t>
+                                            </ul>
+                                        </td>
+                                        <td class="o_pc_c_payee o_pc_has_suggest">
+                                            <input class="o_pc_cell" data-field="paid_to" t-att-value="nr.paid_to" placeholder="Paid to"
+                                                   t-on-input="(ev) => this.onNewInput('paid_to', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'paid_to')"
+                                                   t-on-blur="() => this.onNewBlur('paid_to')" autocomplete="off" aria-label="New paid to"/>
+                                            <ul t-if="state.suggest and state.suggest.field === 'paid_to'" class="o_pc_suggest o_pc_suggest_wide">
+                                                <t t-foreach="state.suggest.items" t-as="item" t-key="item_index">
+                                                    <li t-att-class="{ active: item_index === state.suggest.index }" t-on-mousedown.prevent="() => this.pickSuggestion(item)">
+                                                        <strong t-esc="item.paid_to"/>
+                                                        <span class="o_pc_mono text-muted ms-2" t-esc="item.phone"/>
+                                                        <span t-if="item.usual" class="d-block small text-muted">Usually: <t t-esc="item.usual"/> · <t t-esc="item.count"/> payments</span>
+                                                    </li>
+                                                </t>
+                                            </ul>
+                                        </td>
+                                        <td class="o_pc_c_phone"><input class="o_pc_cell o_pc_mono" data-field="phone" t-att-value="nr.phone" placeholder="07…"
+                                            t-on-input="(ev) => this.onNewInput('phone', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'phone')" aria-label="New phone"/></td>
+                                        <td class="o_pc_c_method">
+                                            <button class="o_pc_method" data-field="method" t-att-class="{ o_pc_method_cash: nr.method === 'cash' }"
+                                                    t-on-click="() => this.setNewMethod()" t-on-keydown="(ev) => this.onNewKeydown(ev, 'method')"
+                                                    title="M or C, or click to switch" aria-label="New method">
+                                                <t t-esc="nr.method === 'cash' ? 'Cash' : 'M-Pesa'"/>
+                                            </button>
+                                        </td>
+                                        <td class="o_pc_c_code"><input class="o_pc_cell o_pc_mono" data-field="mpesa_code" t-att-value="nr.mpesa_code"
+                                            t-att-placeholder="nr.method === 'cash' ? 'none' : 'UK3…'" t-att-disabled="nr.method === 'cash'"
+                                            t-on-input="(ev) => this.onNewInput('mpesa_code', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'mpesa_code')" aria-label="New M-Pesa code"/></td>
+                                        <td class="o_pc_num"><input class="o_pc_cell o_pc_num" data-field="amount" t-att-value="nr.amount" placeholder="0.00" inputmode="decimal"
+                                            t-on-input="(ev) => this.onNewInput('amount', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'amount')" aria-label="New amount"/></td>
+                                        <td class="o_pc_num o_pc_c_charge"><input class="o_pc_cell o_pc_num" data-field="charge" t-att-value="nr.charge"
+                                            t-att-placeholder="fmt(newTariffCharge, true) or '0.00'" inputmode="decimal"
+                                            title="Filled in from the M-Pesa tariff. Type over it to change it."
+                                            t-on-input="(ev) => this.onNewInput('charge', ev)" t-on-keydown="(ev) => this.onNewKeydown(ev, 'charge')" aria-label="New charges"/></td>
+                                        <td class="o_pc_num o_pc_muted o_pc_c_total" t-esc="nr.amount ? fmt(newAmount + newCharge) : ''"/>
+                                        <td/>
+                                        <td class="o_pc_c_cat"><span class="o_pc_cat" t-att-class="{ 'text-muted': !nr.category }" t-esc="nr.category || (nr.description ? 'No rule matched' : '')"/></td>
+                                        <td class="o_pc_c_status" colspan="2">
+                                            <button class="btn btn-sm btn-primary o_pc_save" t-att-disabled="!newRowReady or state.saving" t-on-click="saveNew">
+                                                <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/>Save <kbd>↵</kbd>
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="o_pc_bf o_pc_cf">
+                                        <td colspan="2">Balance c/f</td>
+                                        <td/><td/><td class="o_pc_c_phone"/><td class="o_pc_c_method"/><td/><td/>
+                                        <td class="o_pc_c_charge"/><td class="o_pc_c_total"/>
+                                        <td class="o_pc_num" t-esc="fmt(book.closing)"/>
+                                        <td/><td/><td/>
+                                    </tr>
+                                    <tr t-if="!rows.length and (state.filter or state.search)">
+                                        <td colspan="14" class="o_pc_nothing text-muted">Nothing matches. <a href="#" t-on-click.prevent="() => { this.state.search = ''; this.setFilter(''); }">Show all</a></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Detail panel -->
+                        <aside t-if="selected" class="o_pc_panel" t-on-dragover.prevent="() => this.state.dragging = true"
+                               t-on-dragleave="() => this.state.dragging = false" t-on-drop="onDrop">
+                            <t t-set="sel" t-value="selected"/>
+                            <div class="o_pc_panel_head">
+                                <div>
+                                    <div class="o_pc_mono small text-muted" t-esc="sel.voucher"/>
+                                    <h3 t-esc="sel.description or 'No description yet'"/>
+                                </div>
+                                <button class="btn btn-link text-muted p-0" t-on-click="() => this.state.selectedId = null" aria-label="Close"><i class="fa fa-times fa-lg"/></button>
+                            </div>
+                            <span t-attf-class="o_pc_pill o_pc_pill_{{sel.tone}} align-self-start" t-esc="sel.status"/>
+
+                            <dl class="o_pc_facts">
+                                <dt>Paid to</dt><dd><t t-esc="sel.paid_to or '—'"/> <span class="o_pc_mono text-muted" t-esc="sel.phone"/></dd>
+                                <dt>Amount</dt><dd><t t-esc="cur"/> <t t-esc="fmt(sel.amount)"/><t t-if="sel.charge"> + <t t-esc="fmt(sel.charge)"/> charge</t></dd>
+                                <dt>Method</dt><dd><t t-esc="sel.method === 'cash' ? 'Cash' : 'M-Pesa'"/> <span class="o_pc_mono" t-esc="sel.mpesa_code"/></dd>
+                                <dt>Posts to</dt><dd><t t-esc="sel.account or '—'"/><span t-if="sel.analytic" class="d-block text-muted small" t-esc="sel.analytic"/></dd>
+                                <dt t-if="sel.statement_balance !== null">Statement</dt>
+                                <dd t-if="sel.statement_balance !== null">Balance after: <t t-esc="fmt(sel.statement_balance)"/></dd>
+                            </dl>
+
+                            <div t-if="sel.needs_stock" class="o_pc_box o_pc_box_stock">
+                                <span class="o_pc_box_label"><i class="fa fa-cubes me-1"/>Goes into stock</span>
+                                <div t-if="sel.product" class="d-flex justify-content-between align-items-center">
+                                    <span t-esc="sel.product[1]"/>
+                                    <button t-if="sel.state === 'draft'" class="btn btn-link btn-sm p-0" t-on-click="() => this.pickProduct(sel, [false])">Change</button>
+                                </div>
+                                <div t-if="!sel.product" class="position-relative">
+                                    <input class="form-control form-control-sm" placeholder="Search product, e.g. fine salt" t-att-value="state.product.query" t-on-input="onProductInput" aria-label="Product"/>
+                                    <ul t-if="state.product.results.length" class="o_pc_suggest o_pc_suggest_wide">
+                                        <t t-foreach="state.product.results" t-as="p" t-key="p[0]">
+                                            <li t-on-mousedown.prevent="() => this.pickProduct(sel, p)" t-esc="p[1]"/>
+                                        </t>
+                                    </ul>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="number" min="0" step="any" class="form-control form-control-sm w-50" t-att-value="sel.quantity or ''" placeholder="Quantity"
+                                           t-att-disabled="sel.state !== 'draft'" t-on-change="(ev) => this.saveCell(sel, 'quantity', ev.target.value)" aria-label="Quantity"/>
+                                    <span class="text-muted" t-esc="sel.uom"/>
+                                    <span t-if="sel.quantity" class="ms-auto small text-muted"><t t-esc="fmt(sel.amount / sel.quantity)"/> each</span>
+                                </div>
+                                <span class="small text-muted">Received into stock at this cost when approved, so it counts in cost of goods.</span>
+                            </div>
+
+                            <div class="o_pc_box o_pc_drop" t-att-class="{ o_pc_dragging: state.dragging }">
+                                <span class="o_pc_box_label"><i class="fa fa-paperclip me-1"/>Receipts</span>
+                                <div t-if="state.receipts.length" class="o_pc_receipts">
+                                    <t t-foreach="state.receipts" t-as="att" t-key="att.id">
+                                        <a t-att-href="'/web/content/' + att.id" target="_blank" class="o_pc_receipt">
+                                            <img t-if="att.mimetype and att.mimetype.startsWith('image')" t-att-src="'/web/image/' + att.id + '/120x120'" alt=""/>
+                                            <i t-else="" class="fa fa-file-pdf-o fa-2x"/>
+                                            <span t-esc="att.name"/>
+                                        </a>
+                                    </t>
+                                </div>
+                                <label class="btn btn-outline-secondary btn-sm align-self-start mb-0">
+                                    <i class="fa fa-camera me-1"/>Add photo or PDF
+                                    <input type="file" class="d-none" accept="image/*,application/pdf" multiple="multiple" t-on-change="onFileInput"/>
+                                </label>
+                                <span class="small text-muted">or drop files here<t t-if="sel.method === 'cash'"> · required for cash</t></span>
+                            </div>
+
+                            <div class="o_pc_panel_actions">
+                                <button t-if="state.book.can_approve and sel.status_key === 'ready'" class="btn btn-success" t-on-click="() => this.approve([sel.id])">
+                                    <i class="fa fa-check me-1"/>Approve
+                                </button>
+                                <button t-if="state.book.can_approve and sel.state === 'posted'" class="btn btn-secondary" t-on-click="() => this.reset(sel)">Reset to draft</button>
+                                <button t-if="sel.move_id" class="btn btn-link" t-on-click="() => this.openRecord('account.move', sel.move_id)">Journal entry</button>
+                                <button t-if="sel.picking_id" class="btn btn-link" t-on-click="() => this.openRecord('stock.picking', sel.picking_id)">Stock receipt</button>
+                                <button class="btn btn-link" t-on-click="() => this.openRecord('odin.petty.cash.line', sel.id)">Full form</button>
+                                <button t-if="sel.state === 'draft'" class="btn btn-link text-danger ms-auto" t-on-click="() => this.cancel(sel)">Cancel voucher</button>
+                            </div>
+                            <p t-if="sel.status_key === 'ready' and !state.book.can_approve" class="small text-muted mb-0">Waiting for an approver.</p>
+                        </aside>
+                    </div>
+
+                    <!-- Month tabs, like the sheet's -->
+                    <nav class="o_pc_tabs" aria-label="Months">
+                        <button class="o_pc_year" t-on-click="() => this.shiftYear(-1)" aria-label="Previous year"><i class="fa fa-chevron-left"/></button>
+                        <span class="o_pc_year_label" t-esc="book.year"/>
+                        <button class="o_pc_year" t-on-click="() => this.shiftYear(1)" aria-label="Next year"><i class="fa fa-chevron-right"/></button>
+                        <t t-foreach="book.months" t-as="m" t-key="m.month">
+                            <button class="o_pc_tab" t-att-class="{ o_pc_tab_on: m.month === book.month, o_pc_tab_empty: !m.count }"
+                                    t-on-click="() => this.setMonth(m.month)">
+                                <t t-esc="m.label"/><span t-if="m.count" class="o_pc_tab_count" t-esc="m.count"/>
+                            </button>
+                        </t>
+                    </nav>
+
+                    <!-- Add float -->
+                    <div t-if="state.topup" class="o_pc_modal_wrap" t-on-click.self="() => this.state.topup = null">
+                        <div class="o_pc_modal" role="dialog" aria-label="Add float">
+                            <h3>Add float</h3>
+                            <p class="text-muted small">Money sent to <t t-esc="book.float.name"/><t t-if="book.float.phone"> (<t t-esc="book.float.phone"/>)</t>.</p>
+                            <label class="form-label">Amount</label>
+                            <input class="form-control" inputmode="decimal" t-att-value="state.topup.amount" t-on-input="(ev) => this.state.topup.amount = ev.target.value"
+                                   t-on-keydown="(ev) => ev.key === 'Enter' and this.saveTopup()"/>
+                            <div class="row g-2 mt-1">
+                                <div class="col"><label class="form-label">Date</label><input type="date" class="form-control" t-att-value="state.topup.date" t-on-input="(ev) => this.state.topup.date = ev.target.value"/></div>
+                                <div class="col"><label class="form-label">M-Pesa code</label><input class="form-control o_pc_mono" t-att-value="state.topup.code" t-on-input="(ev) => this.state.topup.code = ev.target.value"/></div>
+                            </div>
+                            <label class="form-label mt-2">Note</label>
+                            <input class="form-control" placeholder="FLOAT TOP UP" t-att-value="state.topup.note" t-on-input="(ev) => this.state.topup.note = ev.target.value"/>
+                            <div class="d-flex gap-2 mt-3">
+                                <button class="btn btn-primary" t-on-click="saveTopup">Add float</button>
+                                <button class="btn btn-secondary" t-on-click="() => this.state.topup = null">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </Layout>
+        </div>
+    </t>
+</templates>

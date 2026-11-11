@@ -208,8 +208,16 @@ class AIDashboardRender(models.AbstractModel):
             "group_count": len((widget.get("query") or {}).get("group_by") or []),
             "comparable": widget.get("type") in spec_lib.COMPARABLE_TYPES,
         }
+        if widget.get("caption"):
+            base["caption"] = widget["caption"]
         query = widget.get("query") or {}
         model_name = query.get("model")
+        if widget.get("period"):
+            # Its own period, changed on the card, in place of the page's.
+            key = "__period:%s" % widget.get("id")
+            base["period"] = filter_values.get(key) or widget["period"]
+            spec = dict(spec, filters=[{"key": key, "type": "date_range",
+                                        "default": widget["period"]}])
 
         if model_name not in self.env:
             return dict(base, error=_(
@@ -224,6 +232,20 @@ class AIDashboardRender(models.AbstractModel):
                 "You do not have access to %s, so this tile cannot be shown. "
                 "Everything on a dashboard runs with your own permissions.")
                 % self._model_label(model_name))
+
+        if widget.get("type") in spec_lib.CARD_MODELS:
+            try:
+                domain = self._effective_domain(query, spec, filter_values)
+                shaped = getattr(self, "_card_%s" % widget["type"])(
+                    model.with_context(**self._company_context()), query, domain)
+            except (AccessError, UserError) as exc:
+                return dict(base, error=str(exc))
+            except Exception as exc:  # noqa: BLE001 - one tile, not the page
+                _logger.exception("AI Dashboards: card %s failed",
+                                  widget.get("id"))
+                return dict(base, error=_("This card could not be calculated "
+                                          "(%s).") % type(exc).__name__)
+            return dict(base, **shaped, domain=domain, model=model_name)
 
         if widget.get("type") == "pivot":
             try:
@@ -270,7 +292,7 @@ class AIDashboardRender(models.AbstractModel):
             return dict(base, error=_("This tile could not be calculated (%s).")
                         % type(exc).__name__)
 
-        shaped = self._shape(widget, query, rows, previous)
+        shaped = self._negated(widget, self._shape(widget, query, rows, previous))
         if mode != "none":
             shaped["compare_mode"] = mode
             if previous is None:
@@ -284,6 +306,71 @@ class AIDashboardRender(models.AbstractModel):
                                 "you. Someone with wider access may see more.") \
                 % self._model_label(model_name)
         return dict(base, **shaped, domain=domain, model=model_name)
+
+    def _total(self, model, domain, measure):
+        rows = model._read_group(domain, aggregates=[measure])
+        return self._number(rows[0][0]) if rows and rows[0] else 0
+
+    def _card_pnl(self, model, query, domain):
+        """Income, expenses and what is left, from posted journal items."""
+        posted = domain + [["parent_state", "=", "posted"]]
+        income = -self._total(model, posted + [["account_id.account_type", "in", (
+            "income", "income_other")]], "balance:sum")
+        expenses = self._total(model, posted + [["account_id.account_type", "in", (
+            "expense", "expense_direct_cost", "expense_depreciation")]], "balance:sum")
+        income = income or 0
+        return {"income": income, "expenses": expenses, "value": income - expenses,
+                "series": [{"label": _("Income"), "value": income, "raw": None},
+                           {"label": _("Expenses"), "value": expenses, "raw": None}]}
+
+    def _card_aging(self, model, query, domain):
+        """What is unpaid today, by how many days past its due date."""
+        measure = (query.get("measures") or ["amount_residual:sum"])[0]
+        today = fields.Date.context_today(self)
+        day = lambda n: fields.Date.to_string(today - timedelta(days=n))
+        buckets = [
+            (_("Current"), ["|", ["invoice_date_due", "=", False], ["invoice_date_due", ">=", day(0)]]),
+            (_("1-7 days"), [["invoice_date_due", "<", day(0)], ["invoice_date_due", ">=", day(7)]]),
+            (_("8-14 days"), [["invoice_date_due", "<", day(7)], ["invoice_date_due", ">=", day(14)]]),
+            (_("15-21 days"), [["invoice_date_due", "<", day(14)], ["invoice_date_due", ">=", day(21)]]),
+            (_("22+ days"), [["invoice_date_due", "<", day(21)]]),
+        ]
+        series = [{"label": label, "raw": None, "value": self._total(model, domain + where, measure)}
+                  for label, where in buckets]
+        return {"series": series, "value": sum(point["value"] for point in series)}
+
+    def _card_banks(self, model, query, domain):
+        """Each bank: its statements, the books, and what is yet to be matched."""
+        Line = self.env["account.move.line"]
+        Statement = self.env["account.bank.statement.line"]
+        Payment = self.env["account.payment"]
+        banks = []
+        for journal in model.search(domain, order="sequence, id"):
+            methods = journal.inbound_payment_method_line_ids | journal.outbound_payment_method_line_ids
+            accounts = journal.default_account_id | methods.payment_account_id
+            books = self._total(Line, [["journal_id", "=", journal.id], ["parent_state", "=", "posted"],
+                                       ["account_id", "in", accounts.ids]], "balance:sum")
+            review = Payment.search_count([["journal_id", "=", journal.id], ["is_matched", "=", False],
+                                           ["state", "not in", ("draft", "canceled", "rejected")]]) \
+                + Statement.search_count([["journal_id", "=", journal.id], ["is_reconciled", "=", False]])
+            banks.append({"id": journal.id, "name": journal.name, "books": books, "review": review,
+                          "bank": self._total(Statement, [["journal_id", "=", journal.id]], "amount:sum")})
+        return {"banks": banks, "series": [{"label": b["name"], "value": b["books"], "raw": None} for b in banks]}
+
+    @staticmethod
+    def _negated(widget, shaped):
+        """Flip the sign for a tile asking for it: profit from ledger balances."""
+        if not (widget.get("format") or {}).get("negate"):
+            return shaped
+        flip = lambda number: -number if number else number  # never a -0
+        for key in ("value", "compare"):
+            if shaped.get(key) is not None:
+                shaped[key] = flip(shaped[key])
+        for point in shaped.get("series") or []:
+            point["value"] = flip(point["value"])
+        if shaped.get("compare_series"):
+            shaped["compare_series"] = [flip(n) for n in shaped["compare_series"]]
+        return shaped
 
     def _read(self, model, query, domain):
         group_by = list(query.get("group_by") or [])

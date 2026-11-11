@@ -1,0 +1,1512 @@
+// Stock Book. A spreadsheet-like page: summary cards, a toolbar, the
+// sheet (sticky header and entry row, scrolls by itself) beside the detail
+// panel, and the month tabs pinned at the bottom like a workbook's sheet tabs.
+//
+// Colours. Surfaces, lines and muted text come from Bootstrap's CSS
+// variables, which Odoo compiles dark in its dark theme. Everything that
+// carries meaning (status pills, the stripe on each row, red negatives,
+// green additions, reason dots) is a token below with a light and a dark
+// value, each checked for contrast: text 4.5:1 and stripes and dots 3:1
+// against the page, in both themes.
+
+.o_sb {
+    --sb-line: var(--#{$prefix}border-color);
+    --sb-muted: var(--#{$prefix}secondary-color);
+    --sb-surface: var(--#{$prefix}body-bg);
+    --sb-sunken: var(--#{$prefix}tertiary-bg);
+    --sb-hover: var(--#{$prefix}secondary-bg);
+    --sb-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+
+    // Accents and text that means something
+    --sb-green: #139a4a;
+    --sb-green-text: #0b7a3b;
+    --sb-green-soft: rgba(19, 154, 74, 0.1);
+    --sb-blue: #2e5aac;
+    --sb-red-text: #b42318;
+    --sb-shadow: rgba(0, 0, 0, 0.12);
+
+    // Pills: Odoo's own subtle colours in the light theme
+    --sb-warn: var(--#{$prefix}warning-text-emphasis, #7a4d00);
+    --sb-warn-bg: var(--#{$prefix}warning-bg-subtle, #fff3cd);
+    --sb-info: var(--#{$prefix}info-text-emphasis, #055160);
+    --sb-info-bg: var(--#{$prefix}info-bg-subtle, #cff4fc);
+    --sb-ok: var(--#{$prefix}success-text-emphasis, #0a3622);
+    --sb-ok-bg: var(--#{$prefix}success-bg-subtle, #d1e7dd);
+    --sb-primary: var(--#{$prefix}primary-text-emphasis, #3d2a5c);
+    --sb-primary-bg: var(--#{$prefix}primary-bg-subtle, #e7ddf3);
+    --sb-danger: var(--#{$prefix}danger-text-emphasis, #8a1c13);
+    --sb-danger-bg: var(--#{$prefix}danger-bg-subtle, #f8d7da);
+    --sb-flash: var(--#{$prefix}warning-bg-subtle, #fff3cd);
+
+    // The stripe at the left of each row
+    --sb-stripe-warning: #b7791f;
+    --sb-stripe-info: #2b7bbf;
+    --sb-stripe-danger: #d92d20;
+    --sb-stripe-primary: var(--#{$prefix}primary);
+
+    // Reasons
+    --sb-r-filling: #139a4a;
+    --sb-r-production: #7a5af8;
+    --sb-r-received: #c4600a;
+    --sb-r-return: #0284c7;
+    --sb-r-sale: #1d72d6;
+    --sb-r-spoiled: #d92d20;
+    --sb-r-sample: #c11574;
+    --sb-r-used: #6b7380;
+    --sb-r-correction: #475467;
+
+    position: relative;
+    background: var(--sb-sunken);
+    font-variant-numeric: tabular-nums;
+
+    .o_sb_content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+        padding: 0.75rem 1rem 0;
+        gap: 0.75rem;
+    }
+}
+
+// Odoo's dark theme compiles with $o-webclient-color-scheme: dark.
+@if $o-webclient-color-scheme == dark {
+    .o_sb {
+        --sb-green: #2fbf68;
+        --sb-green-text: #4cc77a;
+        --sb-green-soft: rgba(47, 191, 104, 0.14);
+        --sb-blue: #8ab4f8;
+        --sb-red-text: #ff8a80;
+        --sb-shadow: rgba(0, 0, 0, 0.5);
+
+        --sb-warn: #f5c451;
+        --sb-warn-bg: rgba(250, 176, 5, 0.16);
+        --sb-info: #7cc8f0;
+        --sb-info-bg: rgba(56, 189, 248, 0.16);
+        --sb-ok: #7fdc9a;
+        --sb-ok-bg: rgba(52, 199, 89, 0.16);
+        --sb-primary: #cdb6f6;
+        --sb-primary-bg: rgba(167, 139, 250, 0.18);
+        --sb-danger: #ff9b94;
+        --sb-danger-bg: rgba(248, 81, 73, 0.18);
+        --sb-flash: rgba(250, 176, 5, 0.22);
+
+        --sb-stripe-warning: #e0a030;
+        --sb-stripe-info: #4ea3e6;
+        --sb-stripe-danger: #f0605a;
+        --sb-stripe-primary: #a48afb;
+
+        --sb-r-filling: #34c26b;
+        --sb-r-production: #a48afb;
+        --sb-r-received: #f7a23b;
+        --sb-r-return: #38bdf8;
+        --sb-r-sale: #5aa7ff;
+        --sb-r-spoiled: #f97066;
+        --sb-r-sample: #f670c7;
+        --sb-r-used: #a5adbb;
+        --sb-r-correction: #8e99ab;
+    }
+}
+
+.o_sb_loading {
+    padding: 4rem;
+    text-align: center;
+}
+
+.o_sb_empty {
+    max-width: 30rem;
+    margin: 4rem auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+
+    img {
+        border-radius: 1rem;
+    }
+}
+
+.o_sb_mono {
+    font-family: var(--sb-mono);
+    font-size: 0.86em;
+    letter-spacing: 0.01em;
+}
+
+// Summary ------------------------------------------------------------------
+
+.o_sb_summary {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(15rem, 1.4fr) repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+}
+
+.o_sb_kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-radius: 0.6rem;
+    text-align: left;
+    color: inherit;
+    min-width: 0;
+
+    .o_sb_kpi_label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--sb-muted);
+    }
+
+    .o_sb_kpi_value {
+        font-size: 1.45rem;
+        font-weight: 600;
+        line-height: 1.2;
+
+        small {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--sb-muted);
+        }
+    }
+
+    .o_sb_kpi_sub {
+        font-size: 0.78rem;
+        color: var(--sb-muted);
+    }
+}
+
+.o_sb_kpi_balance {
+    border-color: var(--sb-green);
+    box-shadow: inset 4px 0 0 var(--sb-green);
+
+    .o_sb_kpi_value {
+        color: var(--sb-green);
+        font-size: 1.7rem;
+    }
+}
+
+.o_sb_kpi_click {
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:hover {
+        border-color: var(--#{$prefix}primary);
+    }
+
+    &.o_sb_kpi_warn .o_sb_kpi_value {
+        color: var(--sb-warn);
+    }
+
+    &.o_sb_kpi_info .o_sb_kpi_value {
+        color: var(--sb-info);
+    }
+
+    &.o_sb_kpi_on {
+        border-color: var(--#{$prefix}primary);
+        box-shadow: 0 0 0 2px var(--sb-primary-bg);
+    }
+}
+
+// Toolbar ------------------------------------------------------------------
+
+.o_sb_toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+}
+
+.o_sb_search {
+    position: relative;
+    min-width: 16rem;
+
+    .fa-search {
+        position: absolute;
+        left: 0.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--sb-muted);
+    }
+
+    input {
+        padding-left: 1.8rem;
+    }
+}
+
+.o_sb_hint {
+    font-size: 0.78rem;
+}
+
+.o_sb_toolbar_end {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+.o_sb_appr {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--sb-muted);
+    line-height: 1.1;
+    margin-top: 0.1rem;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_sb_open_btn {
+    border: 0;
+    background: none;
+    color: var(--sb-muted);
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    opacity: 0.35;
+
+    .o_sb_row:hover &,
+    .o_sb_selected &,
+    &:focus-visible {
+        opacity: 1;
+        background: var(--sb-sunken);
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+// Body: sheet and panel ------------------------------------------------------
+
+.o_sb_body {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 0.75rem;
+    min-height: 0;
+}
+
+.o_sb_sheet {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-radius: 0.6rem 0.6rem 0 0;
+}
+
+.o_sb_table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.84rem;
+
+    th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--sb-sunken);
+        color: var(--sb-muted);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        padding: 0.55rem 0.3rem;
+        border-bottom: 1px solid var(--sb-line);
+    }
+
+    td {
+        padding: 0.2rem 0.3rem;
+        height: 2.35rem;
+        border-bottom: 1px solid var(--sb-line);
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    tr > :first-child {
+        padding-left: 0.85rem;
+    }
+
+    .o_sb_num {
+        text-align: right;
+    }
+
+    .o_sb_c_date { width: 5.6rem; min-width: 5.6rem; }
+    .o_sb_c_voucher { width: 3rem; color: var(--sb-muted); }
+    .o_sb_c_desc { min-width: 10rem; }
+    .o_sb_c_payee { min-width: 8.5rem; }
+    .o_sb_c_phone { width: 7.4rem; min-width: 7.4rem; }
+    .o_sb_c_method { width: 5rem; min-width: 5rem; }
+    .o_sb_c_code { width: 7.4rem; min-width: 7.4rem; }
+    .o_sb_c_paid { width: 6.6rem; min-width: 6.6rem; }
+    .o_sb_c_charge { width: 4.2rem; min-width: 4.2rem; }
+    .o_sb_c_total { width: 6rem; min-width: 6rem; }
+    .o_sb_c_bal { width: 6.6rem; min-width: 6.6rem; }
+    .o_sb_c_cat { width: 9.6rem; min-width: 9.6rem; }
+    .o_sb_c_status { width: 7.6rem; min-width: 7.6rem; }
+    .o_sb_c_open { width: 2rem; padding: 0 0.25rem !important; }
+
+    .o_sb_c_phone .o_sb_cell,
+    .o_sb_c_code .o_sb_cell {
+        font-size: 0.76rem;
+        letter-spacing: 0;
+    }
+}
+
+// Rows: a 3px stripe on the left says what the row needs at a glance.
+.o_sb_row {
+    cursor: pointer;
+
+    > td:first-child {
+        box-shadow: inset 3px 0 0 transparent;
+    }
+
+    &:hover > td {
+        background: var(--sb-hover);
+    }
+
+    &.o_sb_selected > td {
+        background: var(--sb-primary-bg);
+    }
+
+    &.o_sb_tone_warning > td:first-child { box-shadow: inset 3px 0 0 var(--sb-stripe-warning); }
+    &.o_sb_tone_info > td:first-child { box-shadow: inset 3px 0 0 var(--sb-stripe-info); }
+    &.o_sb_tone_primary > td:first-child { box-shadow: inset 3px 0 0 var(--sb-stripe-primary); }
+    &.o_sb_tone_success > td:first-child { box-shadow: inset 3px 0 0 var(--sb-green); }
+    &.o_sb_tone_muted > td { color: var(--sb-muted); text-decoration: line-through; }
+}
+
+.o_sb_topup > td {
+    background: var(--sb-green-soft);
+}
+
+.o_sb_in {
+    color: var(--sb-green-text);
+    font-weight: 600;
+}
+
+.o_sb_bf > td {
+    background: var(--sb-sunken);
+    color: var(--sb-muted);
+    font-style: italic;
+    font-weight: 500;
+}
+
+.o_sb_cf > td {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--#{$prefix}body-color);
+    border-bottom: 0;
+}
+
+.o_sb_bal {
+    font-weight: 500;
+}
+
+.o_sb_muted {
+    color: var(--sb-muted);
+}
+
+.o_sb_tick {
+    color: var(--sb-green);
+    font-size: 0.75rem;
+    margin-left: 0.2rem;
+}
+
+.o_sb_src {
+    color: var(--sb-green);
+    margin-left: 0.3rem;
+}
+
+.o_sb_nothing {
+    padding: 2rem !important;
+    text-align: center;
+}
+
+// Cells look like plain text until focused, like a spreadsheet.
+.o_sb_cell {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid transparent;
+    border-radius: 0.3rem;
+    background: transparent;
+    color: inherit;
+    padding: 0.2rem 0.3rem;
+    text-overflow: ellipsis;
+    font: inherit;
+
+    &:hover {
+        border-color: var(--sb-line);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--#{$prefix}primary);
+        background: var(--sb-surface);
+        box-shadow: 0 0 0 3px var(--sb-primary-bg);
+    }
+
+    &.o_sb_missing {
+        background: var(--sb-warn-bg);
+        border-style: dashed;
+        border-color: var(--sb-stripe-warning);
+    }
+
+    &::placeholder {
+        color: var(--sb-muted);
+        opacity: 0.7;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+    }
+}
+
+input.o_sb_num {
+    text-align: right;
+}
+
+.o_sb_method {
+    display: inline-block;
+    min-width: 4rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(19, 154, 74, 0.35);
+    border-radius: 999px;
+    background: var(--sb-green-soft);
+    color: var(--sb-green);
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+
+    &.o_sb_method_cash {
+        border-color: var(--sb-line);
+        background: var(--sb-sunken);
+        color: var(--#{$prefix}body-color);
+    }
+
+    &.o_sb_method_ro {
+        cursor: default;
+        border-color: transparent;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--#{$prefix}primary);
+    }
+}
+
+select.o_sb_cell {
+    cursor: pointer;
+    appearance: auto;
+}
+
+.o_sb_cat_select {
+    max-width: 15rem;
+}
+
+// Locked rows line their text up with the editable cells' text (the cell's
+// padding, plus the input's padding and border), left and right.
+.o_sb_locked > td:not(.o_sb_num):not(.o_sb_c_voucher):not(.o_sb_c_status):not(.o_sb_c_open):not(.o_sb_c_method) {
+    padding-left: calc(0.6rem + 1px);
+}
+
+.o_sb_log .o_sb_locked > td:first-child {
+    padding-left: calc(0.85rem + 0.3rem + 1px) !important;
+}
+
+// Cells a draft shows as plain text too: no input to line up with.
+.o_sb_log .o_sb_locked > td.o_sb_c_ref,
+.o_sb_log .o_sb_locked > td.o_sb_c_item {
+    padding-left: 0.3rem !important;
+}
+
+.o_sb_log .o_sb_locked > td.o_sb_c_qty {
+    padding-right: calc(0.3rem + 0.3rem + 1px);
+}
+
+.o_sb_log .o_sb_locked > td.o_sb_c_reason .o_sb_reason {
+    margin-left: -0.1rem;
+}
+
+.o_sb_cat {
+    display: inline-block;
+    max-width: 9.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.o_sb_pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.o_sb_pill_warning { background: var(--sb-warn-bg); color: var(--sb-warn); }
+.o_sb_pill_info { background: var(--sb-info-bg); color: var(--sb-info); }
+.o_sb_pill_primary { background: var(--sb-primary-bg); color: var(--sb-primary); }
+.o_sb_pill_success { background: var(--sb-ok-bg); color: var(--sb-ok); }
+.o_sb_pill_muted { background: var(--sb-sunken); color: var(--sb-muted); }
+
+// The entry row: in the table's foot, pinned to the bottom of the sheet so
+// it is always in sight, like the box of a chat. Chrome pins the foot, not
+// its cells; other browsers pin the cells. Both pin to the same edge.
+.o_sb_log > tfoot {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+}
+
+.o_sb_new > td {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: var(--sb-surface);
+    border-top: 2px solid var(--#{$prefix}primary);
+    border-bottom: 0;
+    box-shadow: 0 -0.4rem 0.6rem -0.5rem var(--sb-shadow);
+
+    .o_sb_cell {
+        border-color: var(--sb-line);
+        background: var(--sb-surface);
+    }
+
+    // Suggestions open upwards, into the sheet, not below its edge.
+    .o_sb_suggest {
+        top: auto;
+        bottom: calc(100% + 2px);
+    }
+}
+
+.o_sb_new_mark {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sb-primary);
+}
+
+.o_sb_save kbd {
+    font-size: 0.7rem;
+    padding: 0 0.25rem;
+    margin-left: 0.25rem;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.o_sb_has_suggest {
+    position: relative;
+}
+
+.o_sb_suggest {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    top: calc(100% - 2px);
+    min-width: 100%;
+    max-height: 18rem;
+    overflow: auto;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem var(--sb-shadow);
+    white-space: normal;
+
+    &.o_sb_suggest_wide {
+        min-width: 20rem;
+    }
+
+    li {
+        padding: 0.35rem 0.55rem;
+        border-radius: 0.35rem;
+        cursor: pointer;
+
+        &:hover,
+        &.active {
+            background: var(--sb-primary-bg);
+        }
+    }
+}
+
+// Panel ----------------------------------------------------------------------
+
+.o_sb_panel {
+    flex: 0 0 23rem;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-radius: 0.6rem 0.6rem 0 0;
+
+    h3 {
+        margin: 0.15rem 0 0;
+        font-size: 1.05rem;
+        line-height: 1.3;
+        white-space: normal;
+    }
+}
+
+.o_sb_panel_head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.o_sb_facts {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.86rem;
+
+    dt {
+        color: var(--sb-muted);
+        font-weight: 500;
+    }
+
+    dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_sb_box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--sb-line);
+    border-radius: 0.5rem;
+    font-size: 0.86rem;
+}
+
+.o_sb_box_label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sb-muted);
+}
+
+.o_sb_box_stock {
+    background: var(--sb-info-bg);
+    border-color: transparent;
+}
+
+.o_sb_drop.o_sb_dragging {
+    border: 2px dashed var(--sb-green);
+    background: var(--sb-green-soft);
+}
+
+.o_sb_receipts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.o_sb_receipt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    width: 5.5rem;
+    font-size: 0.72rem;
+    color: inherit;
+    text-align: center;
+
+    img {
+        width: 5.5rem;
+        height: 5.5rem;
+        object-fit: cover;
+        border-radius: 0.35rem;
+        border: 1px solid var(--sb-line);
+    }
+
+    span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.o_sb_panel_actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--sb-line);
+}
+
+// Month tabs ---------------------------------------------------------------
+
+.o_sb_tabs {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+    background: var(--sb-sunken);
+    border-top: 1px solid var(--sb-line);
+
+    button {
+        border: 0;
+        background: none;
+        color: var(--sb-muted);
+        font: inherit;
+        font-size: 0.8rem;
+    }
+}
+
+.o_sb_year {
+    padding: 0 0.4rem;
+
+    &:hover {
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_sb_year_label {
+    align-self: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding-right: 0.5rem;
+    margin-right: 0.25rem;
+    border-right: 1px solid var(--sb-line);
+}
+
+.o_sb_tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.9rem !important;
+    border-top: 3px solid transparent !important;
+    font-weight: 500;
+
+    &:hover {
+        background: var(--sb-hover) !important;
+        color: var(--#{$prefix}body-color) !important;
+    }
+
+    &.o_sb_tab_on {
+        background: var(--sb-surface) !important;
+        color: var(--#{$prefix}body-color) !important;
+        border-top-color: var(--sb-green) !important;
+        font-weight: 700;
+    }
+
+    &.o_sb_tab_empty {
+        font-weight: 400;
+    }
+}
+
+.o_sb_tab_count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--sb-line);
+}
+
+// Add float ----------------------------------------------------------------
+
+.o_sb_modal_wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.o_sb_modal {
+    width: 26rem;
+    max-width: 92vw;
+    padding: 1.25rem;
+    background: var(--sb-surface);
+    border-radius: 0.75rem;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
+
+    h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1.15rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .o_sb_body {
+        flex-direction: column;
+    }
+
+    .o_sb_panel {
+        flex-basis: auto;
+    }
+
+    .o_sb_hint {
+        display: none;
+    }
+}
+
+// With the panel open, the sheet keeps what you scan by: date, what, who,
+// how much, balance, category and status. The rest is in the panel.
+.o_sb_with_panel .o_sb_table {
+    .o_sb_c_phone,
+    .o_sb_c_method,
+    .o_sb_c_charge,
+    .o_sb_c_total {
+        display: none;
+    }
+}
+
+.o_sb_box_stock .form-control {
+    background: var(--sb-surface);
+    border-color: var(--sb-line);
+}
+
+// ---------------------------------------------------------------- Stock Book
+.o_sb_views {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--sb-line);
+
+    button {
+        border: 0;
+        background: none;
+        color: var(--sb-muted);
+        font: inherit;
+        font-weight: 500;
+        padding: 0.35rem 0.85rem 0.55rem;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -1px;
+
+        &:hover {
+            color: var(--#{$prefix}body-color);
+        }
+
+        &[aria-selected="true"] {
+            color: var(--#{$prefix}body-color);
+            font-weight: 700;
+            border-bottom-color: var(--sb-blue);
+        }
+    }
+}
+
+.o_sb_kpi_bad .o_sb_kpi_value {
+    color: var(--sb-red-text);
+}
+
+.o_sb_kpi_balance {
+    border-color: var(--sb-blue);
+    box-shadow: inset 4px 0 0 var(--sb-blue);
+
+    .o_sb_kpi_value {
+        color: var(--sb-blue);
+    }
+}
+
+.o_sb_summary_count {
+    grid-template-columns: repeat(3, minmax(12rem, 1fr));
+}
+
+.o_sb_ellipsis {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.o_sb_small {
+    font-size: 0.76rem;
+}
+
+.o_sb_table {
+    .o_sb_c_ref { width: 5.4rem; min-width: 5.4rem; color: var(--sb-muted); }
+    .o_sb_c_item { min-width: 13rem; }
+    .o_sb_c_qty { width: 5.6rem; min-width: 5.6rem; }
+    .o_sb_c_unit { width: 3.4rem; min-width: 3.4rem; }
+    .o_sb_c_reason { width: 9rem; min-width: 9rem; }
+    .o_sb_c_partner { width: 9rem; min-width: 9rem; }
+    .o_sb_c_onhand { width: 6.8rem; min-width: 6.8rem; }
+    .o_sb_c_code { width: 8rem; min-width: 8rem; }
+    .o_sb_c_cover { width: 8rem; min-width: 8rem; }
+    .o_sb_c_cat { width: 13rem; max-width: 13rem; }
+    .o_sb_c_counted { width: 7rem; min-width: 7rem; }
+    .o_sb_c_status { width: 8.4rem; min-width: 8.4rem; }
+}
+
+
+.o_sb_day > td {
+    background: var(--sb-sunken);
+    color: var(--sb-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    height: 1.7rem;
+}
+
+.o_sb_code {
+    font-family: var(--sb-mono);
+    font-size: 0.74rem;
+    color: var(--sb-muted);
+    margin-right: 0.45rem;
+}
+
+.o_sb_caret {
+    display: inline-block;
+    width: 0.9rem;
+    color: var(--sb-muted);
+}
+
+.o_sb_toggle {
+    cursor: pointer;
+}
+
+.o_sb_sub > td {
+    height: 2rem;
+    color: var(--sb-muted);
+    background: var(--sb-surface);
+    font-size: 0.8rem;
+}
+
+.o_sb_sub_item {
+    padding-left: 2.1rem !important;
+    position: relative;
+
+    &::before {
+        content: "";
+        position: absolute;
+        left: 1.15rem;
+        top: 0;
+        bottom: 50%;
+        width: 0.6rem;
+        border-left: 1px solid var(--sb-line);
+        border-bottom: 1px solid var(--sb-line);
+    }
+}
+
+.o_sb_tag {
+    margin-left: 0.4rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--sb-blue);
+}
+
+.o_sb_reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.o_sb_dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+}
+
+.o_sb_neg {
+    color: var(--sb-red-text) !important;
+    font-weight: 600;
+}
+
+.o_sb_pill_danger {
+    background: var(--sb-danger-bg);
+    color: var(--sb-danger);
+}
+
+.o_sb_row.o_sb_tone_danger > td:first-child {
+    box-shadow: inset 3px 0 0 var(--sb-stripe-danger);
+}
+
+.o_sb_detail {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--sb-muted);
+}
+
+.o_sb_box_info {
+    background: var(--sb-info-bg);
+    border-color: transparent;
+}
+
+.o_sb_box_bad {
+    background: var(--sb-danger-bg);
+    border-color: transparent;
+}
+
+.o_sb_box .form-control,
+.o_sb_box .form-select {
+    background: var(--sb-surface);
+    border-color: var(--sb-line);
+}
+
+.o_sb_mini {
+    width: 100%;
+    font-size: 0.8rem;
+
+    td,
+    th {
+        padding: 0.2rem 0;
+        border-bottom: 1px solid var(--sb-line);
+    }
+}
+
+.o_sb_group > td {
+    background: var(--sb-sunken);
+    font-weight: 600;
+    height: 2rem;
+}
+
+.o_sb_total > td {
+    font-weight: 700;
+    border-top: 2px solid var(--sb-line);
+    border-bottom: 0;
+}
+
+.o_sb_plain:hover > td {
+    background: var(--sb-hover);
+}
+
+.o_sb_counted > td {
+    background: var(--sb-info-bg);
+}
+
+.o_sb_cover {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--sb-muted);
+}
+
+.o_sb_bar {
+    display: inline-block;
+    width: 3.6rem;
+    height: 0.35rem;
+    border-radius: 0.2rem;
+    background: var(--sb-line);
+    overflow: hidden;
+
+    i {
+        display: block;
+        height: 100%;
+        background: var(--sb-green);
+    }
+}
+
+// The movement log --------------------------------------------------------
+// Fixed column widths: a long name or a status changing never moves the
+// columns. The item takes what is left and ends in "…" (full name on hover).
+.o_sb_log {
+    table-layout: fixed;
+    min-width: 62rem;
+
+    th,
+    td {
+        min-width: 0 !important;
+    }
+
+    // A narrow column's heading goes onto two lines rather than running
+    // into the next one.
+    th {
+        white-space: normal;
+        line-height: 1.15;
+        vertical-align: bottom;
+        overflow-wrap: anywhere;
+    }
+
+    .o_sb_c_date { width: 5.6rem; }
+    .o_sb_c_ref { width: 6.4rem; }
+    .o_sb_c_qty { width: 5.6rem; }
+    .o_sb_c_unit { width: 3.8rem; }
+    .o_sb_c_reason { width: 9.5rem; }
+    .o_sb_c_partner { width: 10rem; }
+    .o_sb_c_onhand { width: 6.8rem; }
+    .o_sb_c_status { width: 9.6rem; }
+    .o_sb_c_open { width: 2.2rem; }
+
+    td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    // The entry row's suggestion lists open out of their cell.
+    td.o_sb_has_suggest {
+        overflow: visible;
+    }
+
+    .o_sb_c_item {
+        white-space: nowrap;
+    }
+
+    .o_sb_c_partner,
+    .o_sb_c_reason {
+        text-overflow: ellipsis;
+    }
+}
+
+.o_sb_item_text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// With the panel open the sheet keeps what tells lines apart (date, ref,
+// item, quantities, reason, customer, status) and gives up the unit, which
+// the panel shows; on smaller screens the panel shows on hand after too.
+// A column given up is narrowed to nothing rather than removed: removing
+// cells from a fixed table leaves a phantom column that takes half the room.
+@mixin o-sb-column-off {
+    width: 0;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-left: 0;
+    border-right: 0;
+    overflow: hidden;
+    white-space: nowrap !important;
+    visibility: hidden;
+}
+
+.o_sb_with_panel .o_sb_log {
+    min-width: 46rem;
+
+    .o_sb_c_unit {
+        @include o-sb-column-off;
+    }
+
+    .o_sb_c_qty { width: 4.8rem; }
+    .o_sb_c_reason { width: 9.5rem; }
+    .o_sb_c_partner { width: 11rem; }
+    .o_sb_c_onhand { width: 5.8rem; }
+}
+
+@media (max-width: 1599.98px) {
+    .o_sb_with_panel .o_sb_log .o_sb_c_onhand {
+        @include o-sb-column-off;
+    }
+
+    .o_sb_panel {
+        flex-basis: 20rem;
+    }
+}
+
+// The whole status: short labels that fit, the detail on hover and, for
+// the selected line, on a line of its own under it.
+// A selected row is tinted: its pills keep an edge so they still read as pills.
+.o_sb_selected .o_sb_c_status .o_sb_pill {
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.o_sb_c_status .o_sb_pill {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_sb_detail_row > td {
+    height: auto;
+    padding: 0.15rem 0.85rem 0.45rem 6.2rem !important;
+    white-space: normal;
+    font-size: 0.8rem;
+    color: var(--sb-muted);
+    background: var(--sb-primary-bg);
+    border-bottom: 1px solid var(--sb-line);
+}
+
+.o_sb_detail_danger > td { color: var(--sb-red-text); }
+.o_sb_detail_warning > td { color: var(--sb-warn); }
+
+// The quantity column a reason does not use stays out of sight until the
+// row is hovered or the cell gets focus (Tab still reaches it).
+.o_sb_cell.o_sb_quiet {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+
+tr:hover > td > .o_sb_cell.o_sb_quiet,
+.o_sb_cell.o_sb_quiet:focus {
+    opacity: 1;
+}
+
+// Placeholders ("+", "−", "Customer?") only on the row under the mouse,
+// except where something is missing.
+.o_sb_row:not(:hover) .o_sb_cell:not(:focus):not(.o_sb_missing)::placeholder {
+    color: transparent;
+}
+
+// The row just saved, posted or restored lights up for a moment.
+@keyframes o_sb_flash {
+    from { background-color: var(--sb-flash); }
+    to { background-color: transparent; }
+}
+
+.o_sb_row.o_sb_flash > td {
+    animation: o_sb_flash 1.6s ease-out;
+}
+
+// Switching month, warehouse or view: the old content dims (only if the
+// new one takes more than a moment) and cannot be edited meanwhile.
+.o_sb_body > .o_sb_sheet,
+.o_sb_body > .o_sb_panel {
+    transition: opacity 0.1s;
+}
+
+.o_sb_stale > .o_sb_sheet,
+.o_sb_stale > .o_sb_panel {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s ease 0.15s;
+}
+
+// Scrolling a row into view keeps it clear of the sticky header and entry row.
+.o_sb_sheet {
+    scroll-padding-top: 2.4rem;
+    scroll-padding-bottom: 3.4rem;
+}
+
+.o_sb_day_print {
+    margin-left: 0.4rem;
+    padding: 0 0.3rem;
+    border: 0;
+    background: none;
+    color: var(--sb-muted);
+    opacity: 0;
+
+    .o_sb_day:hover &,
+    &:focus-visible {
+        opacity: 1;
+    }
+
+    &:hover {
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_sb_cancelled_toggle {
+    color: var(--sb-muted);
+    text-decoration: none;
+
+    &:hover {
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+// The typing hint only where the toolbar has room for it and its buttons.
+@media (max-width: 1799.98px) {
+    .o_sb_toolbar .o_sb_hint {
+        display: none !important;
+    }
+}
+
+.o_sb_save_note {
+    align-self: center;
+    margin-left: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--sb-muted);
+}
+
+// Reason dots, light and dark from the tokens.
+.o_sb_r_filling { background: var(--sb-r-filling); }
+.o_sb_r_production { background: var(--sb-r-production); }
+.o_sb_r_received { background: var(--sb-r-received); }
+.o_sb_r_return { background: var(--sb-r-return); }
+.o_sb_r_sale { background: var(--sb-r-sale); }
+.o_sb_r_spoiled { background: var(--sb-r-spoiled); }
+.o_sb_r_sample { background: var(--sb-r-sample); }
+.o_sb_r_used { background: var(--sb-r-used); }
+.o_sb_r_correction { background: var(--sb-r-correction); }
+.o_sb_r_none { background: var(--sb-line); }
+
+// Warehouse switch in the control panel, for companies with more than one store.
+.o_sb_wh {
+    width: auto;
+    min-width: 9rem;
+}
+
+// Paste results can run to several lines.
+.o_sb_notice .o_notification_content {
+    white-space: pre-line;
+}
+
+// What a card opens ----------------------------------------------------------
+.o_sb_focus {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    padding: 0.6rem 0.9rem;
+    background: var(--sb-surface);
+    border: 1px solid var(--sb-line);
+    border-left: 4px solid var(--sb-stripe-info);
+    border-radius: 0.5rem;
+}
+
+.o_sb_focus_need { border-left-color: var(--sb-stripe-warning); }
+.o_sb_focus_short,
+.o_sb_focus_recipes { border-left-color: var(--sb-stripe-danger); }
+.o_sb_focus_ready { border-left-color: var(--sb-stripe-primary); }
+
+.o_sb_focus_main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    align-items: baseline;
+    min-width: 0;
+
+    span,
+    a {
+        font-size: 0.85rem;
+    }
+
+    span {
+        color: var(--sb-muted);
+    }
+}
+
+.o_sb_focus_actions {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.o_sb_focus_items {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+    gap: 0.3rem 1.25rem;
+    margin: 0;
+    padding: 0.4rem 0 0;
+    list-style: none;
+    border-top: 1px solid var(--sb-line);
+    font-size: 0.85rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .btn {
+        --btn-padding-y: 0.05rem;
+        padding-block: 0.05rem;
+    }
+}
+
+.o_sb_focus_item {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+button.o_sb_pill_btn {
+    border: 0;
+    cursor: pointer;
+    outline-offset: 1px;
+
+    &:hover {
+        filter: brightness(0.95);
+        text-decoration: underline;
+    }
+}
+
+.o_sb_lpo {
+    display: block;
+    color: var(--sb-muted);
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_sb_to_bill {
+    white-space: nowrap;
+}
+
+// Out for recipes
+.o_sb_recipes {
+    .o_sb_c_pick { width: 2rem; text-align: center; }
+    .o_sb_c_acts { width: 8.5rem; white-space: nowrap; text-align: right; }
+
+    td:nth-child(6),
+    td:nth-child(8) {
+        max-width: 22rem;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+}
+
+@media (max-width: 767.98px) {
+    // Two cards a row, the stock value across them, nothing cut off at the edge.
+    .o_sb_summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .o_sb_kpi_balance {
+        grid-column: 1 / -1;
+    }
+
+    .o_sb_toolbar .btn-group {
+        max-width: 100%;
+        overflow-x: auto;
+
+        .btn {
+            white-space: nowrap;
+        }
+    }
+
+    .o_sb_focus {
+        grid-template-columns: 1fr;
+    }
+
+    .o_sb_focus_items {
+        grid-template-columns: 1fr;
+    }
+}
+
+// An LPO's fixed cells line up with the inputs of the lines around them.
+.o_sb_window > .o_sb_c_reason,
+.o_sb_window > .o_sb_c_partner {
+    padding-left: calc(0.6rem + 1px);
+}
+
+.o_sb_log .o_sb_window > td:first-child {
+    padding-left: calc(0.85rem + 0.3rem + 1px) !important;
+}
+
+// With the panel open the sheet is narrow: the item stays readable, the code
+// and what the panel repeats give way.
+.o_sb_with_panel .o_sb_log {
+    .o_sb_c_ref {
+        @include o-sb-column-off;
+    }
+
+    .o_sb_c_item .o_sb_code {
+        display: none;
+    }
+}

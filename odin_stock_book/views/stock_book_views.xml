@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="odin_stock_line_list" model="ir.ui.view">
+        <field name="name">odin.stock.line.list</field>
+        <field name="model">odin.stock.line</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'" decoration-info="state == 'draft'">
+                <field name="date"/>
+                <field name="ref"/>
+                <field name="product_id"/>
+                <field name="qty_in" sum="Added"/>
+                <field name="qty_out" sum="Removed"/>
+                <field name="uom_id"/>
+                <field name="reason"/>
+                <field name="partner_name"/>
+                <field name="onhand_after" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'posted'" decoration-info="state == 'draft'"/>
+                <field name="posted_by_id" optional="hide"/>
+                <field name="warehouse_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="odin_stock_line_form" model="ir.ui.view">
+        <field name="name">odin.stock.line.form</field>
+        <field name="model">odin.stock.line</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_post" type="object" string="Post" class="btn-primary" invisible="state != 'draft'"
+                            groups="odin_stock_book.group_stock_book_supervisor"/>
+                    <button name="action_cancel" type="object" string="Cancel" invisible="state != 'draft'"/>
+                    <button name="action_draft" type="object" string="Back to draft" invisible="state != 'cancelled'"/>
+                    <button name="action_open_document" type="object" string="Open document" invisible="state != 'posted'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="ref" placeholder="New movement"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="stock_purchase_id" invisible="1"/>
+                            <field name="date" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="product_id" readonly="state != 'draft'"/>
+                            <field name="reason" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="qty_in" readonly="state != 'draft'"/>
+                            <field name="qty_out" readonly="state != 'draft'"/>
+                            <field name="uom_id"/>
+                        </group>
+                        <group>
+                            <field name="partner_name" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="bom_id" readonly="state != 'draft'"/>
+                            <field name="purchase_ref" invisible="reason not in ('received', 'sale')" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="unit_cost" invisible="reason != 'received'" readonly="state != 'draft'"/>
+                            <field name="tax_id" invisible="reason not in ('received', 'sale')" readonly="state != 'draft' or stock_purchase_id" options="{'no_create': True}"/>
+                            <field name="warehouse_id" readonly="state != 'draft' or stock_purchase_id"/>
+                            <field name="note"/>
+                            <field name="reverses_id" invisible="not reverses_id"/>
+                            <field name="onhand_after" invisible="state != 'posted'"/>
+                        </group>
+                    </group>
+                    <field name="component_ids" readonly="state != 'draft'">
+                        <list editable="bottom">
+                            <field name="product_id"/>
+                            <field name="qty"/>
+                            <field name="uom_id"/>
+                            <field name="from_recipe"/>
+                        </list>
+                    </field>
+                    <group string="Posted" invisible="state != 'posted'">
+                        <field name="posted_by_id"/>
+                        <field name="posted_on"/>
+                        <field name="production_id"/>
+                        <field name="purchase_id" invisible="not purchase_id"/>
+                        <field name="bill_id" invisible="not bill_id"/>
+                        <field name="picking_id"/>
+                        <field name="scrap_id"/>
+                    </group>
+                    <field name="company_id" invisible="1"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="odin_stock_line_search" model="ir.ui.view">
+        <field name="name">odin.stock.line.search</field>
+        <field name="model">odin.stock.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="ref"/>
+                <field name="partner_name"/>
+                <filter name="draft" string="Not posted" domain="[('state', '=', 'draft')]"/>
+                <filter name="posted" string="Posted" domain="[('state', '=', 'posted')]"/>
+                <separator/>
+                <filter name="removed" string="Removed with their reversal" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="by_reason" string="Reason" context="{'group_by': 'reason'}"/>
+                    <filter name="by_product" string="Item" context="{'group_by': 'product_id'}"/>
+                    <filter name="by_month" string="Month" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="product_template_form_stock_book" model="ir.ui.view">
+        <field name="name">product.template.form.stock.book</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='group_general']" position="inside">
+                <field name="stock_book_unlimited" invisible="not is_storable"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="odin_stock_line_action" model="ir.actions.act_window">
+        <field name="name">All movements</field>
+        <field name="res_model">odin.stock.line</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+    </record>
+    <record id="odin_stock_book_action" model="ir.actions.client">
+        <field name="name">Stock Book</field>
+        <field name="tag">odin_stock_book.book</field>
+    </record>
+    <record id="odin_stock_book_sheet_action" model="ir.actions.client">
+        <field name="name">Stock sheet</field>
+        <field name="tag">odin_stock_book.book</field>
+        <field name="params" eval="{'view': 'sheet'}"/>
+    </record>
+    <record id="odin_stock_book_count_action" model="ir.actions.client">
+        <field name="name">Count</field>
+        <field name="tag">odin_stock_book.book</field>
+        <field name="params" eval="{'view': 'count'}"/>
+    </record>
+</odoo>

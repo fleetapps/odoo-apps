@@ -1,0 +1,778 @@
+// Petty Cash Book. A spreadsheet-like page: summary cards, a toolbar, the
+// sheet (sticky header, scrolls by itself) beside the detail panel, and the
+// month tabs pinned at the bottom like a workbook's sheet tabs. Colours come
+// from Bootstrap's CSS variables so light and dark themes both work; the one
+// brand colour is the float green from the app icon.
+
+.o_pc {
+    --pc-green: #139a4a;
+    --pc-green-soft: rgba(19, 154, 74, 0.1);
+    --pc-line: var(--#{$prefix}border-color);
+    --pc-muted: var(--#{$prefix}secondary-color);
+    --pc-surface: var(--#{$prefix}body-bg);
+    --pc-sunken: var(--#{$prefix}tertiary-bg);
+    --pc-hover: var(--#{$prefix}secondary-bg);
+    --pc-warn: var(--#{$prefix}warning-text-emphasis, #997404);
+    --pc-warn-bg: var(--#{$prefix}warning-bg-subtle, #fff3cd);
+    --pc-info: var(--#{$prefix}info-text-emphasis, #055160);
+    --pc-info-bg: var(--#{$prefix}info-bg-subtle, #cff4fc);
+    --pc-ok: var(--#{$prefix}success-text-emphasis, #0a3622);
+    --pc-ok-bg: var(--#{$prefix}success-bg-subtle, #d1e7dd);
+    --pc-primary: var(--#{$prefix}primary-text-emphasis, #3d2a5c);
+    --pc-primary-bg: var(--#{$prefix}primary-bg-subtle, #e7ddf3);
+    --pc-mono: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    position: relative;
+    background: var(--pc-sunken);
+    font-variant-numeric: tabular-nums;
+
+    .o_pc_content {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+        padding: 0.75rem 1rem 0;
+        gap: 0.75rem;
+    }
+}
+
+.o_pc_loading {
+    padding: 4rem;
+    text-align: center;
+}
+
+.o_pc_empty {
+    max-width: 30rem;
+    margin: 4rem auto;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+
+    img {
+        border-radius: 1rem;
+    }
+}
+
+.o_pc_mono {
+    font-family: var(--pc-mono);
+    font-size: 0.86em;
+    letter-spacing: 0.01em;
+}
+
+// Summary ------------------------------------------------------------------
+
+.o_pc_summary {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(15rem, 1.4fr) repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+}
+
+.o_pc_kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-line);
+    border-radius: 0.6rem;
+    text-align: left;
+    color: inherit;
+    min-width: 0;
+
+    .o_pc_kpi_label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--pc-muted);
+    }
+
+    .o_pc_kpi_value {
+        font-size: 1.45rem;
+        font-weight: 600;
+        line-height: 1.2;
+
+        small {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--pc-muted);
+        }
+    }
+
+    .o_pc_kpi_sub {
+        font-size: 0.78rem;
+        color: var(--pc-muted);
+    }
+}
+
+.o_pc_kpi_balance {
+    border-color: var(--pc-green);
+    box-shadow: inset 4px 0 0 var(--pc-green);
+
+    .o_pc_kpi_value {
+        color: var(--pc-green);
+        font-size: 1.7rem;
+    }
+}
+
+.o_pc_kpi_click {
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:hover {
+        border-color: var(--#{$prefix}primary);
+    }
+
+    &.o_pc_kpi_warn .o_pc_kpi_value {
+        color: var(--pc-warn);
+    }
+
+    &.o_pc_kpi_info .o_pc_kpi_value {
+        color: var(--pc-info);
+    }
+
+    &.o_pc_kpi_on {
+        border-color: var(--#{$prefix}primary);
+        box-shadow: 0 0 0 2px var(--pc-primary-bg);
+    }
+}
+
+// Toolbar ------------------------------------------------------------------
+
+.o_pc_toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+}
+
+.o_pc_search {
+    position: relative;
+    min-width: 16rem;
+
+    .fa-search {
+        position: absolute;
+        left: 0.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--pc-muted);
+    }
+
+    input {
+        padding-left: 1.8rem;
+    }
+}
+
+.o_pc_hint {
+    font-size: 0.78rem;
+}
+
+.o_pc_toolbar_end {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+
+.o_pc_appr {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--pc-muted);
+    line-height: 1.1;
+    margin-top: 0.1rem;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.o_pc_open_btn {
+    border: 0;
+    background: none;
+    color: var(--pc-muted);
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    opacity: 0.35;
+
+    .o_pc_row:hover &,
+    .o_pc_selected &,
+    &:focus-visible {
+        opacity: 1;
+        background: var(--pc-sunken);
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+// Body: sheet and panel ------------------------------------------------------
+
+.o_pc_body {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 0.75rem;
+    min-height: 0;
+}
+
+.o_pc_sheet {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-line);
+    border-radius: 0.6rem 0.6rem 0 0;
+}
+
+.o_pc_table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.84rem;
+
+    th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--pc-sunken);
+        color: var(--pc-muted);
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        padding: 0.55rem 0.3rem;
+        border-bottom: 1px solid var(--pc-line);
+    }
+
+    td {
+        padding: 0.2rem 0.3rem;
+        height: 2.35rem;
+        border-bottom: 1px solid var(--pc-line);
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    tr > :first-child {
+        padding-left: 0.85rem;
+    }
+
+    .o_pc_num {
+        text-align: right;
+    }
+
+    .o_pc_c_date { width: 5.6rem; min-width: 5.6rem; }
+    .o_pc_c_voucher { width: 3rem; color: var(--pc-muted); }
+    .o_pc_c_desc { min-width: 10rem; }
+    .o_pc_c_payee { min-width: 8.5rem; }
+    .o_pc_c_phone { width: 7.4rem; min-width: 7.4rem; }
+    .o_pc_c_method { width: 5rem; min-width: 5rem; }
+    .o_pc_c_code { width: 7.4rem; min-width: 7.4rem; }
+    .o_pc_c_paid { width: 6.6rem; min-width: 6.6rem; }
+    .o_pc_c_charge { width: 4.2rem; min-width: 4.2rem; }
+    .o_pc_c_total { width: 6rem; min-width: 6rem; }
+    .o_pc_c_bal { width: 6.6rem; min-width: 6.6rem; }
+    .o_pc_c_cat { width: 9.6rem; min-width: 9.6rem; }
+    .o_pc_c_status { width: 7.6rem; min-width: 7.6rem; }
+    .o_pc_c_open { width: 2rem; padding: 0 0.25rem !important; }
+
+    .o_pc_c_phone .o_pc_cell,
+    .o_pc_c_code .o_pc_cell {
+        font-size: 0.76rem;
+        letter-spacing: 0;
+    }
+}
+
+// Rows: a 3px stripe on the left says what the row needs at a glance.
+.o_pc_row {
+    cursor: pointer;
+
+    > td:first-child {
+        box-shadow: inset 3px 0 0 transparent;
+    }
+
+    &:hover > td {
+        background: var(--pc-hover);
+    }
+
+    &.o_pc_selected > td {
+        background: var(--pc-primary-bg);
+    }
+
+    &.o_pc_tone_warning > td:first-child { box-shadow: inset 3px 0 0 #e8a33d; }
+    &.o_pc_tone_info > td:first-child { box-shadow: inset 3px 0 0 #3a8fd6; }
+    &.o_pc_tone_primary > td:first-child { box-shadow: inset 3px 0 0 var(--#{$prefix}primary); }
+    &.o_pc_tone_success > td:first-child { box-shadow: inset 3px 0 0 var(--pc-green); }
+    &.o_pc_tone_muted > td { color: var(--pc-muted); text-decoration: line-through; }
+}
+
+.o_pc_topup > td {
+    background: var(--pc-green-soft);
+}
+
+.o_pc_in {
+    color: var(--pc-green);
+    font-weight: 600;
+}
+
+.o_pc_bf > td {
+    background: var(--pc-sunken);
+    color: var(--pc-muted);
+    font-style: italic;
+    font-weight: 500;
+}
+
+.o_pc_cf > td {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--#{$prefix}body-color);
+    border-bottom: 0;
+}
+
+.o_pc_bal {
+    font-weight: 500;
+}
+
+.o_pc_muted {
+    color: var(--pc-muted);
+}
+
+// A charge typed over the tariff.
+.o_pc_charge_typed {
+    font-weight: 600;
+}
+
+.o_pc_tick {
+    color: var(--pc-green);
+    font-size: 0.75rem;
+    margin-left: 0.2rem;
+}
+
+.o_pc_src {
+    color: var(--pc-green);
+    margin-left: 0.3rem;
+}
+
+.o_pc_nothing {
+    padding: 2rem !important;
+    text-align: center;
+}
+
+// Cells look like plain text until focused, like a spreadsheet.
+.o_pc_cell {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid transparent;
+    border-radius: 0.3rem;
+    background: transparent;
+    color: inherit;
+    padding: 0.2rem 0.3rem;
+    text-overflow: ellipsis;
+    font: inherit;
+
+    &:hover {
+        border-color: var(--pc-line);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--#{$prefix}primary);
+        background: var(--pc-surface);
+        box-shadow: 0 0 0 3px var(--pc-primary-bg);
+    }
+
+    &.o_pc_missing {
+        background: var(--pc-warn-bg);
+        border-style: dashed;
+        border-color: #e8a33d;
+    }
+
+    &::placeholder {
+        color: var(--pc-muted);
+        opacity: 0.7;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+    }
+}
+
+input.o_pc_num {
+    text-align: right;
+}
+
+.o_pc_method {
+    display: inline-block;
+    min-width: 4rem;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgba(19, 154, 74, 0.35);
+    border-radius: 999px;
+    background: var(--pc-green-soft);
+    color: var(--pc-green);
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+
+    &.o_pc_method_cash {
+        border-color: var(--pc-line);
+        background: var(--pc-sunken);
+        color: var(--#{$prefix}body-color);
+    }
+
+    &.o_pc_method_ro {
+        cursor: default;
+        border-color: transparent;
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--#{$prefix}primary);
+    }
+}
+
+select.o_pc_cell {
+    cursor: pointer;
+    appearance: auto;
+}
+
+.o_pc_cat_select {
+    max-width: 15rem;
+}
+
+// Locked rows line their text up with the editable cells' text.
+.o_pc_locked > td:not(.o_pc_num):not(.o_pc_c_voucher):not(.o_pc_c_status):not(.o_pc_c_open):not(.o_pc_c_method) {
+    padding-left: calc(0.6rem + 1px);
+}
+
+.o_pc_cat {
+    display: inline-block;
+    max-width: 9.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.o_pc_pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.o_pc_pill_warning { background: var(--pc-warn-bg); color: var(--pc-warn); }
+.o_pc_pill_info { background: var(--pc-info-bg); color: var(--pc-info); }
+.o_pc_pill_primary { background: var(--pc-primary-bg); color: var(--pc-primary); }
+.o_pc_pill_success { background: var(--pc-ok-bg); color: var(--pc-ok); }
+.o_pc_pill_muted { background: var(--pc-sunken); color: var(--pc-muted); }
+
+// The entry row
+.o_pc_new > td {
+    background: var(--pc-surface);
+    border-top: 2px solid var(--#{$prefix}primary);
+    border-bottom: 2px solid var(--#{$prefix}primary);
+
+    .o_pc_cell {
+        border-color: var(--pc-line);
+        background: var(--pc-surface);
+    }
+}
+
+.o_pc_new_mark {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--#{$prefix}primary);
+}
+
+.o_pc_save kbd {
+    font-size: 0.7rem;
+    padding: 0 0.25rem;
+    margin-left: 0.25rem;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.o_pc_has_suggest {
+    position: relative;
+}
+
+.o_pc_suggest {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    top: calc(100% - 2px);
+    min-width: 100%;
+    max-height: 18rem;
+    overflow: auto;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-line);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.12);
+    white-space: normal;
+
+    &.o_pc_suggest_wide {
+        min-width: 20rem;
+    }
+
+    li {
+        padding: 0.35rem 0.55rem;
+        border-radius: 0.35rem;
+        cursor: pointer;
+
+        &:hover,
+        &.active {
+            background: var(--pc-primary-bg);
+        }
+    }
+}
+
+// Panel ----------------------------------------------------------------------
+
+.o_pc_panel {
+    flex: 0 0 23rem;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    background: var(--pc-surface);
+    border: 1px solid var(--pc-line);
+    border-radius: 0.6rem 0.6rem 0 0;
+
+    h3 {
+        margin: 0.15rem 0 0;
+        font-size: 1.05rem;
+        line-height: 1.3;
+        white-space: normal;
+    }
+}
+
+.o_pc_panel_head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.o_pc_facts {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 0.35rem 0.75rem;
+    margin: 0;
+    font-size: 0.86rem;
+
+    dt {
+        color: var(--pc-muted);
+        font-weight: 500;
+    }
+
+    dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+}
+
+.o_pc_box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--pc-line);
+    border-radius: 0.5rem;
+    font-size: 0.86rem;
+}
+
+.o_pc_box_label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--pc-muted);
+}
+
+.o_pc_box_stock {
+    background: var(--pc-info-bg);
+    border-color: transparent;
+}
+
+.o_pc_drop.o_pc_dragging {
+    border: 2px dashed var(--pc-green);
+    background: var(--pc-green-soft);
+}
+
+.o_pc_receipts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.o_pc_receipt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    width: 5.5rem;
+    font-size: 0.72rem;
+    color: inherit;
+    text-align: center;
+
+    img {
+        width: 5.5rem;
+        height: 5.5rem;
+        object-fit: cover;
+        border-radius: 0.35rem;
+        border: 1px solid var(--pc-line);
+    }
+
+    span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.o_pc_panel_actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--pc-line);
+}
+
+// Month tabs ---------------------------------------------------------------
+
+.o_pc_tabs {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+    background: var(--pc-sunken);
+    border-top: 1px solid var(--pc-line);
+
+    button {
+        border: 0;
+        background: none;
+        color: var(--pc-muted);
+        font: inherit;
+        font-size: 0.8rem;
+    }
+}
+
+.o_pc_year {
+    padding: 0 0.4rem;
+
+    &:hover {
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.o_pc_year_label {
+    align-self: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding-right: 0.5rem;
+    margin-right: 0.25rem;
+    border-right: 1px solid var(--pc-line);
+}
+
+.o_pc_tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.9rem !important;
+    border-top: 3px solid transparent !important;
+    font-weight: 500;
+
+    &:hover {
+        background: var(--pc-hover) !important;
+        color: var(--#{$prefix}body-color) !important;
+    }
+
+    &.o_pc_tab_on {
+        background: var(--pc-surface) !important;
+        color: var(--#{$prefix}body-color) !important;
+        border-top-color: var(--pc-green) !important;
+        font-weight: 700;
+    }
+
+    &.o_pc_tab_empty {
+        opacity: 0.55;
+    }
+}
+
+.o_pc_tab_count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--pc-line);
+}
+
+// Add float ----------------------------------------------------------------
+
+.o_pc_modal_wrap {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.o_pc_modal {
+    width: 26rem;
+    max-width: 92vw;
+    padding: 1.25rem;
+    background: var(--pc-surface);
+    border-radius: 0.75rem;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
+
+    h3 {
+        margin: 0 0 0.25rem;
+        font-size: 1.15rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .o_pc_body {
+        flex-direction: column;
+    }
+
+    .o_pc_panel {
+        flex-basis: auto;
+    }
+
+    .o_pc_hint {
+        display: none;
+    }
+}
+
+// With the panel open, the sheet keeps what you scan by: date, what, who,
+// how much, balance, category and status. The rest is in the panel.
+.o_pc_with_panel .o_pc_table {
+    .o_pc_c_phone,
+    .o_pc_c_method,
+    .o_pc_c_charge,
+    .o_pc_c_total {
+        display: none;
+    }
+}
+
+.o_pc_box_stock .form-control {
+    background: var(--pc-surface);
+    border-color: var(--pc-line);
+}
