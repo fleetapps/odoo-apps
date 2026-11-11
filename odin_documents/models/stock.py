@@ -53,21 +53,25 @@ class StockMove(models.Model):
 
     # A figure is kept as typed only when it differs from the product's: the
     # form sends recomputed figures back on save, and those must keep following
-    # the product.
+    # the product. The figure written is then dropped from the cache, so the
+    # next read shows the product's figure after a 0, not the 0.
     def _inverse_doc_cartons(self):
         for move in self:
             value = max(move.doc_cartons, 0)
             move.doc_cartons_typed = 0 if value == move._doc_from_product()[0] else value
+        self.invalidate_recordset(["doc_cartons"])
 
     def _inverse_doc_net(self):
         for move in self:
             value = max(move.doc_net_weight, 0.0)
             move.doc_net_typed = 0.0 if float_is_zero(value - move._doc_from_product()[1], precision_digits=3) else value
+        self.invalidate_recordset(["doc_net_weight"])
 
     def _inverse_doc_gross(self):
         for move in self:
             value = max(move.doc_gross_weight, 0.0)
             move.doc_gross_typed = 0.0 if float_is_zero(value - move._doc_from_product()[2], precision_digits=3) else value
+        self.invalidate_recordset(["doc_gross_weight"])
 
 
 class StockPicking(models.Model):
