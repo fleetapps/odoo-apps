@@ -359,3 +359,33 @@ class TestStockBookPage(TestStockBook):
             day=fields.Date.to_string(today - timedelta(days=1)))["data"])[0].decode()
         self.assertNotIn(sale.ref, day, "a day prints only that day")
         self.assertIn("No movements.", day)
+
+    # ------------------------------------------------------------ sale prices
+    def _pricelists(self):
+        """Retail with wholesale at a minimum quantity, and a supermarket's own."""
+        self.env.user.group_ids += self.env.ref("product.group_product_pricelist")
+        Pricelist = self.env["product.pricelist"]
+        template = self.fg.product_tmpl_id
+        retail = Pricelist.create({"name": "Retail", "sequence": 1, "item_ids": [
+            Command.create({"applied_on": "1_product", "product_tmpl_id": template.id,
+                            "compute_price": "fixed", "fixed_price": 199}),
+            Command.create({"applied_on": "1_product", "product_tmpl_id": template.id,
+                            "compute_price": "fixed", "fixed_price": 149.64, "min_quantity": 96})]})
+        chandarana = Pricelist.create({"name": "Chandarana", "sequence": 25, "item_ids": [
+            Command.create({"applied_on": "1_product", "product_tmpl_id": template.id,
+                            "compute_price": "fixed", "fixed_price": 120})]})
+        Partner = self.env["res.partner"]
+        return (Partner.create({"name": "Chandarana Ngara", "property_product_pricelist": chandarana.id}),
+                Partner.create({"name": "Walk-in", "property_product_pricelist": retail.id}))
+
+    def test_the_sale_window_prices_from_the_customers_pricelist(self):
+        shop, walk_in = self._pricelists()
+        Book = self.Book.with_user(self.storekeeper)
+        item = Book.book_sale_item(self.fg.id, shop.id, 10, fields.Date.to_string(fields.Date.today()))
+        self.assertEqual((item["price"], item["pricelist"]), (120.0, "Chandarana"),
+                         "the supermarket's price, not the Sales Price, for a storekeeper too")
+        self.assertEqual(Book.book_sale_item(self.fg.id, walk_in.id, 10)["price"], 199.0)
+        self.assertEqual(Book.book_sale_item(self.fg.id, walk_in.id, 96)["price"], 149.64,
+                         "the wholesale price from the minimum quantity, as a sales order has it")
+        self.assertEqual(Book.book_sale_item(self.fg.id, False, 10)["pricelist"], "Retail",
+                         "a customer not created yet gets the first pricelist, as a new customer would")

@@ -1,5 +1,6 @@
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.tools import float_round
 
 from .stock_book import _escape_like
 
@@ -179,16 +180,56 @@ class StockBook(models.AbstractModel):
         return result
 
     @api.model
-    def book_sale_item(self, product_id, partner_id=False):
-        """The item's sales VAT, and what this customer last paid as a hint.
-        The price itself comes from the invoice."""
+    def book_sale_item(self, product_id, partner_id=False, qty=0.0, date=False):
+        """The item's sales VAT; its price for this customer, as a sales order
+        in Odoo would price it (the customer's pricelist, at this quantity and
+        on this day); and what the customer last paid, as a hint. The window
+        puts the price in and the person can type over it."""
         product = self.env["product.product"].browse(product_id).exists()
         company = self.env.company
+        partner = self.env["res.partner"].browse(partner_id or []).exists()
         tax = product.taxes_id.filtered(lambda t: t.company_id == company)[:1] & self._sale_taxes()
         last = self.env["sale.order.line"].sudo().search(
             [("company_id", "=", company.id), ("state", "=", "sale"), ("product_id", "=", product.id)]
-            + ([("order_partner_id", "=", partner_id)] if partner_id else []), order="id desc", limit=1)
-        return {"tax_id": tax.id or False, "last_cost": last.price_unit or product.list_price}
+            + ([("order_partner_id", "=", partner.id)] if partner else []), order="id desc", limit=1)
+        # Storekeepers price the sale without being sales users, as they post
+        # it: read the pricelists and fiscal positions with sudo.
+        book = self.sudo()
+        pricelist = book._sale_pricelist(partner.sudo())
+        return {"tax_id": tax.id or False, "last_cost": last.price_unit or product.list_price,
+                "price": book._sale_price(product.sudo(), partner.sudo(), pricelist, qty, date),
+                "pricelist": pricelist.name or ""}
+
+    @api.model
+    def _sale_pricelist(self, partner):
+        """The pricelist a sales order for this customer takes; for a customer
+        not created yet, the one a new customer gets: the first one."""
+        company = self.env.company
+        if partner:
+            return partner.with_company(company).property_product_pricelist
+        Pricelist = self.env["product.pricelist"]
+        if not self.env["res.groups"]._is_feature_enabled("product.group_product_pricelist"):
+            return Pricelist
+        return Pricelist.search(Pricelist._get_partner_pricelist_multi_search_domain_hook(company.id), limit=1)
+
+    @api.model
+    def _sale_price(self, product, partner, pricelist, qty, date):
+        """The unit price as sale.order.line prices it: the pricelist's rule
+        for the product, quantity (minimum quantities apply), unit and day,
+        then fitted to the customer's fiscal position (its VAT) as
+        _reset_price_unit does. With no pricelist: the Sales Price."""
+        if not product:
+            return 0.0
+        company = self.env.company
+        product = product.with_company(company)
+        day = fields.Date.to_date(date) or fields.Date.context_today(self)
+        price = pricelist._get_product_price(product, qty or 1.0, currency=company.currency_id,
+                                             uom=product.uom_id, date=day)
+        fiscal_position = self.env["account.fiscal.position"].with_company(company)._get_fiscal_position(partner) \
+            if partner else self.env["account.fiscal.position"]
+        price = product._get_tax_included_unit_price_from_price(
+            price, product_taxes=product.taxes_id._filter_taxes_by_company(company), fiscal_position=fiscal_position)
+        return float_round(price, precision_digits=self.env["decimal.precision"].precision_get("Product Price"))
 
     @api.model
     def _check_sale_ref(self, partner, ref, ignore_ids=None):

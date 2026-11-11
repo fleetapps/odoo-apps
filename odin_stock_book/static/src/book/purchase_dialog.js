@@ -20,6 +20,10 @@ let lineKey = 0;
 const blankLine = () => ({
     key: ++lineKey, product: null, query: "", note: "", qty: "", cost: "", taxId: false, taxTouched: false,
     lastCost: 0, amount: null,
+    // Sales: the customer's pricelist price last put in the box. While the box
+    // still holds it, a new quantity, customer or day prices the line again,
+    // as a sales order does; a price typed over it stays.
+    priced: null, pricelist: "", keepPrice: false, priceSeq: 0,
 });
 const isBlank = (line) => !line.product && !line.query && !line.qty && !line.cost;
 
@@ -113,6 +117,8 @@ export class PurchaseDialog extends Component {
                 ...blankLine(), product: row.product, query: row.product.display_name, note: row.note,
                 qty: row.qty ? String(row.qty) : "", cost: row.cost ? String(row.cost) : "",
                 taxId: row.tax_id, taxTouched: Boolean(row.tax_id),
+                // An entered sale keeps its prices, a free item's 0 included.
+                keepPrice: Boolean(data.edit),
             }));
         } else if (this.props.items?.length) {
             this.state.lines = this.props.items.map((product) => ({
@@ -335,16 +341,51 @@ export class PurchaseDialog extends Component {
 
     async loadDefaults(line) {
         const product = line.product;
-        const defaults = await this.orm.call("odin.stock.book", this.server.item, [product.id],
-            { partner_id: this.state.supplier?.id || false });
-        if (line.product !== product) {
+        const seq = ++line.priceSeq;
+        const kwargs = { partner_id: this.state.supplier?.id || false };
+        if (this.isSale) {
+            Object.assign(kwargs, { qty: parseAmount(line.qty) || 1, date: this.state.date || false });
+        }
+        const defaults = await this.orm.call("odin.stock.book", this.server.item, [product.id], kwargs);
+        if (line.product !== product || line.priceSeq !== seq) {
             return;
         }
         line.lastCost = defaults.last_cost;
         if (!line.taxTouched) {
             line.taxId = defaults.tax_id;
         }
+        if (this.isSale && defaults.price !== undefined) {
+            const untouched = line.cost === "" || parseAmount(line.cost, NaN) === line.priced;
+            if (!line.keepPrice && untouched) {
+                line.cost = String(defaults.price);
+                line.priced = defaults.price;
+            }
+            line.pricelist = defaults.pricelist;
+        }
         this.scheduleTotals();
+    }
+
+    /** A sale line's price follows its quantity (minimum quantities). */
+    repriceSoon(line) {
+        clearTimeout(line.repriceTimer);
+        line.repriceTimer = setTimeout(() => line.product && this.loadDefaults(line), 250);
+    }
+
+    onDate(ev) {
+        this.state.date = ev.target.value;
+        if (this.isSale) {
+            this.refreshDefaults();
+        }
+    }
+
+    /** What the price box says on hover: where its price came from. */
+    priceTitle(line) {
+        if (!this.isSale || !line.pricelist || line.priced === null) {
+            return this.words.cost;
+        }
+        return parseAmount(line.cost, NaN) === line.priced
+            ? _t("%(pricelist)s price. Type over it to change it.", { pricelist: line.pricelist })
+            : _t("Typed in. The %(pricelist)s price is %(price)s.", { pricelist: line.pricelist, price: this.amount(line.priced) });
     }
 
     // ------------------------------------------------------------ number
@@ -445,6 +486,9 @@ export class PurchaseDialog extends Component {
         line[field] = ev.target.value;
         this.ensureBlankLine();
         this.scheduleTotals();
+        if (this.isSale && field === "qty" && line.product) {
+            this.repriceSoon(line);
+        }
     }
 
     onTax(line, ev) {

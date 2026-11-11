@@ -21,7 +21,7 @@
                         <label for="o_sb_pd_date" t-esc="words.date"/>
                         <input id="o_sb_pd_date" data-pd="date" type="date" class="form-control" t-att-max="state.options.today"
                                t-att-class="{ 'is-invalid': state.tried and (!state.date or state.date > state.options.today) }"
-                               t-att-value="state.date" t-on-change="(ev) => this.state.date = ev.target.value"/>
+                               t-att-value="state.date" t-on-change="onDate"/>
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_paid" t-esc="words.paid"/>
@@ -58,6 +58,7 @@
                         <div class="o_sb_pd_unit" data-label="Unit" t-esc="line.product ? line.product.uom : ''"/>
                         <div t-att-data-label="words.cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
                                t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + amount(line.lastCost) : ''" t-att-aria-label="words.cost"
+                               t-att-title="priceTitle(line)"
                                t-on-input="(ev) => this.onNumber(line, 'cost', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'cost', ev)"/></div>
                         <div data-label="VAT">
                             <select class="form-select form-select-sm" t-att-data-pd="'tax-' + line.key" t-att-class="{ 'is-invalid': missing(line, 'tax') }" aria-label="VAT" t-on-change="(ev) => this.onTax(line, ev)">
