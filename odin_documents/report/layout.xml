@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The letterhead every document prints on, and the blocks they share.
+     A document sets `company` (o._doc_company()) before calling the layout. -->
+<odoo>
+    <template id="layout">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+        <t t-if="not company">
+            <t t-if="o and 'company_id' in o and o.company_id" t-set="company" t-value="o.company_id.sudo()"/>
+            <t t-else="" t-set="company" t-value="res_company"/>
+        </t>
+        <div t-attf-class="header o_odoc_header o_company_#{company.id}_layout">
+            <table class="o_odoc_letterhead">
+                <tr>
+                    <td class="o_odoc_logo_cell">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" class="o_odoc_logo" alt="Logo"/>
+                    </td>
+                    <td class="o_odoc_company">
+                        <div class="o_odoc_company_name" t-out="(company.name or '').upper()"/>
+                        <t t-foreach="o._doc_letterhead(company) if o else []" t-as="line">
+                            <div t-out="line"/>
+                        </t>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div t-attf-class="article o_odoc o_company_#{company.id}_layout"
+             t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o[:1].id"
+             t-att-data-oe-lang="o and o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <div class="footer o_odoc_footer">
+            <div>
+                <t t-if="company.phone">Call: <t t-out="company.phone"/></t>
+                <t t-if="company.email"> | Email: <t t-out="company.email"/></t>
+                <t t-if="company.website"> | Website: <t t-out="company.website"/></t>
+            </div>
+            <div class="o_odoc_page">
+                <t t-out="doc_number or ''"/> · Page <span class="page"/> / <span class="topage"/>
+            </div>
+        </div>
+    </template>
+
+    <!-- doc_title, doc_number, meta: [(label, value)] -->
+    <template id="title">
+        <h2 class="o_odoc_title" t-out="doc_title"/>
+        <table t-if="meta" class="o_odoc_meta">
+            <tr t-foreach="meta" t-as="row" t-if="row[1]">
+                <th t-out="row[0]"/>
+                <td t-out="row[1]"/>
+            </tr>
+        </table>
+    </template>
+
+    <!-- party, party_label -->
+    <template id="party">
+        <div class="o_odoc_party">
+            <div class="o_odoc_label" t-out="party_label"/>
+            <div class="o_odoc_party_name" t-out="party.commercial_partner_id.name"/>
+            <div t-if="party != party.commercial_partner_id and party.name" t-out="party.name"/>
+            <t t-foreach="o._doc_address(party)" t-as="line">
+                <div t-out="line"/>
+            </t>
+            <div t-if="party.commercial_partner_id.vat">PIN / Tax ID: <t t-out="party.commercial_partner_id.vat"/></div>
+            <div t-if="party.phone">Tel: <t t-out="party.phone"/></div>
+            <div t-if="party.email" t-out="party.email"/>
+        </div>
+    </template>
+
+    <!-- pay_currency: the accounts to pay into in that currency -->
+    <template id="payment_block">
+        <t t-set="banks" t-value="o._doc_bank_accounts(pay_currency)"/>
+        <t t-set="home_currency" t-value="pay_currency == company.currency_id"/>
+        <table class="o_odoc_pay" t-if="banks or (home_currency and company.doc_mpesa_paybill)">
+            <tr>
+                <td t-if="home_currency and company.doc_mpesa_paybill">
+                    <div class="o_odoc_label">Pay by M-Pesa</div>
+                    <div>Paybill no: <strong t-out="company.doc_mpesa_paybill"/></div>
+                    <div t-if="company.doc_mpesa_account">Account: <strong t-out="company.doc_mpesa_account"/></div>
+                </td>
+                <td t-foreach="banks" t-as="bank">
+                    <div class="o_odoc_label">Bank transfer<t t-if="bank.currency_id"> (<t t-out="bank.currency_id.name"/>)</t></div>
+                    <div t-if="bank.bank_id">Bank: <t t-out="bank.bank_id.name"/></div>
+                    <div t-if="bank.bank_id.street">Branch: <t t-out="bank.bank_id.street"/></div>
+                    <div>Account name: <t t-out="bank.acc_holder_name or company.name"/></div>
+                    <div>Account no: <strong t-out="bank.acc_number"/></div>
+                    <div t-if="bank.bank_id.bic">SWIFT: <t t-out="bank.bank_id.bic"/></div>
+                </td>
+            </tr>
+            <tr t-if="home_currency">
+                <td t-att-colspan="len(banks) + (1 if company.doc_mpesa_paybill else 0)">
+                    All cheques payable to <strong t-out="(company.doc_cheque_payee or company.name or '').upper()"/>.
+                </td>
+            </tr>
+        </table>
+    </template>
+
+    <!-- cur, untaxed, tax, total -->
+    <template id="totals">
+        <table class="o_odoc_totals">
+            <tr>
+                <th>Subtotal</th>
+                <td t-out="untaxed" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+            </tr>
+            <tr>
+                <th>VAT</th>
+                <td t-out="tax" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+            </tr>
+            <tr class="o_odoc_grand">
+                <th>Total</th>
+                <td t-out="total" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+            </tr>
+        </table>
+    </template>
+
+    <!-- words_amount, words_currency -->
+    <template id="amount_words">
+        <p class="o_odoc_words" t-if="words_currency">
+            <strong>Amount in words:</strong>
+            <span t-out="o._doc_words(words_amount, words_currency)"/>
+        </p>
+    </template>
+
+    <!-- terms: Markup -->
+    <template id="terms">
+        <div class="o_odoc_terms" t-if="terms">
+            <div class="o_odoc_label">Terms &amp; Conditions</div>
+            <t t-out="terms"/>
+        </div>
+    </template>
+
+    <!-- boxes: labels; acknowledgement: Markup; stamp: bool;
+         stamp_label: default "Company stamp"; stamp_theirs: the other party
+         stamps it, so the company's stamp image is not printed -->
+    <template id="signoff">
+        <div class="o_odoc_signoff">
+            <div class="o_odoc_ack" t-if="acknowledgement" t-out="acknowledgement"/>
+            <table class="o_odoc_boxes">
+                <tr>
+                    <td t-foreach="boxes or []" t-as="box">
+                        <div class="o_odoc_label" t-out="box"/>
+                        <div class="o_odoc_line">Name:</div>
+                        <div class="o_odoc_line">Signature:</div>
+                        <div class="o_odoc_line">Date:</div>
+                    </td>
+                    <td t-if="stamp" class="o_odoc_stamp">
+                        <div class="o_odoc_label" t-out="stamp_label or 'Company stamp'"/>
+                        <img t-if="company.doc_stamp and not stamp_theirs" t-att-src="image_data_uri(company.doc_stamp)" alt="Stamp"/>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </template>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_odin_document_type_user,business document user,model_odin_document_type,base.group_user,1,0,0,0
+access_odin_document_type_manager,business document manager,model_odin_document_type,group_documents_manager,1,1,1,1
+access_odin_document_log_user,issued document user,model_odin_document_log,base.group_user,1,0,0,0
+access_odin_document_log_manager,issued document manager,model_odin_document_log,group_documents_manager,1,0,0,1
+access_odin_document_memo_user,memo user,model_odin_document_memo,base.group_user,1,1,1,1
+access_odin_document_memo_ack_user,memo acknowledgement user,model_odin_document_memo_ack,base.group_user,1,0,0,0
+access_odin_document_memo_ack_manager,memo acknowledgement manager,model_odin_document_memo_ack,group_documents_manager,1,1,1,1

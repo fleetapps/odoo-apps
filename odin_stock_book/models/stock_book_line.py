@@ -4,7 +4,7 @@ from datetime import datetime, time
 import pytz
 
 from odoo import Command, _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tools import float_compare, float_is_zero
 
 # Reason -> (direction, label, what it posts as, reference prefix)
@@ -717,6 +717,46 @@ class StockBookLine(models.Model):
                     "domain": [("id", "in", self.move_ids.ids)], "name": self.ref}
         return {"type": "ir.actions.act_window", "res_model": record._name, "res_id": record.id,
                 "views": [[False, "form"]]}
+
+    # ------------------------------------------------------------ documents
+    def _document_records(self):
+        """The Odoo records this line posted that have printed documents: its
+        transfer (delivery, receipt, return, transfer), the customer invoice of
+        a sale, the purchase order of a purchase."""
+        self.ensure_one()
+        records = list(self.picking_id | self.move_ids.picking_id)
+        records += [record for record in (self.invoice_id, self.purchase_id) if record]
+        return records
+
+    def book_documents(self):
+        """What the line can print once posted, when Business Documents is
+        installed: each document of each record it posted that applies to that
+        record and that this user may open. Nothing otherwise."""
+        self.ensure_one()
+        if "odin.document.type" not in self.env or self.state != "posted":
+            return []
+        Type = self.env["odin.document.type"].sudo()
+        documents = []
+        for record in self._document_records():
+            try:
+                record.check_access("read")
+            except AccessError:
+                continue
+            types = Type.search([("res_model", "=", record._name), ("report_id", "!=", False)])
+            valid = set(types.report_id.get_valid_action_reports(record._name, record.ids))
+            for doc in types.filtered(lambda t: t.report_id.id in valid):
+                documents.append({"label": doc.name, "report_id": doc.report_id.id, "res_model": record._name,
+                                  "res_id": record.id, "ref": record.display_name})
+        return documents
+
+    def book_print_document(self, report_id, res_model, res_id):
+        """Print one of the line's documents, as book_documents offers them."""
+        self.ensure_one()
+        offered = {(d["report_id"], d["res_model"], d["res_id"]) for d in self.book_documents()}
+        if (report_id, res_model, res_id) not in offered:
+            raise UserError(_("This document is not printed from this line."))
+        report = self.env["ir.actions.report"].browse(report_id)
+        return report.report_action(self.env[res_model].browse(res_id), config=False)
 
     # ------------------------------------------------------------ copy / reverse
     def _copy_as_draft(self, date):

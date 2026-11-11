@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_root" name="Documents" sequence="45" web_icon="odin_documents,static/description/icon.png"/>
+    <menuitem id="menu_documents" name="Documents" parent="menu_root" action="action_document_type" sequence="10"/>
+    <menuitem id="menu_memos" name="Memos" parent="menu_root" action="action_memo" sequence="20"/>
+    <menuitem id="menu_issued" name="Issued" parent="menu_root" action="action_document_log" sequence="30"/>
+    <menuitem id="menu_config" name="Configuration" parent="menu_root" sequence="90"
+              groups="odin_documents.group_documents_manager"/>
+    <menuitem id="menu_config_types" name="Documents &amp; terms" parent="menu_config"
+              action="action_document_type_config" sequence="10"/>
+    <menuitem id="menu_config_company" name="Letterhead &amp; payment details" parent="menu_config"
+              action="action_company_documents" sequence="20" groups="base.group_erp_manager"/>
+</odoo>

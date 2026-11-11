@@ -325,6 +325,21 @@ class TestStockBookReview(TestStockBook):
         self.assertEqual(Book.book_sale_item(self.fg.id, False, 10)["pricelist"], "Retail",
                          "a customer not created yet gets the first pricelist, as a new customer would")
 
+    # ------------------------------------------------------------ documents
+    def test_a_line_offers_its_documents_once_posted(self):
+        line = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 1, "partner_name": "A"})
+        self.assertEqual(line.book_documents(), [], "a draft has nothing to print")
+        line.action_post()
+        documents = line.book_documents()
+        if "odin.document.type" in self.env:
+            self.assertIn("Delivery Note / Packing List", [d["label"] for d in documents])
+            delivery = next(d for d in documents if d["res_model"] == "stock.picking")
+            self.assertEqual(line.book_print_document(delivery["report_id"], "stock.picking", delivery["res_id"])["type"],
+                             "ir.actions.report")
+        else:
+            self.assertEqual(documents, [], "without Business Documents the book offers nothing")
+        with self.assertRaises(UserError):
+            line.book_print_document(0, "stock.picking", line.picking_id.id)
 
 @tagged("post_install", "-at_install")
 class TestStockBookPage(TestStockBook):

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_memo_list" model="ir.ui.view">
+        <field name="name">odin.document.memo.list</field>
+        <field name="model">odin.document.memo</field>
+        <field name="arch" type="xml">
+            <list decoration-muted="state == 'cancelled'" decoration-info="state == 'draft'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="department_id"/>
+                <field name="subject"/>
+                <field name="to"/>
+                <field name="author_id" widget="many2one_avatar_user"/>
+                <field name="state" widget="badge" decoration-success="state == 'issued'" decoration-info="state == 'draft'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_memo_form" model="ir.ui.view">
+        <field name="name">odin.document.memo.form</field>
+        <field name="model">odin.document.memo</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_issue" type="object" string="Authorise &amp; issue" class="btn-primary"
+                            invisible="state != 'draft'" groups="odin_documents.group_documents_manager"
+                            confirm="Once issued, the memo is numbered and can no longer be changed. Issue it?"/>
+                    <button name="action_acknowledge" type="object" string="I have read it" class="btn-primary"
+                            invisible="state != 'issued' or not needs_acknowledgement or acknowledged"/>
+                    <button name="action_print" type="object" string="Print" invisible="state == 'cancelled'"/>
+                    <button name="action_cancel" type="object" string="Cancel memo" invisible="state == 'cancelled'"
+                            groups="odin_documents.group_documents_manager" confirm="Cancel this memo?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,issued"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="subject" readonly="state != 'draft'" placeholder="What the memo is about"/>
+                            <field name="to" readonly="state != 'draft'"/>
+                            <field name="department_id" readonly="state != 'draft'" options="{'no_create': True}"/>
+                            <field name="author_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="needs_acknowledgement" readonly="state != 'draft'"/>
+                            <field name="approved_by_id" invisible="not approved_by_id"/>
+                            <field name="issued_on" invisible="not issued_on"/>
+                            <field name="acknowledged" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="body" readonly="state != 'draft'"
+                           placeholder="The instruction, policy change, meeting notice or reminder"/>
+                    <notebook invisible="not needs_acknowledgement or state == 'draft'">
+                        <page string="Acknowledged by" name="acks">
+                            <field name="ack_ids">
+                                <list>
+                                    <field name="user_id" widget="many2one_avatar_user"/>
+                                    <field name="date"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_memo_search" model="ir.ui.view">
+        <field name="name">odin.document.memo.search</field>
+        <field name="model">odin.document.memo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="subject"/>
+                <field name="department_id"/>
+                <filter name="draft" string="Drafts" domain="[('state', '=', 'draft')]"/>
+                <filter name="issued" string="Issued" domain="[('state', '=', 'issued')]"/>
+                <filter name="to_ack" string="To acknowledge"
+                        domain="[('state', '=', 'issued'), ('needs_acknowledgement', '=', True), ('ack_ids.user_id', '!=', uid)]"/>
+                <group>
+                    <filter name="group_department" string="Department" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_memo" model="ir.actions.act_window">
+        <field name="name">Memos</field>
+        <field name="res_model">odin.document.memo</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Write a memo</p>
+            <p>A manager authorises and issues it: it is numbered, e.g. RINZ/MEMO/HR/2026/001, and locked.</p>
+        </field>
+    </record>
+</odoo>

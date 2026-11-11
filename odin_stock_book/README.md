@@ -193,6 +193,7 @@ reference two lines still share.
 ## Stock in the accounts
 
 - **Add purchase** and **Add sale** make Odoo's own documents in one step: order, receipt or delivery, bill or invoice, and payment. The customer invoice posts the cost of sales.
+- **Print**: with Business Documents installed, a posted line's panel has a button for each document of what it posted (delivery note, GRN, sales invoice, purchase order), and saving a sale or purchase offers them in its notice.
 - **Add sale** prices each line as a sales order would: the customer's pricelist (*Sales > Customers*, Sales & Purchase tab), at the line's quantity, so minimum-quantity prices apply, and on the delivery date. A customer not created yet gets the first pricelist. The price can be typed over and then stays; until it is, a new quantity, customer or date prices it again. Hover the price to see which pricelist it came from.
 - Scrap and corrections post to `500106 Stock Losses & Adjustments`, through the account on the Inventory adjustment location.
 - On the first of each month, a scheduled task runs Odoo's Stock Closing for the month before, bringing the Stock account to the value of the stock. Odoo's own monthly schedule does not fire: it filters on two periods at once at month end.
