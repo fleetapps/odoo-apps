@@ -114,6 +114,9 @@ class MCPEngine(models.AbstractModel):
         never move into ``server/discover``: that result is returned with
         ``cacheScope: "public"`` and would be shared across users.
         """
+        if scope.full_access:
+            return str(_(" This connection has full access to every model; "
+                         "call list_models to see them."))
         names = scope.readable_model_names()
         if not names:
             return ""
@@ -406,6 +409,22 @@ class MCPEngine(models.AbstractModel):
         allow-list, because guessing a method name and being refused is a
         round trip the assistant should never have to spend.
         """
+        if scope.full_access:
+            # Hundreds of identical rows would only bury the one fact that
+            # matters, so say it once and list what this user can read.
+            names = [m for m in scope.readable_model_names()
+                     if self.env[m].has_access("read")]
+            labels = dict(self.env["ir.model"].sudo().search(
+                [("model", "in", names)]).mapped(lambda m: (m.model, m.name)))
+            return {
+                "full_access": True,
+                "note": str(_(
+                    "Full access: every model, including wizards not listed "
+                    "here, with read, create, update and delete, and any "
+                    "public method — always limited by your own Odoo rights.")),
+                "models": [{"model": m, "name": labels.get(m, m)}
+                           for m in names],
+            }
         models_out = []
         for line in scope.line_ids.filtered("active"):
             entry = {
@@ -439,7 +458,8 @@ class MCPEngine(models.AbstractModel):
         return {"model": model, "fields": out}
 
     def _handler_get_business_context(self, scope, args):
-        allowed_models = set(scope.line_ids.mapped("model_name"))
+        allowed_models = set(scope.readable_model_names()) if scope.full_access \
+            else set(scope.line_ids.mapped("model_name"))
         domain = [("active", "=", True)]
         model = args.get("model")
         if model:
@@ -588,23 +608,26 @@ class MCPEngine(models.AbstractModel):
         model = args["model"]
         method = (args.get("method") or "").strip()
         line = self._require_line(scope, model, "call_methods")
-        allowed = line.allowed_method_set()
-        if not allowed:
-            raise AccessError(_(
-                "Method calls are enabled for '%(model)s' but no method names "
-                "are allow-listed, so nothing can be called. An administrator "
-                "must list the exact methods under AI MCP → "
-                "Permissions → Model Permissions.", model=model))
-        if method not in allowed:
-            raise AccessError(_(
-                "'%(method)s' is not allow-listed on '%(model)s'. Permitted "
-                "here: %(allowed)s.",
-                method=method, model=model, allowed=", ".join(sorted(allowed))))
-        # Belt and braces: the constraint blocks these at save time, but the
-        # allow-list is data and data can be loaded from anywhere.
-        if method.startswith("_") or method in DENIED_METHODS:
-            raise AccessError(
-                _("'%s' can never be called over MCP.") % method)
+        if scope.full_access:
+            scope.check_full_access_method(self.env[model], method)
+        else:
+            allowed = line.allowed_method_set()
+            if not allowed:
+                raise AccessError(_(
+                    "Method calls are enabled for '%(model)s' but no method "
+                    "names are allow-listed, so nothing can be called. An "
+                    "administrator must list the exact methods under AI MCP → "
+                    "Permissions → Model Permissions.", model=model))
+            if method not in allowed:
+                raise AccessError(_(
+                    "'%(method)s' is not allow-listed on '%(model)s'. "
+                    "Permitted here: %(allowed)s.", method=method, model=model,
+                    allowed=", ".join(sorted(allowed))))
+            # Belt and braces: the constraint blocks these at save time, but
+            # the allow-list is data and data can be loaded from anywhere.
+            if method.startswith("_") or method in DENIED_METHODS:
+                raise AccessError(
+                    _("'%s' can never be called over MCP.") % method)
 
         record_ids = args.get("record_ids") or []
         if isinstance(record_ids, int):
@@ -708,7 +731,8 @@ class MCPEngine(models.AbstractModel):
     @api.model
     def list_resources(self, scope):
         scope = scope.sudo()
-        allowed_models = set(scope.line_ids.mapped("model_name"))
+        allowed_models = set(scope.readable_model_names()) if scope.full_access \
+            else set(scope.line_ids.mapped("model_name"))
         ctx = self.env["mcp.context"].sudo().search([("active", "=", True)])
         ctx = ctx.filtered(lambda c: not c.model_name or c.model_name in allowed_models)
         return [{

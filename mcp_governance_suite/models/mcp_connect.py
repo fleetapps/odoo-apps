@@ -683,7 +683,9 @@ class MCPConnect(models.TransientModel):
         # itself locked read-only, the user believes the toggle did nothing,
         # and the two statements are both true and irreconcilable from the UI.
         writable = 0
-        if scope:
+        if scope and scope.sudo().full_access:
+            writable = len(scope.sudo().readable_model_names())
+        elif scope:
             writable = len(scope.sudo().line_ids.filtered(
                 lambda l: l.can_create or l.can_write or l.can_unlink))
 
@@ -766,6 +768,9 @@ class MCPConnect(models.TransientModel):
                 "test. An administrator sets those up under AI MCP → "
                 "Permissions."))
         readable = scope.line_ids.filtered("can_read")
+        if scope.full_access:
+            # Every model is open; contacts are in every database.
+            readable = scope.line_for_model("res.partner")
         if not readable:
             return self._self_test_result(False, _(
                 "\"%s\" cannot read anything, so an assistant would have "

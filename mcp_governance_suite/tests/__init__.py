@@ -6,3 +6,4 @@ from . import test_permissions
 from . import test_connect
 from . import test_security
 from . import test_url
+from . import test_full_access

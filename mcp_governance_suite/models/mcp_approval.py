@@ -101,7 +101,9 @@ class MCPApprovalRequest(models.Model):
         self.ensure_one()
         method = (values.get("method") or "").strip()
         line = self.scope_id.line_for_model(self.model_name) if self.scope_id else None
-        if not line or not line.can_call_methods or \
+        if line and self.scope_id.full_access:
+            self.scope_id.check_full_access_method(Model, method)
+        elif not line or not line.can_call_methods or \
                 method not in line.allowed_method_set():
             raise UserError(_(
                 "'%(method)s' is no longer allow-listed on %(model)s, so this "
