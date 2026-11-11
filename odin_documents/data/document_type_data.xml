@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One record per document. Terms come from the company's own documents;
+     {company} prints as the company's name. noupdate: edits to terms survive
+     upgrades. -->
+<odoo noupdate="1">
+    <record id="type_estimate" model="odin.document.type">
+        <field name="name">Estimate</field>
+        <field name="code">estimate</field>
+        <field name="area">sales</field>
+        <field name="sequence">10</field>
+        <field name="icon">fa-file-text-o</field>
+        <field name="res_model">sale.order</field>
+        <field name="record_domain">[('state', 'in', ('draft', 'sent'))]</field>
+        <field name="record_action">sale.action_quotations_with_onboarding</field>
+        <field name="report_id" ref="action_report_estimate"/>
+        <field name="printed_from">A quotation: Sales &gt; Quotations, then Print &gt; Estimate</field>
+        <field name="description">Prices offered to a customer, valid 7 days</field>
+        <field name="terms" type="html"><ol><li>Prices quoted are valid for <strong>7 days</strong> from date of issue, unless otherwise stated.</li><li>Prices are <strong>exclusive of VAT</strong> unless indicated.</li><li>Delivery timelines are <strong>subject to stock availability</strong> and confirmation at the time of order.</li><li>Delivery within the environs of Nairobi is offered at zero charge however, the order must be Kshs ten thousand (Kshs 10,000/-) and above.</li><li>{company} reserves the right to amend prices due to raw material fluctuations, exchange rate movements, or regulatory changes.</li><li>All transactions are subject to the laws of Kenya.</li><li>Disputes, if any, shall be referred to arbitration in Nairobi under the Arbitration Act.</li><li>Company reserves the right to amend terms with prior notice.</li><li>{company} shall not be held liable for delays caused by natural disasters, strikes, government actions, or other circumstances beyond its control.</li></ol></field>
+    </record>
+    <record id="type_proforma" model="odin.document.type">
+        <field name="name">Pro Forma Invoice</field>
+        <field name="code">proforma</field>
+        <field name="area">sales</field>
+        <field name="sequence">20</field>
+        <field name="icon">fa-file-o</field>
+        <field name="res_model">sale.order</field>
+        <field name="record_domain">[('state', '!=', 'cancel')]</field>
+        <field name="record_action">sale.action_quotations_with_onboarding</field>
+        <field name="report_id" ref="action_report_proforma"/>
+        <field name="printed_from">A quotation or sales order: Print &gt; Pro Forma Invoice</field>
+        <field name="description">An advance payment request, not a tax invoice</field>
+        <field name="terms" type="html"><ol><li>Prices quoted are valid for <strong>7 days</strong> from date of issue, unless otherwise stated.</li><li>This is <strong>not a tax invoice</strong>; it is an <strong>advance payment request</strong>.</li><li>Goods will only be dispatched upon <strong>receipt of cleared funds</strong> unless credit terms are agreed in writing.</li><li>Prices provided are ex-factory prices. Bank charges, transport costs, logistics, import duties, and applicable taxes are payable by the buyer.</li><li>Orders once confirmed are <strong>non-cancellable</strong>, except with written approval from {company}.</li><li>Delivery timelines are <strong>subject to stock availability</strong> and confirmation at the time of order.</li><li>Delivery within the environs of Nairobi is offered at zero charge however, the order must be Kshs ten thousand (Kshs 10,000/-) and above.</li><li>{company} reserves the right to amend prices due to raw material fluctuations, exchange rate movements, or regulatory changes.</li><li>All transactions are subject to the laws of Kenya.</li><li>Disputes, if any, shall be referred to arbitration in Nairobi under the Arbitration Act.</li><li>Company reserves the right to amend terms with prior notice.</li><li>{company} shall not be held liable for delays caused by natural disasters, strikes, government actions, or other circumstances beyond its control.</li></ol></field>
+    </record>
+    <record id="type_sales_invoice" model="odin.document.type">
+        <field name="name">Sales Invoice</field>
+        <field name="code">sales_invoice</field>
+        <field name="area">sales</field>
+        <field name="sequence">30</field>
+        <field name="icon">fa-file-text</field>
+        <field name="res_model">account.move</field>
+        <field name="record_domain">[('move_type', '=', 'out_invoice'), ('doc_is_export', '=', False)]</field>
+        <field name="record_action">account.action_move_out_invoice_type</field>
+        <field name="report_id" ref="action_report_sales_invoice"/>
+        <field name="printed_from">An invoice: Invoicing &gt; Customers &gt; Invoices, then Print, or Send</field>
+        <field name="description">The tax invoice for goods sold in Kenya</field>
+        <field name="terms" type="html"><ol><li>Terms of payment due on date indicated on invoice.</li><li>{company} will only accept return of goods for exchange or replacement, if returned within 48hrs of invoice.</li><li>Replacement (only applicable) if damaged; exchange only allowed for unopened bottles, jerrycans and cartons.</li><li>Title to goods remains with <strong>{company}</strong> until full payment is received.</li><li>Risk passes to the buyer upon <strong>delivery/collection</strong>.</li><li>Any/all disputes must be raised in writing within <strong>48 hours</strong> of invoice date.</li></ol></field>
+    </record>
+    <record id="type_sales_receipt" model="odin.document.type">
+        <field name="name">Sales Receipt</field>
+        <field name="code">sales_receipt</field>
+        <field name="area">sales</field>
+        <field name="sequence">40</field>
+        <field name="icon">fa-check-square-o</field>
+        <field name="res_model">account.move</field>
+        <field name="record_domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted'), ('payment_state', 'in', ('paid', 'in_payment', 'partial'))]</field>
+        <field name="record_action">account.action_move_out_invoice_type</field>
+        <field name="report_id" ref="action_report_sales_receipt"/>
+        <field name="printed_from">A paid invoice: Print &gt; Sales Receipt</field>
+        <field name="description">Proof of payment, with the items and how they were paid</field>
+        <field name="terms" type="html"><ol><li>Goods once sold are <strong>non-returnable</strong> unless defective.</li><li>Customer is advised to <strong>check goods upon collection/delivery</strong>. Claims must be made within <strong>24 hours</strong>.</li></ol></field>
+    </record>
+    <record id="type_credit_note" model="odin.document.type">
+        <field name="name">Credit Note</field>
+        <field name="code">credit_note</field>
+        <field name="area">sales</field>
+        <field name="sequence">50</field>
+        <field name="icon">fa-undo</field>
+        <field name="res_model">account.move</field>
+        <field name="record_domain">[('move_type', '=', 'out_refund')]</field>
+        <field name="record_action">account.action_move_out_refund_type</field>
+        <field name="report_id" ref="action_report_credit_note"/>
+        <field name="printed_from">A credit note: Invoicing &gt; Customers &gt; Credit Notes, then Print</field>
+        <field name="description">Against a verified overpayment, return or adjustment</field>
+        <field name="terms" type="html"><ol><li>Issued strictly against verified <strong>overpayment, return, or adjustment</strong>.</li><li>Valid for offset against future purchases only; <strong>no cash refunds</strong>.</li></ol></field>
+    </record>
+    <record id="type_delivery_note" model="odin.document.type">
+        <field name="name">Delivery Note / Packing List</field>
+        <field name="code">delivery_note</field>
+        <field name="area">sales</field>
+        <field name="sequence">60</field>
+        <field name="icon">fa-truck</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '=', False)]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_delivery_note"/>
+        <field name="printed_from">A delivery: Inventory &gt; Deliveries, then Print &gt; Delivery Note</field>
+        <field name="description">Goods going to a customer, signed for on arrival</field>
+        <field name="terms" type="html"><ol><li>Packing details are provided for <strong>verification purposes only</strong>.</li><li>Buyer is responsible for <strong>checking quantities</strong> upon delivery.</li><li>Any discrepancies must be reported within <strong>24 hours</strong>.</li></ol></field>
+        <field name="acknowledgement" type="html"><p>This is to confirm that the items as per the packing list have been received in good and acceptable conditions. We are authorised to accept goods on behalf of the buyer.</p></field>
+    </record>
+    <record id="type_replacement_note" model="odin.document.type">
+        <field name="name">Goods Replacement Note</field>
+        <field name="code">replacement_note</field>
+        <field name="area">sales</field>
+        <field name="sequence">70</field>
+        <field name="icon">fa-refresh</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'incoming'), ('return_id', '!=', False)]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_replacement_note"/>
+        <field name="printed_from">A customer return: Return on the delivery, then Print &gt; Goods Replacement Note</field>
+        <field name="description">Defective or wrongly supplied goods a customer returns for replacement</field>
+        <field name="terms" type="html"><ol><li>Replacement goods are issued only for items proven to be <strong>defective, or wrongly supplied</strong>.</li><li>Goods must be returned <strong>unused, in original packaging</strong>, within <strong>48 hours</strong>.</li><li>{company} reserves the right to reject claims arising from <strong>misuse, poor storage, or third-party tampering</strong>.</li></ol></field>
+    </record>
+    <record id="type_commercial_invoice" model="odin.document.type">
+        <field name="name">Commercial Invoice</field>
+        <field name="code">commercial_invoice</field>
+        <field name="area">export</field>
+        <field name="sequence">10</field>
+        <field name="icon">fa-globe</field>
+        <field name="res_model">account.move</field>
+        <field name="record_domain">[('move_type', '=', 'out_invoice'), ('doc_is_export', '=', True)]</field>
+        <field name="record_action">account.action_move_out_invoice_type</field>
+        <field name="report_id" ref="action_report_commercial_invoice"/>
+        <field name="printed_from">An invoice to a customer abroad: Print &gt; Commercial Invoice</field>
+        <field name="description">The export invoice: both currencies and the rate, HS codes, KEBS permits, weights</field>
+        <field name="terms" type="html"><ol><li>Buyer responsible for all <strong>import duties, taxes, clearing, and customs formalities</strong> at destination.</li><li>Delivery terms are Ex-Factory only.</li><li>{company} guarantees products meet KEBS/ISO/GMP standards at time of shipment.</li><li>No liability accepted for <strong>delays caused by any logistics, customs, port authorities, shipping lines, or force majeure</strong>.</li><li>Payment must be effected via <strong>Telegraphic Transfer</strong> as agreed, net of all bank charges.</li></ol></field>
+    </record>
+    <record id="type_export_packing_list" model="odin.document.type">
+        <field name="name">Export Packing List</field>
+        <field name="code">export_packing_list</field>
+        <field name="area">export</field>
+        <field name="sequence">20</field>
+        <field name="icon">fa-cubes</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '=', False), ('doc_is_export', '=', True)]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_export_packing_list"/>
+        <field name="printed_from">A delivery to a customer abroad: Print &gt; Export Packing List</field>
+        <field name="description">What customs inspect: cartons, pallets, net and gross weights</field>
+        <field name="terms" type="html"><ol><li>Prepared for <strong>customs and verification purposes</strong> only.</li><li>Actual contents are subject to inspection by <strong>customs authorities</strong>.</li><li>{company} will not be liable for any <strong>delays, penalties, or rejections</strong> imposed by authorities due to buyer's incorrect documentation or non-compliance.</li></ol></field>
+    </record>
+    <record id="type_rfq" model="odin.document.type">
+        <field name="name">Request for Quotation</field>
+        <field name="code">rfq</field>
+        <field name="area">purchases</field>
+        <field name="sequence">10</field>
+        <field name="icon">fa-question-circle-o</field>
+        <field name="res_model">purchase.order</field>
+        <field name="record_domain">[('state', 'in', ('draft', 'sent', 'to approve'))]</field>
+        <field name="record_action">purchase.purchase_rfq</field>
+        <field name="report_id" ref="action_report_rfq"/>
+        <field name="printed_from">An RFQ: Purchase &gt; Requests for Quotation, then Print RFQ</field>
+        <field name="description">An invitation to suppliers to quote</field>
+        <field name="terms" type="html"><ol><li>Status: This RFQ is an <strong>invitation to quote</strong> and does not bind {company} to purchase.</li><li>Response: All quotations must be in writing, valid for <strong>30 days</strong>, and clearly state delivery timelines and payment terms.</li><li>Evaluation: {company} reserves the right to <strong>accept or reject</strong> any quotation, in whole or in part, without obligation to the bidder.</li><li>Confidentiality: Information shared in the RFQ process is <strong>confidential</strong> and may not be disclosed without written consent from {company}.</li></ol></field>
+    </record>
+    <record id="type_purchase_order" model="odin.document.type">
+        <field name="name">Purchase Order</field>
+        <field name="code">purchase_order</field>
+        <field name="area">purchases</field>
+        <field name="sequence">20</field>
+        <field name="icon">fa-shopping-cart</field>
+        <field name="res_model">purchase.order</field>
+        <field name="record_domain">[('state', 'in', ('purchase', 'done'))]</field>
+        <field name="record_action">purchase.purchase_form_action</field>
+        <field name="report_id" ref="action_report_purchase_order"/>
+        <field name="printed_from">A confirmed order: Purchase &gt; Purchase Orders, then Print &gt; Purchase Order</field>
+        <field name="description">The order a supplier delivers against</field>
+        <field name="terms" type="html"><ol><li>Contract: A PO issued by {company} constitutes a binding contract once accepted by the supplier.</li><li>Terms: Supplies must strictly comply with the quantities, specifications, quality standards, and delivery dates stated in the PO.</li><li>Rejection: {company} reserves the right to reject goods or services that do not conform to specifications.</li><li>Payment: Payment terms are as specified in the PO; invoices must quote the PO number for processing.</li><li>Compliance: Suppliers must comply with all applicable laws, KEBS standards, and regulatory requirements.</li></ol></field>
+    </record>
+    <record id="type_grn" model="odin.document.type">
+        <field name="name">Goods Received Note</field>
+        <field name="code">grn</field>
+        <field name="area">purchases</field>
+        <field name="sequence">30</field>
+        <field name="icon">fa-download</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'incoming'), ('return_id', '=', False)]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_grn"/>
+        <field name="printed_from">A receipt: Inventory &gt; Receipts, then Print &gt; Goods Received Note</field>
+        <field name="description">Goods received from a supplier, subject to inspection</field>
+        <field name="terms" type="html"><ol><li>Confirmation: The GRN confirms <strong>receipt of goods</strong> but is subject to <strong>inspection and quality checks</strong>.</li><li>No Waiver: Signing a GRN does not constitute acceptance of defective, damaged, or non-compliant goods.</li><li>Claims: {company} reserves the right to <strong>reject or return goods</strong> found unsatisfactory after inspection.</li><li>Liability: The supplier remains liable for <strong>replacement or corrective action</strong> at their own cost.</li></ol></field>
+    </record>
+    <record id="type_goods_return_note" model="odin.document.type">
+        <field name="name">Goods Return Note</field>
+        <field name="code">goods_return_note</field>
+        <field name="area">purchases</field>
+        <field name="sequence">40</field>
+        <field name="icon">fa-reply</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'outgoing'), ('return_id', '!=', False)]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_goods_return_note"/>
+        <field name="printed_from">A return to a supplier: Return on the receipt, then Print &gt; Goods Return Note</field>
+        <field name="description">Defective, damaged, surplus or non-conforming goods sent back</field>
+        <field name="terms" type="html"><ol><li>Reason: Issued when goods are <strong>defective, damaged, surplus, or non-conforming</strong> to order specifications.</li><li>Responsibility: Supplier bears full responsibility for <strong>collection, replacement, or credit</strong> of returned goods.</li><li>Condition: Goods must be uplifted within <strong>7 working days</strong> of notification; failure to do so may result in disposal at supplier's cost.</li></ol></field>
+    </record>
+    <record id="type_transfer_form" model="odin.document.type">
+        <field name="name">Transfer Form</field>
+        <field name="code">transfer_form</field>
+        <field name="area">stock</field>
+        <field name="sequence">10</field>
+        <field name="icon">fa-exchange</field>
+        <field name="res_model">stock.picking</field>
+        <field name="record_domain">[('picking_type_code', '=', 'internal')]</field>
+        <field name="record_action">stock.action_picking_tree_all</field>
+        <field name="report_id" ref="action_report_transfer_form"/>
+        <field name="printed_from">An internal transfer: Inventory &gt; Operations &gt; Transfers, then Print &gt; Transfer Form</field>
+        <field name="description">Goods moving between warehouses, branches or departments</field>
+        <field name="terms" type="html"><ol><li>Transfers must be <strong>pre-approved</strong> by the responsible manager or HOD.</li><li>Both sending and receiving parties must <strong>sign and date</strong> the form.</li><li>All transfers must be <strong>entered into the stock system</strong> within 24 hours.</li><li>Unauthorized transfers will be treated as <strong>stock loss or misconduct</strong>.</li></ol></field>
+    </record>
+    <record id="type_stock_count" model="odin.document.type">
+        <field name="name">Stock Count Sheet</field>
+        <field name="code">stock_count</field>
+        <field name="area">stock</field>
+        <field name="sequence">20</field>
+        <field name="icon">fa-list-ol</field>
+        <field name="res_model">stock.quant</field>
+        <field name="record_domain">[]</field>
+        <field name="record_action">stock.action_view_inventory_tree</field>
+        <field name="report_id" ref="action_report_stock_count"/>
+        <field name="printed_from">Physical Inventory: select the lines to count, then Print &gt; Stock Count Sheet</field>
+        <field name="description">System quantity, counted quantity and variance, signed by the count team</field>
+        <field name="terms" type="html"><ol><li>Physical count must be conducted by <strong>at least two staff members</strong> (checker + verifier).</li><li>Sheets must be signed by <strong>warehouse officer and finance representative</strong>.</li><li>Variances must be documented and <strong>explained within 48 hours</strong>.</li><li>Stock sheets form part of <strong>audit records</strong> and must be archived.</li></ol></field>
+    </record>
+    <record id="type_memo" model="odin.document.type">
+        <field name="name">Memo</field>
+        <field name="code">memo</field>
+        <field name="area">internal</field>
+        <field name="sequence">10</field>
+        <field name="icon">fa-envelope-o</field>
+        <field name="res_model">odin.document.memo</field>
+        <field name="record_domain">[]</field>
+        <field name="record_action">odin_documents.action_memo</field>
+        <field name="report_id" ref="action_report_memo"/>
+        <field name="printed_from">Written here: New, then Issue once authorised</field>
+        <field name="description">Instructions, policy changes, meeting notices, staff reminders</field>
+        <field name="can_create" eval="True"/>
+        <field name="terms" type="html"><ol><li>All memos must be <strong>authorized</strong> by Management.</li><li>Staff must <strong>acknowledge receipt</strong> where required.</li><li>Memos are <strong>official records</strong> and must not be altered.</li><li>Non-compliance with instructions in memos may result in <strong>disciplinary action</strong>.</li></ol></field>
+    </record>
+    <record id="type_requisition" model="odin.document.type">
+        <field name="name">Requisition Form</field>
+        <field name="code">requisition</field>
+        <field name="area">internal</field>
+        <field name="sequence">20</field>
+        <field name="icon">fa-hand-paper-o</field>
+        <field name="res_model">purchase.request</field>
+        <field name="record_domain">[]</field>
+        <field name="record_action">purchase_request.purchase_request_form_action</field>
+        <field name="report_id" ref="action_report_requisition"/>
+        <field name="printed_from">A purchase request: Purchase &gt; Purchase Requests, then Print &gt; Requisition Form</field>
+        <field name="description">A department asks stores or finance for materials, inputs or services</field>
+        <field name="terms" type="html"><ol><li>All requisitions must be <strong>approved by department head</strong> before submission.</li><li>Finance must confirm <strong>budget availability</strong> before procurement.</li><li>Stores may only release items <strong>against an approved requisition</strong>.</li><li>Misuse of requisition forms will result in <strong>disciplinary action</strong>.</li></ol></field>
+    </record>
+</odoo>

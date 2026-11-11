@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Documents app: one card per document, grouped Sales, Export,
+     Purchases, Stock, Internal. A card says what the document is for and
+     where it is printed from; clicking it opens those records. -->
+<odoo>
+    <record id="view_document_type_kanban" model="ir.ui.view">
+        <field name="name">odin.document.type.kanban</field>
+        <field name="model">odin.document.type</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="area" records_draggable="0" group_create="0" group_delete="0" group_edit="0"
+                    quick_create="0" create="0" action="action_open_records" type="object">
+                <field name="icon"/>
+                <field name="can_create"/>
+                <field name="record_count"/>
+                <field name="issued_count"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i t-attf-class="fa fa-fw fa-lg #{record.icon.raw_value or 'fa-file-text-o'} text-primary"/>
+                            <field name="name" class="fw-bold fs-5"/>
+                        </div>
+                        <field name="description" class="text-muted"/>
+                        <div class="small mt-1">
+                            <i class="fa fa-print me-1" title="Printed from"/>
+                            <field name="printed_from"/>
+                        </div>
+                        <footer class="mt-2 pt-1 d-flex gap-2 align-items-center">
+                            <button name="action_open_records" type="object" class="btn btn-primary btn-sm">
+                                Open <span class="badge text-bg-light ms-1" t-out="record.record_count.value"/>
+                            </button>
+                            <button t-if="record.can_create.raw_value" name="action_new" type="object" class="btn btn-secondary btn-sm">
+                                New
+                            </button>
+                            <a name="action_open_issued" type="object" class="ms-auto small">
+                                <t t-out="record.issued_count.value"/> issued
+                            </a>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_document_type_list" model="ir.ui.view">
+        <field name="name">odin.document.type.list</field>
+        <field name="model">odin.document.type</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="area"/>
+                <field name="printed_from"/>
+                <field name="report_id"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_document_type_form" model="ir.ui.view">
+        <field name="name">odin.document.type.form</field>
+        <field name="model">odin.document.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_records" type="object" string="Open the records" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="area"/>
+                            <field name="description"/>
+                            <field name="printed_from"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="report_id" options="{'no_create': True}"/>
+                            <field name="code" groups="base.group_no_one"/>
+                            <field name="res_model" groups="base.group_no_one"/>
+                            <field name="record_domain" groups="base.group_no_one"/>
+                            <field name="record_action" groups="base.group_no_one"/>
+                            <field name="icon" groups="base.group_no_one"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Terms &amp; conditions" name="terms">
+                            <p class="text-muted">Printed at the foot of the document. Write {company} for the company's name.</p>
+                            <field name="terms"/>
+                        </page>
+                        <page string="Sign-off statement" name="acknowledgement">
+                            <p class="text-muted">Printed above the signature boxes, e.g. that the goods were received in good condition.</p>
+                            <field name="acknowledgement"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_document_type_search" model="ir.ui.view">
+        <field name="name">odin.document.type.search</field>
+        <field name="model">odin.document.type</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_area" string="Area" context="{'group_by': 'area'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_document_type" model="ir.actions.act_window">
+        <field name="name">Documents</field>
+        <field name="res_model">odin.document.type</field>
+        <field name="view_mode">kanban</field>
+        <field name="view_id" ref="view_document_type_kanban"/>
+        <field name="search_view_id" ref="view_document_type_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Every business document, in one place</p>
+            <p>Each card says where its document is printed from and opens those records.</p>
+        </field>
+    </record>
+
+    <record id="action_document_type_config" model="ir.actions.act_window">
+        <field name="name">Documents &amp; terms</field>
+        <field name="res_model">odin.document.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_document_type_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_document_type_form')})]"/>
+    </record>
+
+    <!-- The register of issued documents -->
+    <record id="view_document_log_list" model="ir.ui.view">
+        <field name="name">odin.document.log.list</field>
+        <field name="model">odin.document.log</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0">
+                <field name="date"/>
+                <field name="doc_type_id"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="amount" sum="Total" widget="monetary"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <button name="action_open_record" type="object" string="Open" icon="fa-external-link" invisible="not res_id"/>
+                <field name="res_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_document_log_search" model="ir.ui.view">
+        <field name="name">odin.document.log.search</field>
+        <field name="model">odin.document.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="doc_type_id"/>
+                <field name="user_id"/>
+                <filter name="today" string="Today" domain="[('date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter name="date" string="Date" date="date"/>
+                <group>
+                    <filter name="group_doc" string="Document" context="{'group_by': 'doc_type_id'}"/>
+                    <filter name="group_area" string="Area" context="{'group_by': 'area'}"/>
+                    <filter name="group_partner" string="Customer / supplier" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_user" string="Printed by" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_document_log" model="ir.actions.act_window">
+        <field name="name">Issued documents</field>
+        <field name="res_model">odin.document.log</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">No document printed yet</p>
+            <p>Every document printed or sent is listed here: which one, for whom, by whom and when.</p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Purchasing documents: request for quotation, purchase order, and the
+     requisition a department raises before either. -->
+<odoo>
+    <template id="report_rfq">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Supplier'"/>
+                                    <t t-call="odin_documents.party"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Request for Quotation'"/>
+                                    <t t-set="meta" t-value="[('RFQ no.', o.name),
+                                        ('Date', o._doc_date(o.date_order)),
+                                        ('Required by', o._doc_date(o.date_planned)),
+                                        ('Buyer', o.user_id.name),
+                                        ('Your reference', o.partner_ref)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Code</th>
+                                    <th>Description</th>
+                                    <th class="o_odoc_num">Qty</th>
+                                    <th>Unit</th>
+                                    <th>Required by</th>
+                                    <th class="o_odoc_num">Your unit price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-set="numbers" t-value="o._doc_numbering(o.order_line)"/>
+                                <t t-foreach="o.order_line" t-as="line">
+                                    <tr t-if="o._doc_is_section(line)" class="o_odoc_section"><td colspan="7" t-out="line.name"/></tr>
+                                    <tr t-elif="line.display_type == 'line_note'" class="o_odoc_note"><td colspan="7" t-out="line.name"/></tr>
+                                    <tr t-else="">
+                                        <td t-out="numbers.get(line.id, '')"/>
+                                        <td t-out="line.product_id.default_code or ''"/>
+                                        <td t-out="o._doc_line_name(line)"/>
+                                        <td class="o_odoc_num" t-out="o._doc_qty(line.product_qty)"/>
+                                        <td t-out="line.product_uom_id.name or ''"/>
+                                        <td t-out="o._doc_date(line.date_planned)"/>
+                                        <td/>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <div class="o_odoc_body" t-if="not is_html_empty(o.note)" t-out="o.note"/>
+                        <t t-set="terms" t-value="o._doc_terms('rfq')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Issued by']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('rfq')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_purchase_order">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="ship_to" t-value="o.dest_address_id or o.picking_type_id.warehouse_id.partner_id or company.partner_id"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Supplier'"/>
+                                    <t t-call="odin_documents.party"/>
+                                    <t t-set="party" t-value="ship_to"/>
+                                    <t t-set="party_label" t-value="'Deliver to'"/>
+                                    <t t-call="odin_documents.party"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Purchase Order'"/>
+                                    <t t-set="meta" t-value="[('PO no.', o.name),
+                                        ('Order date', o._doc_date((o.date_approve or o.date_order))),
+                                        ('Expected delivery', o._doc_date(o.date_planned)),
+                                        ('Buyer', o.user_id.name),
+                                        ('Payment terms', o.payment_term_id.name),
+                                        ('Your reference', o.partner_ref)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <t t-set="lines" t-value="o.order_line"/>
+                        <t t-set="qty_field" t-value="'product_qty'"/>
+                        <t t-set="cur" t-value="o.currency_id"/>
+                        <t t-call="odin_documents.lines"/>
+                        <t t-set="untaxed" t-value="o.amount_untaxed"/>
+                        <t t-set="tax" t-value="o.amount_tax"/>
+                        <t t-set="total" t-value="o.amount_total"/>
+                        <t t-call="odin_documents.totals"/>
+                        <t t-set="words_amount" t-value="o.amount_total"/>
+                        <t t-set="words_currency" t-value="o.currency_id"/>
+                        <t t-call="odin_documents.amount_words"/>
+                        <div class="o_odoc_body" t-if="not is_html_empty(o.note)" t-out="o.note"/>
+                        <t t-set="terms" t-value="o._doc_terms('purchase_order')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Authorised by', 'Accepted by the supplier']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('purchase_order')"/>
+                        <t t-set="stamp" t-value="True"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_requisition">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <t t-set="doc_title" t-value="'Requisition Form'"/>
+                        <t t-set="meta" t-value="[('Requisition no.', o.name),
+                            ('Date', o._doc_date(o.date_start)),
+                            ('Department', o._doc_department().name),
+                            ('Requested by', o.requested_by.name),
+                            ('Assigned to', o.assigned_to.name),
+                            ('Status', o._doc_state_label())]"/>
+                        <t t-call="odin_documents.title"/>
+                        <p t-if="o.description"><strong>Purpose:</strong> <span t-out="o.description"/></p>
+                        <table class="o_odoc_table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Code</th>
+                                    <th>Item required</th>
+                                    <th class="o_odoc_num">Qty</th>
+                                    <th>Unit</th>
+                                    <th>Required by</th>
+                                    <th>Justification</th>
+                                    <th class="o_odoc_num">Est. cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="o.line_ids" t-as="line">
+                                    <td t-out="line_index + 1"/>
+                                    <td t-out="line.product_id.default_code or ''"/>
+                                    <td t-out="line.name or line.product_id.display_name"/>
+                                    <td class="o_odoc_num" t-out="o._doc_qty(line.product_qty)"/>
+                                    <td t-out="line.product_uom_id.name or ''"/>
+                                    <td t-out="o._doc_date(line.date_required)"/>
+                                    <td t-out="line.specifications or ''"/>
+                                    <td class="o_odoc_num" t-out="line.estimated_cost" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="7">Estimated total</td>
+                                    <td class="o_odoc_num" t-out="o.estimated_cost" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <t t-set="terms" t-value="o._doc_terms('requisition')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Requested by', 'Head of department', 'Finance (budget)', 'Procurement', 'Issued by (stores)']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('requisition')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_company_form_documents" model="ir.ui.view">
+        <field name="name">res.company.form.odin_documents</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='general_info']" position="after">
+                <page string="Documents" name="odin_documents">
+                    <p class="text-muted">
+                        The letterhead prints the company's name, address, KRA PIN (Tax ID), phone, email and logo from
+                        General Information. Bank accounts printed for payment are the company's own (its contact's
+                        Bank accounts): a document in a currency lists the accounts in that currency.
+                    </p>
+                    <group>
+                        <group string="Payment details">
+                            <field name="doc_mpesa_paybill"/>
+                            <field name="doc_mpesa_account"/>
+                            <field name="doc_cheque_payee" placeholder="The company's name"/>
+                        </group>
+                        <group string="Numbers and stamp">
+                            <field name="doc_short_name"/>
+                            <field name="doc_stamp" widget="image" class="oe_avatar"/>
+                            <field name="doc_replace_standard"/>
+                        </group>
+                        <group string="Export documents">
+                            <field name="doc_export_currency_id" options="{'no_create': True}"/>
+                            <field name="doc_export_conditions"/>
+                            <field name="doc_freight_terms"/>
+                            <field name="doc_brand"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_company_documents" model="ir.actions.server">
+        <field name="name">Letterhead &amp; payment details</field>
+        <field name="model_id" ref="base.model_res_company"/>
+        <field name="state">code</field>
+        <field name="code">action = env.company.action_odin_documents_settings()</field>
+    </record>
+</odoo>

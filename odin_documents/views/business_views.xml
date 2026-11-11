@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the documents' own fields are typed: on the invoice (export rate,
+     next to the currency), the transfer (pallets, weights, references), the
+     product (export details, next to the HS code) and the department (code
+     on numbers). -->
+<odoo>
+    <record id="view_move_form_documents" model="ir.ui.view">
+        <field name="name">account.move.form.odin_documents</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='currency_div']" position="after">
+                <field name="doc_is_export" invisible="1"/>
+                <div name="odin_export_rate" class="d-flex gap-1 align-items-baseline"
+                     invisible="not doc_is_export or not doc_foreign_currency_id">
+                    <span class="text-muted">Rate on the commercial invoice: 1</span>
+                    <field name="doc_foreign_currency_id" class="w-auto" options="{'no_create': True, 'no_open': True}"
+                           readonly="state != 'draft' or currency_id != company_currency_id"/>
+                    <span>=</span>
+                    <field name="doc_exchange_rate" readonly="state != 'draft'" style="max-width: 14ch;"/>
+                    <field name="company_currency_id" readonly="1" options="{'no_open': True}" class="w-auto"/>
+                </div>
+            </xpath>
+            <xpath expr="//field[@name='invoice_incoterm_id']" position="after">
+                <field name="doc_goods_description" invisible="not doc_is_export"
+                       placeholder="e.g. Liquid detergents"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_picking_form_documents" model="ir.ui.view">
+        <field name="name">stock.picking.form.odin_documents</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']" position="inside">
+                <group string="On the printed documents" name="odin_documents">
+                    <field name="return_id" invisible="1"/>
+                    <field name="picking_type_code" invisible="1"/>
+                    <group>
+                        <field name="doc_supplier_ref" invisible="picking_type_code != 'incoming' or return_id"/>
+                        <field name="doc_vehicle" invisible="picking_type_code == 'internal'"/>
+                        <field name="doc_reason" invisible="not return_id" placeholder="Why the goods come or go back"/>
+                    </group>
+                    <group invisible="picking_type_code != 'outgoing'">
+                        <field name="doc_is_export" invisible="1"/>
+                        <field name="doc_pallets"/>
+                        <field name="doc_cbm"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_form_documents" model="ir.ui.view">
+        <field name="name">product.template.form.odin_documents</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="stock_delivery.product_template_hs_code"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='country_of_origin']" position="after">
+                <field name="doc_kebs_permit"/>
+                <field name="doc_brand"/>
+                <field name="doc_pack_size" placeholder="e.g. 0.5 L"/>
+                <field name="doc_net_weight"/>
+                <field name="doc_carton_qty"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_department_form_documents" model="ir.ui.view">
+        <field name="name">hr.department.form.odin_documents</field>
+        <field name="model">hr.department</field>
+        <field name="inherit_id" ref="hr.view_department_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='parent_id']" position="after">
+                <field name="doc_code" placeholder="e.g. HR"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stock documents, each printed from the transfer it records: delivery
+     note, GRN, goods return and replacement notes, transfer form; and the
+     count sheet, printed from the stock lines counted. -->
+<odoo>
+    <!-- rows (picking._doc_lines()), show_ordered, ordered_label, qty_label,
+         show_cartons, show_remarks -->
+    <template id="picking_lines">
+        <table class="o_odoc_table">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th t-if="show_ordered" class="o_odoc_num" t-out="ordered_label or 'Ordered'"/>
+                    <th class="o_odoc_num" t-out="qty_label or 'Qty'"/>
+                    <th>Unit</th>
+                    <th t-if="show_cartons" class="o_odoc_num">Cartons</th>
+                    <th>Batch</th>
+                    <th t-if="show_remarks">Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row">
+                    <td t-out="row_index + 1"/>
+                    <td t-out="row['product'].default_code or ''"/>
+                    <td t-out="row['product'].name or row['description']"/>
+                    <td t-if="show_ordered" class="o_odoc_num" t-out="o._doc_qty(row['ordered'])"/>
+                    <td class="o_odoc_num" t-out="o._doc_qty(row['qty'])"/>
+                    <td t-out="row['uom']"/>
+                    <td t-if="show_cartons" class="o_odoc_num" t-out="row['cartons'] or ''"/>
+                    <td t-out="row['lots']"/>
+                    <td t-if="show_remarks"/>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="report_delivery_note">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Deliver to'"/>
+                                    <t t-call="odin_documents.party" t-if="o.partner_id"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Delivery Note'"/>
+                                    <t t-set="meta" t-value="[('Delivery no.', o.name),
+                                        ('Date', o._doc_date((o.date_done or o.scheduled_date))),
+                                        ('Order no.', o.sale_id.name or o.origin),
+                                        ('Customer order no.', o.sale_id.client_order_ref),
+                                        ('Invoice no.', ', '.join(o._doc_invoices().mapped('name'))),
+                                        ('Vehicle / driver', o.doc_vehicle)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <t t-set="rows" t-value="o._doc_lines()"/>
+                        <t t-set="show_ordered" t-value="True"/>
+                        <t t-set="ordered_label" t-value="'Ordered'"/>
+                        <t t-set="qty_label" t-value="'Delivered'"/>
+                        <t t-set="show_cartons" t-value="any(row['cartons'] for row in rows)"/>
+                        <t t-set="show_remarks" t-value="False"/>
+                        <t t-call="odin_documents.picking_lines"/>
+                        <t t-set="terms" t-value="o._doc_terms('delivery_note')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Delivered by', 'Received for the buyer']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('delivery_note')"/>
+                        <t t-set="stamp" t-value="True"/>
+                        <t t-set="stamp_label" t-value="'Buyer\'s company stamp'"/>
+                        <t t-set="stamp_theirs" t-value="True"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_grn">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Supplier'"/>
+                                    <t t-call="odin_documents.party" t-if="o.partner_id"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Goods Received Note'"/>
+                                    <t t-set="meta" t-value="[('GRN no.', o.name),
+                                        ('Date received', o._doc_date((o.date_done or o.scheduled_date))),
+                                        ('Purchase order', o.purchase_id.name or o.origin),
+                                        ('Supplier delivery note', o.doc_supplier_ref),
+                                        ('Supplier ref.', o.purchase_id.partner_ref),
+                                        ('Vehicle / driver', o.doc_vehicle)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p t-if="o.state != 'done'" class="o_odoc_notice">Not yet validated in Odoo: the quantities are as planned.</p>
+                        <t t-set="rows" t-value="o._doc_lines()"/>
+                        <t t-set="show_ordered" t-value="True"/>
+                        <t t-set="ordered_label" t-value="'Ordered'"/>
+                        <t t-set="qty_label" t-value="'Received'"/>
+                        <t t-set="show_cartons" t-value="False"/>
+                        <t t-set="show_remarks" t-value="True"/>
+                        <t t-call="odin_documents.picking_lines"/>
+                        <t t-set="terms" t-value="o._doc_terms('grn')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Received by (stores)', 'Inspected by (quality)', 'Delivered by (supplier)']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('grn')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_goods_return_note">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Returned to (supplier)'"/>
+                                    <t t-call="odin_documents.party" t-if="o.partner_id"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Goods Return Note'"/>
+                                    <t t-set="meta" t-value="[('Return no.', o.name),
+                                        ('Date', o._doc_date((o.date_done or o.scheduled_date))),
+                                        ('Against GRN', o.return_id.name),
+                                        ('Purchase order', o.purchase_id.name or o.return_id.purchase_id.name or o.origin)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p t-if="o.doc_reason"><strong>Reason:</strong> <span t-out="o.doc_reason"/></p>
+                        <p t-if="o.state != 'done'" class="o_odoc_notice">Not yet validated in Odoo: the quantities are as planned.</p>
+                        <t t-set="rows" t-value="o._doc_lines()"/>
+                        <t t-set="show_ordered" t-value="False"/>
+                        <t t-set="qty_label" t-value="'Returned'"/>
+                        <t t-set="show_cartons" t-value="False"/>
+                        <t t-set="show_remarks" t-value="True"/>
+                        <t t-call="odin_documents.picking_lines"/>
+                        <t t-set="terms" t-value="o._doc_terms('goods_return_note')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Returned by', 'Authorised by', 'Received by (supplier)']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('goods_return_note')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_replacement_note">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="delivery" t-value="o.return_id"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <table class="o_odoc_cols">
+                            <tr>
+                                <td>
+                                    <t t-set="party" t-value="o.partner_id"/>
+                                    <t t-set="party_label" t-value="'Customer'"/>
+                                    <t t-call="odin_documents.party" t-if="o.partner_id"/>
+                                </td>
+                                <td>
+                                    <t t-set="doc_title" t-value="'Goods Replacement Note'"/>
+                                    <t t-set="meta" t-value="[('Note no.', o.name),
+                                        ('Date', o._doc_date((o.date_done or o.scheduled_date))),
+                                        ('Against delivery', delivery.name),
+                                        ('Invoice no.', ', '.join(delivery._doc_invoices().mapped('name')) if delivery else ''),
+                                        ('Order no.', delivery.sale_id.name or o.origin)]"/>
+                                    <t t-call="odin_documents.title"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p t-if="o.doc_reason"><strong>Reason:</strong> <span t-out="o.doc_reason"/></p>
+                        <p>Goods returned by the customer, to be replaced:</p>
+                        <p t-if="o.state != 'done'" class="o_odoc_notice">Not yet validated in Odoo: the quantities are as planned.</p>
+                        <t t-set="rows" t-value="o._doc_lines()"/>
+                        <t t-set="show_ordered" t-value="False"/>
+                        <t t-set="qty_label" t-value="'Returned'"/>
+                        <t t-set="show_cartons" t-value="False"/>
+                        <t t-set="show_remarks" t-value="True"/>
+                        <t t-call="odin_documents.picking_lines"/>
+                        <t t-set="terms" t-value="o._doc_terms('replacement_note')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Received by (stores)', 'Replacement approved by', 'Customer']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('replacement_note')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_transfer_form">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="o._doc_company()"/>
+                <t t-set="doc_number" t-value="o.name"/>
+                <t t-call="odin_documents.layout">
+                    <div class="page">
+                        <t t-set="doc_title" t-value="'Transfer Form'"/>
+                        <t t-set="meta" t-value="[('Transfer no.', o.name),
+                            ('Date', o._doc_date((o.date_done or o.scheduled_date))),
+                            ('From', o.location_id.complete_name),
+                            ('To', o.location_dest_id.complete_name),
+                            ('Reference', o.origin)]"/>
+                        <t t-call="odin_documents.title"/>
+                        <p t-if="o.state != 'done'" class="o_odoc_notice">Not yet validated in Odoo: the quantities are as planned.</p>
+                        <t t-set="rows" t-value="o._doc_lines()"/>
+                        <t t-set="show_ordered" t-value="False"/>
+                        <t t-set="qty_label" t-value="'Qty'"/>
+                        <t t-set="show_cartons" t-value="False"/>
+                        <t t-set="show_remarks" t-value="False"/>
+                        <t t-call="odin_documents.picking_lines"/>
+                        <t t-set="terms" t-value="o._doc_terms('transfer_form')"/>
+                        <t t-call="odin_documents.terms"/>
+                        <t t-set="boxes" t-value="['Authorised by', 'Issued by', 'Received by']"/>
+                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('transfer_form')"/>
+                        <t t-set="stamp" t-value="False"/>
+                        <t t-call="odin_documents.signoff"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- One sheet for all the stock lines printed together -->
+    <template id="report_stock_count">
+        <t t-call="web.html_container">
+            <t t-set="o" t-value="docs"/>
+            <t t-set="company" t-value="docs._doc_company()"/>
+            <t t-set="doc_number" t-value="docs._doc_sheet_ref()"/>
+            <t t-set="rows" t-value="docs._doc_count_rows()"/>
+            <t t-set="locations" t-value="docs.location_id"/>
+            <t t-call="odin_documents.layout">
+                <div class="page">
+                    <t t-set="doc_title" t-value="'Stock Sheet - Physical Count'"/>
+                    <t t-set="meta" t-value="[('Sheet no.', doc_number),
+                        ('Date of count', docs._doc_today()),
+                        ('Location', locations[:1].complete_name if len(locations) == 1 else 'Several, see each line')]"/>
+                    <t t-call="odin_documents.title"/>
+                    <table class="o_odoc_table">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th t-if="len(locations) > 1">Location</th>
+                                <th>Code</th>
+                                <th>Product</th>
+                                <th>Batch</th>
+                                <th>Unit</th>
+                                <th class="o_odoc_num">System</th>
+                                <th class="o_odoc_num">Counted</th>
+                                <th class="o_odoc_num">Variance</th>
+                                <th>Explanation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="rows" t-as="row">
+                                <td t-out="row_index + 1"/>
+                                <td t-if="len(locations) > 1" t-out="row['location']"/>
+                                <td t-out="row['product'].default_code or ''"/>
+                                <td t-out="row['product'].name"/>
+                                <td t-out="row['lot']"/>
+                                <td t-out="row['uom']"/>
+                                <td class="o_odoc_num" t-out="o._doc_qty(row['system'])"/>
+                                <td class="o_odoc_num" t-out="'' if row['counted'] is None else o._doc_qty(row['counted'])"/>
+                                <td class="o_odoc_num" t-out="'' if row['variance'] is None else o._doc_qty(row['variance'])"/>
+                                <td/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <t t-set="terms" t-value="docs._doc_terms('stock_count')"/>
+                    <t t-call="odin_documents.terms"/>
+                    <t t-set="boxes" t-value="['Counted by (checker)', 'Verified by', 'Warehouse officer', 'Finance representative']"/>
+                    <t t-set="acknowledgement" t-value="docs._doc_acknowledgement('stock_count')"/>
+                    <t t-set="stamp" t-value="False"/>
+                    <t t-call="odin_documents.signoff"/>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>
