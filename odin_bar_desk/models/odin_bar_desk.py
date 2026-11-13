@@ -642,6 +642,8 @@ class OdinBarDesk(models.AbstractModel):
         return {
             "products": infos,
             "categories": categories,
+            # VAT on a product added while receiving, before it has its own.
+            "default_vat": bar.company_id.account_purchase_tax_id._bar_vat_rate(),
             "locations": [
                 {"id": other.id, "name": other.name, "code": other.code, "kind": other.kind}
                 for other in self._desk_day_bars(bar)

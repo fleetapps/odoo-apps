@@ -9,6 +9,7 @@
                 <group string="Bar Desk supplier deliveries" name="bar_desk_supplies">
                     <field name="bar_supplies" placeholder="e.g. Beers and spirits"/>
                     <field name="bar_supply_categ_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="bar_invoice_vat"/>
                 </group>
             </page>
         </field>

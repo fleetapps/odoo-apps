@@ -24,14 +24,27 @@ function toast(app, outcome, message) {
     }
 }
 
+/** How an invoice can print VAT, as staff read it on the paper. Drinks and
+ * cigarettes are invoiced in Kenya at prices including VAT, so that is where
+ * a supplier starts; the others are a tap away for the exceptions. */
+export const VAT_MODES = [
+    { key: "included", label: "VAT included", sentence: "Prices include VAT" },
+    { key: "added", label: "VAT added on top", sentence: "VAT is added on top of the prices" },
+    { key: "none", label: "No VAT", sentence: "No VAT: the supplier is not registered" },
+];
+
 /**
  * Store: a supplier delivery, checked against the supplier's invoice.
  *
- * New delivery: invoice photo (optional) → supplier → the items on the
- * invoice → what arrived (filled in from the invoice: change what differs)
- * → missing items, invoice number and total, Paid now or Pay later.
- * Expected deliveries (the rest of an invoice, or an order made in Odoo)
- * are opened from the list and checked the same way.
+ * New delivery: supplier → invoice photo (optional) and the items on the
+ * invoice, each with its price as printed (including VAT unless the invoice
+ * says otherwise), until the total matches the paper → what arrived (filled
+ * in from the invoice: change what differs) → missing items, invoice number,
+ * Mark as paid or Mark as credit purchase. The bill is posted, and paid when
+ * marked so, there and then: nothing waits for a
+ * manager, so nothing moves on without a price. Expected deliveries (the rest
+ * of an invoice, or an order made in Odoo) are opened from the list and
+ * checked the same way.
  */
 export class StoreReceiveScreen extends Component {
     static template = "odin_bar_desk.StoreReceiveScreen";
@@ -46,6 +59,8 @@ export class StoreReceiveScreen extends Component {
         this.packUnit = packUnit;
         this.moveQty = moveQty;
         this.fmt = fmt;
+        this.money = money;
+        this.vatModes = VAT_MODES;
         this.fileInput = useRef("invoiceFile");
         this.state = useState({
             step: "choose",
@@ -56,6 +71,8 @@ export class StoreReceiveScreen extends Component {
             supplier: null,
             supplierProducts: new Set(),
             supplierPrices: {},
+            vat: "included",
+            vatOpen: false,
             invoice: null,
             items: [],
             arrived: {},
@@ -120,6 +137,7 @@ export class StoreReceiveScreen extends Component {
     async pickSupplier(supplier) {
         Object.assign(this.state, {
             supplier, items: [], supplierProducts: new Set(), supplierPrices: {},
+            vat: supplier.vat || "included", vatOpen: false,
         });
         this.go("items");
         try {
@@ -134,9 +152,19 @@ export class StoreReceiveScreen extends Component {
         }
     }
 
-    /** What this supplier last charged for one of that unit. */
+    /** What this supplier last charged for one of that unit, before VAT. */
     priceFor(product, uomId) {
         return this.state.supplierPrices[`${product.id}:${uomId}`] || 0;
+    }
+
+    /** Prices are typed as the invoice prints them; this is how it prints VAT. */
+    setVat(mode) {
+        this.state.vat = mode;
+        this.state.vatOpen = false;
+    }
+
+    get vatSentence() {
+        return VAT_MODES.find((mode) => mode.key === this.state.vat)?.sentence || "";
     }
 
     // ---- invoice photo --------------------------------------------------------
@@ -302,18 +330,37 @@ export class StoreReceiveScreen extends Component {
         this.go(this.state.receipt ? "receipt" : "check");
     }
 
-    /** The invoice adds up from the prices entered line by line, so there is
-     * nothing to type again and nothing that can disagree with the bill. */
-    get invoiceTotal() {
-        return this.state.items.reduce((total, item) => total + item.qty * (item.price || 0), 0);
+    /** The invoice adds up from the prices entered line by line, read the
+     * way it prints VAT: the total is the figure at the bottom of the paper,
+     * and what Mark as paid takes from the account. */
+    get invoiceTotals() {
+        let net = 0;
+        let vat = 0;
+        for (const item of this.state.items) {
+            const product = this.model.product(item.productId);
+            const rate = this.state.vat === "none" ? 0 : product?.vat || 0;
+            const amount = item.qty * (item.price || 0);
+            if (this.state.vat === "included") {
+                net += amount / (1 + rate);
+                vat += amount - amount / (1 + rate);
+            } else {
+                net += amount;
+                vat += amount * rate;
+            }
+        }
+        return { net, vat, total: net + vat };
     }
 
-    get invoiceTotalLabel() {
-        return money(this.invoiceTotal);
+    get invoiceTotal() {
+        return this.invoiceTotals.total;
     }
 
     get missingPrices() {
         return this.state.items.filter((item) => !item.price).length;
+    }
+
+    get hasNewProducts() {
+        return this.state.items.some((item) => this.model.product(item.productId)?.isNew);
     }
 
     get canFinish() {
@@ -344,28 +391,33 @@ export class StoreReceiveScreen extends Component {
                 {
                     bar_id: this.storeId,
                     partner_id: supplier.id,
-                    lines: items.map((item) => ({
-                        product_id: item.productId,
-                        uom_id: item.uomId,
-                        invoiced: item.qty,
-                        received: arrived[item.key],
-                        price: item.price || 0,
-                    })),
+                    lines: items.map((item) => {
+                        const product = this.model.product(item.productId);
+                        return {
+                            product_id: product.isNew ? false : item.productId,
+                            new_product: product.isNew ? product.newProduct : false,
+                            uom_id: item.uomId,
+                            invoiced: item.qty,
+                            received: arrived[item.key],
+                            price: item.price || 0,
+                        };
+                    }),
                     missing: missing === "credit" ? "credit" : "coming",
                     paid,
+                    vat: this.state.vat,
                     // No separate total to check against: the bill is built from
                     // the very prices entered above, so a cross-check would only
-                    // compare a number with itself -- and, because the entered
-                    // prices are net while the bill total carries VAT, it would
-                    // "disagree" every time and leave every bill unposted.
-                    // The figure on screen is the check, made before tapping.
+                    // compare a number with itself. The total on screen, read
+                    // the way the invoice prints VAT, is the check, made against
+                    // the paper before tapping.
                     amount: false,
                     supplier_ref: this.state.supplierRef.trim() || false,
                     invoice: this.state.invoice
                         ? { name: this.state.invoice.name, mimetype: this.state.invoice.mimetype, data: this.state.invoice.data }
                         : false,
                 },
-                `Supplier delivery from ${supplier.name}`
+                `Supplier delivery from ${supplier.name}`,
+                { reloadCatalog: this.hasNewProducts }
             );
         }
         this.state.busy = false;
@@ -385,13 +437,19 @@ export class StoreReceiveScreen extends Component {
                 "warning"
             );
         } else {
-            toast(
-                this.props.app,
-                outcome,
+            let message =
                 paid === "now" && bill?.paid
-                    ? "In the store and paid."
-                    : "In the store. The bill waits for payment."
-            );
+                    ? "In the store and marked paid."
+                    : "In the store, as a credit purchase.";
+            const costs = outcome.result?.new_costs || [];
+            if (costs.length) {
+                const names = costs.length > 2 ? `${costs.slice(0, 2).join(", ")} and ${costs.length - 2} more` : costs.join(" and ");
+                message += ` New cost for ${names}.`;
+            }
+            toast(this.props.app, outcome, message);
+        }
+        if (outcome.status === "done" && this.hasNewProducts) {
+            await this.model.loadCatalog().catch(() => {});
         }
         this.props.app.home();
     }

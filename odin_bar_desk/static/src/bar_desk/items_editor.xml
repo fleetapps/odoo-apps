@@ -6,10 +6,16 @@
             <i class="fa fa-plus me-2"/>Add item
         </button>
         <ProductPicker t-if="state.picking" model="props.model" title="props.pickerTitle" onlyIds="props.onlyIds"
-                       markedIds="markedIds" hint="props.pickerHint" onPick.bind="pick" onClose="() => this.state.picking = false"/>
+                       markedIds="markedIds" hint="props.pickerHint" onPick.bind="pick"
+                       onCreate="props.allowNew ? this.startNew.bind(this) : undefined"
+                       onClose="() => this.state.picking = false"/>
+        <NewProductSheet t-if="state.newProduct" model="props.model" name="state.newProduct.name"
+                         categId="state.newProduct.categId" onConfirm.bind="confirmNew"
+                         onClose="() => this.state.newProduct = null"/>
         <Keypad t-if="state.keypad" t-key="state.keypad.product.id" product="state.keypad.product"
                 mode="props.withPrice ? 'price' : 'qty'"
                 value="state.keypad.value" allowRemove="!!state.keypad.item"
+                checkPrice="props.withPrice ? ((price, uomId) => this.priceWarning(state.keypad.product, price, uomId)) : undefined"
                 onConfirm.bind="confirm" onRemove.bind="removeCurrent" onClose="() => this.state.keypad = null"/>
     </t>
 </templates>

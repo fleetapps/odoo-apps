@@ -210,8 +210,8 @@ export class DeskModel {
             this.call("desk_home", { ...kwargs, business_date: this.state.day || false }),
             this.call("desk_catalog", kwargs),
         ]);
-        this.productsById = new Map(catalog.products.map((product) => [product.id, product]));
-        Object.assign(this.state, { home, catalog, bar: home.bar, token, employee });
+        this.setCatalog(catalog);
+        Object.assign(this.state, { home, bar: home.bar, token, employee });
         writeJSON(browser.sessionStorage, this.sessionKey, {
             barId: this.state.bar.id,
             token,
@@ -226,9 +226,21 @@ export class DeskModel {
     }
 
     async loadCatalog() {
-        const catalog = await this.fetch("desk_catalog");
-        this.productsById = new Map(catalog.products.map((product) => [product.id, product]));
+        this.setCatalog(await this.fetch("desk_catalog"));
+    }
+
+    setCatalog(catalog) {
+        // Products added on a supplier delivery still being entered stay
+        // known until it is posted, whatever reloads in the meantime.
+        const added = [...this.productsById.values()].filter((product) => product.isNew);
+        this.productsById = new Map([...catalog.products, ...added].map((product) => [product.id, product]));
         this.state.catalog = catalog;
+    }
+
+    /** A product named on this device, created on the server with the action
+     * that uses it. Not in the catalogue: it cannot be picked elsewhere. */
+    addLocalProduct(product) {
+        this.productsById.set(product.id, product);
     }
 
     async loadHome() {
@@ -272,12 +284,13 @@ export class DeskModel {
      * when there is no connection (it will be sent later), or {status:
      * "failed", message} when the server refused it.
      */
-    async post(method, kwargs, label) {
+    async post(method, kwargs, label, { reloadCatalog = false } = {}) {
         const uuid = newUuid();
         const entry = {
             uuid,
             method,
             label,
+            reloadCatalog,
             created: Date.now(),
             employee: this.state.employee?.name,
             kwargs: { bar_id: this.state.bar.id, ...kwargs, uuid, token: this.state.token },
@@ -323,6 +336,7 @@ export class DeskModel {
             return;
         }
         this.state.sending = true;
+        let reloadCatalog = false;
         try {
             for (const entry of [...this.state.outbox]) {
                 const outcome = await this.send(entry);
@@ -333,10 +347,14 @@ export class DeskModel {
                     this.notify(`${entry.label}: ${outcome.message}`, "danger", true);
                 } else {
                     this.notify(`${entry.label}: sent`, "success");
+                    reloadCatalog ||= entry.reloadCatalog;
                 }
             }
             if (this.state.token) {
                 this.loadHome().catch(() => {});
+                if (reloadCatalog) {
+                    this.loadCatalog().catch(() => {});
+                }
             }
         } finally {
             this.state.sending = false;

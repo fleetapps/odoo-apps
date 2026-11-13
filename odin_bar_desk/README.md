@@ -71,9 +71,16 @@ sheet**, in three steps that each show whether they are done:
    product categories** the products listed first when booking its delivery.
    Installing the module fills both for Dhostana's suppliers (Khetias, Soys,
    Mega Wines, Rosso Bianco, Siddham Wines, Sky City, Highridge, Benchmark,
-   Muji, Geeta, Ishano, Outlook Index, Tony West, Rwathia).
+   Muji, Geeta, Ishano, Outlook Index, Tony West, Rwathia). **VAT on
+   invoices** is how its invoices print VAT (included by default, added, or
+   none for a supplier not registered); the Desk opens each delivery on it
+   and remembers what staff last chose.
 8. **Paying suppliers**: on the Main Store's *Bar Desk* tab, set **Suppliers
-   are paid from** to the cash or M-Pesa journal that pays deliveries.
+   are paid from** to the cash or M-Pesa journal that pays deliveries. A
+   payment from a journal whose payment method has no outstanding account is
+   booked to Outstanding Payments, so the bill reads paid without a bank
+   statement. Payments made before this release that never reached the books:
+   `tools/odin_book_payments.py`.
 9. **Par levels**: reorder rules (*Inventory → Operations → Replenishment*,
    trigger *Manual*) on `MS/Stock`. The Desk's **Stock levels** compares the
    club's total to them.
@@ -144,12 +151,27 @@ differences are posted to stock, dated when each location was counted.
 It opens on the deliveries expected, or straight on the suppliers when none is:
 1. **New supplier delivery**, then the supplier. Each shows what it supplies.
 2. Optional: **Add a photo of the invoice**. It is kept on the bill.
-3. **What's on the invoice**: each item and its quantity (crates, bottles).
-4. **What arrived?** Filled in from the invoice: change only what differs.
-5. If something is missing, **The supplier will**: *Bring them later* (it
+3. **What's on the invoice**: each item, its quantity (crates, bottles) and
+   its price as printed. The price opens on what the supplier charged last
+   time, so the usual case is typing the quantity. A line cannot be kept
+   without a price, and a price far from the last one (a zero too many) is
+   questioned: **Yes, that is right** keeps it. Changing the unit converts
+   the price (2,400 a crate of 24 is 100 a bottle).
+4. A product the Desk does not have: type its name in the search, tap
+   **New product**, pick its category, how it is kept (the shapes that
+   category already uses, e.g. *Tots · 750ml bottle*, *Units · Crate of 24*)
+   and what it sells for. It is created with the delivery and marked
+   *Added on the Desk* for a manager to check.
+5. Prices are read as **including VAT**, as drinks and cigarettes are
+   invoiced in Kenya; **Change** gives *VAT added on top* or *No VAT* (a
+   supplier not registered for VAT) for the exceptions, and the supplier
+   keeps the choice. The **Invoice total** reads like the bottom line of the
+   paper: check one against the other.
+6. **What arrived?** Filled in from the invoice: change only what differs.
+7. If something is missing, **The supplier will**: *Bring them later* (it
    stays under *Expected from suppliers*) or *Send a credit note*.
-6. Invoice number (optional) and **Invoice total**, then **Paid now** (from
-   the store's payment account) or **Pay later**.
+8. Invoice number (optional), then **Mark as paid** (from the store's
+   payment account) or **Mark as credit purchase** (owed to the supplier).
 
 **Stock levels.** Every product's club total in bottles or crates, where it
 sits, and its par; **Below par** lists what to reorder. This replaces the
@@ -246,7 +268,8 @@ expected is measured against the shelf as it stands now.
 | Move bar → store | The bar's `RET-xx` transfer, validated |
 | Move bar → bar | `IBT` transfer, validated |
 | Move out of the club | Transfer of the destination's type (`ROMA` / `EVT` / `DEBT`), validated |
-| Supplier delivery (store) | Receipt into the store for what arrived, validated; supplier bill for what the invoice lists, paid from the store's journal when *Paid now*; an expected receipt (bring later) or a draft credit note (credit) for what was missing; the invoice photo attached |
+| Supplier delivery (store) | A purchase order at the prices typed, confirmed (and approved, whatever the approval rule: the goods are in); its receipt into the store validated for what arrived, valued at those prices, which moves the product's cost (average or FIFO); the supplier bill for what the invoice lists, taxed the way the invoice shows VAT, **posted**, and paid from the store's journal when *Mark as paid*; price changes against the supplier's last invoice noted on the bill; an expected receipt (bring later, already billed) or a draft credit note (credit) for what was missing; the invoice photo attached |
+| New product (on a delivery) | A storable product in the category picked, kept like its neighbours (tots and a bottle size, or units and a crate), with its selling price and the company's taxes, on the Desk at once and marked *Added on the Desk* (filter *Added on the Desk, to check* under *Bar Control → Configuration → Desk products*): check it, link it to its POS item, then clear the mark |
 | Count approved | Inventory adjustment moves for the differences, linked to the count and its variance reason |
 
 Every move carries *Moved by hand* (`bar_manual_move`), the trading day it

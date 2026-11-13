@@ -10,6 +10,7 @@
                     <group>
                         <field name="bar_desk_ok"/>
                         <field name="bar_count_sequence" invisible="not bar_desk_ok"/>
+                        <field name="bar_desk_new" invisible="not bar_desk_new"/>
                     </group>
                     <group invisible="not bar_desk_ok">
                         <field name="uom_ids" invisible="1"/>
@@ -30,6 +31,7 @@
             <field name="name" position="after">
                 <field name="bar_desk_ok" optional="hide"/>
                 <field name="bar_count_sequence" optional="hide"/>
+                <field name="bar_desk_new" optional="hide"/>
             </field>
         </field>
     </record>
@@ -41,6 +43,7 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <filter string="In Bar Desk" name="bar_desk_ok" domain="[('bar_desk_ok', '=', True)]"/>
+                <filter string="Added on the Desk, to check" name="bar_desk_new" domain="[('bar_desk_new', '=', True)]"/>
             </xpath>
         </field>
     </record>

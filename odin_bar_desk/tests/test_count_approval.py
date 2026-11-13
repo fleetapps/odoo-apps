@@ -249,14 +249,15 @@ class TestCountApproval(BarDeskCase):
             self.assertNotEqual(fresh["id"], data["id"])
             self.assertEqual(self.env["odin.bar.count"].browse(data["id"]).state, "cancel")
 
-    def test_only_recent_days_can_be_counted(self):
+    def test_any_past_day_can_be_counted_but_not_the_future(self):
+        """A day missed at the time can still be closed; one that has not
+        traded yet has nothing to count."""
         with freeze_time("2026-09-28 07:00:00"):
             token = self.login(self.device_be, self.bar_be, self.mary, "1234")
             desk = self.desk(self.device_be)
             self.assertEqual(desk.desk_count_start(self.bar_be.id, token, "2026-09-25")["business_date"], "2026-09-25")
-            with self.assertRaisesRegex(UserError, "last 3 trading days"):
-                desk.desk_count_start(self.bar_be.id, token, "2026-09-24")
-            with self.assertRaisesRegex(UserError, "last 3 trading days"):
+            self.assertEqual(desk.desk_count_start(self.bar_be.id, token, "2026-09-14")["business_date"], "2026-09-14")
+            with self.assertRaisesRegex(UserError, "has not traded yet"):
                 desk.desk_count_start(self.bar_be.id, token, "2026-09-29")
 
     def test_full_bottles_of_several_sizes(self):
