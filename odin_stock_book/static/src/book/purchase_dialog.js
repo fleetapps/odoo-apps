@@ -26,6 +26,9 @@ const blankLine = () => ({
     priced: null, pricelist: "", keepPrice: false, priceSeq: 0,
 });
 const isBlank = (line) => !line.product && !line.query && !line.qty && !line.cost;
+// A KRA PIN as KRA writes it: A (an individual) or P (anyone else), nine digits and a letter.
+const KRA_PIN = /^[AP][0-9]{9}[A-Z]$/;
+const compactPin = (text) => (text || "").replace(/\s+/g, "").toUpperCase();
 
 const SERVER = {
     purchase: { options: "book_purchase_options", partners: "book_purchase_suppliers", products: "book_purchase_products",
@@ -67,6 +70,7 @@ export class PurchaseDialog extends Component {
         this.words = this.isSale ? {
             partner: _t("Customer"), partnerHint: _t("Type to find the customer"), noPartner: _t("No customer matches."),
             ref: _t("Invoice no."), date: _t("Date delivered"), paid: _t("Paid into"), cost: _t("Unit price"),
+            pin: _t("KRA PIN"), cu: _t("CU invoice no."), terms: _t("Payment terms"), due: _t("Due date"),
             document: _t("invoice"), notStock: _t("Not stock: on the invoice only"),
             noteHint: _t("What for? Shows on the invoice"), itemHint: _t("Code or name, e.g. bleach or delivery"),
         } : {
@@ -76,8 +80,11 @@ export class PurchaseDialog extends Component {
             noteHint: _t("What for? Shows on the bill"), itemHint: _t("Code or name, e.g. salt or transport"),
         };
         this.state = useState({
-            options: { taxes: [], journals: [], today: "", can_post: false, currency: "" },
+            options: { taxes: [], journals: [], payment_terms: [], today: "", can_post: false, currency: "" },
             supplier: null, supplierQuery: "", ref: "", date: "", refProblem: "", paid: "",
+            // Sales: the customer's KRA PIN and terms, filled in from the customer
+            // and kept there when typed; the CU invoice number the invoice prints.
+            pin: "", terms: "", cu: "", due: "",
             lines: [blankLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
             edit: false, replaceIds: [],
         });
@@ -113,6 +120,11 @@ export class PurchaseDialog extends Component {
             this.state.paid = data.paid;
             this.state.edit = data.edit;
             this.state.replaceIds = data.replace_ids;
+            if (this.isSale) {
+                this.state.pin = data.partner_vat || "";
+                this.state.terms = data.payment_term_id ? String(data.payment_term_id) : "";
+                this.state.cu = data.cu_invoice_no || "";
+            }
             this.state.lines = data.lines.map((row) => ({
                 ...blankLine(), product: row.product, query: row.product.display_name, note: row.note,
                 qty: row.qty ? String(row.qty) : "", cost: row.cost ? String(row.cost) : "",
@@ -125,9 +137,11 @@ export class PurchaseDialog extends Component {
                 ...blankLine(), product, query: product.display_name,
             }));
         } else {
+            await this.loadDue();
             return;
         }
         this.ensureBlankLine();
+        await this.loadDue();
         await Promise.all(this.state.lines.filter((line) => line.product).map((line) => this.loadDefaults(line)));
         if (this.state.ref && this.state.supplier?.id && !this.state.replaceIds.length) {
             await this.checkRef();
@@ -189,8 +203,8 @@ export class PurchaseDialog extends Component {
     }
 
     get fingerprint() {
-        const { supplierQuery, ref, date, paid } = this.state;
-        return JSON.stringify([supplierQuery, ref, date, paid, this.items.map((line) => (
+        const { supplierQuery, ref, date, paid, pin, terms, cu } = this.state;
+        return JSON.stringify([supplierQuery, ref, date, paid, pin, terms, cu, this.items.map((line) => (
             [line.product?.id, line.query, line.qty, line.cost, line.taxId, line.note]))]);
     }
 
@@ -250,6 +264,9 @@ export class PurchaseDialog extends Component {
             return ["date", this.isSale ? _t("The delivery date cannot be in the future.")
                 : _t("The date received cannot be in the future.")];
         }
+        if (this.pinProblem) {
+            return ["pin", this.pinProblem];
+        }
         if (!this.items.length) {
             return [`product-${this.state.lines[0].key}`, _t("Add at least one item.")];
         }
@@ -273,6 +290,15 @@ export class PurchaseDialog extends Component {
         return null;
     }
 
+    /** A PIN typed must be a KRA PIN; the one the customer has stays as it is (a foreign tax ID, say). */
+    get pinProblem() {
+        const pin = compactPin(this.state.pin);
+        if (!this.isSale || !pin || pin === compactPin(this.state.supplier?.vat) || KRA_PIN.test(pin)) {
+            return "";
+        }
+        return _t("%s is not a KRA PIN: A or P, nine digits and a letter, e.g. P052112729P.", this.state.pin.trim());
+    }
+
     missing(line, field) {
         return this.state.tried && !isBlank(line) && this.lineProblem(line) === field;
     }
@@ -282,6 +308,12 @@ export class PurchaseDialog extends Component {
         this.anchor = ev.target;
         const text = ev.target.value;
         this.state.supplierQuery = text;
+        if (this.isSale && this.state.supplier) {
+            // Another customer: the PIN and terms were the last one's.
+            this.state.pin = "";
+            this.state.terms = "";
+            this.loadDue();
+        }
         this.state.supplier = null;
         this.state.refProblem = "";
         if (!text.trim()) {
@@ -322,9 +354,16 @@ export class PurchaseDialog extends Component {
     }
 
     pickSupplier(item) {
-        this.state.supplier = item.create ? { id: false, name: item.create } : { id: item.id, name: item.name };
+        this.state.supplier = item.create ? { id: false, name: item.create }
+            : { id: item.id, name: item.name, vat: item.vat || "", payment_term_id: item.payment_term_id || false };
         this.state.supplierQuery = this.state.supplier.name;
         this.state.suggest = null;
+        if (this.isSale) {
+            // What the customer has, to keep or to fill in where it is missing.
+            this.state.pin = this.state.supplier.vat || "";
+            this.state.terms = this.state.supplier.payment_term_id ? String(this.state.supplier.payment_term_id) : "";
+            this.loadDue();
+        }
         this.refreshDefaults();
         this.checkRef();
         this.focus(this.state.ref ? `product-${this.state.lines[0].key}` : "ref");
@@ -375,6 +414,47 @@ export class PurchaseDialog extends Component {
         this.state.date = ev.target.value;
         if (this.isSale) {
             this.refreshDefaults();
+            this.loadDue();
+        }
+    }
+
+    // ------------------------------------------------------------ PIN, terms, CU number
+    onTerms(ev) {
+        this.state.terms = ev.target.value;
+        this.loadDue();
+    }
+
+    /** "None" only for a customer without terms: terms on file are changed, not taken off, here. */
+    get canLeaveTermsEmpty() {
+        return !this.state.supplier?.payment_term_id;
+    }
+
+    /** The day the invoice falls due, as Odoo will date it from the terms and the invoice date. */
+    async loadDue() {
+        if (!this.isSale) {
+            return;
+        }
+        const seq = (this.dueSeq = (this.dueSeq || 0) + 1);
+        const due = await this.orm.call("odin.stock.book", "book_sale_due", [],
+            { payment_term_id: Number(this.state.terms) || false, date: this.state.date || false });
+        if (seq === this.dueSeq) {
+            this.state.due = due;
+        }
+    }
+
+    get dueLabel() {
+        if (!this.state.due) {
+            return "—";
+        }
+        const [y, m, d] = this.state.due.split("-").map(Number);
+        const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1];
+        return `${d} ${month} ${y}`;
+    }
+
+    onHeadKey(next, ev) {
+        if (ev.key === "Enter" && !ev.ctrlKey && !ev.metaKey) {
+            ev.preventDefault();
+            this.focus(next);
         }
     }
 
@@ -650,6 +730,10 @@ export class PurchaseDialog extends Component {
                 purchase_ref: this.state.ref.trim(), date: this.state.date,
                 pay_journal_id: this.state.paid === "none" ? false : Number(this.state.paid),
                 lines: this.items.map((line) => this.linePayload(line)),
+                ...(this.isSale ? {
+                    partner_vat: compactPin(this.state.pin), payment_term_id: Number(this.state.terms) || false,
+                    cu_invoice_no: this.state.cu.trim(),
+                } : {}),
             }], { replace_ids: this.state.replaceIds });
             this.props.onSaved(result);
             this.props.close();

@@ -31,6 +31,34 @@
                             <option value="none" t-att-selected="state.paid === 'none'">Not paid yet</option>
                         </select>
                     </div>
+                    <t t-if="isSale">
+                        <div class="o_sb_pd_field">
+                            <label for="o_sb_pd_pin" t-esc="words.pin"/>
+                            <input id="o_sb_pd_pin" data-pd="pin" class="form-control text-uppercase" autocomplete="off"
+                                   t-att-class="{ 'is-invalid': state.tried and pinProblem }" t-att-value="state.pin"
+                                   placeholder="e.g. P051234567X" title="Saved on the customer for the next sale"
+                                   t-on-input="(ev) => this.state.pin = ev.target.value" t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
+                        </div>
+                        <div class="o_sb_pd_field">
+                            <label for="o_sb_pd_cu" t-esc="words.cu"/>
+                            <input id="o_sb_pd_cu" data-pd="cu" class="form-control" autocomplete="off" t-att-value="state.cu"
+                                   placeholder="From the signed invoice" title="Printed on the invoice"
+                                   t-on-input="(ev) => this.state.cu = ev.target.value" t-on-keydown="(ev) => this.onHeadKey('terms', ev)"/>
+                        </div>
+                        <div class="o_sb_pd_field">
+                            <label for="o_sb_pd_terms" t-esc="words.terms"/>
+                            <select id="o_sb_pd_terms" data-pd="terms" class="form-select" title="Saved on the customer for the next sale"
+                                    t-on-change="onTerms" t-on-keydown="(ev) => this.onHeadKey('product-' + state.lines[0].key, ev)">
+                                <option t-if="canLeaveTermsEmpty" value="" t-att-selected="!state.terms">None: due on the day</option>
+                                <option t-foreach="state.options.payment_terms" t-as="term" t-key="term.id" t-att-value="term.id"
+                                        t-att-selected="'' + term.id === state.terms" t-esc="term.label"/>
+                            </select>
+                        </div>
+                        <div class="o_sb_pd_field">
+                            <span class="o_sb_pd_label" t-esc="words.due"/>
+                            <div class="o_sb_pd_due" aria-live="polite" t-esc="dueLabel"/>
+                        </div>
+                    </t>
                     <div t-if="state.refProblem" class="o_sb_pd_alert alert alert-danger" role="alert"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.refProblem"/></div>
                 </div>
 

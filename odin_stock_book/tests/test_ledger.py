@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from odoo import Command, fields
@@ -188,6 +189,98 @@ class TestStockBookLedger(TestStockBookPurchase):
         line.invalidate_recordset()
         self.assertEqual(line._status()[0], "need_invoice")
         self.assertEqual(self.Book.book_sale_load(line.id)["replace_ids"], line.ids)
+
+    # ------------------------------------------------------------ the customer's PIN and terms, the CU number
+    def test_the_sale_window_offers_the_payment_terms_and_dates_the_invoice_due(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        self.assertIn(terms.id, [t["id"] for t in self.Book.book_sale_options()["payment_terms"]])
+        self.assertEqual(self.Book.book_sale_due(terms.id, "2026-11-09"), "2026-12-09")
+        self.assertEqual(self.Book.book_sale_due(False, "2026-11-09"), "2026-11-09", "no terms: due on the day")
+
+    def test_a_sale_puts_the_pin_and_terms_on_the_customer_and_the_cu_number_on_the_invoice(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        day = fields.Date.today() - timedelta(days=10)
+        values = self._sale_values(date=fields.Date.to_string(day), partner_vat=" p052112729p ",
+                                   payment_term_id=terms.id, cu_invoice_no=" KRACU0100012345/77 ")
+        customer = self.env["res.partner"].browse(values["partner_id"])
+        self.assertFalse(customer.vat or customer.property_payment_term_id)
+        result = self.Book.book_sale_save(values)
+        self.assertEqual(customer.vat, "P052112729P", "kept on the customer, as KRA writes it")
+        self.assertEqual(customer.property_payment_term_id, terms)
+        sale = self.Line.browse(result["ids"]).stock_sale_id
+        self.assertEqual(sale.cu_invoice_no, "KRACU0100012345/77")
+        self.assertEqual(sale.order_id.payment_term_id, terms)
+        invoice = sale.invoice_id
+        self.assertEqual(invoice.invoice_payment_term_id, terms)
+        self.assertEqual(invoice.invoice_date, day)
+        self.assertEqual(invoice.invoice_date_due, day + timedelta(days=30), "from the invoice date, not today")
+        self.assertEqual(result["due"], fields.Date.to_string(day + timedelta(days=30)))
+        if "doc_cu_invoice_no" in invoice._fields:  # Business Documents installed: what the invoice prints
+            self.assertEqual(invoice.doc_tax_invoice_no, "INV-1")
+            self.assertEqual(invoice.doc_cu_invoice_no, "KRACU0100012345/77")
+        found = {c["id"]: c for c in self.Book.book_sale_customers("Naivas Test")["items"]}
+        self.assertEqual((found[customer.id]["vat"], found[customer.id]["payment_term_id"]),
+                         ("P052112729P", terms.id), "the next sale to them opens with both")
+
+    def test_a_sale_without_terms_is_due_on_its_invoice_date(self):
+        day = fields.Date.today() - timedelta(days=5)
+        result = self.Book.book_sale_save(self._sale_values(date=fields.Date.to_string(day)))
+        invoice = self.Line.browse(result["ids"]).invoice_id
+        self.assertFalse(invoice.invoice_payment_term_id)
+        self.assertEqual(invoice.invoice_date_due, day, "not the day it was typed in")
+        self.assertEqual(invoice.line_ids.filtered(lambda l: l.display_type == "payment_term").date_maturity, day)
+
+    def test_terms_left_as_they_are_keep_the_customers(self):
+        terms = self.env.ref("account.account_payment_term_15days")
+        values = self._sale_values(partner_vat="")
+        customer = self.env["res.partner"].browse(values["partner_id"])
+        customer.write({"property_payment_term_id": terms.id, "vat": "P000591096X"})
+        sale = self.Line.browse(self.Book.book_sale_save(values)["ids"]).stock_sale_id
+        self.assertEqual(sale.payment_term_id, terms)
+        self.assertEqual(sale.invoice_id.invoice_payment_term_id, terms)
+        self.assertEqual((customer.vat, customer.property_payment_term_id), ("P000591096X", terms),
+                         "an empty PIN box takes nothing off the customer")
+
+    def test_a_pin_typed_must_be_a_kra_pin_and_a_foreign_tax_id_on_file_stays(self):
+        values = self._sale_values(partner_vat="12345")
+        with self.assertRaisesRegex(UserError, "not a KRA PIN"):
+            self.Book.book_sale_save(values)
+        customer = self.env["res.partner"].browse(values["partner_id"])
+        customer.vat = "157041913"  # a Rwandan customer's tax ID
+        values["partner_vat"] = "157041913"
+        self.assertTrue(self.Book.book_sale_save(values)["posted"])
+        self.assertEqual(customer.vat, "157041913")
+
+    def test_a_new_customer_is_created_with_its_pin_and_terms(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        values = self._sale_values(partner_vat="A004416331M", payment_term_id=terms.id)
+        values.update(partner_id=False, partner_name="Kiambu Club Test")
+        customer = self.Line.browse(self.Book.book_sale_save(values)["ids"]).stock_sale_id.partner_id
+        self.assertEqual((customer.name, customer.vat, customer.property_payment_term_id),
+                         ("Kiambu Club Test", "A004416331M", terms))
+
+    def test_a_cu_number_is_not_used_twice(self):
+        self.Book.book_sale_save(self._sale_values(cu_invoice_no="KRACU0100012345/77"))
+        with self.assertRaisesRegex(UserError, "already on invoice INV-1"):
+            self.Book.book_sale_save(self._sale_values(purchase_ref="INV-2", cu_invoice_no="kracu0100012345/77"))
+
+    def test_a_draft_sale_opens_with_its_pin_terms_and_cu_number_and_posts_with_them(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        day = fields.Date.today() - timedelta(days=3)
+        values = self._sale_values(date=fields.Date.to_string(day), partner_vat="P052112729P",
+                                   payment_term_id=terms.id, cu_invoice_no="CU-9")
+        result = self.Book.book_sale_save(values, post=False)
+        self.assertFalse(result["posted"])
+        data = self.Book.book_sale_load(result["ids"][0])
+        self.assertEqual((data["partner_vat"], data["payment_term_id"], data["cu_invoice_no"]),
+                         ("P052112729P", terms.id, "CU-9"))
+        self.assertEqual(data["supplier"]["payment_term_id"], terms.id)
+        lines = self.Line.browse(result["ids"])
+        lines.action_post()
+        invoice = lines.invoice_id
+        self.assertEqual(invoice.invoice_date_due, day + timedelta(days=30))
+        if "doc_cu_invoice_no" in invoice._fields:
+            self.assertEqual(invoice.doc_cu_invoice_no, "CU-9")
 
     # ------------------------------------------------------------ moves outside the book
     def _lines_for(self, product):

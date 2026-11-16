@@ -103,6 +103,13 @@
                 <field name="doc_goods_description" invisible="not doc_is_export"
                        placeholder="e.g. Liquid detergents"/>
             </xpath>
+            <!-- Signed with KRA in QuickBooks, say: the numbers the invoice prints. -->
+            <xpath expr="//group[@id='header_left_group']" position="inside">
+                <field name="doc_tax_invoice_no" invisible="move_type not in ('out_invoice', 'out_refund')"
+                       placeholder="e.g. 5400, from QuickBooks"/>
+                <field name="doc_cu_invoice_no" invisible="move_type not in ('out_invoice', 'out_refund')"
+                       placeholder="From the signed tax invoice"/>
+            </xpath>
         </field>
     </record>
 
