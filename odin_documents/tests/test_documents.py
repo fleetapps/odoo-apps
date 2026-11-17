@@ -401,6 +401,39 @@ class TestDocuments(AccountTestInvoicingCommon):
         transfer = self.picking(self.warehouse.int_type_id, False, qty=5)
         self.assertIn("Transfer Form", self.render("action_report_transfer_form", transfer))
 
+    def test_band_delivery_note_dated_without_a_time_and_with_its_terms(self):
+        delivery = self.picking(self.warehouse.out_type_id, self.partner_a, doc_vehicle="KDA 123B")
+        Note = self.report("action_report_delivery_note")
+        self.assertEqual(Note.get_paperformat(), self.env.ref("odin_documents.paperformat_portrait"))
+        self.company.doc_invoice_style = "band"
+        self.assertEqual(Note.get_paperformat(), self.env.ref("odin_documents.paperformat_band"))
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertRegex(html, r"Delivery Note\s+%s\s*</h2>" % re.escape(delivery.name))
+        self.assertIn("Tax ID: P052112729P", self.band(html, "from"))
+        self.assertIn(self.partner_a.display_name, self.band(html, "to"), "where the goods go")
+        self.assertIn(delivery._doc_date(delivery.scheduled_date), html)
+        self.assertNotRegex(html, r"\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}", "the date, no time")
+        self.assertNotIn("HS Code", html)
+        self.assertNotIn("HS code", html)
+        for text in ("Terms of Delivery", "checking quantities", "KDA 123B", "Delivered by",
+                     "Received for the buyer", "Buyer's company stamp", "Total delivered",
+                     "We are authorised to accept goods on behalf of the buyer"):
+            self.assertIn(text, html)
+        self.company.doc_invoice_style = "letterhead"
+        self.assertNotIn("o_odoc_band", self.render("action_report_delivery_note", delivery))
+
+    def test_odoos_print_on_a_transfer_gives_way_to_its_document(self):
+        Slip = self.env.ref("stock.action_report_delivery")
+        delivery = self.picking(self.warehouse.out_type_id, self.partner_a)
+        self.assertTrue(delivery.doc_replace_standard, "Odoo's Print button is hidden")
+        self.assertEqual(Slip.report_action(delivery)["report_name"], "odin_documents.report_delivery_note")
+        receipt = self.picking(self.warehouse.in_type_id, self.partner_b)
+        self.assertEqual(Slip.report_action(receipt)["report_name"], "odin_documents.report_grn")
+        self.company.doc_replace_standard = False
+        self.assertFalse(delivery.doc_replace_standard)
+        self.assertEqual(Slip.report_action(delivery, config=False)["report_name"], "stock.report_deliveryslip",
+                         "switched off: Odoo's own")
+
     def test_a_storekeeper_prints_the_delivery_note_of_a_sale(self):
         order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "LPO-77",
                                                "order_line": [Command.create({"product_id": self.product_a.id,

@@ -19,8 +19,8 @@ REPLACED_REPORTS = (
 )
 
 
-# The report whose paper format follows the company's Sales invoice style.
-BAND_REPORT = "odin_documents.report_sales_invoice"
+# The reports whose paper format follows the company's document style.
+BAND_REPORTS = ("odin_documents.report_sales_invoice", "odin_documents.report_delivery_note")
 
 
 class IrActionsActions(models.Model):
@@ -53,12 +53,22 @@ class IrActionsReport(models.Model):
         not sent to choose Odoo's document layout first."""
         if self and all((report.report_name or "").startswith("odin_documents.") for report in self):
             config = False
+        # Odoo's delivery slip, printed by the server (auto-print on validating,
+        # say): the transfer's own document instead.
+        if len(self) == 1 and self.report_name == "stock.report_deliveryslip" and self.env.company.doc_replace_standard:
+            ids = docids.ids if isinstance(docids, models.BaseModel) else ([docids] if isinstance(docids, int)
+                                                                         else list(docids or []))
+            pickings = self.env["stock.picking"].browse(ids).exists()
+            ours = pickings[:1] and pickings[:1]._doc_type(pickings[:1]._doc_print_code()).report_id
+            if ours:
+                return ours.report_action(pickings, data=data, config=False)
         return super().report_action(docids, data=data, config=config)
 
     def get_paperformat(self):
-        """The Sales Invoice of a company on the Band style prints edge to
-        edge, on its own paper format: the band reaches the page's edges."""
-        if len(self) == 1 and self.report_name == BAND_REPORT and self.env.company.doc_invoice_style == "band":
+        """A Band document (the Sales Invoice, the Delivery Note) of a company
+        on the Band style prints edge to edge, on its own paper format: the
+        band reaches the page's edges."""
+        if len(self) == 1 and self.report_name in BAND_REPORTS and self.env.company.doc_invoice_style == "band":
             band = self.env.ref("odin_documents.paperformat_band", raise_if_not_found=False)
             if band:
                 return band
@@ -66,11 +76,12 @@ class IrActionsReport(models.Model):
 
     def _render_qweb_pdf(self, report_ref, res_ids=None, data=None):
         ids = [res_ids] if isinstance(res_ids, int) else list(res_ids or [])
-        if ids and report_ref and self._get_report(report_ref).report_name == BAND_REPORT:
-            # Printed as the invoice's company, so the paper format follows its style.
+        band = ids and report_ref and self._get_report(report_ref)
+        if band and band.report_name in BAND_REPORTS:
+            # Printed as the record's company, so the paper format follows its style.
             # Only a company the user is in (or the portal, as superuser): Odoo
             # refuses to switch to any other.
-            company = self.env["account.move"].browse(ids[:1]).exists().company_id
+            company = self.env[band.model].browse(ids[:1]).exists().company_id
             if company and company != self.env.company and (self.env.su or company in self.env.user.company_ids):
                 self = self.with_company(company)
         result = super()._render_qweb_pdf(report_ref, res_ids=res_ids, data=data)

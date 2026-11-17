@@ -94,6 +94,9 @@ class StockPicking(models.Model):
     doc_total_net = fields.Float(string="Net weight (kg)", compute="_compute_doc_totals", digits="Stock Weight")
     doc_total_gross = fields.Float(string="Gross weight (kg)", compute="_compute_doc_totals", digits="Stock Weight")
     doc_packing_warning = fields.Text(compute="_compute_doc_totals")
+    # Odoo's own Print on a done transfer prints its delivery slip: hidden
+    # where these documents replace Odoo's.
+    doc_replace_standard = fields.Boolean(related="company_id.doc_replace_standard")
 
     @api.depends("picking_type_code", "partner_id.commercial_partner_id.country_id", "company_id.country_id")
     def _compute_doc_is_export(self):
@@ -155,6 +158,29 @@ class StockPicking(models.Model):
             totals["pallets"] += picking.doc_pallets
             totals["cbm"] += picking.doc_cbm
         return totals
+
+    def _doc_print_code(self):
+        """The document a transfer prints as: what Odoo's own Print gives way to."""
+        self.ensure_one()
+        code = self.picking_type_code
+        if code == "outgoing":
+            return "goods_return_note" if self.return_id else "delivery_note"
+        if code == "incoming":
+            return "replacement_note" if self.return_id else "grn"
+        return "transfer_form"
+
+    def _doc_band_meta(self):
+        """The Band delivery note's box under the title: the date (no time),
+        the order and invoice numbers, the vehicle."""
+        self.ensure_one()
+        refs = self._doc_refs()
+        # _doc_date prints the day only, in the user's time zone.
+        rows = [(_("Delivery Date"), self._doc_date(self.date_done or self.scheduled_date)),
+                (_("Order no."), refs["order"]),
+                (_("Customer order no."), refs["customer_ref"]),
+                (_("Invoice no."), refs["invoices"]),
+                (_("Vehicle / driver"), self.doc_vehicle)]
+        return [(label, value) for label, value in rows if value]
 
     def _doc_refs(self):
         """The order and invoice numbers the transfer's documents print. Read
