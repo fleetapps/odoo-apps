@@ -238,6 +238,8 @@ class StockBook(models.AbstractModel):
         sale = line.stock_sale_id.sudo()
         bill = bill or sale.invoice_id
         undone = line.stock_purchase_id.sudo().undone_on
+        can_undo = bool(line.state == "posted" and self._is_supervisor() and not reversed_by
+                        and not line._undo_refusal(check_reversal=False))
         return {
             "id": line.id, "date": fields.Date.to_string(line.date), "ref": line.ref or "",
             "reason": line.reason or "", "reason_label": REASONS[line.reason][1] if line.reason else "",
@@ -247,9 +249,8 @@ class StockBook(models.AbstractModel):
             else _("Sales order, delivery and invoice") if sale
             else REASONS[line.reason][2] if line.reason else "",
             "window": bool(line.stock_purchase_id or line.stock_sale_id),
-            "undone": bool(undone),
-            "can_undo": bool(line.state == "posted" and line.stock_purchase_id.order_id and not undone
-                             and self._is_supervisor()),
+            "undone": bool(undone or line.undone_on or sale.undone_on),
+            "can_undo": can_undo, "undo_kind": can_undo and line._undo_kind(),
             "unit_price": line.unit_price,
             "direction": REASONS[line.reason][0] if line.reason else "both",
             "product": self._product(line.product_id), "uom": line.uom_id.name or "",
@@ -270,7 +271,9 @@ class StockBook(models.AbstractModel):
             "paid_from": (line.stock_purchase_id.pay_journal_id or line.stock_sale_id.pay_journal_id).sudo().name or "",
             "note_print": " · ".join(filter(None, [line.purchase_ref and _("LPO %s", line.purchase_ref), line.note])),
             "reverses": line.reverses_id.ref or "", "reversed_by": reversed_by or "",
-            "can_reverse": line._can_reverse() and not reversed_by,
+            # Undo does what Reverse starts, in one step: Reverse stays for
+            # storekeepers, whose reversing line waits for a supervisor.
+            "can_reverse": line._can_reverse() and not reversed_by and not can_undo,
             "can_remove": bool(line.state == "posted" and (line.reverses_id or reversed_by)
                                and self._is_supervisor() and line._removal_pair()),
         }
@@ -1080,3 +1083,29 @@ class StockBook(models.AbstractModel):
         order = window.order_id.sudo().name
         window._undo()
         return {"order": order, "purchase_ref": window.purchase_ref, "again": again}
+
+    # ------------------------------------------------------------ undo any posted line
+    @api.model
+    def book_undo(self, line_id):
+        """Undo on a posted line: what it posted is taken back by Odoo's own
+        steps and the line stays on the book, marked Undone. A purchase or
+        sale from its window opens again to correct; any other line leaves a
+        draft copy on its day."""
+        if not self._is_supervisor():
+            raise UserError(_("Only a Stock Book supervisor can undo a line."))
+        line = self.env["odin.stock.line"].browse(line_id).exists()
+        if not line:
+            raise UserError(_("This line no longer exists. Reload the page."))
+        # Two people undoing the same line at once: the second transaction
+        # fails on this row, Odoo runs it again, and it then finds it undone.
+        self.env.cr.execute("UPDATE odin_stock_line SET write_date = write_date WHERE id = %s", (line.id,))
+        why = line._undo_refusal()
+        if why:
+            raise UserError(why)
+        kind = line._undo_kind()
+        if kind == "purchase":
+            return {"kind": kind, **self.book_purchase_undo(line.id)}
+        if kind == "sale":
+            return {"kind": kind, **self.book_sale_undo(line.id)}
+        draft = line._undo()
+        return {"kind": kind, "ref": line.ref, "draft_id": draft.id, "date": fields.Date.to_string(draft.date)}
