@@ -403,7 +403,11 @@ class TestStockBookPage(TestStockBook):
         self.assertIn("500 Ml Handwash Round", html, "a filling prints its components")
         self.assertNotIn("SHOULD NOT PRINT", html)
         self.assertIn("Checked by (supervisor)", html)
+        # A day with nothing on it: the one before anything was logged (on a
+        # live database, yesterday has its movements).
+        first = self.Line.with_context(active_test=False).search([], order="date", limit=1).date
+        empty = min(first, today) - timedelta(days=1)
         day = Report._render_qweb_html("odin_stock_book.report_movement_log", [], data=self.Book.book_print(
-            day=fields.Date.to_string(today - timedelta(days=1)))["data"])[0].decode()
+            day=fields.Date.to_string(empty))["data"])[0].decode()
         self.assertNotIn(sale.ref, day, "a day prints only that day")
         self.assertIn("No movements.", day)

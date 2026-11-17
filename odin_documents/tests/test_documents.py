@@ -32,8 +32,12 @@ class TestDocuments(AccountTestInvoicingCommon):
             "doc_mpesa_paybill": "982800", "doc_mpesa_account": "110110", "doc_brand": "RINZ",
         })
         cls.usd = cls.setup_other_currency("USD", rates=[("2026-01-01", 1 / 125.0)])
-        bank = cls.env["res.bank"].create({"name": "Prime Bank Limited", "bic": "PRIEKENX", "street": "Riverside Drive"})
-        Account = cls.env["res.partner.bank"]
+        # As the company's own bank details, made with sudo: who may create bank
+        # accounts differs between databases (OCA account_payment_order keeps
+        # it to its Payments group), and the documents only print them.
+        bank = cls.env["res.bank"].sudo().create({"name": "Prime Bank Limited", "bic": "PRIEKENX",
+                                                  "street": "Riverside Drive"})
+        Account = cls.env["res.partner.bank"].sudo()
         # Trusted ("Send Money"), as Odoo 19 requires before an invoice naming them is posted.
         Account.create({"acc_number": "3000184558", "partner_id": cls.company.partner_id.id, "bank_id": bank.id,
                         "currency_id": cls.company.currency_id.id, "allow_out_payment": True})
