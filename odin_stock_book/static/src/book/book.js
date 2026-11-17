@@ -269,12 +269,12 @@ export class StockBook extends Component {
      * A notice with Undo. ``undo`` runs at most once; the notice closes
      * when it is clicked.
      */
-    notifyUndo(message, undo, options = {}) {
+    notifyUndo(message, undo, { label = _t("Undo"), ...options } = {}) {
         let done = false;
         const close = this.notification.add(message, {
             type: "info", autocloseDelay: UNDO_MS, ...options,
             buttons: [{
-                name: _t("Undo"), primary: true, icon: "fa-undo",
+                name: label, primary: true, icon: "fa-undo",
                 onClick: async () => {
                     if (done) {
                         return;
@@ -1077,17 +1077,51 @@ export class StockBook extends Component {
         this.openPurchase({ lineId: row.id, kind: row.reason === "sale" ? "sale" : "purchase" });
     }
 
-    /** A saved purchase taken back in one step, then open again to correct. */
-    undoPurchase(row) {
+    /** What Undo will do to this line, before it is done. */
+    undoText(row) {
+        switch (row.undo_kind) {
+            case "purchase":
+                return _t("The payment and bill are cancelled, the goods leave stock again, and the order is cancelled. The documents stay, marked cancelled. It then opens again here, for you to correct or close.");
+            case "sale":
+                return _t("The payment is cancelled, the invoice is credited in full with a credit note, the goods come back into stock, and the order is cancelled. The documents stay. It then opens again here, for you to correct or close.");
+            case "make":
+                return _t("The manufacturing order is unbuilt: what it made leaves stock and its components go back. A draft copy of the line, on the same day, is added for you to correct and post.");
+            case "received":
+                return _t("The goods go back to the supplier and come off the purchase order. A draft copy of the line, on the same day, is added for you to correct and post.");
+            default:
+                return _t("A line that takes it back is posted today (a sale comes back as a customer return, anything else as a correction). A draft copy of the line, on the same day, is added for you to correct and post.");
+        }
+    }
+
+    /**
+     * Any posted line taken back in one step: it stays on the book marked
+     * Undone. A purchase or sale opens again to correct; any other line
+     * leaves a draft copy on its day.
+     */
+    undoLine(row) {
+        const name = row.undo_kind === "purchase" || row.undo_kind === "sale"
+            ? (row.purchase_ref || row.purchase || row.ref) : row.ref;
         this.dialog.add(ConfirmationDialog, {
-            title: _t("Undo %s?", row.purchase_ref || row.purchase),
-            body: _t("The payment and bill are cancelled, the goods leave stock again, and the order is cancelled. The documents stay, marked cancelled. It then opens again here, for you to correct or close."),
-            confirmLabel: _t("Undo purchase"),
+            title: _t("Undo %s?", name),
+            body: this.undoText(row),
+            confirmLabel: _t("Undo"),
             confirm: async () => {
-                const result = await this.mutate(() => this.orm.call("odin.stock.book", "book_purchase_undo", [row.id]));
-                this.notification.add(_t("%(order)s (%(ref)s) undone.", { order: result.order, ref: result.purchase_ref }),
-                    { type: "success" });
-                this.openPurchase({ loaded: result.again });
+                const result = await this.mutate(() => this.orm.call("odin.stock.book", "book_undo", [row.id]),
+                    { flash: (r) => (r.draft_id ? [r.draft_id] : [row.id]), reveal: true });
+                if (result.kind === "purchase" || result.kind === "sale") {
+                    this.notification.add(result.credit_note
+                        ? _t("%(order)s (%(ref)s) undone, credited by %(credit)s.",
+                            { order: result.order, ref: result.purchase_ref, credit: result.credit_note })
+                        : _t("%(order)s (%(ref)s) undone.", { order: result.order, ref: result.purchase_ref }),
+                        { type: "success" });
+                    this.openPurchase({ loaded: result.again, kind: result.kind });
+                    return;
+                }
+                if (this.rows.some((r) => r.id === result.draft_id)) {
+                    this.state.selectedId = result.draft_id;
+                }
+                this.notifyUndo(_t("%s undone. A draft copy is on its day, to correct and post.", result.ref),
+                    () => this.discard([result.draft_id]), { label: _t("Remove the copy") });
             },
             cancel: () => {},
         });

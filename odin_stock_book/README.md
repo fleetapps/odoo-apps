@@ -61,11 +61,27 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * **Back-dated lines** land on their day: the moves, the delivery, receipt or
   scrap, the manufacturing order and any journal entries are dated the line's
   date. Lines dated ahead wait (*Dated ahead*) until the day.
-* **Copy** a line to log the same movement again; **Reverse** a posted sale,
-  return, scrap or correction to add the draft that undoes it (a sale comes
-  back as a customer return), noted with the reference it reverses. A filling
-  is undone by unbuilding its order in Manufacturing, a receipt by returning it
-  to the supplier in Inventory.
+* **Undo** (supervisors), in a posted line's panel, takes the line back in one
+  step by Odoo's own documents, all of it or none. The line stays on the book
+  marked *Undone*, beside the lines that took it back, and a draft copy on its
+  day is added to correct and post (*Remove the copy* in the notice if it is
+  not wanted):
+
+  | Line | Undo |
+  |---|---|
+  | Sale, return, scrap, correction | The opposite line, today, posted at once (a sale comes back as a customer return) |
+  | Filling, production batch | Unbuilds its manufacturing order: what it made leaves stock, its components go back. The copy keeps the components as used |
+  | Received (quick line) | Returns the goods to the supplier and takes them off the purchase order, which is cancelled when nothing else on it was received |
+  | From *Add purchase* | Undo purchase, below: the whole LPO, opened again to correct |
+  | From *Add sale* | The whole invoice: payment cancelled, invoice credited in full by a credit note, goods back in stock, order cancelled, then opened again to correct at its prices |
+
+  It is refused, saying why, when what it would take out of stock has been
+  used, when a receipt is billed, when a payment is matched with the bank, or
+  when the line was received or delivered in Purchases or Sales, where it is
+  undone instead.
+* **Copy** a line to log the same movement again; **Reverse** (storekeepers) a
+  posted sale, return, scrap or correction to add the draft that undoes it,
+  for a supervisor to post, noted with the reference it reverses.
 * **Remove pair** (supervisors): once a mistake and the line reversing it are
   both posted and cancel out exactly, the two come off the book together, with
   Undo in the notice. They are archived, not deleted: their stock moves and
@@ -184,6 +200,12 @@ administrators are supervisors; a supervisor need not be one. Posting,
 cancelling and references are the book's own: a line cannot be marked posted,
 turned back into a draft or renumbered by hand, from the form or over the API.
 
+## Upgrading to 19.0.1.9.0
+
+Upgrade the module (Apps > Stock Book > Upgrade) for Undo: it adds the
+*Undone* marks to movements and sales and the credit note to sales. Purchases
+undone before keep their *Undone* mark.
+
 ## Upgrading from 19.0.1.0.0
 
 The upgrade starts each reason's numbering after the highest reference already
@@ -199,6 +221,7 @@ reference two lines still share.
 - Scrap and corrections post to `500106 Stock Losses & Adjustments`, through the account on the Inventory adjustment location.
 - On the first of each month, a scheduled task runs Odoo's Stock Closing for the month before, bringing the Stock account to the value of the stock. Odoo's own monthly schedule does not fire: it filters on two periods at once at month end.
 - **Undo purchase** cancels the payment and bill, returns the goods and cancels the order, all or nothing. It is refused if the goods are used, or the payment is matched with a bank statement.
+- **Undo** on a sale from *Add sale* credits the invoice with a posted credit note matched to it (Odoo's Reverse, full refund) rather than cancelling it, so the invoice numbering and any tax-authority submission stay whole.
 - Every stock change made outside the book lands on the movement log, posted.
 
 For past data, as an accounting administrator (each only reports until `dry_run=False`):

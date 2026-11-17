@@ -225,7 +225,7 @@
                                         </button>
                                         <span t-else="" t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-esc="row.status"/>
                                         <span t-if="row.unbilled" class="o_sb_pill o_sb_pill_warning ms-1" title="Received but not billed: its stock is not in the accounts yet">To bill</span>
-                                        <span t-if="row.undone" class="o_sb_pill o_sb_pill_muted ms-1" title="This purchase was undone: its goods went back and its documents are cancelled">Undone</span>
+                                        <span t-if="row.undone" class="o_sb_pill o_sb_pill_muted ms-1" title="Undone: what this line posted was taken back, and the lines that did it are on the book">Undone</span>
                                         <span t-if="row.posted_by" class="o_sb_appr" t-esc="row.posted_by"/>
                                     </td>
                                     <td class="o_sb_c_open">
@@ -457,8 +457,8 @@
                     </button>
                     <button t-if="sel.has_document" class="btn btn-link" t-on-click="() => this.openDocument(sel)"><t t-esc="sel.purchase ? 'Open purchase order' : 'Open in Odoo'"/></button>
                     <button t-if="sel.bill_id and book.can_open_bill" class="btn btn-link" t-on-click="() => this.openBill(sel)" t-esc="sel.reason === 'sale' ? 'Open invoice' : 'Open bill'"/>
-                    <button t-if="sel.can_undo" class="btn btn-link text-danger" t-on-click="() => this.undoPurchase(sel)"
-                            title="Cancels the payment, bill and order, and returns the goods">Undo purchase</button>
+                    <button t-if="sel.can_undo" class="btn btn-outline-danger" t-on-click="() => this.undoLine(sel)"
+                            t-att-title="undoText(sel)"><i class="fa fa-undo me-1"/>Undo</button>
                     <button t-if="sel.product and sel.state !== 'cancelled'" class="btn btn-link" t-on-click="() => this.copyLine(sel)"
                             title="The same movement again, as a new draft">Copy</button>
                     <button t-if="sel.can_reverse" class="btn btn-link" t-on-click="() => this.reverseLine(sel)"
@@ -469,9 +469,9 @@
                     <button t-if="sel.state === 'draft'" class="btn btn-link text-danger ms-auto" t-on-click="() => this.cancel(sel)">Cancel line</button>
                 </div>
                 <p t-if="sel.status_key === 'ready' and !book.can_post" class="small text-muted mb-0">Waiting for a supervisor to post.</p>
-                <p t-if="sel.state === 'posted' and (sel.reason === 'filling' or sel.reason === 'production')" class="small text-muted mb-0">
+                <p t-if="sel.state === 'posted' and !sel.can_undo and !sel.undone and (sel.reason === 'filling' or sel.reason === 'production')" class="small text-muted mb-0">
                     To undo a filling or batch, unbuild its manufacturing order in Manufacturing.</p>
-                <p t-if="sel.state === 'posted' and sel.reason === 'received'" class="small text-muted mb-0">
+                <p t-if="sel.state === 'posted' and !sel.can_undo and !sel.undone and sel.reason === 'received'" class="small text-muted mb-0">
                     <t t-if="sel.purchase">On purchase order <t t-esc="sel.purchase"/>. </t>To send goods back, return the receipt to the supplier in Inventory.</p>
             </aside>
         </div>

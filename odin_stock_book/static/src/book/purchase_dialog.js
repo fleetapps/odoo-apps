@@ -130,7 +130,7 @@ export class PurchaseDialog extends Component {
                 qty: row.qty ? String(row.qty) : "", cost: row.cost ? String(row.cost) : "",
                 taxId: row.tax_id, taxTouched: Boolean(row.tax_id),
                 // An entered sale keeps its prices, a free item's 0 included.
-                keepPrice: Boolean(data.edit),
+                keepPrice: Boolean(data.edit || data.keep_prices),
             }));
         } else if (this.props.items?.length) {
             this.state.lines = this.props.items.map((product) => ({

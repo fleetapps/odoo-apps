@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from odoo import Command, fields
 from odoo.exceptions import UserError
-from odoo.tests import tagged
+from odoo.tests import new_test_user, tagged
 from odoo.tools import mute_logger
 
 from .test_purchase import TestStockBookPurchase
@@ -401,3 +401,156 @@ class TestStockBookLedger(TestStockBookPurchase):
             self.Book.book_purchase_undo(line.id)
         self.assertFalse(line.stock_purchase_id.undone_on)
         self.assertEqual(line.stock_purchase_id.bill_id.state, "posted", "nothing was changed")
+
+    # ------------------------------------------------------------ Undo on any posted line
+    def _row(self, line):
+        return self.Book._row(line, line._status(), line.onhand_after, {})
+
+    def test_undo_a_sale_takes_it_back_and_leaves_a_draft_to_correct(self):
+        before = self.onhand(self.fg)
+        sale = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 5, "partner_name": "Quickmart",
+                                 "date": fields.Date.subtract(fields.Date.today(), days=3)})
+        sale.action_post()
+        self.assertTrue(self._row(sale)["can_undo"])
+        self.assertEqual(self._row(sale)["undo_kind"], "reverse")
+        self.assertFalse(self._row(sale)["can_reverse"], "Undo does it in one step")
+        result = self.Book.book_undo(sale.id)
+        self.assertEqual(self.onhand(self.fg), before, "the goods are back")
+        back = self.Line.search([("reverses_id", "=", sale.id)])
+        self.assertEqual((back.state, back.reason, back.qty_in), ("posted", "return", 5))
+        self.assertEqual(back.note, f"Undoes {sale.ref}")
+        self.assertTrue(sale.undone_on)
+        self.assertEqual(sale.state, "posted", "it stays on the book")
+        self.assertTrue(self._row(sale)["undone"])
+        self.assertFalse(self._row(sale)["can_undo"])
+        draft = self.Line.browse(result["draft_id"])
+        self.assertEqual((draft.state, draft.date, draft.product_id, draft.qty_out, draft.partner_name),
+                         ("draft", sale.date, self.fg, 5, "QUICKMART"), "the same line on its day, to correct")
+        with self.assertRaises(UserError):
+            self.Book.book_undo(sale.id)
+        with self.assertRaises(UserError):
+            self.Book.book_undo(back.id)  # the line that took it back is not undone itself
+
+    def test_undo_refused_when_what_came_in_has_been_used(self):
+        added = self.Line.create({"product_id": self.sticker.id, "reason": "correction", "qty_in": 5})
+        added.action_post()
+        self.Line.create({"product_id": self.sticker.id, "reason": "used", "qty_out": 403}).action_post()
+        with self.assertRaisesRegex(UserError, "has been used"):
+            self.Book.book_undo(added.id)
+        self.assertFalse(added.undone_on)
+        self.assertFalse(self.Line.search([("reverses_id", "=", added.id)]), "nothing was changed")
+        self.assertEqual(self.onhand(self.sticker), 2)
+
+    def test_undo_a_filling_unbuilds_it_and_keeps_what_was_used(self):
+        before = {p: self.onhand(p) for p in (self.fg, self.bulk, self.bottle, self.carton, self.sticker)}
+        line = self.Line.create({"product_id": self.fg.id, "reason": "filling", "qty_in": 24})
+        line.component_ids.filtered(lambda c: c.product_id == self.bottle).qty = 25  # one broke
+        line.action_post()
+        self.assertEqual(self._row(line)["undo_kind"], "make")
+        result = self.Book.book_undo(line.id)
+        self.assertEqual({p: self.onhand(p) for p in before}, before, "made goods out, components back")
+        unbuild = line.production_id.unbuild_ids
+        self.assertEqual(unbuild.state, "done")
+        logged = self.Line.search([("move_ids", "in", (unbuild.consume_line_ids | unbuild.produce_line_ids).ids)])
+        self.assertTrue(logged, "the unbuild is on the log")
+        self.assertEqual(set(logged.mapped("note")), {f"Undoes {line.ref}"})
+        self.assertTrue(line.undone_on)
+        draft = self.Line.browse(result["draft_id"])
+        self.assertEqual(draft.reason, "filling")
+        self.assertEqual({c.product_id: c.qty for c in draft.component_ids},
+                         {c.product_id: c.qty for c in line.component_ids}, "the components as used, not the recipe")
+
+    def test_undo_a_receipt_returns_it_and_cancels_its_order(self):
+        before = self.onhand(self.bottle)
+        line = self._received(qty=40, cost=12)
+        line.action_post()
+        order = line.purchase_id
+        self.assertEqual(self._row(line)["undo_kind"], "received")
+        result = self.Book.book_undo(line.id)
+        self.assertEqual(self.onhand(self.bottle), before, "the goods went back")
+        self.assertEqual(order.state, "cancel", "nothing else was on the order")
+        self.assertEqual(order.order_line.qty_received, 0)
+        back = self.Line.search([("purchase_line_id", "=", order.order_line.id), ("id", "!=", line.id)])
+        self.assertEqual(back.qty_out, 40, "the return is on the log")
+        draft = self.Line.browse(result["draft_id"])
+        self.assertEqual((draft.reason, draft.qty_in, draft.unit_cost), ("received", 40, 12))
+
+    def test_undo_one_receipt_of_an_order_keeps_the_other(self):
+        first, second = self._received(qty=10, cost=12), self._received(product=self.carton, qty=5, cost=30)
+        (first | second).action_post()
+        order = first.purchase_id
+        self.assertEqual(order, second.purchase_id, "one supplier, one day: one order")
+        self.Book.book_undo(first.id)
+        self.assertEqual(order.state, "purchase")
+        self.assertEqual(first.purchase_line_id.product_qty, 0, "off the order")
+        self.assertEqual(second.purchase_line_id.qty_received, 5, "the other stays received")
+
+    def test_undo_refused_once_a_receipt_is_billed(self):
+        line = self._received(qty=10, cost=12)
+        line.action_post()
+        line.purchase_id.action_create_invoice()
+        self.assertIn("is billed", line._undo_refusal())
+        self.assertFalse(self._row(line)["can_undo"])
+        with self.assertRaises(UserError):
+            self.Book.book_undo(line.id)
+
+    def test_undo_a_sale_from_the_window_credits_it_and_opens_it_again(self):
+        before = self.onhand(self.fg)
+        values = self._sale_values()
+        line = self.Line.browse(self.Book.book_sale_save(values)["ids"])
+        window = line.stock_sale_id
+        order, invoice = window.order_id, window.invoice_id
+        self.assertEqual(self._row(line)["undo_kind"], "sale")
+        result = self.Book.book_undo(line.id)
+        self.assertEqual(result["kind"], "sale")
+        self.assertEqual(self.onhand(self.fg), before, "the goods are back")
+        self.assertEqual(order.state, "cancel")
+        self.assertEqual(invoice.state, "posted", "a sales invoice is not cancelled")
+        self.assertEqual(invoice.payment_state, "reversed")
+        credit = window.credit_note_id
+        self.assertEqual((credit.move_type, credit.state), ("out_refund", "posted"))
+        self.assertEqual(credit.amount_total, invoice.amount_total)
+        self.assertTrue(window.undone_on)
+        self.assertTrue(self._row(line)["undone"])
+        again = result["again"]
+        self.assertTrue(again["keep_prices"])
+        self.assertEqual(again["lines"][0]["cost"], 500.0)
+        self.assertFalse(self.Book.book_sale_check(values["partner_id"], "INV-1"), "its number can be used again")
+        self.assertTrue(self.Book.book_sale_save(values)["posted"])
+
+    def test_undo_a_paid_sale_cancels_the_payment(self):
+        self.pay_journal.inbound_payment_method_line_ids[:1].payment_account_id = self.outstanding
+        line = self.Line.browse(self.Book.book_sale_save(self._sale_values(pay_journal_id=self.pay_journal.id))["ids"])
+        payment = line.stock_sale_id.payment_id
+        self.assertTrue(payment)
+        self.Book.book_undo(line.id)
+        self.assertEqual(payment.state, "canceled")
+        self.assertEqual(line.invoice_id.payment_state, "reversed")
+
+    def test_undo_routes_a_window_purchase_to_undo_purchase(self):
+        line = self._saved_purchase(paid=False)
+        result = self.Book.book_undo(line.id)
+        self.assertEqual(result["kind"], "purchase")
+        self.assertEqual(result["again"]["purchase_ref"], "LPO-UNDO")
+        self.assertTrue(line.stock_purchase_id.undone_on)
+
+    def test_a_delivery_made_in_sales_is_returned_there(self):
+        customer = self.env["res.partner"].create({"name": "Carrefour Test"})
+        order = self.env["sale.order"].create({"partner_id": customer.id, "order_line": [
+            Command.create({"product_id": self.fg.id, "product_uom_qty": 3, "price_unit": 100})]})
+        order.action_confirm()
+        self.Line.browse()._validate_picking(order.picking_ids)
+        logged = self.Line.search([("move_ids", "in", order.picking_ids.move_ids.ids)])
+        self.assertEqual(logged.reason, "sale", "the delivery is on the log")
+        self.assertIn("in Sales", logged._undo_refusal())
+        self.assertFalse(self._row(logged)["can_undo"])
+
+    def test_only_a_supervisor_undoes(self):
+        storekeeper = new_test_user(self.env, "undo_storekeeper", groups="odin_stock_book.group_stock_book_user")
+        line = self.Line.create({"product_id": self.fg.id, "reason": "spoiled", "qty_out": 1})
+        line.action_post()
+        self.assertFalse(self.Book.with_user(storekeeper)._row(line, line._status(), 0, {})["can_undo"])
+        self.assertTrue(self.Book.with_user(storekeeper)._row(line, line._status(), 0, {})["can_reverse"],
+                        "a storekeeper still has Reverse")
+        with self.assertRaises(UserError):
+            self.Book.with_user(storekeeper).book_undo(line.id)

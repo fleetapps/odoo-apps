@@ -34,7 +34,7 @@ REVERSE = {"sale": "return", "return": "sale", "spoiled": "correction", "sample"
 # mark a draft posted without its stock moves.
 SYSTEM_FIELDS = {"state", "ref", "onhand_after", "posted_by_id", "posted_on", "production_id", "picking_id",
                  "scrap_id", "move_ids", "partner_id", "purchase_line_id", "stock_purchase_id", "sale_line_id",
-                 "stock_sale_id", "active"}
+                 "stock_sale_id", "active", "undone_on", "undone_by_id"}
 # What a posted (or cancelled) line keeps as it was.
 LOCKED_FIELDS = {"date", "reason", "product_id", "qty_in", "qty_out", "bom_id", "component_ids", "warehouse_id",
                  "partner_name", "unit_cost", "company_id", "reverses_id", "purchase_ref", "tax_id", "unit_price"}
@@ -135,6 +135,10 @@ class StockBookLine(models.Model):
     # reverses it (action_remove_pair): the two cancel out, their stock moves
     # stay, and the line is kept so those moves still count as logged.
     active = fields.Boolean(default=True, copy=False)
+    # Set by Undo: what the line posted was taken back, and the line stays on
+    # the book, marked, beside what took it back.
+    undone_on = fields.Datetime(readonly=True, copy=False)
+    undone_by_id = fields.Many2one("res.users", readonly=True, copy=False)
 
     _ref_unique = models.UniqueIndex("(ref) WHERE ref IS NOT NULL", "Another movement already has this reference.")
 
@@ -770,7 +774,7 @@ class StockBookLine(models.Model):
         would add the stock back but leave the order's received quantity."""
         self.ensure_one()
         return self.state == "posted" and self.active and self.reason in REVERSE and not self.purchase_line_id \
-            and not self.stock_sale_id
+            and not self.stock_sale_id and not self.undone_on
 
     def _reverse(self):
         """A draft that undoes this posted line: a sale comes back as a
@@ -859,6 +863,175 @@ class StockBookLine(models.Model):
         for line in lines:
             line.message_post(body=_("Back on the Stock Book."))
         return lines.ids
+
+    # ------------------------------------------------------------ undo
+    def _undo_kind(self):
+        """How Undo takes this line back: a purchase or sale entered in its
+        window is undone whole (book_purchase_undo, book_sale_undo); a
+        filling or batch is unbuilt; goods received are returned to the
+        supplier; anything else is taken back by the line that does the
+        opposite, posted at once."""
+        self.ensure_one()
+        if self.stock_purchase_id:
+            return "purchase"
+        if self.stock_sale_id:
+            return "sale"
+        if self.reason in MAKES:
+            return "make"
+        if self.reason == "received" and self.qty_in:
+            return "received"
+        if self.reason in REVERSE:
+            return "reverse"
+        return False
+
+    def _undo_refusal(self, check_reversal=True):
+        """Why Undo cannot take this posted line back, False if it can. What
+        depends on stock on hand is checked when it runs, as Undo purchase
+        does. ``check_reversal``: the book already knows which lines are
+        reversed, so the month need not look again for each."""
+        self.ensure_one()
+        kind = self._undo_kind()
+        if self.state != "posted" or not self.active or not kind:
+            return _("Only a posted line on the book can be undone.")
+        if self.undone_on or self.stock_purchase_id.undone_on or self.stock_sale_id.undone_on:
+            return _("%s is already undone.", self.ref)
+        if self.reverses_id.undone_on:
+            return _("%(ref)s takes back %(other)s, which was undone. Enter the movement again instead.",
+                     ref=self.ref, other=self.reverses_id.ref)
+        if kind == "purchase":
+            return False if self.stock_purchase_id.order_id else _("This purchase is not posted yet.")
+        if kind == "sale":
+            return False if self.stock_sale_id.order_id else _("This sale is not posted yet.")
+        if kind == "make":
+            mo = self.production_id
+            if not mo or mo.state != "done":
+                return _("%s has no finished manufacturing order to unbuild.", self.ref)
+            if mo.sudo().unbuild_ids:
+                return _("%(order)s was already unbuilt in part in Manufacturing. Finish it there.",
+                         order=mo.display_name)
+            if mo.product_id.tracking != "none":
+                return _("%s is tracked by lot or serial number. Unbuild it in Manufacturing.", mo.product_id.name)
+            return False
+        if kind == "received":
+            order_line = self.purchase_line_id.sudo()
+            order = order_line.order_id
+            if not order_line or not self.picking_id or self.ref not in (order.origin or "").split(", "):
+                return _("%s was received in Purchases. Return it to the supplier there.", self.ref)
+            if not order_line.product_uom_id.is_zero(order_line.qty_invoiced):
+                return _("%(ref)s is billed on %(order)s. Credit the bill in Accounting first.",
+                         ref=self.ref, order=order.name)
+            received = order_line.product_uom_id._compute_quantity(order_line.qty_received, self.product_id.uom_id)
+            if float_compare(received, self.qty_in, precision_digits=4) < 0:
+                return _("Part of %s was already returned to the supplier. Return the rest in Purchases.", self.ref)
+            return False
+        # Taken back by the opposite line, as Reverse adds it.
+        if not self._can_reverse():
+            return _("A return to the supplier is undone in Purchases.")
+        if self.picking_id.sudo().sale_id:
+            # A return made here would not reach the order or its invoice.
+            return _("%(ref)s was delivered from %(order)s in Sales. Return it there.",
+                     ref=self.ref, order=self.picking_id.sudo().sale_id.name)
+        if check_reversal and self.with_context(active_test=False).search_count(
+                [("reverses_id", "=", self.id), ("state", "!=", "cancelled")]):
+            return _("%s is already reversed. Post or cancel that line instead.", self.ref)
+        return False
+
+    def _check_still_on_hand(self, product, qty):
+        """What Undo takes out of stock must still be there: Odoo would let
+        it go below zero, and the book would no longer match the shelf."""
+        onhand = self._available(product, self.warehouse_id)[product.id]
+        if float_compare(onhand, qty, precision_digits=4) < 0:
+            raise UserError(_("%(item)s has been used: %(onhand)s on hand, %(qty)s to take back. Nothing was undone.",
+                              item=product.display_name, onhand=onhand, qty=qty))
+
+    def _undo(self):
+        """Takes back what this posted line did, by Odoo's own steps, all of it
+        or none, and marks it undone: it stays on the book, beside the lines
+        that took it back. Returns a draft copy on the line's day to correct
+        and post. A purchase or sale entered in its window is undone whole
+        instead, by the book (book_undo)."""
+        self.ensure_one()
+        if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
+            raise UserError(_("Only a Stock Book supervisor can undo a line."))
+        why = self._undo_refusal()
+        if why:
+            raise UserError(why)
+        kind = self._undo_kind()
+        if kind not in ("make", "received", "reverse"):
+            raise UserError(_("A purchase or sale entered as a whole is undone whole."))
+        getattr(self, f"_undo_{kind}")()
+        self.with_context(odin_stock_book_posting=True).write(
+            {"undone_on": fields.Datetime.now(), "undone_by_id": self.env.user.id})
+        self.message_post(body=_("Undone by %s.", self.env.user.name))
+        draft = self._copy_as_draft(self.date)
+        if kind == "make":
+            # What was really used, not the recipe again: the copy is the
+            # line as it was, to correct.
+            draft.write({"bom_id": self.bom_id.id, "component_ids": [Command.clear()] + [Command.create({
+                "sequence": c.sequence, "product_id": c.product_id.id, "qty": c.qty, "from_recipe": c.from_recipe,
+            }) for c in self.component_ids]})
+        return draft
+
+    def _undo_reverse(self):
+        """The opposite line, today, posted at once: a sale comes back as a
+        customer return, anything else as a correction the other way."""
+        if self.qty_in:
+            self._check_still_on_hand(self.product_id, self.qty_in)
+        reversal = self._reverse()
+        reversal.note = _("Undoes %s", self.ref)
+        reversal.action_post()
+        return reversal
+
+    def _undo_make(self):
+        """Odoo's unbuild of the manufacturing order: what was made leaves
+        stock and the components it used go back. The moves go on the log by
+        themselves, as an unbuild in Manufacturing does, noted with this line."""
+        mo = self.production_id
+        qty = mo.product_uom_id._compute_quantity(mo.qty_produced, mo.product_id.uom_id)
+        self._check_still_on_hand(mo.product_id, qty)
+        unbuild = self.env["mrp.unbuild"].create({
+            "mo_id": mo.id, "product_id": mo.product_id.id, "product_qty": mo.qty_produced,
+            "product_uom_id": mo.product_uom_id.id, "company_id": mo.company_id.id,
+            "location_id": mo.location_dest_id.id, "location_dest_id": mo.location_src_id.id,
+        })
+        unbuild.action_unbuild()
+        moves = unbuild.consume_line_ids | unbuild.produce_line_ids
+        logged = self.sudo().search([("move_ids", "in", moves.ids)])
+        logged.with_context(odin_stock_book_posting=True).write({"note": _("Undoes %s", self.ref)})
+        return unbuild
+
+    def _undo_received(self):
+        """Odoo's return to the supplier for this line's goods, then off the
+        purchase order: cancelled when nothing else on it was received, its
+        line brought down to what is still received otherwise."""
+        self._check_still_on_hand(self.product_id, self.qty_in)
+        order_line = self.purchase_line_id.sudo()
+        order = order_line.order_id
+        self._return_moves(self.move_ids.filtered(lambda m: m.state == "done"))
+        lines = order.order_line.filtered(lambda l: not l.display_type)
+        if all(l.product_uom_id.is_zero(l.qty_received) for l in lines) \
+                and not order.invoice_ids.filtered(lambda m: m.state != "cancel"):
+            if order.locked:
+                order.button_unlock()
+            order.button_cancel()
+        else:
+            order_line.product_qty = order_line.qty_received
+
+    @api.model
+    def _return_moves(self, moves):
+        """Odoo's Return button for these done moves of one transfer, all they
+        moved, validated at once. Not in the posting context: the return goes
+        on the log by itself."""
+        picking = moves.picking_id
+        picking.ensure_one()
+        wizard = self.env["stock.return.picking"].sudo().with_context(
+            active_id=picking.id, active_ids=picking.ids, active_model="stock.picking",
+        ).create({"picking_id": picking.id})
+        for row in wizard.product_return_moves:
+            row.quantity = row.move_id.quantity if row.move_id in moves else 0.0
+        back = wizard._create_return()
+        self.browse()._validate_picking(back)
+        return back
 
 
 class StockBookComponent(models.Model):

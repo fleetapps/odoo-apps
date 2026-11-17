@@ -40,11 +40,65 @@ class StockBookSale(models.Model):
     order_id = fields.Many2one("sale.order", readonly=True, copy=False)
     invoice_id = fields.Many2one("account.move", readonly=True, copy=False)
     payment_id = fields.Many2one("account.payment", readonly=True, copy=False)
+    credit_note_id = fields.Many2one("account.move", string="Credit note", readonly=True, copy=False)
+    undone_on = fields.Datetime(readonly=True, copy=False)
+    undone_by_id = fields.Many2one("res.users", readonly=True, copy=False)
 
     def unlink(self):
         if self.filtered("order_id"):
             raise UserError(_("This sale is posted. Reverse it with a credit note in Accounting."))
         return super().unlink()
+
+    def _undo(self):
+        """The whole sale taken back at once, in the order Odoo requires: the
+        payment cancelled, the invoice credited in full (a sales invoice is
+        reversed with a credit note, never cancelled), the goods back into
+        stock, the order cancelled. All of it or none. Each document stays,
+        and the goods coming back are on the movement log."""
+        self.ensure_one()
+        if self.undone_on:
+            raise UserError(_("%s is already undone.", self.sale_ref))
+        order = self.order_id.sudo()
+        if not order:
+            raise UserError(_("This sale is not posted yet."))
+        invoice, payment = self.invoice_id.sudo(), self.payment_id.sudo()
+        if payment.is_matched:
+            raise UserError(_("%(payment)s is matched with a bank statement line. Undo that match in Accounting first.",
+                              payment=payment.display_name))
+        if (order.invoice_ids - invoice).filtered(lambda m: m.state != "cancel"):
+            raise UserError(_("%(order)s has another invoice or credit note. Undo it in Sales and Accounting.",
+                              order=order.name))
+        stock = order.order_line.filtered(lambda l: l.product_id.is_storable)
+        if any(l.product_uom_id.compare(l.qty_delivered, l.product_uom_qty) for l in stock):
+            raise UserError(_("Part of %(order)s was already returned. Undo the rest in Sales and Accounting.",
+                              order=order.name))
+        if payment:
+            payment.action_draft()
+            payment.action_cancel()
+        if invoice:
+            if invoice.payment_state not in ("not_paid", "invoicing_legacy"):
+                raise UserError(_("%(invoice)s has another payment on it. Remove it in Accounting first.",
+                                  invoice=invoice.display_name))
+            self.credit_note_id = self._credit(invoice)
+        for picking in order.picking_ids.filtered(lambda p: p.state == "done" and p.picking_type_id.code == "outgoing"):
+            self.env["odin.stock.line"]._return_moves(picking.move_ids.filtered(lambda m: m.state == "done"))
+        if order.locked:
+            order.action_unlock()
+        order.action_cancel()
+        self.write({"undone_on": fields.Datetime.now(), "undone_by_id": self.env.user.id})
+
+    def _credit(self, invoice):
+        """Odoo's Reverse on the invoice, a full refund: the credit note posted
+        today and matched with the invoice, which then reads Reversed."""
+        wizard = self.env["account.move.reversal"].sudo().with_company(self.company_id).with_context(
+            active_model="account.move", active_ids=invoice.ids,
+        ).create({"journal_id": invoice.journal_id.id, "date": fields.Date.context_today(self),
+                  "reason": _("Undone in the Stock Book")})
+        credit = invoice._reverse_moves([wizard._prepare_default_reversal(invoice)], cancel=True)
+        if credit.state != "posted" or invoice.payment_state != "reversed":
+            raise UserError(_("%(invoice)s could not be credited in full. Nothing was undone.",
+                              invoice=invoice.display_name))
+        return credit
 
     def _deliver(self, line):
         """The moves of one book line, making the documents the first time.
@@ -420,6 +474,34 @@ class StockBook(models.AbstractModel):
             "payment_term_id": window.payment_term_id.id or customer.get("payment_term_id") or False,
             "cu_invoice_no": window.cu_invoice_no or "",
         }
+
+    @api.model
+    def book_sale_undo(self, line_id):
+        """A saved sale taken back in one step, and what it was, so it can be
+        entered again correctly, at its prices."""
+        if not self._is_supervisor():
+            raise UserError(_("Only a Stock Book supervisor can undo a sale."))
+        line = self.env["odin.stock.line"].browse(line_id).exists()
+        window = line.stock_sale_id
+        if not window:
+            raise UserError(_("Only a sale made with Add sale can be undone here."))
+        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_out,
+                 "cost": l.unit_price, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
+        rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
+                  "cost": c.unit_price, "tax_id": c.tax_id.id or False, "note": c.name or ""}
+                 for c in window.charge_ids]
+        again = {
+            "supplier": {"id": window.partner_id.id, "name": window.partner_id.name},
+            "supplier_query": window.partner_id.name, "purchase_ref": window.sale_ref,
+            "date": fields.Date.to_string(window.date),
+            "paid": str(window.pay_journal_id.id) if window.pay_journal_id else "none",
+            "lines": rows, "replace_ids": [], "edit": False, "keep_prices": True,
+        }
+        order = window.order_id.sudo().name
+        window._undo()
+        return {"order": order, "purchase_ref": window.sale_ref, "again": again,
+                "credit_note": window.credit_note_id.sudo().name or ""}
 
     @api.model
     def _sale_replace(self, ids):
