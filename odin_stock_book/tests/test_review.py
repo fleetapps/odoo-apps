@@ -36,7 +36,8 @@ class TestStockBookReview(TestStockBook):
         for user in (self.storekeeper, self.supervisor):
             Book = self.Book.with_user(user)
             book = Book.get_book()
-            self.assertAlmostEqual(book["stock_value"], 100 * 75 + 500 * 53 + 1000 * 15 + 50 * 33 + 400 * 1)
+            self.assertAlmostEqual(book["stock_value"],
+                                   self.live_stock_value + 100 * 75 + 500 * 53 + 1000 * 15 + 50 * 33 + 400 * 1)
             self.assertTrue(Book.get_sheet()["groups"])
             self.assertTrue(Book.get_count()["rows"])
 
@@ -300,6 +301,8 @@ class TestStockBookReview(TestStockBook):
         """Retail with wholesale at a minimum quantity, and a supermarket's own."""
         self.env.user.group_ids += self.env.ref("product.group_product_pricelist")
         Pricelist = self.env["product.pricelist"]
+        # These two are the pricelists there are, so the first one is Retail.
+        Pricelist.search([]).active = False
         template = self.fg.product_tmpl_id
         retail = Pricelist.create({"name": "Retail", "sequence": 1, "item_ids": [
             Command.create({"applied_on": "1_product", "product_tmpl_id": template.id,

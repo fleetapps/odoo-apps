@@ -402,7 +402,13 @@ class TestStockBookPurchase(TestStockBook):
             self.assertEqual(payment.amount, bill.amount_total)
             self.assertEqual(payment.date, bill.invoice_date)
             self.assertTrue(payment.move_id, "the payment is in the ledger")
-            self.assertEqual(payment.outstanding_account_id, self.outstanding)
+            # Through the journal's own outstanding account: the test's on the
+            # test journal, the company's own on a live one.
+            outstanding = journal.outbound_payment_method_line_ids[:1].payment_account_id
+            self.assertTrue(outstanding)
+            self.assertEqual(payment.outstanding_account_id, outstanding)
+            if journal == self.pay_journal:
+                self.assertEqual(outstanding, self.outstanding)
             self.assertIn(bill.payment_state, ("in_payment", "paid"))
 
     def test_a_journal_with_no_ledger_entry_cannot_pay(self):

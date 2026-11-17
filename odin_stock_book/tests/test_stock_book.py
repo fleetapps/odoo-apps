@@ -6,12 +6,23 @@ from odoo.tests import TransactionCase, tagged
 @tagged("post_install", "-at_install")
 class TestStockBook(TransactionCase):
 
+    # The customers and suppliers the tests name. A line finds its partner by
+    # name, so a live contact of the same name would be found instead.
+    PARTNER_NAMES = (
+        "A", "B", "C", "X", "Carrefour Test", "Chandarana Ngara", "First Time Supplier", "Highridge", "Naivas",
+        "Naivas Test", "Naivas Limited", "New Shop Ltd", "Other Supplier", "Prime Cartons", "Quickmart",
+        "Safepak", "Safepak Limited", "Should Not Print", "Someone Else", "Walk-in", "Zebra Mine", "Zebra Secret",
+    )
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.env.user.group_ids += cls.env.ref("odin_stock_book.group_stock_book_supervisor")
         cls.wh = cls.env["stock.warehouse"].search([("company_id", "=", cls.env.company.id)], limit=1)
         cls.stock = cls.wh.lot_stock_id
+        cls._set_aside_live_data()
+        # What is already in the store, before the tests' own stock.
+        cls.live_stock_value = cls.env["odin.stock.book"]._stock_value(cls.wh)
         unit = cls.env.ref("uom.product_uom_unit")
         litre = cls.env.ref("uom.product_uom_litre")
         categ = cls.env["product.category"].create({"name": "Finished Goods / Handwash", "property_cost_method": "fifo"})
@@ -38,6 +49,31 @@ class TestStockBook(TransactionCase):
             Quant._update_available_quantity(product, cls.stock, qty)
         cls.Line = cls.env["odin.stock.line"]
         cls.Book = cls.env["odin.stock.book"]
+
+    @classmethod
+    def _set_aside_live_data(cls):
+        """The tests' own world on a copy of a live database, as
+        tools/odin-test-modules.sh MODE=copy makes: the company's settings
+        that the tests rely on, and its items, namesake contacts, counts not
+        yet applied and imported orders set aside, so that the book's
+        searches and totals meet what the tests make. All of it is rolled
+        back with the tests. On a new database there is nothing to set aside."""
+        env = cls.env
+        # Off until a test turns it on, as on a new database.
+        env.company.odin_sale_needs_invoice = False
+        # The book looks items up by code or name ("aqua 500", a pasted row)
+        # among all of them: the live ones would match too.
+        env["product.product"].search([("is_storable", "=", True)]).product_tmpl_id.active = False
+        names = cls.PARTNER_NAMES
+        domain = ["|"] * (len(names) - 1) + [("name", "=ilike", name) for name in names]
+        namesakes = env["res.partner"].search(domain)
+        (namesakes - env["res.company"].search([]).partner_id).filtered(lambda p: not p.user_ids).active = False
+        # A count is applied for every item counted.
+        env["stock.quant"].search([("inventory_quantity_set", "=", True)]).action_clear_inventory_quantity()
+        # Bill imported orders bills every one there is.
+        imported = env["odin.stock.book"]._imported_orders()
+        imported.filtered("locked").button_unlock()
+        imported.button_cancel()
 
     def onhand(self, product):
         return self.Line._available(product, self.wh)[product.id]

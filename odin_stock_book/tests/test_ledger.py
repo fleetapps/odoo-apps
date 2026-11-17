@@ -124,8 +124,11 @@ class TestStockBookLedger(TestStockBookPurchase):
 
     # ------------------------------------------------------------ sales
     def _sale_values(self, **more):
-        tax = self.Book._sale_taxes()[:1] or self.env["account.tax"].create(
-            {"name": "Test sale 16", "amount": 16, "type_tax_use": "sale"})
+        # 16% on the net price, as the amounts below are: the company's own
+        # first sale tax can include VAT in the price (Rinz's does).
+        Tax = self.env["account.tax"]
+        tax = Tax.search([("name", "=", "Test sale 16 net"), ("company_id", "=", self.env.company.id)]) or Tax.create(
+            {"name": "Test sale 16 net", "amount": 16, "type_tax_use": "sale", "price_include_override": "tax_excluded"})
         customer = self.env["res.partner"].create({"name": "Naivas Test"})
         return {"partner_id": customer.id, "purchase_ref": "INV-1", "date": fields.Date.to_string(fields.Date.today()),
                 "warehouse_id": self.wh.id, "pay_journal_id": False,
@@ -263,6 +266,24 @@ class TestStockBookLedger(TestStockBookPurchase):
         self.Book.book_sale_save(self._sale_values(cu_invoice_no="KRACU0100012345/77"))
         with self.assertRaisesRegex(UserError, "already on invoice INV-1"):
             self.Book.book_sale_save(self._sale_values(purchase_ref="INV-2", cu_invoice_no="kracu0100012345/77"))
+
+    def test_an_undone_sale_opens_again_with_its_pin_terms_and_cu_number_and_takes_them_again(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        values = self._sale_values(partner_vat="P052112729P", payment_term_id=terms.id,
+                                   cu_invoice_no="KRACU0100012345/77")
+        line = self.Line.browse(self.Book.book_sale_save(values)["ids"])
+        invoice = line.stock_sale_id.invoice_id
+        again = self.Book.book_undo(line.id)["again"]
+        self.assertEqual((again["partner_vat"], again["payment_term_id"], again["cu_invoice_no"]),
+                         ("P052112729P", terms.id, "KRACU0100012345/77"), "the window opens as it was saved")
+        self.assertEqual(again["supplier"]["payment_term_id"], terms.id)
+        result = self.Book.book_sale_save(values)
+        self.assertTrue(result["posted"], "the same signed invoice entered again: its CU number is free")
+        self.assertEqual(self.Line.browse(result["ids"]).stock_sale_id.cu_invoice_no, "KRACU0100012345/77")
+        if "doc_cu_invoice_no" in invoice._fields:
+            self.assertEqual(invoice.doc_cu_invoice_no, "KRACU0100012345/77", "the credited invoice keeps it")
+        with self.assertRaisesRegex(UserError, "already on invoice INV-1"):
+            self.Book.book_sale_save(self._sale_values(purchase_ref="INV-2", cu_invoice_no="KRACU0100012345/77"))
 
     def test_a_draft_sale_opens_with_its_pin_terms_and_cu_number_and_posts_with_them(self):
         terms = self.env.ref("account.account_payment_term_30days")

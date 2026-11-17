@@ -17,6 +17,11 @@ class TestDocuments(AccountTestInvoicingCommon):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        # On a copy of the live database (odin-test-modules.sh MODE=copy) the
+        # live company already has the name the documents are checked with;
+        # renamed for the tests, and back when they are rolled back.
+        cls.env["res.company"].sudo().search([("name", "=", "Rinz Products Limited")]).name = \
+            "Rinz Products Limited (live)"
         # The invoicing test user also quotes, keeps HR records and raises requisitions here.
         cls.env.user.group_ids += (cls.env.ref("sales_team.group_sale_manager") | cls.env.ref("hr.group_hr_manager")
                                    | cls.env.ref("purchase_request.group_purchase_request_manager"))

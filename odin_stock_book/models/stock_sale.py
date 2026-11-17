@@ -392,20 +392,24 @@ class StockBook(models.AbstractModel):
     @api.model
     def _check_sale_cu(self, cu):
         """A CU invoice number is KRA's for one invoice: typed in once. The
-        sale being edited was taken off before this is asked."""
+        sale being edited was taken off before this is asked. An undone sale
+        gives its number back, and its invoice, credited in full, with it:
+        the same signed invoice is entered again, corrected."""
         if not cu:
             return
         company = self.env.company
         pattern = _escape_like(cu)
-        sale = self.env["odin.stock.sale"].sudo().search(
-            [("company_id", "=", company.id), ("cu_invoice_no", "=ilike", pattern)], limit=1)
+        sales = self.env["odin.stock.sale"].sudo().search(
+            [("company_id", "=", company.id), ("cu_invoice_no", "=ilike", pattern)])
+        sale = sales.filtered(lambda s: not s.undone_on)[:1]
         if sale:
             raise UserError(_("CU invoice no. %(cu)s is already on invoice %(ref)s for %(customer)s.",
                               cu=cu, ref=sale.sale_ref, customer=sale.partner_id.display_name))
         Move = self.env["account.move"].sudo()
         if "doc_cu_invoice_no" in Move._fields:
             move = Move.search([("company_id", "=", company.id), ("state", "!=", "cancel"),
-                                ("doc_cu_invoice_no", "=ilike", pattern)], limit=1)
+                                ("doc_cu_invoice_no", "=ilike", pattern), ("id", "not in", sales.invoice_id.ids)],
+                               limit=1)
             if move:
                 raise UserError(_("CU invoice no. %(cu)s is already on %(invoice)s.",
                                   cu=cu, invoice=move.display_name))
@@ -491,12 +495,17 @@ class StockBook(models.AbstractModel):
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
                   "cost": c.unit_price, "tax_id": c.tax_id.id or False, "note": c.name or ""}
                  for c in window.charge_ids]
+        customer = self._sale_customer(window.partner_id)
         again = {
-            "supplier": {"id": window.partner_id.id, "name": window.partner_id.name},
+            "supplier": customer,
             "supplier_query": window.partner_id.name, "purchase_ref": window.sale_ref,
             "date": fields.Date.to_string(window.date),
             "paid": str(window.pay_journal_id.id) if window.pay_journal_id else "none",
             "lines": rows, "replace_ids": [], "edit": False, "keep_prices": True,
+            # The KRA PIN, terms and CU number it was saved with, as book_sale_load gives them.
+            "partner_vat": customer["vat"],
+            "payment_term_id": window.payment_term_id.id or customer["payment_term_id"] or False,
+            "cu_invoice_no": window.cu_invoice_no or "",
         }
         order = window.order_id.sudo().name
         window._undo()
