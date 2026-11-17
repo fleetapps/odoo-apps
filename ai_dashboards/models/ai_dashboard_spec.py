@@ -19,6 +19,7 @@ the model gets the message and corrects the spec on its next turn - which is
 the whole point of a tool-calling loop.
 """
 import ast
+import json
 
 from odoo import _
 from odoo.exceptions import ValidationError
@@ -56,6 +57,35 @@ PERIODS = {
 
 FILTER_TYPES = {"date_range", "selection", "many2one"}
 
+# Cards that show where things stand today rather than what happened over a
+# period. A page-wide period would change what they mean — an aging card that
+# only counted invoices dated this year would hide every older debt, which is
+# exactly the debt it exists to show — so date filters pass them by. Every
+# other filter still reaches them: "what does this vendor owe" is a fair
+# question of an aging card.
+POSITION_CARDS = {"aging", "banks"}
+
+# The date field a Period lands on in a model when the spec does not name
+# one, in order: the first of these the model can search on (a related date
+# counts). Shared by the renderer
+# and the filter suggestions so a suggestion says exactly what will happen.
+DATE_FIELD_ORDER = ("date", "date_order", "invoice_date", "date_deadline",
+                    "date_start", "scheduled_date", "create_date")
+
+# Which kinds of field each filter type may land on. A record filter matches
+# "any of the picked records" with `in`, which means the same on a many2many
+# as on a many2one — tags, or the analytic accounts a journal item is spread
+# across.
+LANDS_ON = {
+    "date_range": ("date", "datetime"),
+    "many2one": ("many2one", "many2many"),
+    "selection": ("selection",),
+}
+
+# How many records one many2one filter may name at once. A reader picking
+# vendors does not pick hundreds; a client sending hundreds is not a reader.
+MAX_FILTER_IDS = 100
+
 # The 12-column grid the renderer lays out against.
 GRID_COLUMNS = 12
 
@@ -70,7 +100,7 @@ TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets",
 WIDGET_KEYS = {"id", "type", "title", "span", "query", "format", "compare",
                "drill", "color", "period", "caption"}
 QUERY_KEYS = {"model", "domain", "group_by", "measures", "order", "limit"}
-FILTER_KEYS = {"key", "type", "label", "default", "field"}
+FILTER_KEYS = {"key", "type", "label", "default", "field", "domain", "fields"}
 FORMAT_KEYS = {"kind", "decimals", "suffix", "negate"}
 COMPARE_KEYS = {"to"}
 
@@ -575,6 +605,12 @@ def _validate_filter(flt, index, seen_keys):
     if not key.replace("_", "").isalnum():
         _fail(_("Filter key '%s' may only contain letters, numbers and "
                 "underscores.") % key)
+    if key.startswith("_"):
+        # The canvas keeps its own view state next to the filters — the
+        # comparison, each card's period — under keys that start with an
+        # underscore. A filter named like one would be overwritten by it.
+        _fail(_("Filter key '%s' may not start with an underscore; those "
+                "names are reserved.") % key)
     if key in seen_keys:
         _fail(_("Filter key '%s' is used more than once.") % key)
     seen_keys.add(key)
@@ -592,6 +628,15 @@ def _validate_filter(flt, index, seen_keys):
         "label": _text(flt.get("label") or key, _("%s label") % what),
     }
 
+    if flt.get("fields") not in (None, {}):
+        clean["fields"] = _per_model_fields(flt["fields"], key, what)
+
+    if flt.get("domain") not in (None, [], "") and filter_type != "many2one":
+        _fail(_(
+            "Filter '%s': only a many2one filter takes a domain. It narrows "
+            "the records the reader can pick from, such as vendors only.")
+            % key)
+
     if filter_type == "date_range":
         default = flt.get("default", "this_year")
         if default not in PERIODS:
@@ -600,19 +645,271 @@ def _validate_filter(flt, index, seen_keys):
                 "Use one of: %(ok)s.", k=key, d=default,
                 ok=", ".join(sorted(PERIODS))))
         clean["default"] = default
-        # Which date field the period applies to. Optional: when absent the
-        # renderer falls back to the model's own default date field.
+        # Which date field the period applies to. Optional: when absent, or
+        # when a tile's model has no such field, the renderer uses that
+        # model's own usual date field.
         if flt.get("field"):
-            clean["field"] = _text(flt["field"], _("%s field") % what, limit=64)
-    else:
-        if not flt.get("field"):
-            _fail(_("Filter '%s' must name the field it filters on.") % key)
-        clean["field"] = _text(flt["field"], _("%s field") % what, limit=64)
-        if flt.get("default") is not None:
-            _check_value(flt["default"], _("%s default") % what)
-            clean["default"] = flt["default"]
+            clean["field"] = _plain_field(flt["field"], key, what)
+        return clean
 
+    if not flt.get("field") and not clean.get("fields"):
+        _fail(_(
+            "Filter '%s' must name the field it filters on, for example "
+            "\"partner_id\" for a vendor or customer.") % key)
+    if flt.get("field"):
+        clean["field"] = _plain_field(flt["field"], key, what)
+
+    default = flt.get("default")
+    if filter_type == "many2one":
+        if default not in (None, False, []):
+            ids = record_ids(default)
+            if not ids or len(ids) != len(
+                    default if isinstance(default, (list, tuple)) else [default]):
+                _fail(_(
+                    "Filter '%s': the default must be a record id, or a list "
+                    "of them — whole numbers above zero.") % key)
+            clean["default"] = ids
+        if flt.get("domain") not in (None, [], ""):
+            clean["domain"] = parse_domain(
+                flt["domain"], _("Filter '%s' domain") % key)
+    elif default not in (None, False, ""):
+        # selection
+        if not isinstance(default, str):
+            _fail(_("Filter '%s': the default must be one of the field's "
+                    "values, as text.") % key)
+        clean["default"] = default
     return clean
+
+
+def _plain_field(name, key, what):
+    """One field of the tile's own model: no traversal, no aggregate.
+
+    A filter has to land on the same field in every tile it reaches, and say
+    which records its picker offers. Both are only well defined for a field
+    that sits directly on the model.
+    """
+    name = _text(name, _("%s field") % what, limit=64)
+    if "." in name or ":" in name or name.startswith("_"):
+        _fail(_(
+            "Filter '%(k)s': '%(f)s' must be a field directly on the tiles' "
+            "model, such as \"partner_id\" — not a path through another "
+            "record.", k=key, f=name))
+    return name
+
+
+def _per_model_fields(raw, key, what):
+    """Where a filter lands on models that name the same thing differently.
+
+    The customer is ``partner_id`` on a sale order and ``order_partner_id``
+    on its lines; a Period may mean ``date_order`` on one model and
+    ``invoice_date`` on another. ``field`` covers the usual name and this
+    covers the exceptions, model by model.
+    """
+    if not isinstance(raw, dict) or len(raw) > MAX_WIDGETS:
+        _fail(_(
+            "Filter '%s': `fields` maps a model to that model's field, e.g. "
+            "{\"sale.order.line\": \"order_partner_id\"}.") % key)
+    out = {}
+    for model_name, name in raw.items():
+        if not isinstance(model_name, str) or not model_name \
+                or model_name.startswith("_"):
+            _fail(_("Filter '%(k)s': '%(m)s' is not a model name.",
+                    k=key, m=model_name))
+        out[model_name] = _plain_field(name, key, what)
+    return out
+
+
+def _validate_filters_against_database(filters, widgets, env, scope):
+    """Check each filter lands somewhere real, as the right kind of field.
+
+    A filter that matches no tile is a control that does nothing, and the
+    person moving it has no way to know — so it is refused here, where the
+    assistant can still fix it, rather than discovered later by a reader.
+    Tiles whose model lacks the field are fine: the filter passes them by.
+    A per-model entry in `fields` is a promise about that model, so it is
+    held to it: it must exist, and point at the same records as the rest.
+    """
+    tile_models = [w["query"]["model"] for w in widgets]
+    for flt in filters:
+        key = flt["key"]
+        overrides = flt.get("fields") or {}
+        stray = sorted(set(overrides) - set(tile_models))
+        if stray:
+            _fail(_(
+                "Filter '%(k)s': `fields` names %(m)s, which no tile on this "
+                "dashboard reads.", k=key, m=", ".join(stray)))
+        if not flt.get("field") and not overrides:
+            continue  # a date range on each model's own date field
+
+        hits = []
+        for model_name in dict.fromkeys(tile_models):
+            name = overrides.get(model_name) or flt.get("field")
+            if not name:
+                continue
+            meta = env[model_name].sudo().fields_get(
+                [name], attributes=["type", "relation", "selection"])
+            if name in meta:
+                hits.append((model_name, name, meta[name]))
+            elif model_name in overrides:
+                _fail(_(
+                    "Filter '%(k)s': '%(f)s' does not exist on %(m)s. Call "
+                    "get_schema on %(m)s to see its fields.",
+                    k=key, f=name, m=model_name))
+        if not hits:
+            _fail(_(
+                "Filter '%(k)s': none of this dashboard's tiles has a field "
+                "named '%(f)s', so it would filter nothing. Call "
+                "suggest_dashboard_filters, or get_schema on the tiles' "
+                "models, to see what they share.", k=key, f=flt.get("field")))
+
+        wanted = LANDS_ON[flt["type"]]
+        _model, _name, first = hits[0]
+        for model_name, name, meta in hits:
+            explicit = model_name in overrides or model_name == hits[0][0]
+            if not explicit:
+                continue  # a same-named field elsewhere is passed by if unlike
+            if meta["type"] not in wanted:
+                _fail(_(
+                    "Filter '%(k)s' is a %(t)s filter, but '%(f)s' on %(m)s "
+                    "is a %(ft)s field.", k=key, t=flt["type"], f=name,
+                    m=model_name, ft=meta["type"]))
+            if flt["type"] == "many2one" \
+                    and meta.get("relation") != first.get("relation"):
+                _fail(_(
+                    "Filter '%(k)s': %(m)s.%(f)s points at %(r)s, but the "
+                    "filter picks %(want)s records.", k=key, m=model_name,
+                    f=name, r=meta.get("relation"),
+                    want=first.get("relation")))
+
+        if scope:
+            for model_name, name, _meta in hits:
+                line = scope.line_for_model(model_name)
+                if line and name in line.blacklisted_fields():
+                    _fail(_(
+                        "Filter '%(k)s' uses '%(f)s' on %(m)s, which is "
+                        "blocked for this connection.",
+                        k=key, f=name, m=model_name))
+
+        if flt["type"] == "many2one":
+            comodel = env[first["relation"]]
+            for term in flt.get("domain") or []:
+                if isinstance(term, list):
+                    root = _field_root(term[0]).split(".", 1)[0]
+                    if root not in comodel._fields:
+                        _fail(_(
+                            "Filter '%(k)s' domain: '%(f)s' does not exist on "
+                            "'%(m)s', the model its picker offers.",
+                            k=key, f=root, m=first["relation"]))
+            if flt.get("default"):
+                found = comodel.sudo().with_context(active_test=False) \
+                    .search_count([("id", "in", flt["default"])])
+                if found != len(flt["default"]):
+                    _fail(_(
+                        "Filter '%(k)s': the default names %(m)s records that "
+                        "do not exist here: %(ids)s.", k=key,
+                        m=first["relation"], ids=flt["default"]))
+        if flt["type"] == "selection" and flt.get("default") is not None:
+            values = [value for value, _label in first.get("selection") or []]
+            if flt["default"] not in values:
+                _fail(_(
+                    "Filter '%(k)s': default '%(d)s' is not one of %(f)s's "
+                    "values: %(ok)s.", k=key, d=flt["default"],
+                    f=hits[0][1], ok=", ".join(str(v) for v in values)))
+
+
+def portable(spec):
+    """A spec fit to install in another database.
+
+    Record ids belong to the database they came from: a default vendor of
+    203 here is somebody else entirely, or nobody, in the next one. So a
+    many2one filter travels without its default and starts on "everyone".
+    """
+    if not isinstance(spec, dict):
+        return {}  # the validator then says what a spec has to be
+    spec = json.loads(json.dumps(spec))
+    for flt in spec.get("filters") or []:
+        if isinstance(flt, dict) and flt.get("type") == "many2one":
+            flt.pop("default", None)
+    return spec
+
+
+# ------------------------------------------------- filters at render time
+# Pure functions, no database: what a filter narrows to and which tiles it
+# reaches are decided here, once, and the renderer, the drill-through and the
+# emails all ask the same questions of the same code.
+def record_ids(raw):
+    """Record ids from whatever arrived, and nothing else.
+
+    The canvas sends a list of numbers; an old client, a URL or a hand-written
+    spec may send one number or digits as text. Anything that is not a whole
+    number above zero is dropped rather than passed to the ORM, where a string
+    would quietly be matched against record *names* instead.
+    """
+    if raw is None or raw is False:
+        return []
+    items = raw if isinstance(raw, (list, tuple)) else [raw]
+    ids = []
+    for item in items:
+        if isinstance(item, bool):
+            continue
+        if isinstance(item, str) and item.strip().isdigit():
+            item = int(item.strip())
+        if isinstance(item, int) and item > 0 and item not in ids:
+            ids.append(item)
+    return ids[:MAX_FILTER_IDS]
+
+
+def filter_value(flt, filter_values):
+    """What one filter narrows to right now, or None for "everything".
+
+    The reader's choice wins over the spec's default, and choosing "all" is a
+    choice: a key that is present but empty means everything, which is not
+    the same as a key that is absent and so still on its default. A value
+    that cannot be meant — a period nobody offers, an id that is not one —
+    falls back to the default for a period and to everything otherwise.
+    """
+    if not isinstance(filter_values, dict):
+        filter_values = {}  # sent by a client; never trusted to be well formed
+    key = flt.get("key")
+    chosen = filter_values[key] if key in filter_values else flt.get("default")
+    kind = flt.get("type")
+    if kind == "date_range":
+        if chosen not in PERIODS:
+            chosen = flt.get("default")
+        return chosen if chosen in PERIODS and chosen != "all_time" else None
+    if kind == "many2one":
+        return record_ids(chosen) or None
+    if kind == "selection":
+        return chosen if isinstance(chosen, str) and chosen else None
+    return None
+
+
+def field_for(flt, model_name):
+    """The field one filter names on one model: its own entry, or the usual."""
+    return (flt.get("fields") or {}).get(model_name) or flt.get("field")
+
+
+def card_period_key(widget_id):
+    """Where the canvas keeps the period a reader chose on one card."""
+    return "__period:%s" % widget_id
+
+
+def filters_for_widget(widget, spec):
+    """The filters that reach one tile.
+
+    Usually all of them. Two exceptions, both about time: a card with a period
+    of its own uses that instead of the page's, and a card showing today's
+    position takes no period at all. Every other filter — a vendor, a status —
+    still applies, which is the whole point of having one.
+    """
+    filters = list(spec.get("filters") or [])
+    if widget.get("period") or widget.get("type") in POSITION_CARDS:
+        filters = [f for f in filters if f.get("type") != "date_range"]
+    if widget.get("period"):
+        filters.append({"key": card_period_key(widget.get("id")),
+                        "type": "date_range", "label": widget.get("title"),
+                        "default": widget["period"]})
+    return filters
 
 
 # ----------------------------------------------------------------- public API
@@ -650,7 +947,7 @@ def validate(spec, env=None, scope=None):
     compare = None
     if spec.get("compare") is not None:
         compare = _validate_compare(spec["compare"], _("The comparison"))
-    return {
+    clean = {
         "schema": SCHEMA_ID,
         "compare": compare or {"to": "none"},
         "title": _text(spec.get("title"), _("The dashboard title")),
@@ -661,6 +958,12 @@ def validate(spec, env=None, scope=None):
         "widgets": [_validate_widget(w, i, seen_ids, env, scope)
                     for i, w in enumerate(widgets)],
     }
+    if env is not None:
+        # After the widgets: a filter is checked against the tiles it would
+        # reach, and those have to be known to be real first.
+        _validate_filters_against_database(
+            clean["filters"], clean["widgets"], env, scope)
+    return clean
 
 
 def describe(spec, env=None):
@@ -691,6 +994,22 @@ def describe(spec, env=None):
     if models_used:
         lines.append(_("Reads: %s.") % ", ".join(
             label_for(m) for m in models_used))
+
+    if spec.get("filters"):
+        def filter_phrase(flt):
+            label = flt.get("label") or flt.get("key")
+            if flt.get("type") == "date_range":
+                return _("%(label)s (a period, %(field)s)", label=label,
+                         field=flt.get("field") or _("each model's own date"))
+            where = [flt.get("field")] if flt.get("field") else []
+            where += ["%s on %s" % (name, model)
+                      for model, name in (flt.get("fields") or {}).items()]
+            return _("%(label)s (%(field)s)", label=label,
+                     field="; ".join(where))
+        lines.append(_(
+            "The reader can narrow it by: %s. Each filter applies to every "
+            "tile whose model has that field.") % ", ".join(
+                filter_phrase(f) for f in spec["filters"]))
 
     for widget in spec.get("widgets", []):
         query = widget["query"]

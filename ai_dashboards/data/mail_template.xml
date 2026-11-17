@@ -20,6 +20,15 @@
                 <t t-if="dashboard.description"><t t-esc="dashboard.description"/><br/></t>
                 Calculated just now with your own Odoo permissions.
             </p>
+            <!-- The filters it was worked out with. On screen the bar says so;
+                 an email of figures for one vendor that never mentions the
+                 vendor reads as the whole business. -->
+            <t t-set="applied" t-value="[f for f in data.get('filters', []) if f.get('display') and f.get('available', True)]"/>
+            <p t-if="applied" style="margin: -12px 0 20px; color: #6b7f82; font-size: 13px;">
+                <t t-foreach="applied" t-as="f" t-key="f['key']">
+                    <t t-esc="f['label']"/>: <strong style="color: #1f2d30;" t-esc="f['display']"/><t t-if="not f_last"> · </t>
+                </t>
+            </p>
 
             <!-- KPIs first: on a phone these are usually the whole reason the
                  email gets opened. -->

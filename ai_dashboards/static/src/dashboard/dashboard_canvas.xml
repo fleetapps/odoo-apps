@@ -43,19 +43,67 @@
             <!-- Filters, provenance, and the switch between reading this
                  dashboard and rearranging it. -->
             <div class="o_ai_dash_filters">
-                <div t-foreach="state.data.filters" t-as="flt" t-key="flt.key"
-                     class="o_ai_dash_filter">
-                    <label t-esc="flt.label"/>
-                    <select class="form-select form-select-sm"
+                <!-- One control per filter, chosen by its type. Native
+                     selects for the short fixed lists — Odoo's guidance for
+                     these, and the best control on a phone — and Odoo's own
+                     record picker for vendors, customers and the like, which
+                     searches as the reader and pages through "Search More"
+                     when the list is long. -->
+                <div t-foreach="filterBar" t-as="flt" t-key="flt.key"
+                     class="o_ai_dash_filter"
+                     t-att-class="{
+                         'o_ai_dash_filter--set': isNarrowed(flt),
+                         'o_ai_dash_filter--records': flt.type === 'many2one' and flt.available !== false,
+                     }">
+                    <!-- Tied to a select by `for`; the record picker is a
+                         group of controls, labelled by aria-label instead. -->
+                    <label class="o_ai_dash_filter_label"
+                           t-att-for="flt.available !== false and flt.type !== 'many2one' ? filterInputId(flt) : undefined"
+                           t-esc="flt.label"/>
+
+                    <span t-if="flt.available === false"
+                          class="o_ai_dash_filter_na text-muted"
+                          title="None of the tiles you can see has this field, or you cannot see the records it lists.">
+                        Not available to you
+                    </span>
+
+                    <select t-elif="flt.type === 'date_range'" t-att-id="filterInputId(flt)"
+                            class="form-select form-select-sm"
                             t-on-change="(ev) => this.setFilter(flt.key, ev.target.value)">
-                        <option t-foreach="['this_month','this_quarter','this_year','last_month','last_quarter','last_year','last_7_days','last_30_days','last_90_days','all_time']"
-                                t-as="period" t-key="period"
-                                t-att-value="period"
-                                t-att-selected="(state.filters[flt.key] or flt.default) === period ? 'selected' : undefined">
-                            <t t-esc="period.replaceAll('_', ' ')"/>
-                        </option>
+                        <option t-foreach="periodOptions" t-as="option" t-key="option[0]"
+                                t-att-value="option[0]"
+                                t-att-selected="filterValue(flt) === option[0]"
+                                t-esc="option[1]"/>
                     </select>
+
+                    <select t-elif="flt.type === 'selection'" t-att-id="filterInputId(flt)"
+                            class="form-select form-select-sm"
+                            t-on-change="(ev) => this.setFilter(flt.key, ev.target.value)">
+                        <option value="" t-att-selected="!filterValue(flt)">All</option>
+                        <option t-foreach="flt.options or []" t-as="option" t-key="option[0]"
+                                t-att-value="option[0]"
+                                t-att-selected="filterValue(flt) === option[0]"
+                                t-esc="option[1]"/>
+                    </select>
+
+                    <div t-elif="flt.type === 'many2one'"
+                         class="o_ai_dash_filter_records" role="group"
+                         t-att-aria-label="flt.label">
+                        <MultiRecordSelector resModel="flt.relation"
+                                             resIds="recordIds(flt)"
+                                             domain="flt.domain or []"
+                                             fieldString="flt.label"
+                                             placeholder="allPlaceholder"
+                                             update="(ids) => this.setFilter(flt.key, ids)"/>
+                    </div>
                 </div>
+
+                <button t-if="canResetFilters" class="btn btn-sm btn-link o_ai_dash_reset"
+                        title="Put every filter back to how this dashboard starts"
+                        t-on-click="() => this.resetFilters()">
+                    <i class="fa fa-undo me-1"/>Reset
+                </button>
+
                 <div t-if="anyComparable and !isCardBoard" class="o_ai_dash_filter">
                     <label>Compare</label>
                     <select class="form-select form-select-sm"
@@ -111,7 +159,7 @@
 
                         <select t-if="widget.period and !showTools" class="o_ai_card_period" aria-label="Period"
                                 t-on-change="(ev) => this.setFilter('__period:' + widget.id, ev.target.value)">
-                            <option t-foreach="periodLabels" t-as="option" t-key="option[0]" t-att-value="option[0]"
+                            <option t-foreach="periodOptions" t-as="option" t-key="option[0]" t-att-value="option[0]"
                                     t-att-selected="widget.period === option[0] ? 'selected' : undefined" t-esc="option[1]"/>
                         </select>
                         <span t-elif="widget.type === 'aging' and !showTools" class="o_ai_card_asof">As of today</span>

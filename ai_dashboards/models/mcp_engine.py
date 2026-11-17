@@ -22,6 +22,7 @@ from odoo.exceptions import AccessError, UserError
 from odoo.addons.mcp_governance_suite.models.mcp_url import public_base_url
 
 from . import ai_dashboard_spec as spec_lib
+from . import ai_dashboard_suggest as suggest_lib
 
 _logger = logging.getLogger(__name__)
 
@@ -37,8 +38,11 @@ DASHBOARD_WRITE_HANDLERS = {
 DASHBOARD_DESTRUCTIVE_HANDLERS = {"delete_dashboard"}
 DASHBOARD_READ_HANDLERS = {
     "get_dashboard_schema", "list_dashboards", "get_dashboard",
-    "seed_from_view",
+    "seed_from_view", "suggest_dashboard_filters",
 }
+# How many suggestions ride along on a preview or a read; the tool itself
+# returns more.
+INLINE_SUGGESTIONS = 3
 
 
 class MCPEngine(models.AbstractModel):
@@ -105,6 +109,50 @@ class MCPEngine(models.AbstractModel):
             "date_granularities": sorted(spec_lib.DATE_GRANULARITIES),
             "periods": sorted(spec_lib.PERIODS),
             "filter_types": sorted(spec_lib.FILTER_TYPES),
+            "filters": {
+                "note": _(
+                    "Top-level `filters` become controls above the tiles that "
+                    "the reader changes without editing anything. Each one "
+                    "applies to every tile whose model has its field and "
+                    "passes the others by, so one Vendor filter can narrow "
+                    "purchase orders and bills together. Keys may not start "
+                    "with an underscore. A tile with its own `period` keeps "
+                    "it instead of a page date_range, and aging and banks "
+                    "cards take no period at all; every other filter still "
+                    "reaches them."),
+                "date_range": _(
+                    "A period picker. `default` is one of `periods`; `field` "
+                    "is optional and names the date field, falling back per "
+                    "tile to that model's usual date; `fields` names it per "
+                    "model where they differ."),
+                "many2one": _(
+                    "A record picker — vendor, customer, product, "
+                    "salesperson, an analytic plan such as Vehicles. `field` "
+                    "is a many2one (or many2many) directly on the tiles' model "
+                    "(\"partner_id\", not \"order_id.partner_id\"). The reader "
+                    "may pick several; tiles show any of them. Optional "
+                    "`fields` maps a model to its own name for the same "
+                    "records, e.g. {\"sale.order.line\": \"order_partner_id\"}, "
+                    "or {\"account.move.line\": "
+                    "\"distribution_analytic_account_ids\"} so an analytic "
+                    "plan filter also narrows journal items. Optional `domain` "
+                    "narrows the records offered, e.g. "
+                    "[[\"supplier_rank\", \">\", 0]] for vendors only. "
+                    "Optional `default` is a record id or a list of ids."),
+                "selection": _(
+                    "A dropdown over a selection field such as `state`, with "
+                    "an \"All\" choice. Optional `default` is one of the "
+                    "field's values."),
+                "examples": [
+                    {"key": "period", "type": "date_range", "label": "Period",
+                     "default": "this_year", "field": "date_order"},
+                    {"key": "vendor", "type": "many2one", "label": "Vendor",
+                     "field": "partner_id",
+                     "domain": [["supplier_rank", ">", 0]]},
+                    {"key": "status", "type": "selection", "label": "Status",
+                     "field": "state"},
+                ],
+            },
             "format_kinds": sorted(spec_lib.FORMAT_KINDS),
             "summary_cards": "pnl over account.move.line, aging over account.move (domain: unpaid invoices or bills, "
                              "measure the residual), banks over account.journal: each works out its own groups. "
@@ -145,6 +193,12 @@ class MCPEngine(models.AbstractModel):
                 _("Prefer a top-level `compare` over setting it per widget: "
                   "one dashboard-wide comparison is what a person means when "
                   "they ask to see something against last year."),
+                _("Give a dashboard the filters its reader will reach for. "
+                  "Which ones depends on what it is about, so do not guess: "
+                  "call suggest_dashboard_filters with your spec (or a "
+                  "dashboard_id) and keep the suggestions that fit — usually "
+                  "a Period and one or two record filters. A filter whose "
+                  "field is on none of the tiles is refused."),
                 _("You can only build over models this connection may already "
                   "read. Call list_models to see them."),
             ],
@@ -158,7 +212,9 @@ class MCPEngine(models.AbstractModel):
             "description": "Order intake and top customers for the period.",
             "compare": {"to": "previous_year"},
             "filters": [{"key": "period", "type": "date_range",
-                         "label": "Period", "default": "this_year"}],
+                         "label": "Period", "default": "this_year"},
+                        {"key": "customer", "type": "many2one",
+                         "label": "Customer", "field": "partner_id"}],
             "widgets": [
                 {"id": "total", "type": "kpi", "title": "Order intake",
                  "span": 3,
@@ -218,6 +274,8 @@ class MCPEngine(models.AbstractModel):
             "editable": dashboard.owner_id.id == self.env.uid,
             "spec": dashboard.spec(),
             "explanation": dashboard.explanation,
+            "filter_suggestions": self._inline_suggestions(
+                scope, dashboard.spec()),
         }
 
     def _handler_seed_from_view(self, scope, args):
@@ -245,6 +303,116 @@ class MCPEngine(models.AbstractModel):
                       "the format if you have not already."),
         }
 
+    def _handler_suggest_dashboard_filters(self, scope, args):
+        """Which filters fit a dashboard, worked out from its tiles' fields.
+
+        Every dashboard wants a period; past that it depends on what it is
+        about, and the tiles' own fields say so better than its title does.
+        Takes a spec being built, or the id of one already saved — the way to
+        add the right filters to dashboards that were built without them.
+        """
+        if args.get("dashboard_id"):
+            spec = self._dashboard(args["dashboard_id"]).spec()
+        else:
+            spec = self._spec_arg(args)
+        result = self._filter_suggestions(scope, spec, limit=8)
+        result["existing"] = [f.get("key") for f in spec.get("filters") or []]
+        result["how_to_use"] = str(_(
+            "Copy the `filter` of each one that suits what this dashboard is "
+            "for into the spec's top-level `filters` — usually the Period and "
+            "one or two record filters, not all of them — then call "
+            "preview_dashboard for a new dashboard, or save_dashboard with "
+            "its dashboard_id for an existing one. `reaches` lists the tiles "
+            "a filter narrows; the others are left as they are."))
+        return result
+
+    def _filter_suggestions(self, scope, spec, limit=6):
+        """Gather what the suggester needs, as this user, within the scope.
+
+        Two passes: the first finds candidates from field descriptions alone;
+        the second counts how many different values each candidate has in
+        the tiles' own records — three at most, which is all it takes to tell
+        "one company" from "several" — so a filter that could only ever show
+        one choice is not offered.
+        """
+        metadata, lines, widgets = {}, {}, {}
+        for widget in spec.get("widgets") or []:
+            query = widget.get("query") or {}
+            model_name = query.get("model")
+            widgets[widget.get("id")] = widget
+            if model_name in metadata or model_name not in self.env:
+                continue
+            try:
+                line = self._require_line(scope, model_name, "read")
+            except (AccessError, UserError):
+                continue
+            lines[model_name] = line
+            blacklist = line.blacklisted_fields() if line else set()
+            raw = self.env[model_name].fields_get(attributes=[
+                "type", "relation", "selection", "string", "searchable",
+                "store"])
+            metadata[model_name] = {name: meta for name, meta in raw.items()
+                                    if name not in blacklist}
+        relations = {meta["relation"] for fields_ in metadata.values()
+                     for meta in fields_.values() if meta.get("relation")}
+        labels = {name: self.env["ir.model"]._get(name).name
+                  for name in relations if name in self.env}
+        comodel_fields = {name: set(self.env[name]._fields) for name in (
+            "res.partner", "account.analytic.account") if name in self.env}
+        companies = len(self.env.user.company_ids)
+        plans = {}
+        if "account.analytic.plan" in self.env:
+            # Each root plan is a column on analytic lines (`account_id` for
+            # projects, `x_plan<id>_id` for the rest — see _column_name).
+            for plan in self.env["account.analytic.plan"].search(
+                    [("parent_id", "=", False)]):
+                plans[plan._column_name()] = (plan.id, plan.name)
+
+        def run(distinct=None, size=limit):
+            return suggest_lib.suggest(
+                spec, metadata, labels, companies=companies,
+                distinct=distinct, comodel_fields=comodel_fields,
+                analytic_plans=plans, limit=size)
+
+        distinct = {}
+        for suggestion in run(size=limit * 2)["suggestions"]:
+            flt = suggestion["filter"]
+            if flt["type"] == "date_range":
+                continue
+            for tile_id in suggestion["reaches"]:
+                query = widgets[tile_id]["query"]
+                model_name = query["model"]
+                name = spec_lib.field_for(flt, model_name)
+                if (model_name, name) in distinct:
+                    continue
+                try:
+                    domain = list(query.get("domain") or [])
+                    line = lines.get(model_name)
+                    if line:
+                        domain += self._scope_domain(line)
+                    groups = self.env[model_name]._read_group(
+                        domain, groupby=[name], aggregates=["__count"],
+                        limit=3)
+                except (AccessError, UserError, ValueError):
+                    continue
+                distinct[(model_name, name)] = len([g for g in groups if g[0]])
+        return run(distinct)
+
+    def _inline_suggestions(self, scope, spec):
+        """The few best suggestions not already on a dashboard, or none.
+
+        Riding along on a preview or a read rather than waiting to be asked
+        for: the moment an assistant is looking at a dashboard is the moment
+        it can add what is missing. Never allowed to fail the call it rides on.
+        """
+        try:
+            result = self._filter_suggestions(scope, spec,
+                                              limit=INLINE_SUGGESTIONS)
+        except Exception:  # noqa: BLE001 - a hint must not break the tool
+            _logger.exception("AI Dashboards: filter suggestions failed")
+            return []
+        return [s["filter"] for s in result["suggestions"]]
+
     # -------------------------------------------------------------- writing
     def _handler_preview_dashboard(self, scope, args):
         """Validate, save as a preview, and show the assistant its own numbers.
@@ -264,17 +432,26 @@ class MCPEngine(models.AbstractModel):
         dashboard._notify_ready(
             _("\"%s\" is ready — open it and take a look.") % dashboard.name)
         sample = self.env["ai.dashboard.render"].sample(dashboard.spec())
+        message = str(_(
+            "Saved as a draft. It is not on their app tile yet. Tell the "
+            "user to open it and click \"Keep it\" if it looks right — "
+            "check the sample figures above first, and say so if anything "
+            "looks wrong."))
+        suggestions = self._inline_suggestions(scope, dashboard.spec())
+        if suggestions:
+            message += " " + str(_(
+                "Filters that would fit these tiles and are not on it yet: "
+                "%s. If they suit what the dashboard is for, add them to "
+                "`filters` and preview again.") % ", ".join(
+                    s["label"] for s in suggestions))
         return {
             "dashboard_id": dashboard.id,
             "name": dashboard.name,
             "state": "draft",
             "url": self._dashboard_url(dashboard),
             "sample": sample,
-            "message": str(_(
-                "Saved as a draft. It is not on their app tile yet. Tell the "
-                "user to open it and click \"Keep it\" if it looks right — "
-                "check the sample figures above first, and say so if anything "
-                "looks wrong.")),
+            "filter_suggestions": suggestions,
+            "message": message,
         }
 
     def _handler_save_dashboard(self, scope, args):
@@ -380,6 +557,7 @@ class MCPTool(models.Model):
             ("list_dashboards", "Dashboard: list saved dashboards"),
             ("get_dashboard", "Dashboard: read one specification"),
             ("seed_from_view", "Dashboard: suggest fields for a model"),
+            ("suggest_dashboard_filters", "Dashboard: suggest filters"),
             ("preview_dashboard", "Dashboard: build a preview"),
             ("save_dashboard", "Dashboard: save and publish"),
             ("delete_dashboard", "Dashboard: delete"),
@@ -389,6 +567,7 @@ class MCPTool(models.Model):
             "list_dashboards": "cascade",
             "get_dashboard": "cascade",
             "seed_from_view": "cascade",
+            "suggest_dashboard_filters": "cascade",
             "preview_dashboard": "cascade",
             "save_dashboard": "cascade",
             "delete_dashboard": "cascade",

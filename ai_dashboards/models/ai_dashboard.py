@@ -450,12 +450,38 @@ class AIDashboard(models.Model):
     @api.model
     def action_import_spec(self, payload):
         payload = payload or {}
+        # Record ids do not travel between databases: a default vendor from
+        # the source would be somebody else here, or nobody.
+        spec = spec_lib.portable(payload.get("spec"))
+        spec["filters"] = self._filters_that_fit(spec)
         return self.create({
             "name": payload.get("name") or _("Imported dashboard"),
             "description": payload.get("description") or "",
-            "spec_json": json.dumps(payload.get("spec") or {}),
+            "spec_json": json.dumps(spec),
             "state": "draft",
         }).id
+
+    @api.model
+    def _filters_that_fit(self, spec):
+        """The imported filters this database can answer.
+
+        A filter can name something only its source database has — an
+        analytic plan's column (``x_plan2_id``), a custom field — and one such
+        filter used to refuse the whole import. The tiles are what matter; a
+        filter that cannot land here is left behind, and the assistant can
+        suggest this database's own afterwards.
+        """
+        kept = []
+        for flt in spec.get("filters") or []:
+            try:
+                spec_lib.validate(dict(spec, filters=kept + [flt]),
+                                  self.env, self._scope())
+            except spec_lib.SpecError as error:
+                _logger.info("AI Dashboards: import left out filter %s: %s",
+                             isinstance(flt, dict) and flt.get("key"), error)
+                continue
+            kept.append(flt)
+        return kept
 
     # ------------------------------------------------------------- notifying
     def _notify_ready(self, headline=None):

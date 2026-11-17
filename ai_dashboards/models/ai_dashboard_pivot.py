@@ -150,8 +150,8 @@ class AIDashboardPivot(models.AbstractModel):
             return empty
 
         scoped = list(domain)
-        scoped += self._restrict(rows)
-        scoped += self._restrict(cols)
+        scoped += self._restrict(rows, model)
+        scoped += self._restrict(cols, model)
 
         # At most CAP x CAP combinations can match, so this is bounded by
         # construction; the +1 is the usual truncation tell.
@@ -178,8 +178,14 @@ class AIDashboardPivot(models.AbstractModel):
             grand += value
         return cells, {"rows": row_totals, "cols": col_totals, "grand": grand}
 
-    def _restrict(self, axis):
-        """Narrow the cell query to the values this page shows."""
+    def _restrict(self, axis, model=None):
+        """Narrow the cell query to the values this page shows.
+
+        A date axis was bucketed in the reader's time zone, so on a datetime
+        field the window's edges are the UTC instants of local midnight —
+        with bare dates, orders placed in the small hours of the 1st landed
+        in the row total but in no cell, and the grid stopped adding up.
+        """
         values = axis["values"]
         if not values:
             return []
@@ -192,6 +198,12 @@ class AIDashboardPivot(models.AbstractModel):
             first, last = min(starts), max(starts)
             span = GRANULARITY_SPANS.get(axis["granularity"],
                                          relativedelta(months=1))
+            if model is not None:
+                render = self.env["ai.dashboard.render"]
+                return [[axis["field"], ">=",
+                         render._bound(model._name, axis["field"], first)],
+                        [axis["field"], "<",
+                         render._bound(model._name, axis["field"], last + span)]]
             return [[axis["field"], ">=", fields.Date.to_string(first)],
                     [axis["field"], "<", fields.Date.to_string(last + span)]]
         raws = [v["raw"] for v in values]
