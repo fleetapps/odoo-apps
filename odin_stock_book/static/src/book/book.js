@@ -1202,7 +1202,8 @@ export class StockBook extends Component {
         const buttons = result.posted ? await this.printButtons(result.ids[0]) : [];
         if (result.kind === "sale") {
             const lines = few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length));
-            const paidIn = result.paid_from ? _t(", paid into %s", result.paid_from) : "";
+            const paidIn = result.paid_from ? _t(", paid into %s", result.paid_from)
+                : result.due ? _t(", due %s", this.shortDate(result.due)) : "";
             this.notification.add(result.posted
                 ? _t("%(order)s (%(ref)s): %(lines)s delivered, invoice %(invoice)s%(paid)s", {
                     order: result.order, ref: result.purchase_ref, lines, invoice: result.invoice || _t("none, free goods"), paid: paidIn })

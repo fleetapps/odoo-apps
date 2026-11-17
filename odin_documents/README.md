@@ -29,6 +29,10 @@ receipt never offers a delivery note.
 | Requisition Form | A purchase request |
 | Memo | Written in the app |
 
+## Invoices signed with KRA elsewhere
+
+An invoice signed with KRA in another system, QuickBooks say, carries that system's number in **Tax invoice no.** and the number eTIMS gave it in **CU invoice no.** (on the invoice, under the customer). The Sales Invoice, Credit Note, Sales Receipt, Commercial Invoice and the delivery's documents then print the tax invoice number as the invoice number, the CU invoice number under it, and Odoo's own number as *Our ref.*. A sales order reference that is the same number is not printed again as the order number. Stock Book's **Add sale** fills both in. Without a tax invoice number, Odoo's number is the invoice number, as before.
+
 ## Print buttons
 
 Each record has a button for its documents, so no one has to find them in a

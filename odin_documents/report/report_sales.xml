@@ -139,12 +139,14 @@
         </t>
     </template>
 
-    <!-- Sales invoice -->
+    <!-- Sales invoice: signed with KRA in QuickBooks, say, it prints that
+         number as the invoice number, with its CU invoice number, and
+         Odoo's own number as our reference. -->
     <template id="report_sales_invoice">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
-                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="doc_number" t-value="o.doc_tax_invoice_no or o.name"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -161,13 +163,15 @@
                                 </td>
                                 <td>
                                     <t t-set="doc_title" t-value="'Invoice' if o.state == 'posted' else 'Draft Invoice'"/>
-                                    <t t-set="meta" t-value="[('Invoice no.', o.name if o.state == 'posted' else ''),
+                                    <t t-set="meta" t-value="[('Invoice no.', o._doc_invoice_number()),
+                                        ('CU invoice no.', o.doc_cu_invoice_no),
                                         ('Invoice date', o._doc_date(o.invoice_date)),
                                         ('Due date', o._doc_date(o.invoice_date_due)),
                                         ('Customer no.', o.commercial_partner_id.ref),
                                         ('Order no.', o._doc_order_ref()),
                                         ('Delivery note', ', '.join(o._doc_pickings().mapped('name'))),
-                                        ('Payment terms', o.invoice_payment_term_id.name)]"/>
+                                        ('Payment terms', o.invoice_payment_term_id.name),
+                                        ('Our ref.', o._doc_our_ref())]"/>
                                     <t t-call="odin_documents.title"/>
                                 </td>
                             </tr>
@@ -199,7 +203,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
-                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="doc_number" t-value="o.doc_tax_invoice_no or o.name"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
                         <table class="o_odoc_cols">
@@ -211,9 +215,11 @@
                                 </td>
                                 <td>
                                     <t t-set="doc_title" t-value="'Credit Note' if o.state == 'posted' else 'Draft Credit Note'"/>
-                                    <t t-set="meta" t-value="[('Credit note no.', o.name if o.state == 'posted' else ''),
+                                    <t t-set="meta" t-value="[('Credit note no.', o._doc_invoice_number()),
+                                        ('CU invoice no.', o.doc_cu_invoice_no),
                                         ('Date', o._doc_date(o.invoice_date)),
-                                        ('Against invoice', o.reversed_entry_id.name),
+                                        ('Against invoice', o.reversed_entry_id._doc_invoice_number() if o.reversed_entry_id else ''),
+                                        ('Our ref.', o._doc_our_ref()),
                                         ('Customer no.', o.commercial_partner_id.ref),
                                         ('Reason', o.ref)]"/>
                                     <t t-call="odin_documents.title"/>
@@ -248,7 +254,7 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
                 <t t-set="company" t-value="o._doc_company()"/>
-                <t t-set="doc_number" t-value="o.name"/>
+                <t t-set="doc_number" t-value="o.doc_tax_invoice_no or o.name"/>
                 <t t-set="payments" t-value="o._doc_payments()"/>
                 <t t-call="odin_documents.layout">
                     <div class="page">
@@ -261,7 +267,7 @@
                                 </td>
                                 <td>
                                     <t t-set="doc_title" t-value="'Sales Receipt'"/>
-                                    <t t-set="meta" t-value="[('Receipt for invoice', o.name),
+                                    <t t-set="meta" t-value="[('Receipt for invoice', o._doc_invoice_number() or o.name),
                                         ('Date', payments and o._doc_date(payments[-1]['date']) or o._doc_date(o.invoice_date)),
                                         ('Status', 'PAID' if o.payment_state in ('paid', 'in_payment') else 'PART PAID')]"/>
                                     <t t-call="odin_documents.title"/>

@@ -1,8 +1,13 @@
+import re
+
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_round
 
 from .stock_book import _escape_like
+
+# A KRA PIN: A (an individual) or P (anyone else), nine digits and a letter.
+KRA_PIN = re.compile(r"[AP][0-9]{9}[A-Z]")
 
 
 class StockBookSale(models.Model):
@@ -19,6 +24,13 @@ class StockBookSale(models.Model):
     warehouse_id = fields.Many2one("stock.warehouse", required=True, check_company=True)
     partner_id = fields.Many2one("res.partner", string="Customer", required=True)
     sale_ref = fields.Char(string="Invoice no.", required=True)
+    cu_invoice_no = fields.Char(
+        string="CU invoice no.", copy=False,
+        help="The Control Unit invoice number KRA's eTIMS gave the invoice when it was signed: printed on the "
+             "invoice.")
+    payment_term_id = fields.Many2one(
+        "account.payment.term", string="Payment terms", check_company=True,
+        help="The invoice's terms, from which Odoo dates it due. Empty: the customer's, or due on the day.")
     date = fields.Date(required=True)
     pay_journal_id = fields.Many2one("account.journal", string="Paid into", check_company=True,
                                      domain=[("type", "in", ("bank", "cash"))],
@@ -51,9 +63,11 @@ class StockBookSale(models.Model):
         lines = self.line_ids.filtered(lambda l: l.state == "draft").sorted("id")
         for line in lines:
             line.partner_id = self.partner_id
+        # The terms the window had, else the customer's now (a sale saved before it had any).
+        terms = self.payment_term_id or self.partner_id.sudo().with_company(self.company_id).property_payment_term_id
         order = self.env["sale.order"].sudo().with_company(self.company_id).create({
             "partner_id": self.partner_id.id, "company_id": self.company_id.id, "warehouse_id": warehouse.id,
-            "client_order_ref": self.sale_ref, "user_id": self.env.user.id,
+            "client_order_ref": self.sale_ref, "user_id": self.env.user.id, "payment_term_id": terms.id,
             "date_order": lines[:1]._when(),
             "order_line": [Command.create({
                 "product_id": line.product_id.id, "product_uom_qty": line.qty_out,
@@ -88,7 +102,17 @@ class StockBookSale(models.Model):
         invoice = order._create_invoices()
         if len(invoice) != 1:
             raise UserError(_("%(order)s did not make one invoice. Nothing was saved.", order=order.display_name))
-        invoice.write({"invoice_date": self.date, "date": self.date, "ref": self.sale_ref})
+        values = {"invoice_date": self.date, "date": self.date, "ref": self.sale_ref}
+        # With Business Documents: the numbers the invoice prints, QuickBooks's as its invoice number.
+        if "doc_tax_invoice_no" in invoice._fields:
+            values["doc_tax_invoice_no"] = self.sale_ref
+        if "doc_cu_invoice_no" in invoice._fields and self.cu_invoice_no:
+            values["doc_cu_invoice_no"] = self.cu_invoice_no
+        invoice.write(values)
+        if not invoice.invoice_payment_term_id:
+            # With terms, Odoo dates it due from the invoice date. Without, it
+            # keeps the day the invoice was made: due on its own date instead.
+            invoice.invoice_date_due = self.date
         if invoice.currency_id.compare_amounts(invoice.amount_total, order.amount_total):
             raise UserError(_("The invoice for %(order)s comes to %(invoice)s, the order to %(total)s. Nothing was "
                               "saved.", order=order.display_name, invoice=invoice.amount_total,
@@ -154,9 +178,68 @@ class StockBook(models.AbstractModel):
                          for j in journals],
             "taxes": [{"id": t.id, "label": _("%s (incl.)", t.name) if t.price_include and t.amount else t.name}
                       for t in self._sale_taxes()],
+            "payment_terms": [{"id": t.id, "label": t.name} for t in self._sale_payment_terms()],
             "today": fields.Date.to_string(fields.Date.context_today(self)),
             "can_post": self._is_supervisor(), "currency": self.env.company.currency_id.name,
         }
+
+    # ------------------------------------------------------------ the customer's PIN and terms
+    @api.model
+    def _sale_payment_terms(self):
+        """The terms a sales order of this company can take, as Sales lists them."""
+        return self.env["account.payment.term"].sudo().search(
+            [("company_id", "in", (False, self.env.company.id))], order="sequence, id")
+
+    @api.model
+    def _sale_customer(self, partner):
+        """The customer as the sale window shows it: its KRA PIN and terms, to fill in where missing."""
+        commercial = partner.sudo().commercial_partner_id.with_company(self.env.company)
+        return {"id": partner.id, "name": partner.name, "vat": commercial.vat or "",
+                "payment_term_id": commercial.property_payment_term_id.id or False}
+
+    @api.model
+    def _sale_pin(self, text, partner=None):
+        """The KRA PIN typed, as KRA writes it: P052112729P. One the customer
+        already has is kept as it is, a foreign tax ID say; a new one must be
+        a KRA PIN. Empty: nothing typed."""
+        pin = "".join((text or "").split()).upper()
+        known = "".join((partner.sudo().commercial_partner_id.vat or "").split()).upper() if partner else ""
+        if pin and pin != known and not KRA_PIN.fullmatch(pin):
+            raise UserError(_("%s is not a KRA PIN: A or P, nine digits and a letter, e.g. P052112729P. A customer "
+                              "outside Kenya keeps its tax ID in Sales > Customers.", text.strip()))
+        return pin
+
+    @api.model
+    def _sale_terms(self, term_id):
+        if not term_id:
+            return self.env["account.payment.term"]
+        terms = self._sale_payment_terms().filtered(lambda t: t.id == term_id)
+        if not terms:
+            raise UserError(_("Choose the payment terms from the list."))
+        return terms
+
+    @api.model
+    def _sale_update_customer(self, partner, pin, terms):
+        """What was typed for a customer goes on the customer, for every sale
+        after: a PIN or terms it lacked, or a correction. Left empty, what the
+        customer has stays."""
+        commercial = partner.sudo().commercial_partner_id.with_company(self.env.company)
+        values = {}
+        if pin and pin != "".join((commercial.vat or "").split()).upper():
+            values["vat"] = pin
+        if terms and terms != commercial.property_payment_term_id:
+            values["property_payment_term_id"] = terms.id
+        if values:
+            commercial.write(values)
+
+    @api.model
+    def book_sale_due(self, payment_term_id=False, date=False):
+        """The day an invoice of this date falls due on these terms, as Odoo
+        dates it: its last instalment. No terms: the invoice date."""
+        day = fields.Date.to_date(date) or fields.Date.context_today(self)
+        terms = self._sale_payment_terms().filtered(lambda t: t.id == payment_term_id)
+        due = max((line._get_due_date(day) for line in terms.line_ids), default=day)
+        return fields.Date.to_string(due)
 
     @api.model
     def book_sale_customers(self, text):
@@ -166,7 +249,7 @@ class StockBook(models.AbstractModel):
         partners = self.env["res.partner"].search([("name", "ilike", name), ("parent_id", "=", False)],
                                                   order="customer_rank desc, name", limit=8)
         exact = partners.filtered(lambda p: p.name.casefold() == name.casefold())
-        return {"items": [{"id": p.id, "name": p.name} for p in partners], "can_create": not exact}
+        return {"items": [self._sale_customer(p) for p in partners], "can_create": not exact}
 
     @api.model
     def book_sale_products(self, text, warehouse_id=False):
@@ -253,6 +336,27 @@ class StockBook(models.AbstractModel):
                               ref=ref, customer=partner.display_name))
 
     @api.model
+    def _check_sale_cu(self, cu):
+        """A CU invoice number is KRA's for one invoice: typed in once. The
+        sale being edited was taken off before this is asked."""
+        if not cu:
+            return
+        company = self.env.company
+        pattern = _escape_like(cu)
+        sale = self.env["odin.stock.sale"].sudo().search(
+            [("company_id", "=", company.id), ("cu_invoice_no", "=ilike", pattern)], limit=1)
+        if sale:
+            raise UserError(_("CU invoice no. %(cu)s is already on invoice %(ref)s for %(customer)s.",
+                              cu=cu, ref=sale.sale_ref, customer=sale.partner_id.display_name))
+        Move = self.env["account.move"].sudo()
+        if "doc_cu_invoice_no" in Move._fields:
+            move = Move.search([("company_id", "=", company.id), ("state", "!=", "cancel"),
+                                ("doc_cu_invoice_no", "=ilike", pattern)], limit=1)
+            if move:
+                raise UserError(_("CU invoice no. %(cu)s is already on %(invoice)s.",
+                                  cu=cu, invoice=move.display_name))
+
+    @api.model
     def book_sale_check(self, partner_id, ref, ignore_ids=None):
         partner = self.env["res.partner"].browse(partner_id or []).exists()
         try:
@@ -304,12 +408,17 @@ class StockBook(models.AbstractModel):
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
                   "cost": c.unit_price, "tax_id": c.tax_id.id or False, "note": c.name or ""}
                  for c in window.charge_ids]
+        customer = self._sale_customer(partner) if partner else {}
         return {
-            "supplier": {"id": partner.id, "name": partner.name} if partner else False,
+            "supplier": customer or False,
             "supplier_query": partner.name if partner else name.title(),
             "purchase_ref": line.purchase_ref or "", "date": fields.Date.to_string(line.date),
             "paid": (str(window.pay_journal_id.id) if window.pay_journal_id else "none") if window else "",
             "lines": rows, "replace_ids": lines.ids, "edit": bool(window),
+            # As saved, else the customer's: what the window shows for them.
+            "partner_vat": customer.get("vat", ""),
+            "payment_term_id": window.payment_term_id.id or customer.get("payment_term_id") or False,
+            "cu_invoice_no": window.cu_invoice_no or "",
         }
 
     @api.model
@@ -353,6 +462,9 @@ class StockBook(models.AbstractModel):
         journal = self.env["account.journal"].sudo().browse(values.get("pay_journal_id") or []).exists()
         if journal and journal not in self._sale_pay_journals():
             raise UserError(_("Choose where it was paid into."))
+        pin = self._sale_pin(values.get("partner_vat"), partner)
+        terms = self._sale_terms(values.get("payment_term_id"))
+        cu = " ".join((values.get("cu_invoice_no") or "").split())
         vals_list, charges = [], []
         for number, row in enumerate(rows, 1):
             product = self.env["product.product"].browse(row.get("product_id") or []).exists()
@@ -385,11 +497,17 @@ class StockBook(models.AbstractModel):
             Partner = self.env["res.partner"]
             partner = Partner.search([("name", "=ilike", _escape_like(name)), ("parent_id", "=", False)], limit=1) \
                 or Partner.sudo().create({"name": name, "company_id": False, "customer_rank": 1}).sudo(False)
+            # Found by name rather than picked: a PIN it already has is not new.
+            pin = self._sale_pin(values.get("partner_vat"), partner)
         Line._lock_purchase_supplier(partner)
         self._check_sale_ref(partner, ref)
+        self._check_sale_cu(cu)
+        self._sale_update_customer(partner, pin, terms)
         window = self.env["odin.stock.sale"].create({
             "company_id": company.id, "warehouse_id": wh.id, "partner_id": partner.id, "sale_ref": ref,
-            "date": day, "pay_journal_id": journal.id or False, "charge_ids": charges,
+            "date": day, "pay_journal_id": journal.id or False, "charge_ids": charges, "cu_invoice_no": cu or False,
+            "payment_term_id": (terms or partner.sudo().commercial_partner_id.with_company(company)
+                                .property_payment_term_id).id or False,
         })
         for vals in vals_list:
             vals.update(partner_id=partner.id, partner_name=partner.name, stock_sale_id=window.id)
@@ -404,4 +522,5 @@ class StockBook(models.AbstractModel):
             "ids": lines.ids, "refs": lines.mapped("ref") if posted else [], "posted": posted,
             "paid_from": journal.name or "", "total": sale.order_id.amount_total, "purchase_ref": ref,
             "date": fields.Date.to_string(day),
+            "due": fields.Date.to_string(sale.invoice_id.invoice_date_due) if sale.invoice_id else "",
         }

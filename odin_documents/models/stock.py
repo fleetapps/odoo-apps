@@ -166,11 +166,14 @@ class StockPicking(models.Model):
         sale = picking.sale_id or source.sale_id
         purchase = picking.purchase_id or source.purchase_id
         invoices = sale.invoice_ids.filtered(lambda m: m.state == "posted" and m.move_type == "out_invoice")
+        # An order's reference that is its invoice's tax invoice number prints once: as the invoice number.
+        numbers = {number.strip().casefold() for number in invoices.mapped("doc_tax_invoice_no") if number}
+        customer_ref = sale.client_order_ref or ""
         return {
             "order": sale.name or purchase.name or picking.origin or "",
-            "customer_ref": sale.client_order_ref or "",
+            "customer_ref": "" if customer_ref.strip().casefold() in numbers else customer_ref,
             "supplier_ref": purchase.partner_ref or "",
-            "invoices": ", ".join(invoices.mapped("name")),
+            "invoices": ", ".join(move._doc_invoice_number() for move in invoices),
         }
 
 

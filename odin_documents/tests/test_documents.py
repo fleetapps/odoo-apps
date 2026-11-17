@@ -158,6 +158,46 @@ class TestDocuments(AccountTestInvoicingCommon):
             self.assertIn(text, html)
         self.assertNotIn("3001232272", html, "a KES invoice lists the KES account, not the USD one")
 
+    def meta(self, html, label):
+        """What the document prints against a label in its header, or None."""
+        match = re.search(r"<th>%s</th>\s*<td>(.*?)</td>" % re.escape(label), html, re.S)
+        return match and match[1].strip()
+
+    def test_an_invoice_signed_in_quickbooks_prints_that_number_and_its_cu_number(self):
+        invoice = self.local_invoice()
+        html = self.render("action_report_sales_invoice", invoice)
+        self.assertEqual(self.meta(html, "Invoice no."), invoice.name, "Odoo's number when no other")
+        self.assertIsNone(self.meta(html, "CU invoice no."))
+        self.assertIsNone(self.meta(html, "Our ref."))
+        invoice.write({"doc_tax_invoice_no": "5400", "doc_cu_invoice_no": "KRACU0100012345/77", "ref": "5400"})
+        html = self.render("action_report_sales_invoice", invoice)
+        self.assertEqual(self.meta(html, "Invoice no."), "5400")
+        self.assertEqual(self.meta(html, "CU invoice no."), "KRACU0100012345/77")
+        self.assertEqual(self.meta(html, "Our ref."), invoice.name)
+        self.assertIsNone(self.meta(html, "Order no."), "the number is printed once, as the invoice number")
+        self.assertIn("KRA PIN: P052112729P", html)
+        self.assertIn("PIN / Tax ID: P000000001A", html, "the customer's PIN")
+        refund = invoice._reverse_moves([{"invoice_date": "2026-11-03"}])
+        refund.write({"doc_tax_invoice_no": "CN-88", "doc_cu_invoice_no": "KRACU0100012399/78"})
+        refund.action_post()
+        html = self.render("action_report_credit_note", refund)
+        self.assertEqual(self.meta(html, "Credit note no."), "CN-88")
+        self.assertEqual(self.meta(html, "CU invoice no."), "KRACU0100012399/78")
+        self.assertEqual(self.meta(html, "Against invoice"), "5400")
+        self.assertEqual(self.meta(html, "Our ref."), refund.name)
+
+    def test_a_sale_signed_in_quickbooks_shows_its_number_on_the_delivery_note(self):
+        order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "5400",
+                                               "order_line": [Command.create({"product_id": self.product_a.id,
+                                                                              "product_uom_qty": 6, "price_unit": 199.0})]})
+        order.action_confirm()
+        invoice = order._create_invoices()
+        invoice.write({"invoice_date": "2026-11-02", "doc_tax_invoice_no": "5400"})
+        invoice.action_post()
+        refs = order.picking_ids._doc_refs()
+        self.assertEqual((refs["invoices"], refs["customer_ref"]), ("5400", ""))
+        self.assertEqual(invoice._doc_order_ref(), "", "the order's reference is the invoice number")
+
     def test_estimate_and_pro_forma_from_a_quotation(self):
         order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "order_line": [
             Command.create({"product_id": self.product_a.id, "product_uom_qty": 12, "price_unit": 199.0})]})

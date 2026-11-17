@@ -8,10 +8,24 @@ class AccountMove(models.Model):
     for the invoice date (the CBK rate once the feed is on) and can be typed
     over, inline on the invoice, for a rate agreed with the customer. On an
     invoice in the foreign currency it is Odoo's own invoice rate, so the
-    accounts use the rate the document prints."""
+    accounts use the rate the document prints.
+
+    An invoice signed with KRA in another system, QuickBooks say, prints that
+    system's number as its invoice number, with the CU invoice number eTIMS
+    gave it; Odoo's own number is then printed as our reference."""
 
     _name = "account.move"
     _inherit = ["account.move", "odin.document.mixin"]
+
+    doc_tax_invoice_no = fields.Char(
+        string="Tax invoice no.", copy=False, tracking=True, index="btree_not_null",
+        help="The number on the customer's tax invoice, from the system that signs it with KRA (QuickBooks, "
+             "say). It prints as the invoice number, and Odoo's own number as our reference. Empty: Odoo's "
+             "number is the invoice number.")
+    doc_cu_invoice_no = fields.Char(
+        string="CU invoice no.", copy=False, tracking=True, index="btree_not_null",
+        help="The Control Unit invoice number KRA's eTIMS gave this invoice when it was signed. Printed on "
+             "the invoice.")
 
     doc_is_export = fields.Boolean(
         string="Export", compute="_compute_doc_is_export", store=True,
@@ -126,10 +140,22 @@ class AccountMove(models.Model):
         return self._doc_orders().picking_ids.filtered(
             lambda p: p.picking_type_code == "outgoing" and p.state == "done" and not p.return_id)
 
+    def _doc_invoice_number(self):
+        """The number the invoice prints as: its tax invoice's, else Odoo's once posted."""
+        self.ensure_one()
+        return self.doc_tax_invoice_no or (self.name if self.state == "posted" else "")
+
+    def _doc_our_ref(self):
+        """Odoo's own number, printed as our reference when the tax invoice's is the invoice number."""
+        self.ensure_one()
+        return self.name if self.doc_tax_invoice_no and self.state == "posted" else ""
+
     def _doc_order_ref(self):
         orders = self._doc_orders()
         refs = [ref for ref in orders.mapped("client_order_ref") if ref] or ([self.ref] if self.ref else [])
-        return ", ".join(refs)
+        # A tax invoice number kept as the order's reference too prints once: as the invoice number.
+        taken = (self.doc_tax_invoice_no or "").strip().casefold()
+        return ", ".join(ref for ref in refs if ref.strip().casefold() != taken)
 
     def _doc_weights(self):
         """(net, gross) kg: from the deliveries if done, else from the lines."""
