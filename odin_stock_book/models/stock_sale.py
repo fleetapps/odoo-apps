@@ -156,13 +156,21 @@ class StockBookSale(models.Model):
         invoice = order._create_invoices()
         if len(invoice) != 1:
             raise UserError(_("%(order)s did not make one invoice. Nothing was saved.", order=order.display_name))
-        values = {"invoice_date": self.date, "date": self.date, "ref": self.sale_ref}
+        # The invoice is numbered as typed in Invoice no. (QuickBooks's), not by Odoo's sequence.
+        number = " ".join((self.sale_ref or "").split())
+        self._free_invoice_number(invoice.journal_id, number)
+        values = {"invoice_date": self.date, "date": self.date, "ref": self.sale_ref, "name": number}
         # With Business Documents: the numbers the invoice prints, QuickBooks's as its invoice number.
         if "doc_tax_invoice_no" in invoice._fields:
             values["doc_tax_invoice_no"] = self.sale_ref
         if "doc_cu_invoice_no" in invoice._fields and self.cu_invoice_no:
             values["doc_cu_invoice_no"] = self.cu_invoice_no
         invoice.write(values)
+        if invoice.name != number or not invoice._sequence_matches_date():
+            # Odoo refuses a number that reads as a dated sequence of another
+            # date (2025/014 on a 2026 invoice, say).
+            raise UserError(_("Odoo would not number the invoice %(number)s: it reads it as a number of another "
+                              "date. Nothing was saved.", number=number))
         if not invoice.invoice_payment_term_id:
             # With terms, Odoo dates it due from the invoice date. Without, it
             # keeps the day the invoice was made: due on its own date instead.
@@ -172,9 +180,34 @@ class StockBookSale(models.Model):
                               "saved.", order=order.display_name, invoice=invoice.amount_total,
                               total=order.amount_total))
         invoice.action_post()
+        if invoice.name != number:
+            # Odoo drops a number that reads as a dated sequence of another
+            # date (2025/014 on a 2026 invoice, say).
+            raise UserError(_("Odoo would not number the invoice %(number)s: it reads it as a number of another "
+                              "date. Nothing was saved.", number=number))
         self.invoice_id = invoice
         if self.pay_journal_id:
             self.payment_id = self._receive(invoice).id
+
+    def _free_invoice_number(self, journal, number):
+        """The number typed must be free in the journal. An undone sale gives
+        its invoice's number back: that invoice, credited in full, is renamed
+        "<number> (undone)" so the sale can be entered again under it."""
+        Move = self.env["account.move"].sudo()
+        taken = Move.search([("journal_id", "=", journal.id), ("state", "=", "posted"), ("name", "=", number)])
+        if not taken:
+            return
+        undone = self.sudo().search([("invoice_id", "in", taken.ids), ("undone_on", "!=", False)]).invoice_id
+        for move in undone:
+            name, count = _("%s (undone)", number), 1
+            while Move.search_count([("journal_id", "=", journal.id), ("name", "=", name)]):
+                count += 1
+                name = _("%(number)s (undone %(count)s)", number=number, count=count)
+            move.name = name
+        other = taken - undone
+        if other:
+            raise UserError(_("Invoice no. %(number)s is already the number of the invoice for %(customer)s. Nothing "
+                              "was saved.", number=number, customer=other[:1].partner_id.display_name))
 
     def _receive(self, invoice):
         """Paid in full into the journal chosen, and checked to be in the ledger."""
@@ -388,6 +421,16 @@ class StockBook(models.AbstractModel):
         if waiting:
             raise UserError(_("%(ref)s for %(customer)s is already on the book, waiting to be posted.",
                               ref=ref, customer=partner.display_name))
+        # The number typed becomes the invoice's number: free in the sales
+        # journals, but for an undone sale's, which gives it back.
+        Move = self.env["account.move"].sudo()
+        taken = Move.search([("company_id", "=", company.id), ("journal_id.type", "=", "sale"),
+                             ("state", "=", "posted"), ("name", "=", ref)])
+        taken -= self.env["odin.stock.sale"].sudo().search(
+            [("invoice_id", "in", taken.ids), ("undone_on", "!=", False)]).invoice_id
+        if taken:
+            raise UserError(_("Invoice no. %(ref)s is already the number of the invoice for %(customer)s.",
+                              ref=ref, customer=taken[:1].partner_id.display_name))
 
     @api.model
     def _check_sale_cu(self, cu):

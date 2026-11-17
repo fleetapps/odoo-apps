@@ -169,6 +169,30 @@ class TestStockBookLedger(TestStockBookPurchase):
         self.assertEqual(order.order_line.price_unit, 110.0, "the order keeps the price typed, not the pricelist's")
         self.assertEqual(line.invoice_id.invoice_line_ids.price_unit, 110.0)
 
+    def test_the_invoice_is_numbered_as_typed_not_by_odoos_sequence(self):
+        line = self.Line.browse(self.Book.book_sale_save(self._sale_values(purchase_ref=" 5409 "))["ids"])
+        invoice = line.invoice_id
+        self.assertEqual((invoice.name, invoice.payment_reference), ("5409", "5409"))
+        later = self.Line.browse(self.Book.book_sale_save(self._sale_values(purchase_ref="5395 additional"))["ids"])
+        self.assertEqual(later.invoice_id.name, "5395 additional", "as typed, whatever came before")
+        other = self._sale_values(purchase_ref="5409")
+        self.assertIn("already the number of the invoice", self.Book.book_sale_check(other["partner_id"], "5409"))
+        with self.assertRaisesRegex(UserError, "already the number of the invoice"):
+            self.Book.book_sale_save(other)
+        with self.assertRaisesRegex(UserError, "Odoo would not number the invoice"):
+            self.Book.book_sale_save(self._sale_values(purchase_ref=f"{fields.Date.today().year - 1}/014"))
+
+    def test_an_undone_sale_gives_its_number_back(self):
+        values = self._sale_values(purchase_ref="5409")
+        line = self.Line.browse(self.Book.book_sale_save(values)["ids"])
+        first = line.invoice_id
+        self.Book.book_undo(line.id)
+        self.assertFalse(self.Book.book_sale_check(values["partner_id"], "5409"))
+        again = self.Line.browse(self.Book.book_sale_save(values)["ids"])
+        self.assertEqual(again.invoice_id.name, "5409")
+        self.assertEqual(first.name, "5409 (undone)", "the credited invoice keeps its place under another name")
+        self.assertEqual(first.payment_state, "reversed")
+
     def test_free_sale_delivers_without_an_invoice(self):
         values = self._sale_values()
         values["lines"][0]["cost"] = 0

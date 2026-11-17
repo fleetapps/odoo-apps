@@ -193,7 +193,8 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertEqual(self.meta(html, "Credit note no."), "CN-88")
         self.assertEqual(self.meta(html, "CU invoice no."), "KRACU0100012399/78")
         self.assertEqual(self.meta(html, "Against invoice"), "5400")
-        self.assertEqual(self.meta(html, "Our ref."), refund.name)
+        self.assertEqual(refund.name, "CN-88", "posted with its tax invoice number: numbered with it")
+        self.assertIsNone(self.meta(html, "Our ref."), "one number: no other reference")
 
     # ------------------------------------------------------------ the Band invoice
     def band(self, html, cell):
@@ -244,6 +245,25 @@ class TestDocuments(AccountTestInvoicingCommon):
         html = self.render("action_report_sales_invoice", invoice)
         self.assertNotIn("o_odoc_band", html)
         self.assertIn("KRA PIN: P052112729P", html)
+
+    def test_an_invoice_with_a_tax_invoice_number_is_posted_under_it(self):
+        invoice = self.local_invoice(post=False)
+        invoice.doc_tax_invoice_no = "5409"
+        invoice.action_post()
+        self.assertEqual((invoice.name, invoice.payment_reference), ("5409", "5409"), "QuickBooks's number, not Odoo's")
+        html = self.render("action_report_sales_invoice", invoice)
+        self.assertEqual(self.meta(html, "Invoice no."), "5409")
+        self.assertIsNone(self.meta(html, "Our ref."), "one number: no other reference")
+        second = self.local_invoice(post=False)
+        second.doc_tax_invoice_no = "5409"
+        with self.assertRaisesRegex(UserError, "already the number of"):
+            second.action_post()
+        plain = self.local_invoice()
+        self.assertNotEqual(plain.name, "5409", "without a tax invoice number, Odoo's sequence as before")
+        plain.button_draft()
+        plain.doc_tax_invoice_no = "5410"
+        plain.action_post()
+        self.assertEqual(plain.name, "5410", "posted again: numbered with it")
 
     def test_a_sale_signed_in_quickbooks_shows_its_number_on_the_delivery_note(self):
         order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "5400",

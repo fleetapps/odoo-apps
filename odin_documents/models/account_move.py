@@ -1,4 +1,5 @@
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class AccountMove(models.Model):
@@ -146,9 +147,32 @@ class AccountMove(models.Model):
         return self.doc_tax_invoice_no or (self.name if self.state == "posted" else "")
 
     def _doc_our_ref(self):
-        """Odoo's own number, printed as our reference when the tax invoice's is the invoice number."""
+        """Odoo's own number, printed as our reference when the tax invoice's
+        is the invoice number and Odoo's is another (an invoice numbered
+        before it was given the tax invoice's number)."""
         self.ensure_one()
-        return self.name if self.doc_tax_invoice_no and self.state == "posted" else ""
+        tax_no = (self.doc_tax_invoice_no or "").strip()
+        return self.name if tax_no and self.state == "posted" and self.name != tax_no else ""
+
+    def _post(self, soft=True):
+        """A customer invoice or credit note with a tax invoice number is
+        numbered with it, not by Odoo's sequence: QuickBooks's number is the
+        invoice's. Posting again after Reset to Draft applies it too."""
+        for move in self.filtered(lambda m: m.move_type in ("out_invoice", "out_refund") and m.state == "draft"):
+            number = " ".join((move.doc_tax_invoice_no or "").split())
+            if not number or move.name == number:
+                continue
+            other = self.search([("journal_id", "=", move.journal_id.id), ("state", "=", "posted"),
+                                 ("name", "=", number), ("id", "!=", move.id)], limit=1)
+            if other:
+                raise UserError(_("Tax invoice no. %(number)s is already the number of %(other)s, for "
+                                  "%(customer)s.", number=number, other=other.display_name,
+                                  customer=other.partner_id.display_name))
+            move.name = number
+            if not move._sequence_matches_date():
+                raise UserError(_("Tax invoice no. %(number)s reads as a number of another date, so Odoo cannot "
+                                  "number the invoice with it.", number=number))
+        return super()._post(soft=soft)
 
     def _doc_order_ref(self):
         orders = self._doc_orders()
