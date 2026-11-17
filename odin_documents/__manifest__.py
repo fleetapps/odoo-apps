@@ -12,7 +12,7 @@ belongs to: an invoice from the invoice, a delivery note from the delivery, a
 GRN from the receipt. One Documents app lists them all, says where each is
 printed from and opens those records. See README.md.
 """,
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.2.0",
     "category": "Productivity",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",

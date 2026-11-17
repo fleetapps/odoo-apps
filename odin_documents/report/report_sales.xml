@@ -145,56 +145,182 @@
     <template id="report_sales_invoice">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-set="company" t-value="o._doc_company()"/>
-                <t t-set="doc_number" t-value="o.doc_tax_invoice_no or o.name"/>
-                <t t-call="odin_documents.layout">
-                    <div class="page">
-                        <table class="o_odoc_cols">
-                            <tr>
-                                <td>
-                                    <t t-set="party" t-value="o.partner_id"/>
-                                    <t t-set="party_label" t-value="'Bill to'"/>
-                                    <t t-call="odin_documents.party"/>
-                                    <t t-if="o.partner_shipping_id and o.partner_shipping_id != o.partner_id">
-                                        <t t-set="party" t-value="o.partner_shipping_id"/>
-                                        <t t-set="party_label" t-value="'Deliver to'"/>
-                                        <t t-call="odin_documents.party"/>
-                                    </t>
-                                </td>
-                                <td>
-                                    <t t-set="doc_title" t-value="'Invoice' if o.state == 'posted' else 'Draft Invoice'"/>
-                                    <t t-set="meta" t-value="[('Invoice no.', o._doc_invoice_number()),
-                                        ('CU invoice no.', o.doc_cu_invoice_no),
-                                        ('Invoice date', o._doc_date(o.invoice_date)),
-                                        ('Due date', o._doc_date(o.invoice_date_due)),
-                                        ('Customer no.', o.commercial_partner_id.ref),
-                                        ('Order no.', o._doc_order_ref()),
-                                        ('Delivery note', ', '.join(o._doc_pickings().mapped('name'))),
-                                        ('Payment terms', o.invoice_payment_term_id.name),
-                                        ('Our ref.', o._doc_our_ref())]"/>
-                                    <t t-call="odin_documents.title"/>
-                                </td>
-                            </tr>
-                        </table>
-                        <t t-set="lines" t-value="o._doc_lines()"/>
-                        <t t-set="qty_field" t-value="'quantity'"/>
-                        <t t-set="cur" t-value="o.currency_id"/>
-                        <t t-call="odin_documents.lines"/>
-                        <t t-set="untaxed" t-value="o.amount_untaxed"/>
-                        <t t-set="tax" t-value="o.amount_tax"/>
-                        <t t-set="total" t-value="o.amount_total"/>
-                        <t t-call="odin_documents.totals"/>
-                        <t t-set="words_amount" t-value="o.amount_total"/>
-                        <t t-set="words_currency" t-value="o.currency_id"/>
-                        <t t-call="odin_documents.amount_words"/>
-                        <div class="o_odoc_body" t-if="not is_html_empty(o.narration)" t-out="o.narration"/>
-                        <t t-set="pay_currency" t-value="o.currency_id"/>
-                        <t t-call="odin_documents.payment_block"/>
-                        <t t-set="terms" t-value="o._doc_terms('sales_invoice')"/>
-                        <t t-call="odin_documents.terms"/>
-                    </div>
-                </t>
+                <t t-if="o._doc_company().doc_invoice_style == 'band'" t-call="odin_documents.sales_invoice_band"/>
+                <t t-else="" t-call="odin_documents.sales_invoice_letterhead"/>
             </t>
+        </t>
+    </template>
+
+    <!-- The Band: the company, its PIN, the invoice's payment terms and CU
+         number on the left of the band, the logo in the middle, the customer
+         on the right; then the dates, the lines, the totals, how to pay and
+         the terms. -->
+    <template id="sales_invoice_band">
+        <t t-set="company" t-value="o._doc_company()"/>
+        <t t-set="band_party" t-value="o.partner_id"/>
+        <t t-set="band_extra" t-value="o._doc_band_terms()"/>
+        <t t-set="cur" t-value="o.currency_id"/>
+        <t t-set="accent" t-value="company._doc_accent()"/>
+        <t t-call="odin_documents.layout_band">
+            <div class="page">
+                <h2 class="o_odoc_b_title" t-attf-style="color: #{accent};">
+                    <t t-out="'Invoice' if o.state == 'posted' else 'Draft Invoice'"/>
+                    <t t-out="o._doc_invoice_number()"/>
+                </h2>
+                <t t-set="meta" t-value="o._doc_band_meta()"/>
+                <table class="o_odoc_b_meta" t-if="meta">
+                    <tr>
+                        <td t-foreach="meta" t-as="row">
+                            <div class="o_odoc_b_meta_label" t-out="row[0]"/>
+                            <div t-out="row[1]"/>
+                        </td>
+                    </tr>
+                </table>
+                <t t-set="lines" t-value="o._doc_lines()"/>
+                <t t-set="show_discount" t-value="any(line.discount for line in lines)"/>
+                <t t-set="width" t-value="6 if show_discount else 5"/>
+                <table class="o_odoc_b_lines">
+                    <thead>
+                        <tr t-attf-style="background: #{accent};">
+                            <th class="o_odoc_b_first">Description</th>
+                            <th class="o_odoc_num">Quantity</th>
+                            <th class="o_odoc_num">Unit Price</th>
+                            <th t-if="show_discount" class="o_odoc_num">Disc.%</th>
+                            <th class="o_odoc_num">Taxes</th>
+                            <th class="o_odoc_num o_odoc_b_last">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="lines" t-as="line">
+                            <tr t-if="o._doc_is_section(line)" class="o_odoc_section">
+                                <td t-att-colspan="width" t-out="line.name"/>
+                            </tr>
+                            <tr t-elif="line.display_type == 'line_note'" class="o_odoc_note">
+                                <td t-att-colspan="width" t-out="line.name"/>
+                            </tr>
+                            <tr t-else="">
+                                <td t-out="o._doc_line_name(line)"/>
+                                <td class="o_odoc_num" t-out="line.quantity" t-options="{'widget': 'float', 'precision': 2}"/>
+                                <td class="o_odoc_num" t-out="line.price_unit" t-options="{'widget': 'float', 'precision': cur.decimal_places}"/>
+                                <td t-if="show_discount" class="o_odoc_num" t-out="line.discount" t-options="{'widget': 'float', 'precision': 2}"/>
+                                <td class="o_odoc_num" t-out="o._doc_vat_label(line)"/>
+                                <td class="o_odoc_num o_odoc_b_amount" t-out="line.price_subtotal" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+                <table class="o_odoc_b_after">
+                    <tr>
+                        <td class="o_odoc_b_notes">
+                            <p t-if="o.invoice_payment_term_id">Payment terms: <t t-out="o.invoice_payment_term_id.name"/></p>
+                            <p t-if="o.payment_reference">Payment Communication: <strong t-out="o.payment_reference"/></p>
+                        </td>
+                        <td class="o_odoc_b_totals_cell">
+                            <table class="o_odoc_b_totals">
+                                <tr>
+                                    <th>SUB TOTAL</th>
+                                    <td t-out="o.amount_untaxed" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+                                </tr>
+                                <tr t-foreach="o._doc_tax_rows()" t-as="row">
+                                    <th t-out="row[0]"/>
+                                    <td t-out="row[1]" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+                                </tr>
+                                <tr class="o_odoc_b_grand" t-attf-style="background: #{accent};">
+                                    <th>Total</th>
+                                    <td t-out="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': cur}"/>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <div class="o_odoc_body" t-if="not is_html_empty(o.narration)" t-out="o.narration"/>
+                <t t-set="banks" t-value="o._doc_bank_accounts(cur)"/>
+                <t t-set="home_currency" t-value="cur == company.currency_id"/>
+                <t t-set="paybill" t-value="home_currency and company.doc_mpesa_paybill"/>
+                <t t-set="terms" t-value="o._doc_terms('sales_invoice')"/>
+                <table class="o_odoc_b_box" t-if="banks or paybill or terms">
+                    <tr>
+                        <td class="o_odoc_b_pay">
+                            <t t-set="step" t-value="0"/>
+                            <div t-if="paybill" class="o_odoc_b_step">
+                                <t t-set="step" t-value="step + 1"/>
+                                <div><t t-out="step"/>. You can pay using our M-Pesa</div>
+                                <div class="o_odoc_b_indent">PAYBILL NO: <t t-out="company.doc_mpesa_paybill"/></div>
+                                <div t-if="company.doc_mpesa_account" class="o_odoc_b_indent">ACCOUNT: <t t-out="company.doc_mpesa_account"/></div>
+                            </div>
+                            <div t-foreach="banks" t-as="bank" class="o_odoc_b_step">
+                                <t t-set="step" t-value="step + 1"/>
+                                <div><t t-out="step"/>. BANK TRANSFER<t t-if="bank.currency_id and not home_currency"> (<t t-out="bank.currency_id.name"/>)</t></div>
+                                <div t-if="bank.bank_id" class="o_odoc_b_indent">BANK: <t t-out="(bank.bank_id.name or '').upper()"/></div>
+                                <div t-if="bank.bank_id.street" class="o_odoc_b_indent">BRANCH: <t t-out="(bank.bank_id.street or '').upper()"/></div>
+                                <div class="o_odoc_b_indent">ACC NAME: <t t-out="(bank.acc_holder_name or company.name or '').upper()"/></div>
+                                <div class="o_odoc_b_indent">ACC NO: <t t-out="bank.acc_number"/></div>
+                                <div t-if="bank.bank_id.bic and not home_currency" class="o_odoc_b_indent">SWIFT: <t t-out="bank.bank_id.bic"/></div>
+                            </div>
+                            <div t-if="home_currency" class="o_odoc_b_step">
+                                <t t-set="step" t-value="step + 1"/>
+                                <t t-out="step"/>. All cheques payable to <t t-out="(company.doc_cheque_payee or company.name or '').upper()"/>.
+                            </div>
+                        </td>
+                        <td class="o_odoc_b_terms" t-if="terms">
+                            <div class="o_odoc_b_terms_title">Terms &amp; Conditions</div>
+                            <t t-out="terms"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </t>
+    </template>
+
+    <template id="sales_invoice_letterhead">
+        <t t-set="company" t-value="o._doc_company()"/>
+        <t t-set="doc_number" t-value="o.doc_tax_invoice_no or o.name"/>
+        <t t-call="odin_documents.layout">
+            <div class="page">
+                <table class="o_odoc_cols">
+                    <tr>
+                        <td>
+                            <t t-set="party" t-value="o.partner_id"/>
+                            <t t-set="party_label" t-value="'Bill to'"/>
+                            <t t-call="odin_documents.party"/>
+                            <t t-if="o.partner_shipping_id and o.partner_shipping_id != o.partner_id">
+                                <t t-set="party" t-value="o.partner_shipping_id"/>
+                                <t t-set="party_label" t-value="'Deliver to'"/>
+                                <t t-call="odin_documents.party"/>
+                            </t>
+                        </td>
+                        <td>
+                            <t t-set="doc_title" t-value="'Invoice' if o.state == 'posted' else 'Draft Invoice'"/>
+                            <t t-set="meta" t-value="[('Invoice no.', o._doc_invoice_number()),
+                                ('CU invoice no.', o.doc_cu_invoice_no),
+                                ('Invoice date', o._doc_date(o.invoice_date)),
+                                ('Due date', o._doc_date(o.invoice_date_due)),
+                                ('Customer no.', o.commercial_partner_id.ref),
+                                ('Order no.', o._doc_order_ref()),
+                                ('Delivery note', ', '.join(o._doc_pickings().mapped('name'))),
+                                ('Payment terms', o.invoice_payment_term_id.name),
+                                ('Our ref.', o._doc_our_ref())]"/>
+                            <t t-call="odin_documents.title"/>
+                        </td>
+                    </tr>
+                </table>
+                <t t-set="lines" t-value="o._doc_lines()"/>
+                <t t-set="qty_field" t-value="'quantity'"/>
+                <t t-set="cur" t-value="o.currency_id"/>
+                <t t-call="odin_documents.lines"/>
+                <t t-set="untaxed" t-value="o.amount_untaxed"/>
+                <t t-set="tax" t-value="o.amount_tax"/>
+                <t t-set="total" t-value="o.amount_total"/>
+                <t t-call="odin_documents.totals"/>
+                <t t-set="words_amount" t-value="o.amount_total"/>
+                <t t-set="words_currency" t-value="o.currency_id"/>
+                <t t-call="odin_documents.amount_words"/>
+                <div class="o_odoc_body" t-if="not is_html_empty(o.narration)" t-out="o.narration"/>
+                <t t-set="pay_currency" t-value="o.currency_id"/>
+                <t t-call="odin_documents.payment_block"/>
+                <t t-set="terms" t-value="o._doc_terms('sales_invoice')"/>
+                <t t-call="odin_documents.terms"/>
+            </div>
         </t>
     </template>
 

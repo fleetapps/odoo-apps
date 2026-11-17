@@ -23,6 +23,11 @@
                             <field name="doc_stamp" widget="image" class="oe_avatar"/>
                             <field name="doc_replace_standard"/>
                         </group>
+                        <group string="Sales invoice">
+                            <field name="doc_invoice_style" widget="radio"/>
+                            <field name="doc_accent_color" widget="color"
+                                   invisible="doc_invoice_style != 'band'"/>
+                        </group>
                         <group string="Export documents">
                             <field name="doc_export_currency_id" options="{'no_create': True}"/>
                             <field name="doc_export_conditions"/>

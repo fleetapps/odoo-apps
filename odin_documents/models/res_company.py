@@ -1,4 +1,10 @@
-from odoo import fields, models
+import re
+
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
+
+# #RRGGBB: the accent colour goes into the document's styles as it is typed.
+HEX_COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
 
 
 class ResCompany(models.Model):
@@ -24,6 +30,27 @@ class ResCompany(models.Model):
     doc_export_conditions = fields.Char(string="Conditions of sale (export)", default="Ex-factory, collection by buyer")
     doc_freight_terms = fields.Char(string="Freight charges (export)", default="On buyer")
     doc_brand = fields.Char(string="Brand on export documents", help="When the product has no brand of its own.")
+    doc_invoice_style = fields.Selection(
+        [("letterhead", "Letterhead"), ("band", "Band")], string="Sales invoice style",
+        default="letterhead", required=True,
+        help="Letterhead: on the company's letterhead, as the other documents are. Band: a shaded band across "
+             "the top of each page, the company on the left (with the invoice's payment terms and CU number), "
+             "the logo in the middle and the customer on the right; the title, the table's heading and the "
+             "total in the accent colour.")
+    doc_accent_color = fields.Char(
+        string="Accent colour", default="#B1A58E",
+        help="The Band invoice's title, table heading and total. A colour such as #B1A58E.")
+
+    @api.constrains("doc_accent_color")
+    def _check_doc_accent_color(self):
+        for company in self:
+            if company.doc_accent_color and not HEX_COLOUR.fullmatch(company.doc_accent_color):
+                raise ValidationError(_("The accent colour is a colour such as #B1A58E: # and six hex digits."))
+
+    def _doc_accent(self):
+        self.ensure_one()
+        colour = self.doc_accent_color or ""
+        return colour if HEX_COLOUR.fullmatch(colour) else "#B1A58E"
 
     def _doc_short(self):
         self.ensure_one()

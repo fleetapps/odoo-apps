@@ -33,6 +33,21 @@ receipt never offers a delivery note.
 
 An invoice signed with KRA in another system, QuickBooks say, carries that system's number in **Tax invoice no.** and the number eTIMS gave it in **CU invoice no.** (on the invoice, under the customer). The Sales Invoice, Credit Note, Sales Receipt, Commercial Invoice and the delivery's documents then print the tax invoice number as the invoice number, the CU invoice number under it, and Odoo's own number as *Our ref.*. A sales order reference that is the same number is not printed again as the order number. Stock Book's **Add sale** fills both in. Without a tax invoice number, Odoo's number is the invoice number, as before.
 
+## Sales invoice style
+
+**Letterhead** (the default) prints the Sales Invoice on the company letterhead,
+as the other documents. **Band** prints it with a shaded band across the top
+of each page: the company's address and Tax ID on the left, with the
+invoice's **Payment terms** and its **CU invoice no.** (once there is one)
+under the PIN; the logo in the middle; the customer and their Tax ID on the
+right. Then the title with the invoice number, a box with the dates (and
+*Our ref.* when the number is QuickBooks's), the lines, the totals by VAT
+rate, and a box with how to pay beside the Terms & Conditions. The title,
+the table's heading and the total are in the company's **Accent colour**.
+The band reaches the page's edges: the invoice then prints on its own paper
+format (*A4 portrait, edge to edge*). Both are set in Settings > Companies >
+Documents > Sales invoice.
+
 ## Print buttons
 
 Each record has a button for its documents, so no one has to find them in a

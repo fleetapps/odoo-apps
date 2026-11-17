@@ -1,7 +1,7 @@
 import re
 
 from odoo import Command, fields
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import new_test_user, tagged
 
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
@@ -194,6 +194,56 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertEqual(self.meta(html, "CU invoice no."), "KRACU0100012399/78")
         self.assertEqual(self.meta(html, "Against invoice"), "5400")
         self.assertEqual(self.meta(html, "Our ref."), refund.name)
+
+    # ------------------------------------------------------------ the Band invoice
+    def band(self, html, cell):
+        """What one cell of the Band's header prints: from, logo or to."""
+        match = re.search(r'class="o_odoc_band_%s">(.*?)</td>' % cell, html, re.S)
+        return match and re.sub(r"\s+", " ", match[1])
+
+    def test_band_invoice_prints_the_terms_and_cu_number_under_the_pin(self):
+        terms = self.env.ref("account.account_payment_term_30days")
+        invoice = self.local_invoice(post=False)
+        invoice.invoice_payment_term_id = terms
+        invoice.action_post()
+        invoice.write({"doc_tax_invoice_no": "5400", "doc_cu_invoice_no": "KRACU0100012345/77"})
+        Invoice = self.report("action_report_sales_invoice")
+        self.assertEqual(Invoice.get_paperformat(), self.env.ref("odin_documents.paperformat_portrait"),
+                         "letterhead until the company chooses the band")
+        self.company.doc_invoice_style = "band"
+        self.assertEqual(Invoice.get_paperformat(), self.env.ref("odin_documents.paperformat_band"),
+                         "edge to edge, so the band reaches the page's edges")
+        html = self.render("action_report_sales_invoice", invoice)
+        mine = self.band(html, "from")
+        self.assertIn("Rinz Products Limited", mine)
+        self.assertIn("Tax ID: P052112729P", mine)
+        self.assertIn(f"Payment terms: <strong>{terms.name}</strong>", mine)
+        self.assertIn("CU invoice no.: <strong>KRACU0100012345/77</strong>", mine)
+        if self.company.logo:
+            self.assertIn("<img", self.band(html, "logo"), "the logo in the middle")
+        theirs = self.band(html, "to")
+        self.assertIn(self.partner_a.display_name, theirs)
+        self.assertIn("Tax ID: P000000001A", theirs)
+        self.assertRegex(html, r"Invoice\s+5400\s*</h2>", "the tax invoice's number is the invoice's")
+        self.assertIn(invoice.name, html, "Odoo's number as our reference")
+        self.assertIn("background: #B1A58E", html, "the heading and total in the accent colour")
+        for text in ("SUB TOTAL", "982800", "110110", "3000184558", "Title to goods remains with",
+                     f"Payment terms: {terms.name}"):
+            self.assertIn(text, html)
+        self.assertNotIn("3001232272", html, "a KES invoice lists the KES account, not the USD one")
+
+        invoice.doc_cu_invoice_no = False
+        self.assertNotIn("CU invoice no.", self.band(self.render("action_report_sales_invoice", invoice), "from"),
+                         "no CU number yet: nothing printed for it")
+        self.company.doc_accent_color = "#1F4E79"
+        self.assertIn("background: #1F4E79", self.render("action_report_sales_invoice", invoice))
+        with self.assertRaises(ValidationError):
+            self.company.doc_accent_color = "red; background: url(x)"
+
+        self.company.doc_invoice_style = "letterhead"
+        html = self.render("action_report_sales_invoice", invoice)
+        self.assertNotIn("o_odoc_band", html)
+        self.assertIn("KRA PIN: P052112729P", html)
 
     def test_a_sale_signed_in_quickbooks_shows_its_number_on_the_delivery_note(self):
         order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "5400",

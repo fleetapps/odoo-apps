@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 
 
 class AccountMove(models.Model):
@@ -184,6 +184,33 @@ class AccountMove(models.Model):
 
     def _doc_vat_label(self, line):
         return ", ".join(line.tax_ids.mapped("name")) or "0%"
+
+    # ------------------------------------------------------------ the Band invoice
+    def _doc_band_terms(self):
+        """What the band prints under the company's PIN: the invoice's terms
+        and, once KRA has signed it, its CU invoice number."""
+        self.ensure_one()
+        rows = [(_("Payment terms"), self.invoice_payment_term_id.name),
+                (_("CU invoice no."), self.doc_cu_invoice_no)]
+        return [(label, value) for label, value in rows if value]
+
+    def _doc_band_meta(self):
+        """The box under the title: the dates, then what else the invoice has."""
+        self.ensure_one()
+        rows = [(_("Invoice Date"), self._doc_date(self.invoice_date)),
+                (_("Due Date"), self._doc_date(self.invoice_date_due)),
+                (_("Order no."), self._doc_order_ref()),
+                (_("Delivery note"), ", ".join(self._doc_pickings().mapped("name"))),
+                (_("Customer no."), self.commercial_partner_id.ref),
+                (_("Our ref."), self._doc_our_ref())]
+        return [(label, value) for label, value in rows if value]
+
+    def _doc_tax_rows(self):
+        """(VAT 16%, amount) for each tax group, as Odoo totals the invoice."""
+        self.ensure_one()
+        totals = self.tax_totals or {}
+        return [(group["group_name"], group["tax_amount_currency"])
+                for subtotal in totals.get("subtotals", []) for group in subtotal.get("tax_groups", [])]
 
 
     def _get_action_with_base_document_layout_configurator(self, report_action):

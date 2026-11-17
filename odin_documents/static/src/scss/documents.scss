@@ -103,3 +103,125 @@ $odoc-head: #e9ecef;
     padding-top: 2px;
     .o_odoc_page { color: #666; }
 }
+
+// The Band invoice: a shaded band across the top, the company on the left,
+// the logo in the middle, the customer on the right; the title, the table's
+// heading and the total in the company's accent colour (set inline).
+$odoc-band: #f4f3f1;
+$odoc-soft: #ececec;
+$odoc-rule: #c8c8c8;
+$odoc-amount: #eef0f5;
+
+// Its paper format keeps the side margins in CSS (11 mm, Odoo's
+// css_margins): the band goes past them to the page's edges.
+.o_body_pdf.o_css_margins .header.o_odoc_band_header { padding-top: 0; }
+.o_odoc_band_header {
+    margin: 0 -11mm;
+    .o_odoc_band {
+        width: 100%;
+        background: $odoc-band;
+        border: 0 none !important;
+        border-collapse: collapse;
+        font-size: 10pt;
+        line-height: 1.45;
+        color: #222;
+        td { vertical-align: top; padding: 9mm 11mm 6mm; border: 0 none !important; }
+    }
+    .o_odoc_band_from { width: 38%; text-align: left; }
+    .o_odoc_band_logo {
+        width: 24%;
+        text-align: center;
+        img { max-height: 100px; max-width: 150px; }
+    }
+    .o_odoc_band_to { width: 38%; text-align: right; }
+}
+
+.o_odoc_b {
+    font-size: 9.5pt;
+    color: #222;
+
+    .o_odoc_b_title {
+        font-size: 21pt;
+        font-weight: 300;
+        margin: 4px 0 10px;
+    }
+    .o_odoc_b_meta {
+        width: 100%;
+        background: $odoc-soft;
+        border-radius: 8px;
+        margin-bottom: 14px;
+        td { padding: 7px 8px 6px; vertical-align: top; }
+        .o_odoc_b_meta_label { font-weight: bold; }
+    }
+    .o_odoc_b_lines {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid $odoc-rule;
+        border-radius: 8px;
+        th {
+            color: #222;
+            font-weight: normal;
+            text-align: left;
+            padding: 6px 6px;
+            white-space: nowrap;
+            border: none;
+        }
+        .o_odoc_b_first { border-top-left-radius: 8px; }
+        .o_odoc_b_last { border-top-right-radius: 8px; }
+        td {
+            padding: 7px 6px;
+            border-top: 1px solid $odoc-rule;
+            border-left: 1px solid $odoc-rule;
+            vertical-align: top;
+        }
+        td:first-child { border-left: none; }
+        .o_odoc_num { text-align: right; white-space: nowrap; }
+        .o_odoc_b_amount { background: $odoc-amount; }
+        .o_odoc_section td { font-weight: bold; background: #f7f7f7; }
+        .o_odoc_note td { font-style: italic; }
+    }
+    .o_odoc_b_after {
+        width: 100%;
+        page-break-inside: avoid;
+        > tbody > tr > td, > tr > td { vertical-align: top; }
+        .o_odoc_b_notes { padding: 12px 0 0; p { margin: 0 0 14px; } }
+        .o_odoc_b_totals_cell { width: 32%; }
+    }
+    .o_odoc_b_totals {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid $odoc-rule;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        th, td { padding: 6px 8px; border-top: 1px solid $odoc-rule; }
+        th { font-weight: normal; white-space: nowrap; }
+        td { text-align: right; white-space: nowrap; }
+        .o_odoc_b_grand th, .o_odoc_b_grand td { font-weight: bold; }
+        .o_odoc_b_grand th { border-bottom-left-radius: 8px; }
+        .o_odoc_b_grand td { border-bottom-right-radius: 8px; }
+    }
+    .o_odoc_b_box {
+        width: 100%;
+        margin-top: 16px;
+        border: 1px solid $odoc-rule;
+        border-radius: 8px;
+        font-size: 8.5pt;
+        page-break-inside: avoid;
+        td { vertical-align: top; padding: 8px 10px; }
+        .o_odoc_b_pay { width: 38%; border-right: 1px solid $odoc-rule; }
+        .o_odoc_b_step { padding: 3px 0; border-bottom: 1px dashed $odoc-rule; }
+        .o_odoc_b_step:last-child { border-bottom: none; }
+        .o_odoc_b_indent { padding-left: 10px; }
+        .o_odoc_b_terms_title { font-weight: bold; text-decoration: underline; margin-bottom: 4px; }
+        ol, ul { padding-left: 18px; margin-bottom: 0; }
+        li { margin-bottom: 2px; }
+    }
+}
+
+.o_odoc_band_footer {
+    text-align: center;
+    font-size: 9.5pt;
+    .o_odoc_page { color: #777; margin-top: 4px; }
+}

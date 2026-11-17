@@ -40,6 +40,55 @@
         </div>
     </template>
 
+    <!-- The Band: a shaded band across the top of each page, the company on
+         the left, the logo in the middle and the customer on the right.
+         band_party: the customer; band_extra: [(label, value)] printed under
+         the company's PIN (the invoice's payment terms, its CU number). -->
+    <template id="layout_band">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+        <t t-if="not company" t-set="company" t-value="o._doc_company()"/>
+        <t t-set="accent" t-value="company._doc_accent()"/>
+        <div t-attf-class="header o_odoc_band_header o_company_#{company.id}_layout">
+            <table class="o_odoc_band">
+                <tr>
+                    <td class="o_odoc_band_from">
+                        <div t-out="company.name"/>
+                        <div t-foreach="o._doc_address(company.partner_id)" t-as="line" t-out="line"/>
+                        <div t-if="company.vat">Tax ID: <t t-out="company.vat"/></div>
+                        <div t-foreach="band_extra or []" t-as="row">
+                            <t t-out="row[0]"/>: <strong t-out="row[1]"/>
+                        </div>
+                    </td>
+                    <td class="o_odoc_band_logo">
+                        <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                    </td>
+                    <td class="o_odoc_band_to">
+                        <t t-if="band_party">
+                            <div t-out="band_party.display_name"/>
+                            <div t-foreach="o._doc_address(band_party)" t-as="line" t-out="line"/>
+                            <div t-if="band_party.commercial_partner_id.vat">
+                                Tax ID: <t t-out="band_party.commercial_partner_id.vat"/>
+                            </div>
+                        </t>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div t-attf-class="article o_odoc o_odoc_b o_company_#{company.id}_layout"
+             t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o[:1].id"
+             t-att-data-oe-lang="o and o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <div class="footer o_odoc_band_footer">
+            <div>
+                <t t-if="company.phone">Call: <t t-out="company.phone"/></t>
+                <t t-if="company.email"> | Email: <t t-out="company.email"/></t>
+                <t t-if="company.website"> | Website: <t t-out="company.website"/></t>
+            </div>
+            <div class="o_odoc_page">Page <span class="page"/> / <span class="topage"/></div>
+        </div>
+    </template>
+
     <!-- doc_title, doc_number, meta: [(label, value)] -->
     <template id="title">
         <h2 class="o_odoc_title" t-out="doc_title"/>
