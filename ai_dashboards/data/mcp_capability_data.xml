@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Tools are data in mcp_governance_suite, so this module adds a
-         capability and seven tool records rather than touching the controller.
+         capability and eight tool records rather than touching the controller.
          noupdate=0 so description and schema fixes propagate on upgrade.
 
          A scope with no explicit capability selection gets every installed one
@@ -56,6 +56,16 @@
         <field name="input_schema">{"type": "object", "properties": {"model": {"type": "string", "description": "Technical model name, e.g. sale.order"}}, "required": ["model"], "additionalProperties": false}</field>
     </record>
 
+    <record id="tool_suggest_dashboard_filters" model="mcp.tool">
+        <field name="name">suggest_dashboard_filters</field>
+        <field name="title">Suggest dashboard filters</field>
+        <field name="capability_id" ref="cap_dashboards"/>
+        <field name="handler">suggest_dashboard_filters</field>
+        <field name="sequence">5</field>
+        <field name="description">Work out which filters fit a dashboard from its tiles' own fields: a Period, and record or status filters such as Vendor, Customer, Product, Salesperson, Payee or Vehicle — whatever the tiles actually share. Each suggestion is a ready-made filter for the spec's `filters`, with the tiles it reaches and why. Call it with the spec you are building before preview_dashboard, or with a dashboard_id to add filters to one that has none. Keep the suggestions that suit what the dashboard is for; they are not all meant to be added.</field>
+        <field name="input_schema">{"type": "object", "properties": {"spec": {"type": "object", "description": "A dashboard specification being built."}, "dashboard_id": {"type": "integer", "description": "Or a saved dashboard, to suggest filters for it."}}, "additionalProperties": false}</field>
+    </record>
+
     <!-- ============================================== Writing ============= -->
     <record id="tool_preview_dashboard" model="mcp.tool">
         <field name="name">preview_dashboard</field>
@@ -90,6 +100,6 @@
     <!-- ======================================= Business context =========== -->
     <record id="ctx_dashboards" model="mcp.context">
         <field name="name">Building dashboards</field>
-        <field name="body">When the user asks for a dashboard, report, chart or KPI in Odoo, build it with the dashboard tools rather than answering with a table in chat — they get something they can open again tomorrow. Call get_dashboard_schema first, then get_schema on each model you intend to use so the field names are real rather than guessed. Prefer preview_dashboard over save_dashboard for anything new, check the sample figures it returns, and only then invite the user to look. To change an existing dashboard, read it with get_dashboard and edit that specification.</field>
+        <field name="body">When the user asks for a dashboard, report, chart or KPI in Odoo, build it with the dashboard tools rather than answering with a table in chat — they get something they can open again tomorrow. Call get_dashboard_schema first, then get_schema on each model you intend to use so the field names are real rather than guessed. Before previewing, call suggest_dashboard_filters with your spec and add the filters that fit what the dashboard is for — a Period almost always, and the record filters its reader will reach for. Prefer preview_dashboard over save_dashboard for anything new, check the sample figures it returns, and only then invite the user to look. To change an existing dashboard, read it with get_dashboard and edit that specification.</field>
     </record>
 </odoo>

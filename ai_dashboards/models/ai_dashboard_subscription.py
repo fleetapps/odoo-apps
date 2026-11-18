@@ -22,12 +22,19 @@ from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools import email_normalize, formataddr
+from odoo.tools.misc import format_datetime
 
 _logger = logging.getLogger(__name__)
 
 # How many subscriptions one cron pass will send. A cap so a database with
 # hundreds does not hold the worker for the whole hour; the rest go next pass.
 BATCH = 50
+
+GROUP_ADMIN = "ai_dashboards.group_dashboard_admin"
+WEEKDAYS = [("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"),
+            ("3", "Thursday"), ("4", "Friday"), ("5", "Saturday"),
+            ("6", "Sunday")]
+HOURS = [(str(hour), "%02d:00" % hour) for hour in range(24)]
 
 
 class AIDashboardSubscription(models.Model):
@@ -44,14 +51,33 @@ class AIDashboardSubscription(models.Model):
         help="Who receives it, and — just as importantly — whose permissions "
              "the figures are calculated with.")
     active = fields.Boolean(default=True)
+    # Who put it in place: the recipient themselves, or the dashboard's owner
+    # sending it to someone it is shared with. Shown so a recipient knows why
+    # it arrives, and written on the email.
+    created_by_id = fields.Many2one(
+        "res.users", string="Set up by", readonly=True, ondelete="set null",
+        default=lambda self: self.env.user)
 
     interval = fields.Selection(
-        [("daily", "Every weekday morning"),
-         ("weekly", "Every Monday morning"),
-         ("monthly", "First of the month")],
-        default="weekly", required=True)
+        [("daily", "Every weekday"),
+         ("weekly", "Every week"),
+         ("monthly", "Monthly, on the 1st")],
+        string="How often", default="weekly", required=True)
+    weekday = fields.Selection(
+        WEEKDAYS, string="On", default="0", required=True,
+        help="The day a weekly email goes out.")
     send_hour = fields.Integer(
         default=7, help="Hour of the day, in your timezone, to send it.")
+    # The hour as a time of day, for the schedule list: "07:00", picked from a
+    # list, rather than a bare 7 in a number box.
+    send_time = fields.Selection(
+        HOURS, string="At", compute="_compute_send_time",
+        inverse="_inverse_send_time")
+    paused_reason = fields.Char(
+        readonly=True,
+        help="Why it was switched off without anyone switching it off — "
+             "for instance, the dashboard stopped being shared with them.")
+    last_state = fields.Char(string="Last email", compute="_compute_last_state")
 
     next_send = fields.Datetime(readonly=True, index=True)
     last_sent = fields.Datetime(readonly=True)
@@ -70,25 +96,69 @@ class AIDashboardSubscription(models.Model):
                     "Pick an hour between 0 and 23 — %s is not one.")
                     % rec.send_hour)
 
+    @api.depends("send_hour")
+    def _compute_send_time(self):
+        for rec in self:
+            rec.send_time = str(rec.send_hour) if 0 <= rec.send_hour <= 23 else "7"
+
+    def _inverse_send_time(self):
+        for rec in self:
+            rec.send_hour = int(rec.send_time or 7)
+
+    @api.depends("active", "last_sent", "last_error", "paused_reason")
+    def _compute_last_state(self):
+        for rec in self:
+            if rec.last_error:
+                rec.last_state = _("Failed: %s", rec.last_error)
+            elif not rec.active and rec.paused_reason:
+                rec.last_state = rec.paused_reason
+            elif rec.last_sent:
+                rec.last_state = _("Sent %s", format_datetime(
+                    rec.env, rec.last_sent, dt_format="d MMM, HH:mm"))
+            else:
+                rec.last_state = _("Not sent yet")
+
+    def _check_recipient(self):
+        """Who may be sent a dashboard on a schedule, and by whom.
+
+        Anyone may schedule a dashboard they can open for themselves. Its
+        owner may also schedule it for anyone they have shared it with —
+        never for somebody who cannot open it, because each email is
+        calculated as its recipient and they would only ever get an error.
+        Nobody else may fill a colleague's inbox.
+        """
+        if self.env.su or self.env.user.has_group(GROUP_ADMIN):
+            return
+        for rec in self:
+            if rec.user_id.id == self.env.uid:
+                continue
+            if rec.dashboard_id.owner_id.id != self.env.uid:
+                raise AccessError(_(
+                    "You can only schedule a dashboard for yourself, or for "
+                    "people a dashboard of yours is shared with."))
+            if rec.user_id not in rec.dashboard_id._allowed_recipients():
+                raise AccessError(_(
+                    "%(user)s cannot open \"%(name)s\", so it cannot be "
+                    "emailed to them. Share it with them first.",
+                    user=rec.user_id.name, name=rec.dashboard_id.name))
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        records._check_recipient()
         for rec in records:
-            # Subscribing to somebody else's dashboard is fine — you can read
-            # it — but subscribing *somebody else* to one is not: it would let
-            # anyone fill a colleague's inbox on a schedule.
-            if rec.user_id.id != self.env.uid and not self.env.su \
-                    and not self.env.user.has_group(
-                        "ai_dashboards.group_dashboard_admin"):
-                raise AccessError(_(
-                    "You can only schedule a dashboard for yourself."))
             rec.dashboard_id.check_access("read")
             rec._schedule_next()
         return records
 
     def write(self, vals):
+        if vals.get("active"):
+            # Switched back on by hand: whatever paused it no longer applies.
+            vals = dict(vals, paused_reason=False)
         result = super().write(vals)
-        if {"interval", "send_hour", "active"} & set(vals):
+        if {"user_id", "active"} & set(vals):
+            self.filtered("active")._check_recipient()
+        if {"interval", "send_hour", "weekday", "active"} & set(vals):
             self._schedule_next()
         return result
 
@@ -127,7 +197,8 @@ class AIDashboardSubscription(models.Model):
                 while nxt.weekday() >= 5:
                     nxt += relativedelta(days=1)
             elif rec.interval == "weekly":
-                while nxt.weekday() != 0:
+                day = int(rec.weekday or 0)
+                while nxt.weekday() != day:
                     nxt += relativedelta(days=1)
             elif rec.interval == "monthly":
                 if nxt.day != 1:
@@ -184,6 +255,7 @@ class AIDashboardSubscription(models.Model):
                 "dashboard": self.dashboard_id,
                 "data": rendered,
                 "url": self._url(),
+                "manage_url": self._manage_url(),
                 "subscription": self,
                 "fmt": self._format_value,
             })
@@ -293,6 +365,14 @@ class AIDashboardSubscription(models.Model):
             return "%s%%" % text
         return "%s%s" % (text, fmt.get("suffix", ""))
 
+    def _manage_url(self):
+        """Where a recipient pauses or stops their emails: Scheduled sends."""
+        from odoo.addons.mcp_governance_suite.models.mcp_url import (
+            public_base_url,
+        )
+        return "%s/odoo/action-ai_dashboards.action_subscriptions" % (
+            public_base_url(self.env))
+
     def _url(self):
         from odoo.addons.mcp_governance_suite.models.mcp_url import (
             public_base_url,
@@ -313,8 +393,8 @@ class AIDashboardSubscription(models.Model):
             "tag": "display_notification",
             "params": {
                 "title": _("Sent"),
-                "message": _("Check your inbox — it went to %s.")
-                % self.user_id.partner_id.email,
+                "message": _("It went to %s.") % ", ".join(
+                    self.mapped("user_id.partner_id.email")),
                 "type": "success",
             },
         }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="ai_dashboards.DashboardTitleField">
+    <div class="o_ai_title_cell">
+        <span class="o_ai_dash_icon" t-att-class="'o_ai_sw-' + slot" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M8 15l3.5-4 3 3L19 8"/></svg>
+        </span>
+        <div class="o_ai_title_text">
+            <div class="o_ai_title_line">
+                <div class="o_ai_title_name" t-esc="name"/>
+                <div t-if="isDraft" class="o_ai_badge_draft">Draft</div>
+            </div>
+            <div t-if="data.description" class="o_ai_title_desc" t-esc="data.description"/>
+        </div>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.RelativeTimeField">
+    <span class="o_ai_reltime" t-att-title="full" t-esc="relative"/>
+</t>
+
+</templates>

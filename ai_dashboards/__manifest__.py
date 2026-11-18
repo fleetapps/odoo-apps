@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards Pro",
-    "version": "19.0.3.1.0",
+    "version": "19.0.4.0.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
@@ -44,10 +44,12 @@ What you get
 * **A light editor.** Drag to reorder, resize, rename, recolour — without
   going back to the chat for small things.
 * **Every version kept.** One-click revert when a change was wrong.
-* **Email it to yourself.** Every weekday, week or month — and each email is
-  calculated with *your* permissions at the moment it is sent, so a shared
-  dashboard mails each person their own figures rather than a copy of
-  somebody else's.
+* **Email it on a schedule** — to yourself, or to anyone you share it with.
+  Every weekday, week or month, and each email is calculated with *its
+  recipient's* permissions at the moment it is sent, so a shared dashboard
+  mails each person their own figures rather than a copy of somebody else's.
+  Every schedule is listed with who it goes to, can be switched off or
+  deleted, and recipients can always stop theirs.
 * **Share with people or teams.** Sharing grants sight, never edit.
 * **Compare against last year** — or the previous period — across the whole
   dashboard at once, switchable by whoever is reading it.
@@ -81,10 +83,23 @@ URL, one sign-in, one log.
         "views/ai_dashboard_menus.xml",
     ],
     "assets": {
+        # Asset bundles: https://www.odoo.com/documentation/19.0/developer/reference/frontend/assets.html
         "web.assets_backend": [
+            "ai_dashboards/static/src/dashboard/tokens.scss",
             "ai_dashboards/static/src/dashboard/*.scss",
+            "ai_dashboards/static/src/list/*.scss",
+            # Dark steps belong to the dark bundle only (as mail does it).
+            ("remove", "ai_dashboards/static/src/**/*.dark.scss"),
             "ai_dashboards/static/src/dashboard/*.js",
             "ai_dashboards/static/src/dashboard/*.xml",
+            "ai_dashboards/static/src/list/*.js",
+            "ai_dashboards/static/src/list/*.xml",
+        ],
+        "web.assets_web_dark": [
+            "ai_dashboards/static/src/**/*.dark.scss",
+        ],
+        "web.assets_unit_tests": [
+            "ai_dashboards/static/tests/**/*.test.js",
         ],
     },
     "pre_init_hook": "pre_init_check",

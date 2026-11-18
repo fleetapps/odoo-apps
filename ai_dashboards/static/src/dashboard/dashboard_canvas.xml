@@ -1,385 +1,532 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+<!-- ============================================================ drawing parts -->
+<t t-name="ai_dashboards.Chart">
+    <div class="o_ai_chart" t-att-class="props.class" t-att-style="props.height ? 'height:' + props.height + 'px' : ''">
+        <canvas t-ref="canvas" role="img" t-att-aria-label="props.label"/>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Sparkline">
+    <t t-set="drawn" t-value="paths"/>
+    <svg class="o_ai_spark" t-att-class="'o_ai_spark--' + (props.tone or 'neutral')"
+         viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+            <linearGradient t-att-id="gradientId" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" class="o_ai_spark_top"/>
+                <stop offset="1" class="o_ai_spark_bottom"/>
+            </linearGradient>
+        </defs>
+        <path class="o_ai_spark_area" t-att-d="drawn.area" t-att-fill="'url(#' + gradientId + ')'"/>
+        <path class="o_ai_spark_line" t-att-d="drawn.line"/>
+    </svg>
+</t>
+
+<!-- A figure: the currency quieter than the number, never wrapping mid-number. -->
+<t t-name="ai_dashboards.Canvas.Figure">
+    <span t-if="fig.symbol and fig.before" class="o_ai_sym" t-esc="fig.symbol"/>
+    <span class="o_ai_num" t-esc="fig.number + fig.suffix"/>
+    <span t-if="fig.symbol and !fig.before" class="o_ai_sym" t-esc="fig.symbol"/>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Arrow">
+    <svg t-if="dir === 'up'" class="o_ai_arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
+    <svg t-elif="dir === 'down'" class="o_ai_arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 9v8H9"/></svg>
+</t>
+
+<!-- ================================================================== page -->
 <t t-name="ai_dashboards.Canvas">
     <div class="o_ai_dash" t-ref="root"
-         t-att-class="(state.loading ? 'o_ai_dash--busy ' : '') + (state.data and isCardBoard ? 'o_ai_dash--cards' : '')">
+         t-att-class="{'o_ai_dash--busy': state.loading and state.data, 'o_ai_dash--editing': showTools}">
 
-        <!-- Direct manipulation needs somewhere that says what has and has
-             not been written down. The form's own save indicator is up in the
-             breadcrumb, far from the tile you just changed, and easy to walk
-             away from without noticing. -->
-        <div t-if="hasUnsavedEdits"
-             class="o_ai_dash_unsaved alert alert-warning d-flex align-items-center">
-            <i class="fa fa-pencil me-2"/>
-            <span class="flex-grow-1">
-                You have changed this dashboard. Only you can see the changes
-                until you save them.
+        <t t-call="ai_dashboards.Canvas.Header"/>
+
+        <div t-if="isDraft" class="o_ai_callout o_ai_callout--draft" role="status">
+            <span class="o_ai_callout_text">
+                <strong>Draft.</strong> Only you can see it, and it is not on your app tile yet.
             </span>
-            <button class="btn btn-sm btn-primary me-1"
-                    t-on-click="() => this.saveEdits()">Save changes</button>
-            <button class="btn btn-sm btn-link"
-                    t-on-click="() => this.discardEdits()">Discard</button>
+            <ViewButton record="record" className="'btn-secondary'"
+                        clickParams="{type: 'object', name: 'action_discard', confirm: labels.discardConfirm}"
+                        string="labels.discard"/>
+            <ViewButton record="record" className="'btn-primary'"
+                        clickParams="{type: 'object', name: 'action_publish'}"
+                        string="labels.keep"/>
         </div>
 
-        <!-- Only ever a blank spinner on the very first load. Replacing a
-             dashboard you are reading with a spinner every time a filter
-             moves loses your place for no reason. -->
-        <div t-if="state.loading and !state.data" class="o_ai_dash_loading">
-            <span class="fa fa-circle-o-notch fa-spin fa-2x"/>
+        <div t-if="record.data.is_slow" class="o_ai_callout" role="status">
+            <span class="o_ai_callout_text">This dashboard is slow to open. Narrowing a period or grouping by something coarser usually helps.</span>
         </div>
 
-        <div t-elif="state.error" class="alert alert-danger">
-            <t t-esc="state.error"/>
+        <!-- The very first load only: tile-shaped placeholders. A reload keeps
+             what is on screen and dims it, rather than flashing these. -->
+        <div t-if="state.loading and !state.data and !state.error" class="o_ai_grid" aria-busy="true">
+            <section t-foreach="widgets" t-as="widget" t-key="widget.id"
+                     class="o_ai_tile o_ai_tile--skeleton" t-att-class="spanClass(widget)">
+                <span class="o_ai_skel o_ai_skel--title"/>
+                <span class="o_ai_skel o_ai_skel--figure"/>
+                <span class="o_ai_skel o_ai_skel--body"/>
+            </section>
         </div>
-
-        <div t-elif="!state.data" class="o_ai_dash_blank">
-            <p class="text-muted">
-                Save this record to see the dashboard.
-            </p>
+        <div t-elif="state.error" class="o_ai_callout o_ai_callout--error" role="alert">
+            <i class="fa fa-exclamation-triangle" aria-hidden="true"/>
+            <span class="o_ai_callout_text" t-esc="state.error"/>
         </div>
-
+        <div t-elif="!state.data" class="o_ai_empty">Save this dashboard to see it.</div>
         <t t-else="">
-            <!-- Filters, provenance, and the switch between reading this
-                 dashboard and rearranging it. -->
-            <div class="o_ai_dash_filters">
-                <div t-foreach="state.data.filters" t-as="flt" t-key="flt.key"
-                     class="o_ai_dash_filter">
-                    <label t-esc="flt.label"/>
-                    <select class="form-select form-select-sm"
-                            t-on-change="(ev) => this.setFilter(flt.key, ev.target.value)">
-                        <option t-foreach="['this_month','this_quarter','this_year','last_month','last_quarter','last_year','last_7_days','last_30_days','last_90_days','all_time']"
-                                t-as="period" t-key="period"
-                                t-att-value="period"
-                                t-att-selected="(state.filters[flt.key] or flt.default) === period ? 'selected' : undefined">
-                            <t t-esc="period.replaceAll('_', ' ')"/>
-                        </option>
-                    </select>
-                </div>
-                <div t-if="anyComparable and !isCardBoard" class="o_ai_dash_filter">
-                    <label>Compare</label>
-                    <select class="form-select form-select-sm"
-                            t-on-change="(ev) => this.setCompare(ev.target.value)">
-                        <option t-foreach="compareModes" t-as="mode" t-key="mode[0]"
-                                t-att-value="mode[0]"
-                                t-att-selected="compareMode === mode[0] ? 'selected' : undefined">
-                            <t t-esc="mode[1]"/>
-                        </option>
-                    </select>
-                </div>
-
-                <div t-if="!isCardBoard" class="o_ai_dash_took text-muted">
-                    calculated in <t t-esc="state.data.took_ms"/>ms, as you
-                </div>
-
-                <!-- Editing is a mode you choose, not the state a dashboard
-                     sits in. A dashboard you have finished building is for
-                     reading, and controls on every tile get in the way of
-                     that. -->
-                <button t-if="isEditable and !state.editMode"
-                        class="btn btn-sm btn-link o_ai_dash_editswitch"
-                        title="Rearrange the tiles, rename them, change how they look"
-                        t-on-click="() => this.setEditMode(true)">
-                    <i class="fa fa-pencil me-1"/>Edit
-                </button>
-                <button t-if="showTools"
-                        class="btn btn-sm btn-secondary o_ai_dash_editswitch"
-                        t-on-click="() => this.setEditMode(false)">
-                    <i class="fa fa-check me-1"/>Done
-                </button>
+            <t t-call="ai_dashboards.Canvas.Highlights"/>
+            <div class="o_ai_grid" t-ref="grid">
+                <t t-foreach="widgets" t-as="widget" t-key="widget.id">
+                    <t t-call="ai_dashboards.Canvas.Tile"/>
+                </t>
             </div>
-
-            <!-- The grid. 12 columns; each tile takes its own span. -->
-            <div class="o_ai_dash_grid">
-                <div t-foreach="widgets" t-as="widget" t-key="widget.id"
-                     class="o_ai_dash_tile"
-                     t-att-class="isCard(widget) ? 'o_ai_dash_tile--card' : ''"
-                     t-att-style="'grid-column: span ' + Math.min(12, widget.span || 6)">
-
-                    <div class="o_ai_dash_tile_head">
-                        <input t-if="state.editing === widget.id"
-                               t-ref="renamer"
-                               class="form-control form-control-sm"
-                               t-att-value="widget.title"
-                               aria-label="Tile name"
-                               t-on-keydown="(ev) => this.onRenameKey(ev, widget.id)"
-                               t-on-blur="(ev) => this.onRenameBlur(ev, widget.id)"/>
-                        <h4 t-else="" t-esc="widget.title"
-                            t-att-class="showTools ? 'o_ai_dash_renamable' : ''"
-                            t-att-title="showTools ? 'Double-click to rename' : undefined"
-                            t-on-dblclick="() => this.startRename(widget.id)"/>
-
-                        <select t-if="widget.period and !showTools" class="o_ai_card_period" aria-label="Period"
-                                t-on-change="(ev) => this.setFilter('__period:' + widget.id, ev.target.value)">
-                            <option t-foreach="periodLabels" t-as="option" t-key="option[0]" t-att-value="option[0]"
-                                    t-att-selected="widget.period === option[0] ? 'selected' : undefined" t-esc="option[1]"/>
-                        </select>
-                        <span t-elif="widget.type === 'aging' and !showTools" class="o_ai_card_asof">As of today</span>
-
-                        <div t-if="showTools" class="o_ai_dash_tools">
-                            <button class="btn btn-sm btn-link" title="Move earlier"
-                                    t-on-click="() => this.move(widget.id, -1)">
-                                <i class="fa fa-arrow-left"/>
-                            </button>
-                            <button class="btn btn-sm btn-link" title="Move later"
-                                    t-on-click="() => this.move(widget.id, 1)">
-                                <i class="fa fa-arrow-right"/>
-                            </button>
-                            <button class="btn btn-sm btn-link" title="Narrower"
-                                    t-on-click="() => this.resize(widget.id, -3)">
-                                <i class="fa fa-compress"/>
-                            </button>
-                            <button class="btn btn-sm btn-link" title="Wider"
-                                    t-on-click="() => this.resize(widget.id, 3)">
-                                <i class="fa fa-expand"/>
-                            </button>
-                            <!-- Colour earns a control of its own rather than
-                                 a menu line. "Next colour" buried in a menu is
-                                 not something anyone finds, and a swatch that
-                                 shows the current colour explains itself
-                                 without a label. -->
-                            <button class="o_ai_dash_swatch"
-                                    t-att-style="'background:' + paletteFor(widget)"
-                                    title="Change this tile's colour"
-                                    t-on-click="() => this.nextColor(widget)"/>
-                            <!-- Everything you do once, rather than while
-                                 arranging, lives behind this. -->
-                            <Dropdown items="tileMenu(widget)">
-                                <button class="btn btn-sm btn-link"
-                                        title="More options for this tile">
-                                    <i class="fa fa-ellipsis-v"/>
-                                </button>
-                            </Dropdown>
-                        </div>
-                    </div>
-
-                    <!-- Its figures are being fetched for the shape it has
-                         just been changed into. -->
-                    <div t-if="widget.calculating" class="o_ai_dash_msg">
-                        <i class="fa fa-circle-o-notch fa-spin me-1"/>
-                        Calculating&#8230;
-                    </div>
-
-                    <!-- A tile that failed says why, and does not take the
-                         page down with it. -->
-                    <div t-elif="widget.error" class="o_ai_dash_msg o_ai_dash_msg--error">
-                        <i class="fa fa-exclamation-triangle me-1"/>
-                        <t t-esc="widget.error"/>
-                    </div>
-
-                    <t t-elif="isCard(widget) and widget.type !== 'kpi'">
-                        <!-- A summary card: its total, then how that total is made up. -->
-                        <t t-if="widget.type === 'pnl'">
-                            <div class="o_ai_card_big" t-att-class="(widget.value &lt; 0 ? 'text-danger ' : '') + (widget.drill ? 'o_ai_dash_clickable' : '')"
-                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null"
-                                 t-esc="format(widget.value, widget)"/>
-                            <div class="o_ai_card_caption" t-esc="widget.caption or 'Net profit'"/>
-                            <div class="o_ai_pnl_row">
-                                <div class="o_ai_pnl_figure"><span t-esc="format(widget.income, widget)"/><small>Income</small></div>
-                                <div class="o_ai_pnl_track"><div class="o_ai_pnl_bar o_ai_pnl_bar--in" t-att-style="'width:' + pnlShare(widget, widget.income) + '%'"/></div>
-                            </div>
-                            <div class="o_ai_pnl_row">
-                                <div class="o_ai_pnl_figure"><span t-esc="format(widget.expenses, widget)"/><small>Expenses</small></div>
-                                <div class="o_ai_pnl_track"><div class="o_ai_pnl_bar o_ai_pnl_bar--out" t-att-style="'width:' + pnlShare(widget, widget.expenses) + '%'"/></div>
-                            </div>
-                        </t>
-                        <t t-elif="widget.type === 'banks'">
-                            <div t-foreach="widget.banks || []" t-as="bank" t-key="bank.id" class="o_ai_bank">
-                                <div class="o_ai_bank_head">
-                                    <strong t-esc="bank.name"/>
-                                    <span t-if="bank.review" class="o_ai_bank_review"><t t-esc="bank.review"/> to review</span>
-                                </div>
-                                <div class="o_ai_bank_line"><span>Bank balance</span><span t-esc="format(bank.bank, widget)"/></div>
-                                <div class="o_ai_bank_line"><span>In Odoo</span><span t-esc="format(bank.books, widget)"/></div>
-                            </div>
-                        </t>
-                        <t t-elif="['aging', 'donut', 'pie'].includes(widget.type)">
-                            <div class="o_ai_card_big" t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
-                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null" t-esc="format(total(widget), widget)"/>
-                            <div class="o_ai_card_caption" t-esc="widget.caption"/>
-                            <div class="o_ai_card_ring">
-                                <ul class="o_ai_card_legend">
-                                    <li t-foreach="(widget.series || []).slice(0, 8)" t-as="point" t-key="point_index">
-                                        <i t-att-style="'background:' + cardColor(point_index)"/>
-                                        <div>
-                                            <strong t-esc="format(point.value, widget)"/>
-                                            <small t-att-title="point.label" t-esc="point.label"/>
-                                        </div>
-                                    </li>
-                                </ul>
-                                <div class="o_ai_card_donut"><canvas t-att-data-widget="widget.id"/></div>
-                            </div>
-                        </t>
-                        <t t-else="">
-                            <div class="o_ai_card_big" t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
-                                 t-on-click="() => widget.drill ? this.drill(widget, null) : null" t-esc="format(total(widget), widget)"/>
-                            <div class="o_ai_card_caption" t-esc="widget.caption"/>
-                            <div t-if="!(widget.series || []).length" class="o_ai_card_none">Nothing in this period yet.</div>
-                            <div t-else="" class="o_ai_dash_chart o_ai_card_chart"><canvas t-att-data-widget="widget.id"/></div>
-                        </t>
-                    </t>
-
-                    <t t-elif="widget.type === 'kpi'">
-                        <div class="o_ai_dash_kpi"
-                             t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
-                             t-on-click="() => widget.drill ? this.drill(widget, null) : null">
-                            <div class="o_ai_dash_kpi_value"
-                                 t-esc="format(widget.value, widget)"/>
-                            <div t-if="delta(widget)" class="o_ai_dash_kpi_delta"
-                                 t-att-class="delta(widget).up ? 'text-success' : 'text-danger'">
-                                <i t-att-class="'fa me-1 ' + (delta(widget).up ? 'fa-arrow-up' : 'fa-arrow-down')"/>
-                                <t t-esc="delta(widget).value"/>
-                                <span t-if="delta(widget).absolute" class="text-muted ms-1">
-                                    — nothing in the comparison period
-                                </span>
-                                <span t-else="" class="text-muted ms-1">
-                                    <t t-esc="compareLabel"/> (<t t-esc="delta(widget).previous"/>)
-                                </span>
-                            </div>
-                        </div>
-                    </t>
-
-                    <t t-elif="widget.type === 'pivot'">
-                        <div t-if="widget.empty" class="o_ai_dash_msg">
-                            <t t-esc="widget.empty"/>
-                        </div>
-                        <t t-else="">
-                            <div class="o_ai_dash_tablewrap o_ai_dash_pivot">
-                                <table class="table table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th class="o_ai_dash_pivot_corner"/>
-                                            <th t-foreach="widget.pivot.cols.values" t-as="col"
-                                                t-key="col.key" class="text-end">
-                                                <t t-esc="col.label"/>
-                                            </th>
-                                            <th class="text-end o_ai_dash_pivot_total">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr t-foreach="widget.pivot.rows.values" t-as="row"
-                                            t-key="row.key">
-                                            <th class="o_ai_dash_pivot_rowhead">
-                                                <t t-esc="row.label"/>
-                                            </th>
-                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
-                                                t-key="col.key"
-                                                t-att-class="(cell(widget.pivot, row.key, col.key) === undefined ? 'text-end opacity-25' : 'text-end') + (widget.drill ? ' o_ai_dash_clickable' : '')"
-                                                t-att-title="widget.drill ? 'Open these records' : undefined"
-                                                t-on-click="() => widget.drill ? this.drillCell(widget, row, col) : null">
-                                                <t t-if="cell(widget.pivot, row.key, col.key) === undefined">·</t>
-                                                <t t-else="" t-esc="format(cell(widget.pivot, row.key, col.key), widget)"/>
-                                            </td>
-                                            <td class="text-end o_ai_dash_pivot_total">
-                                                <t t-esc="format(widget.pivot.row_totals[row.key] || 0, widget)"/>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <th class="o_ai_dash_pivot_rowhead">Total</th>
-                                            <td t-foreach="widget.pivot.cols.values" t-as="col"
-                                                t-key="col.key" class="text-end o_ai_dash_pivot_total">
-                                                <t t-esc="format(widget.pivot.col_totals[col.key] || 0, widget)"/>
-                                            </td>
-                                            <td class="text-end o_ai_dash_pivot_total">
-                                                <t t-esc="format(widget.pivot.grand_total, widget)"/>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <!-- Both axes page independently: "the next fifty
-                                 customers" and "the next twelve months" are
-                                 different questions. -->
-                            <div class="o_ai_dash_pager">
-                                <div class="o_ai_dash_pager_axis">
-                                    <span class="text-muted">Rows —
-                                        <t t-esc="axisRange(widget.pivot.rows)"/>
-                                    </span>
-                                    <button class="btn btn-sm btn-link"
-                                            t-att-disabled="!widget.pivot.rows.has_previous"
-                                            t-on-click="() => this.pageAxis(widget.id, 'row', -1)">
-                                        <i class="fa fa-chevron-left"/> Previous
-                                    </button>
-                                    <button class="btn btn-sm btn-link"
-                                            t-att-disabled="!widget.pivot.rows.has_more"
-                                            t-on-click="() => this.pageAxis(widget.id, 'row', 1)">
-                                        Next <i class="fa fa-chevron-right"/>
-                                    </button>
-                                </div>
-                                <div class="o_ai_dash_pager_axis">
-                                    <span class="text-muted">Columns —
-                                        <t t-esc="axisRange(widget.pivot.cols)"/>
-                                    </span>
-                                    <button class="btn btn-sm btn-link"
-                                            t-att-disabled="!widget.pivot.cols.has_previous"
-                                            t-on-click="() => this.pageAxis(widget.id, 'col', -1)">
-                                        <i class="fa fa-chevron-left"/> Previous
-                                    </button>
-                                    <button class="btn btn-sm btn-link"
-                                            t-att-disabled="!widget.pivot.cols.has_more"
-                                            t-on-click="() => this.pageAxis(widget.id, 'col', 1)">
-                                        Next <i class="fa fa-chevron-right"/>
-                                    </button>
-                                </div>
-                            </div>
-                        </t>
-                    </t>
-
-                    <t t-elif="widget.type === 'table'">
-                        <div t-if="widget.empty" class="o_ai_dash_msg">
-                            <t t-esc="widget.empty"/>
-                        </div>
-                        <div t-else="" class="o_ai_dash_tablewrap">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th t-foreach="widget.columns" t-as="col"
-                                            t-key="col_index" t-esc="col"/>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr t-foreach="widget.rows" t-as="row" t-key="row_index"
-                                        t-att-class="widget.drill ? 'o_ai_dash_clickable' : ''"
-                                        t-att-title="widget.drill ? 'Open these records' : undefined"
-                                        t-on-click="() => widget.drill ? this.drill(widget, widget.series[row_index] and widget.series[row_index].raw) : null">
-                                        <td t-foreach="row" t-as="cell" t-key="cell_index"
-                                            t-esc="cell"/>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </t>
-
-                    <t t-else="">
-                        <div t-if="widget.empty" class="o_ai_dash_msg">
-                            <t t-esc="widget.empty"/>
-                        </div>
-                        <div t-else="" class="o_ai_dash_chart">
-                            <canvas t-att-data-widget="widget.id"/>
-                        </div>
-                    </t>
-
-                    <div t-if="widget.compare_note" class="o_ai_dash_more">
-                        <t t-esc="widget.compare_note"/>
-                    </div>
-
-                    <div t-if="widget.has_more" class="o_ai_dash_more">
-                        Showing the top rows only — there are more.
-                    </div>
-                </div>
-            </div>
-
-            <p t-if="!isCardBoard" class="o_ai_dash_foot text-muted">
-                <i class="fa fa-lock me-1"/>
-                Every figure here was calculated just now, using your own Odoo
-                permissions.<t t-if="anyDrillable"> Click a bar, slice or number
-                to see the records behind it.</t>
-            </p>
         </t>
+
+        <!-- Unsaved edits say so where the work happened. -->
+        <div t-if="hasUnsavedEdits" class="o_ai_savebar" role="status">
+            <span>Unsaved changes — only you can see them until you save.</span>
+            <button class="btn btn-link" t-on-click="discardEdits">Discard</button>
+            <button class="btn btn-primary" t-on-click="saveEdits">Save</button>
+        </div>
     </div>
+</t>
+
+<!-- ================================================================ header -->
+<t t-name="ai_dashboards.Canvas.Header">
+    <header class="o_ai_header">
+        <div class="o_ai_header_row">
+            <div class="o_ai_titleline">
+                <input t-if="state.renamingTitle" t-ref="renamer" class="form-control o_ai_title_input"
+                       t-att-value="title" aria-label="Dashboard name"
+                       t-on-keydown="onTitleKey" t-on-blur="onTitleBlur"/>
+                <h1 t-else="" class="o_ai_title" t-att-class="{'o_ai_renamable': showTools}"
+                    t-att-title="showTools ? labels.renameTitle : undefined"
+                    t-on-click="startTitleRename" t-esc="title"/>
+                <span t-if="isDraft" class="o_ai_pill o_ai_pill--warn">Draft</span>
+                <span t-if="sharedCount" class="o_ai_pill">
+                    <span t-if="sharedPeople.length" class="o_ai_faces">
+                        <img t-foreach="sharedPeople" t-as="person" t-key="person.id"
+                             class="o_ai_face" t-att-src="person.src" t-att-alt="person.name" t-att-title="person.name"/>
+                    </span>
+                    Shared · <t t-esc="sharedCount"/>
+                </span>
+            </div>
+            <div class="o_ai_actions">
+                <ViewButton t-if="!isDraft" record="record" className="'btn-secondary'" icon="'fa-user-plus'"
+                            clickParams="{type: 'object', name: 'action_open_sharing'}"
+                            string="labels.share"/>
+                <button t-if="isEditable and !state.editMode" class="btn btn-secondary"
+                        t-on-click="() => this.setEditMode(true)">
+                    <i class="fa fa-pencil me-1" aria-hidden="true"/>Edit
+                </button>
+                <button t-if="showTools" class="btn btn-primary" t-on-click="() => this.setEditMode(false)">
+                    <i class="fa fa-check me-1" aria-hidden="true"/>Done
+                </button>
+                <Dropdown menuClass="'o_ai_menu'" position="'bottom-end'">
+                    <button class="btn btn-secondary o_ai_more" t-att-aria-label="labels.more" t-att-title="labels.more">
+                        <i class="fa fa-ellipsis-h" aria-hidden="true"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <t t-foreach="menuActions" t-as="act" t-key="act.key">
+                            <ViewButton record="record" tag="'a'" className="'dropdown-item'"
+                                        clickParams="{type: 'object', name: act.name}" string="act.string"/>
+                        </t>
+                        <DropdownItem onSelected="() => this.exportSpec()">Export</DropdownItem>
+                        <t t-if="canArchive">
+                            <div class="dropdown-divider"/>
+                            <ViewButton record="record" tag="'a'" className="'dropdown-item text-danger'"
+                                        clickParams="{type: 'object', name: 'action_discard', confirm: labels.archiveConfirm}"
+                                        string="labels.archive"/>
+                        </t>
+                    </t>
+                </Dropdown>
+            </div>
+        </div>
+        <div class="o_ai_header_row o_ai_header_row--sub">
+            <div class="o_ai_header_meta">
+                <p t-if="description" class="o_ai_description" t-esc="description"/>
+                <div t-if="state.data" class="o_ai_live">
+                    <span class="o_ai_live_dot" aria-hidden="true"/>
+                    <span>Live · calculated with your permissions<t t-if="tookMs !== null"> · <t t-esc="tookMs"/> ms</t></span>
+                </div>
+            </div>
+            <t t-call="ai_dashboards.Canvas.Filters"/>
+        </div>
+    </header>
+</t>
+
+<!-- ================================================================ filters -->
+<t t-name="ai_dashboards.Canvas.Filters">
+    <div t-if="state.data and (filterBar.length or anyComparable)" class="o_ai_filters" role="group" t-att-aria-label="labels.filters">
+        <t t-foreach="filterBar" t-as="flt" t-key="flt.key">
+            <span t-if="flt.available === false" class="o_ai_select o_ai_select--static o_ai_select--na"
+                  title="None of the tiles you can see has this field, or you cannot see the records it lists.">
+                <span class="o_ai_select_label" t-esc="flt.label"/>Not available to you
+            </span>
+            <t t-elif="flt.type === 'date_range'">
+                <Dropdown menuClass="'o_ai_menu'">
+                    <button class="o_ai_select" t-att-aria-label="flt.label">
+                        <span t-esc="periodName(filterValue(flt))"/>
+                        <i class="fa fa-angle-down o_ai_caret" aria-hidden="true"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <DropdownItem t-foreach="periodOptions" t-as="option" t-key="option[0]"
+                                      onSelected="() => this.setFilter(flt.key, option[0])">
+                            <i class="fa fa-check o_ai_check" t-att-class="{'invisible': filterValue(flt) !== option[0]}" aria-hidden="true"/>
+                            <t t-esc="option[1]"/>
+                        </DropdownItem>
+                    </t>
+                </Dropdown>
+                <span t-if="flt.range" class="o_ai_select o_ai_select--static">
+                    <i class="fa fa-calendar-o o_ai_select_icon" aria-hidden="true"/><t t-esc="flt.range"/>
+                </span>
+            </t>
+            <Dropdown t-elif="flt.type === 'selection'" menuClass="'o_ai_menu'">
+                <button class="o_ai_select" t-att-class="{'o_ai_select--set': isNarrowed(flt)}" t-att-aria-label="flt.label">
+                    <span class="o_ai_select_label" t-esc="flt.label"/>
+                    <span t-esc="selectionName(flt)"/>
+                    <i class="fa fa-angle-down o_ai_caret" aria-hidden="true"/>
+                </button>
+                <t t-set-slot="content">
+                    <DropdownItem onSelected="() => this.setFilter(flt.key, '')">
+                        <i class="fa fa-check o_ai_check" t-att-class="{'invisible': filterValue(flt)}" aria-hidden="true"/>All
+                    </DropdownItem>
+                    <DropdownItem t-foreach="flt.options or []" t-as="option" t-key="option[0]"
+                                  onSelected="() => this.setFilter(flt.key, option[0])">
+                        <i class="fa fa-check o_ai_check" t-att-class="{'invisible': filterValue(flt) !== option[0]}" aria-hidden="true"/>
+                        <t t-esc="option[1]"/>
+                    </DropdownItem>
+                </t>
+            </Dropdown>
+            <div t-elif="flt.type === 'many2one'" class="o_ai_select o_ai_select--records"
+                 t-att-class="{'o_ai_select--set': isNarrowed(flt)}" role="group" t-att-aria-label="flt.label">
+                <span class="o_ai_select_label" t-esc="flt.label"/>
+                <MultiRecordSelector resModel="flt.relation" resIds="recordIds(flt)"
+                                     domain="flt.domain or []" fieldString="flt.label"
+                                     placeholder="allPlaceholder"
+                                     update="(ids) => this.setFilter(flt.key, ids)"/>
+            </div>
+        </t>
+        <Dropdown t-if="anyComparable" menuClass="'o_ai_menu'" position="'bottom-end'">
+            <button class="o_ai_select" t-att-aria-label="labels.compare">
+                <i class="fa fa-exchange o_ai_select_icon" aria-hidden="true"/>
+                <span t-esc="compareToggleLabel"/>
+                <i class="fa fa-angle-down o_ai_caret" aria-hidden="true"/>
+            </button>
+            <t t-set-slot="content">
+                <DropdownItem t-foreach="compareModes" t-as="mode" t-key="mode[0]"
+                              onSelected="() => this.setCompare(mode[0])">
+                    <i class="fa fa-check o_ai_check" t-att-class="{'invisible': compareMode !== mode[0]}" aria-hidden="true"/>
+                    <t t-esc="mode[1]"/>
+                </DropdownItem>
+            </t>
+        </Dropdown>
+        <button t-if="canResetFilters" class="btn btn-link o_ai_reset" t-on-click="resetFilters">Reset</button>
+    </div>
+</t>
+
+<!-- ============================================================= highlights -->
+<t t-name="ai_dashboards.Canvas.Highlights">
+    <div t-if="highlights.length" class="o_ai_highlights" role="region" t-att-aria-label="labels.highlights">
+        <span class="o_ai_highlights_icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9.5l-4.2 1.9L12 16l-1.8-4.6L6 9.5l4.2-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+        </span>
+        <p class="o_ai_highlights_text" aria-live="polite"><t t-out="currentHighlight"/></p>
+        <div t-if="highlights.length > 1" class="o_ai_dots">
+            <button t-foreach="highlights" t-as="item" t-key="item_index" class="o_ai_dot"
+                    t-att-class="{'o_ai_dot--on': item_index === Math.min(state.highlight, highlights.length - 1)}"
+                    t-att-aria-label="labels.highlight + ' ' + (item_index + 1)"
+                    t-att-aria-pressed="item_index === Math.min(state.highlight, highlights.length - 1) ? 'true' : 'false'"
+                    t-on-click="() => { this.state.highlight = item_index; }"/>
+        </div>
+    </div>
+</t>
+
+<!-- ================================================================== tiles -->
+<t t-name="ai_dashboards.Canvas.Tile">
+    <section class="o_ai_tile"
+             t-att-class="spanClass(widget) + ' o_ai_tile--' + widget.type + (isHero(widget) ? ' o_ai_tile--hero' : '')"
+             t-att-data-id="widget.id" t-att-aria-label="widget.title">
+        <div class="o_ai_tile_head">
+            <span t-if="showTools" class="o_ai_drag" t-att-title="labels.drag" aria-hidden="true">
+                <i class="fa fa-arrows"/>
+            </span>
+            <input t-if="state.editing === widget.id" t-ref="renamer" class="form-control form-control-sm"
+                   t-att-value="widget.title" aria-label="Tile name"
+                   t-on-keydown="(ev) => this.onRenameKey(ev, widget.id)"
+                   t-on-blur="(ev) => this.onRenameBlur(ev, widget.id)"/>
+            <h2 t-else="" class="o_ai_tile_title" t-att-class="{'o_ai_renamable': showTools}"
+                t-on-dblclick="() => this.startRename(widget.id)" t-esc="widget.title"/>
+            <div class="o_ai_tile_aside">
+                <t t-if="!showTools">
+                    <Dropdown t-if="widget.period" menuClass="'o_ai_menu'" position="'bottom-end'">
+                        <button class="o_ai_chip" t-att-aria-label="labels.period">
+                            <t t-esc="periodName(widget.period)"/>
+                            <i class="fa fa-angle-down o_ai_caret" aria-hidden="true"/>
+                        </button>
+                        <t t-set-slot="content">
+                            <DropdownItem t-foreach="periodOptions" t-as="option" t-key="option[0]"
+                                          onSelected="() => this.setCardPeriod(widget, option[0])">
+                                <i class="fa fa-check o_ai_check" t-att-class="{'invisible': widget.period !== option[0]}" aria-hidden="true"/>
+                                <t t-esc="option[1]"/>
+                            </DropdownItem>
+                        </t>
+                    </Dropdown>
+                    <span t-elif="positionCards.includes(widget.type)" class="o_ai_asof">As of today</span>
+                </t>
+                <t t-else="">
+                    <button class="o_ai_swatch" t-att-class="swatchClass(widget)"
+                            t-att-title="labels.colour" t-att-aria-label="labels.colour"
+                            t-on-click="() => this.nextColor(widget)"/>
+                    <Dropdown items="tileMenu(widget)" menuClass="'o_ai_menu'" position="'bottom-end'">
+                        <button class="o_ai_icon_btn" t-att-title="labels.tileMenu" t-att-aria-label="labels.tileMenu">
+                            <i class="fa fa-ellipsis-v" aria-hidden="true"/>
+                        </button>
+                    </Dropdown>
+                </t>
+            </div>
+        </div>
+
+        <div t-if="widget.calculating" class="o_ai_tile_body" aria-busy="true">
+            <span class="o_ai_skel o_ai_skel--figure"/>
+            <span class="o_ai_skel o_ai_skel--body"/>
+        </div>
+        <div t-elif="widget.error" class="o_ai_msg o_ai_msg--error">
+            <i class="fa fa-exclamation-triangle" aria-hidden="true"/>
+            <span t-esc="widget.error"/>
+        </div>
+        <t t-elif="widget.type === 'kpi'" t-call="ai_dashboards.Canvas.Tile.Kpi"/>
+        <t t-elif="widget.type === 'pnl'" t-call="ai_dashboards.Canvas.Tile.Pnl"/>
+        <t t-elif="widget.type === 'aging'" t-call="ai_dashboards.Canvas.Tile.Aging"/>
+        <t t-elif="widget.type === 'banks'" t-call="ai_dashboards.Canvas.Tile.Banks"/>
+        <t t-elif="widget.type === 'pivot'" t-call="ai_dashboards.Canvas.Tile.Pivot"/>
+        <t t-elif="widget.type === 'table'" t-call="ai_dashboards.Canvas.Tile.Table"/>
+        <t t-elif="widget.type === 'pie' or widget.type === 'donut'" t-call="ai_dashboards.Canvas.Tile.Ring"/>
+        <t t-else="" t-call="ai_dashboards.Canvas.Tile.Chart"/>
+
+        <p t-if="widget.compare_note" class="o_ai_note" t-esc="widget.compare_note"/>
+        <p t-if="widget.has_more" class="o_ai_note">Showing the top rows only — there are more.</p>
+    </section>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Kpi">
+    <t t-set="kv" t-value="kpiView(widget)"/>
+    <div class="o_ai_figure" t-att-class="{'o_ai_clickable': widget.drill}" t-att-title="kv.full"
+         t-on-click="() => this.drill(widget, null)">
+        <t t-set="fig" t-value="kv.parts"/>
+        <t t-call="ai_dashboards.Canvas.Figure"/>
+        <span t-if="kv.change" class="o_ai_delta" t-att-class="'o_ai_delta--' + kv.change.tone">
+            <t t-set="dir" t-value="kv.change.direction"/>
+            <t t-call="ai_dashboards.Canvas.Arrow"/>
+            <t t-esc="kv.change.text"/>
+        </span>
+    </div>
+    <p t-if="kv.note" class="o_ai_caption" t-esc="kv.note"/>
+    <div t-if="widget.trend and widget.trend.length > 1" class="o_ai_spark_wrap">
+        <AiSparkline values="widget.trend" tone="kv.tone"/>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Chart">
+    <div t-if="widget.caption or widget.period" class="o_ai_figure_block">
+        <div class="o_ai_figure" t-att-class="{'o_ai_clickable': widget.drill}" t-on-click="() => this.drill(widget, null)">
+            <t t-set="fig" t-value="parts(total(widget), widget)"/>
+            <t t-call="ai_dashboards.Canvas.Figure"/>
+        </div>
+        <p class="o_ai_caption">
+            <t t-esc="widget.caption"/><t t-if="widget.caption and widget.window_label"> · </t><t t-esc="widget.window_label"/>
+        </p>
+    </div>
+    <div t-if="widget.empty" class="o_ai_msg"><span t-esc="widget.empty"/></div>
+    <div t-elif="isSinglePoint(widget)" class="o_ai_single">
+        <div t-if="!(widget.caption or widget.period)" class="o_ai_figure">
+            <t t-set="fig" t-value="parts(total(widget), widget)"/>
+            <t t-call="ai_dashboards.Canvas.Figure"/>
+        </div>
+        <span>One point in this period — a trend needs at least two.</span>
+    </div>
+    <t t-else="">
+        <div t-if="widget.compare_series" class="o_ai_legend">
+            <span class="o_ai_legend_key"><span class="o_ai_sw" t-att-class="swatchClass(widget)"/><t t-esc="widget.window_label or labels.now"/></span>
+            <span class="o_ai_legend_key"><span class="o_ai_sw o_ai_sw--compare"/><t t-esc="widget.compare_label or labels.comparison"/></span>
+        </div>
+        <AiChart build="buildCartesian(widget)" version="chartVersion(widget)" label="widget.title"
+                 height="chartHeight(widget)" class="isHero(widget) ? 'o_ai_chart--hero' : ''"/>
+    </t>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Ring">
+    <p t-if="widget.caption" class="o_ai_caption o_ai_caption--lead">
+        <t t-esc="widget.caption"/><t t-if="widget.window_label"> · <t t-esc="widget.window_label"/></t>
+    </p>
+    <div t-if="widget.empty" class="o_ai_msg"><span t-esc="widget.empty"/></div>
+    <div t-else="" class="o_ai_ring">
+        <div class="o_ai_ring_chart">
+            <AiChart build="buildRing(widget)" version="chartVersion(widget)" label="widget.title" height="148"/>
+            <div class="o_ai_ring_center">
+                <t t-set="fig" t-value="parts(total(widget), widget)"/>
+                <span t-if="fig.symbol" class="o_ai_ring_sym" t-esc="fig.symbol"/>
+                <span class="o_ai_ring_total" t-esc="fig.number"/>
+            </div>
+        </div>
+        <ul class="o_ai_legend_list">
+            <li t-foreach="ringLegend(widget)" t-as="row" t-key="row.key"
+                t-att-class="{'o_ai_clickable': widget.drill and !row.point.other}"
+                t-on-click="() => this.drillPoint(widget, row.point)">
+                <span class="o_ai_sw o_ai_sw--dot" t-att-class="row.swatch"/>
+                <span class="o_ai_legend_label" t-att-title="row.label" t-esc="row.label"/>
+                <span class="o_ai_legend_value" t-esc="row.value"/>
+                <span class="o_ai_legend_share" t-esc="row.share"/>
+            </li>
+        </ul>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Pnl">
+    <t t-set="pv" t-value="pnlView(widget)"/>
+    <div class="o_ai_pnl">
+        <div class="o_ai_pnl_main">
+            <div class="o_ai_figure" t-att-class="{'o_ai_clickable': widget.drill}" t-on-click="() => this.drill(widget, null)">
+                <t t-set="fig" t-value="pv.net"/>
+                <t t-call="ai_dashboards.Canvas.Figure"/>
+            </div>
+            <p class="o_ai_caption">
+                <span t-if="pv.loss" class="o_ai_delta o_ai_delta--bad o_ai_delta--inline">
+                    <t t-set="dir" t-value="'down'"/><t t-call="ai_dashboards.Canvas.Arrow"/>Loss
+                </span>
+                <t t-esc="widget.caption or labels.netProfit"/><t t-if="widget.window_label"> · <t t-esc="widget.window_label"/></t>
+            </p>
+        </div>
+        <div class="o_ai_pnl_side">
+            <div class="o_ai_pnl_item">
+                <span class="o_ai_pnl_label">Income</span>
+                <span class="o_ai_figure o_ai_figure--sm"><t t-set="fig" t-value="pv.income"/><t t-call="ai_dashboards.Canvas.Figure"/></span>
+                <span class="o_ai_meter"><span class="o_ai_meter_fill o_ai_sw-1" t-att-style="'width:' + pv.incomeWidth + '%'"/></span>
+            </div>
+            <div class="o_ai_pnl_item">
+                <span class="o_ai_pnl_label">Expenses</span>
+                <span class="o_ai_figure o_ai_figure--sm"><t t-set="fig" t-value="pv.expenses"/><t t-call="ai_dashboards.Canvas.Figure"/></span>
+                <span class="o_ai_meter"><span class="o_ai_meter_fill o_ai_sw-2" t-att-style="'width:' + pv.expensesWidth + '%'"/></span>
+            </div>
+        </div>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Aging">
+    <t t-set="av" t-value="agingView(widget)"/>
+    <div class="o_ai_figure_block">
+        <div class="o_ai_figure" t-att-class="{'o_ai_clickable': widget.drill}" t-on-click="() => this.drill(widget, null)">
+            <t t-set="fig" t-value="av.total"/>
+            <t t-call="ai_dashboards.Canvas.Figure"/>
+        </div>
+        <p class="o_ai_caption">
+            <t t-esc="widget.caption"/>
+            <t t-if="av.overdue"><t t-if="widget.caption"> · </t><span class="o_ai_overdue"><t t-esc="av.overdue"/> overdue</span></t>
+        </p>
+    </div>
+    <div class="o_ai_segbar" role="img" t-att-aria-label="widget.title">
+        <span t-foreach="av.segments" t-as="seg" t-key="seg.key" class="o_ai_seg" t-att-class="seg.ramp"
+              t-att-style="'width:' + seg.width + '%'" t-att-title="seg.title" t-esc="seg.inside"/>
+    </div>
+    <ul class="o_ai_legend_list o_ai_legend_list--compact">
+        <li t-foreach="av.rows" t-as="row" t-key="row.key">
+            <span class="o_ai_sw" t-att-class="row.ramp"/>
+            <span class="o_ai_legend_label" t-esc="row.label"/>
+            <span class="o_ai_legend_value" t-esc="row.value"/>
+        </li>
+    </ul>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Banks">
+    <div class="o_ai_banks">
+        <div t-foreach="widget.banks or []" t-as="bank" t-key="bank.id" class="o_ai_bank">
+            <div class="o_ai_bank_head">
+                <span class="o_ai_bank_name" t-esc="bank.name"/>
+                <span t-if="bank.review" class="o_ai_pill o_ai_pill--warn"><t t-esc="bank.review"/> to review</span>
+                <span t-else="" class="o_ai_pill o_ai_pill--good"><i class="fa fa-check me-1" aria-hidden="true"/>Reconciled</span>
+            </div>
+            <div class="o_ai_bank_figures">
+                <div><span class="o_ai_pnl_label">In Odoo</span><span class="o_ai_figure o_ai_figure--xs"><t t-set="fig" t-value="parts(bank.books, widget)"/><t t-call="ai_dashboards.Canvas.Figure"/></span></div>
+                <div><span class="o_ai_pnl_label">Bank statement</span><span class="o_ai_figure o_ai_figure--xs"><t t-set="fig" t-value="parts(bank.bank, widget)"/><t t-call="ai_dashboards.Canvas.Figure"/></span></div>
+            </div>
+        </div>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Table">
+    <div t-if="widget.empty" class="o_ai_msg"><span t-esc="widget.empty"/></div>
+    <div t-else="" class="o_ai_tablewrap">
+        <table class="o_ai_table">
+            <thead>
+                <tr>
+                    <th t-foreach="widget.columns or []" t-as="col" t-key="col_index"
+                        t-att-class="{'o_ai_num_col': isNumericColumn(widget, col_index)}" t-esc="col"/>
+                </tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="widget.rows or []" t-as="row" t-key="row_index"
+                    t-att-class="{'o_ai_clickable': widget.drill}"
+                    t-on-click="() => this.drillPoint(widget, (widget.series or [])[row_index])">
+                    <td t-foreach="row" t-as="value" t-key="value_index"
+                        t-att-class="{'o_ai_num_col': isNumericColumn(widget, value_index)}"
+                        t-esc="tableCell(widget, value, value_index)"/>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</t>
+
+<t t-name="ai_dashboards.Canvas.Tile.Pivot">
+    <div t-if="widget.empty" class="o_ai_msg"><span t-esc="widget.empty"/></div>
+    <t t-else="">
+        <div class="o_ai_tablewrap o_ai_tablewrap--pivot">
+            <table class="o_ai_table o_ai_pivot">
+                <thead>
+                    <tr>
+                        <th class="o_ai_pivot_corner"/>
+                        <th t-foreach="widget.pivot.cols.values" t-as="col" t-key="col.key" class="o_ai_num_col" t-esc="col.label"/>
+                        <th class="o_ai_num_col o_ai_total">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="widget.pivot.rows.values" t-as="row" t-key="row.key">
+                        <th class="o_ai_pivot_rowhead" t-att-title="row.label" t-esc="row.label"/>
+                        <td t-foreach="widget.pivot.cols.values" t-as="col" t-key="col.key"
+                            class="o_ai_num_col" t-att-class="{'o_ai_clickable': widget.drill, 'o_ai_blank': cell(widget.pivot, row.key, col.key) === undefined}"
+                            t-on-click="() => this.drillCell(widget, row, col)">
+                            <t t-if="cell(widget.pivot, row.key, col.key) === undefined">·</t>
+                            <t t-else="" t-esc="format(cell(widget.pivot, row.key, col.key), widget)"/>
+                        </td>
+                        <td class="o_ai_num_col o_ai_total" t-esc="format(widget.pivot.row_totals[row.key] || 0, widget)"/>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th class="o_ai_pivot_rowhead">Total</th>
+                        <td t-foreach="widget.pivot.cols.values" t-as="col" t-key="col.key" class="o_ai_num_col"
+                            t-esc="format(widget.pivot.col_totals[col.key] || 0, widget)"/>
+                        <td class="o_ai_num_col" t-esc="format(widget.pivot.grand_total, widget)"/>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div t-if="widget.pivot.rows.has_more or widget.pivot.rows.has_previous or widget.pivot.cols.has_more or widget.pivot.cols.has_previous" class="o_ai_pager">
+            <span class="o_ai_pager_axis">
+                <span>Rows <t t-esc="axisRange(widget.pivot.rows)"/></span>
+                <button class="o_ai_icon_btn" t-att-disabled="!widget.pivot.rows.has_previous" t-att-aria-label="labels.previousRows"
+                        t-on-click="() => this.pageAxis(widget.id, 'row', -1)"><i class="fa fa-angle-left"/></button>
+                <button class="o_ai_icon_btn" t-att-disabled="!widget.pivot.rows.has_more" t-att-aria-label="labels.nextRows"
+                        t-on-click="() => this.pageAxis(widget.id, 'row', 1)"><i class="fa fa-angle-right"/></button>
+            </span>
+            <span class="o_ai_pager_axis">
+                <span>Columns <t t-esc="axisRange(widget.pivot.cols)"/></span>
+                <button class="o_ai_icon_btn" t-att-disabled="!widget.pivot.cols.has_previous" t-att-aria-label="labels.previousCols"
+                        t-on-click="() => this.pageAxis(widget.id, 'col', -1)"><i class="fa fa-angle-left"/></button>
+                <button class="o_ai_icon_btn" t-att-disabled="!widget.pivot.cols.has_more" t-att-aria-label="labels.nextCols"
+                        t-on-click="() => this.pageAxis(widget.id, 'col', 1)"><i class="fa fa-angle-right"/></button>
+            </span>
+        </div>
+    </t>
 </t>
 
 </templates>

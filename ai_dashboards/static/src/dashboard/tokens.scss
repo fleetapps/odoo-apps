@@ -1,0 +1,70 @@
+// Design tokens for every AI Dashboards surface: the dashboard page, the list
+// of dashboards and the share dialog.
+//
+// Built only from Odoo's own SCSS variables ($o-view-background-color,
+// $o-main-text-color, $o-gray-*), so the dark bundle (web.assets_web_dark),
+// which recompiles these files with its own variable values, gets correct
+// tokens without a branch here. The handful of fixed colours below — the
+// chart palette and the status colours — have dark steps in
+// dashboard_canvas.dark.scss, compiled into the dark bundle only.
+//
+// Exposed as CSS custom properties so the charts can read them at draw time
+// (chart_theme.js, readTokens) and follow whichever theme is on screen.
+
+.o_ai_dash,
+.o_ai_dashboard_list,
+.o_ai_dashboard_kanban,
+.o_ai_share {
+    --ai-plane: #{$o-webclient-background-color};
+    --ai-surface: #{$o-view-background-color};
+    --ai-ink: #{$o-main-text-color};
+    --ai-ink-2: #{mix($o-main-text-color, $o-view-background-color, 78%)};
+    --ai-muted: #{$o-gray-600};
+    --ai-hair: #{mix($o-main-text-color, $o-view-background-color, 9%)};
+    --ai-edge: #{rgba($o-main-text-color, 0.07)};
+    --ai-grid: #{mix($o-main-text-color, $o-view-background-color, 6%)};
+    --ai-axis: #{mix($o-main-text-color, $o-view-background-color, 20%)};
+    --ai-hover: #{mix($o-main-text-color, $o-view-background-color, 4%)};
+    --ai-tint: #{mix($o-main-text-color, $o-view-background-color, 3%)};
+    --ai-track: #{mix($o-main-text-color, $o-view-background-color, 7%)};
+    --ai-other: #{mix($o-main-text-color, $o-view-background-color, 24%)};
+    --ai-compare: #{mix($o-main-text-color, $o-view-background-color, 30%)};
+    --ai-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+    --ai-shadow: 0 10px 28px rgba(16, 24, 40, 0.12);
+    --ai-radius: 10px;
+
+    // Categorical palette, fixed order (validated for colour-blind separation
+    // on a white surface; slots 3, 4 and 5 always sit beside visible values).
+    --ai-s1: #2a78d6;
+    --ai-s2: #eb6834;
+    --ai-s3: #1baf7a;
+    --ai-s4: #eda100;
+    --ai-s5: #e87ba4;
+    --ai-s6: #008300;
+    --ai-s7: #6250d6;
+    --ai-s8: #e34948;
+
+    // An ordinal ramp for ordered buckets (ageing): further along, darker.
+    --ai-o1: #86b6ef;
+    --ai-o2: #5598e7;
+    --ai-o3: #2a78d6;
+    --ai-o4: #1c5cab;
+    --ai-o5: #104281;
+    --ai-o-ink-1: #0b0b0b;
+    --ai-o-ink-2: #0b0b0b;
+    --ai-o-ink-3: #ffffff;
+    --ai-o-ink-4: #ffffff;
+    --ai-o-ink-5: #ffffff;
+
+    // Status: text colours clear 4.5:1 on the surface; always with a word or icon.
+    --ai-good: #127a52;
+    --ai-good-bg: #e7f5ee;
+    --ai-good-line: #2e9e6b;
+    --ai-bad: #b4501a;
+    --ai-bad-bg: #fbede4;
+    --ai-bad-line: #e07a5f;
+    --ai-warn: #7a4f00;
+    --ai-warn-bg: #fff3d6;
+    --ai-critical: #b42318;
+    --ai-critical-bg: #fdeceb;
+}
