@@ -228,6 +228,8 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertRegex(html, r"Invoice\s+5400\s*</h2>", "the tax invoice's number is the invoice's")
         self.assertIn(invoice.name, html, "Odoo's number as our reference")
         self.assertIn("background: #B1A58E", html, "the heading and total in the accent colour")
+        self.assertRegex(html, r'class="o_odoc_b_first o_odoc_b_sku">SKU</th>', "the SKU in its own column, first")
+        self.assertRegex(html, r'class="o_odoc_b_sku">FIN-PAK-095</td>')
         for text in ("SUB TOTAL", "982800", "110110", "3000184558", "Title to goods remains with",
                      f"Payment terms: {terms.name}"):
             self.assertIn(text, html)
@@ -420,6 +422,7 @@ class TestDocuments(AccountTestInvoicingCommon):
                      "We are authorised to accept goods on behalf of the buyer"):
             self.assertIn(text, html)
         self.assertNotIn("Delivered by", html, "only the buyer signs")
+        self.assertNotIn("o_odoc_b_sku", html, "the SKU column is the invoice's only")
         self.company.doc_invoice_style = "letterhead"
         self.assertNotIn("o_odoc_band", self.render("action_report_delivery_note", delivery))
 

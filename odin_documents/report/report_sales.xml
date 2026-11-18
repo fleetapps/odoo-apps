@@ -178,11 +178,14 @@
                 </table>
                 <t t-set="lines" t-value="o._doc_lines()"/>
                 <t t-set="show_discount" t-value="any(line.discount for line in lines)"/>
-                <t t-set="width" t-value="6 if show_discount else 5"/>
+                <!-- The SKU (Internal Reference) in its own column: Rinz's are short, PAK-LAB-127 say. -->
+                <t t-set="show_sku" t-value="any(line.product_id.default_code for line in lines)"/>
+                <t t-set="width" t-value="5 + (1 if show_discount else 0) + (1 if show_sku else 0)"/>
                 <table class="o_odoc_b_lines">
                     <thead>
                         <tr t-attf-style="background: #{accent};">
-                            <th class="o_odoc_b_first">Description</th>
+                            <th t-if="show_sku" class="o_odoc_b_first o_odoc_b_sku">SKU</th>
+                            <th t-att-class="None if show_sku else 'o_odoc_b_first'">Description</th>
                             <th class="o_odoc_num">Quantity</th>
                             <th class="o_odoc_num">Unit Price</th>
                             <th t-if="show_discount" class="o_odoc_num">Disc.%</th>
@@ -199,6 +202,7 @@
                                 <td t-att-colspan="width" t-out="line.name"/>
                             </tr>
                             <tr t-else="">
+                                <td t-if="show_sku" class="o_odoc_b_sku" t-out="line.product_id.default_code or ''"/>
                                 <td t-out="o._doc_line_name(line)"/>
                                 <td class="o_odoc_num" t-out="line.quantity" t-options="{'widget': 'float', 'precision': 2}"/>
                                 <td class="o_odoc_num" t-out="line.price_unit" t-options="{'widget': 'float', 'precision': cur.decimal_places}"/>

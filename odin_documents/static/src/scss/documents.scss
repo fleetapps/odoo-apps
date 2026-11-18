@@ -178,6 +178,7 @@ $odoc-amount: #eef0f5;
         td:first-child { border-left: none; }
         .o_odoc_num { text-align: right; white-space: nowrap; }
         .o_odoc_b_amount { background: $odoc-amount; }
+        .o_odoc_b_sku { white-space: nowrap; width: 1%; }
         .o_odoc_section td { font-weight: bold; background: #f7f7f7; }
         .o_odoc_note td { font-style: italic; }
     }
