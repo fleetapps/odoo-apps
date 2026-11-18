@@ -319,6 +319,44 @@ class TestDocuments(AccountTestInvoicingCommon):
             self.assertIn(text, html)
         self.assertIn("60", html, "net weight: 120 x 0.5 kg")
 
+    def test_band_commercial_invoice_keeps_every_field(self):
+        invoice = self.export_invoice()
+        Report = self.report("action_report_commercial_invoice")
+        self.assertEqual(Report.get_paperformat(), self.env.ref("odin_documents.paperformat_landscape"))
+        self.company.doc_invoice_style = "band"
+        self.assertEqual(Report.get_paperformat(), self.env.ref("odin_documents.paperformat_band_landscape"),
+                         "landscape, as the letterhead's, edge to edge")
+        html = self.render("action_report_commercial_invoice", invoice)
+        self.assertIn("o_odoc_band", html)
+        self.assertIn("Tax ID: P052112729P", self.band(html, "from"))
+        self.assertIn("Tax ID: 157041913", self.band(html, "to"), "the buyer and its tax ID on the right")
+        for text in ("Commercial Invoice", "1 USD = 125 KES", "SM#56791", "34013000", "R4 DISTRIBUTORS LIMITED",
+                     "EXP/03/2022", "157041913", "15,600.00", "124.80", "404.00", "3001232272", "PRIEKENX",
+                     "Telegraphic Transfer", "KEBS permit", "HS code", "Brand", "Pack", "Origin",
+                     "Unit price USD", "Value USD", "Country of origin", "Country of supply", "Export for",
+                     "Delivery note no.", "Customer order no.", "Conditions of sale", "Total no. &amp; kind",
+                     "Description of goods", "Total qty", "Net weight", "Gross weight", "Freight charges",
+                     "Exchange rate", "BASE AMOUNT", "Amount in words", "Authorised by", "Company stamp"):
+            self.assertIn(text, html)
+
+    def test_band_grn_with_the_suppliers_references_and_three_signatures(self):
+        receipt = self.picking(self.warehouse.in_type_id, self.partner_b, doc_supplier_ref="DN-7781",
+                               doc_vehicle="KCB 456C")
+        self.company.doc_invoice_style = "band"
+        self.assertEqual(self.report("action_report_grn").get_paperformat(),
+                         self.env.ref("odin_documents.paperformat_band"))
+        html = self.render("action_report_grn", receipt)
+        self.assertRegex(html, r"Goods Received Note\s+%s\s*</h2>" % re.escape(receipt.name))
+        self.assertIn(self.partner_b.display_name, self.band(html, "to"), "the supplier on the right")
+        self.assertRegex(html, r'class="o_odoc_b_sku">FIN-PAK-095</td>')
+        for text in ("DN-7781", "KCB 456C", "Date received", "Ordered", "Received", "Remarks",
+                     "Received by (stores)", "Inspected by (quality)", "Delivered by (supplier)",
+                     "Not yet validated in Odoo"):
+            self.assertIn(text, html)
+        self.assertNotRegex(html, r"\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}", "the date, no time")
+        self.company.doc_invoice_style = "letterhead"
+        self.assertNotIn("o_odoc_band", self.render("action_report_grn", receipt))
+
     def test_the_rate_can_be_typed_over_inline(self):
         invoice = self.export_invoice()
         invoice.doc_exchange_rate = 130.0

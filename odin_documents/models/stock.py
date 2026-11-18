@@ -202,6 +202,18 @@ class StockPicking(models.Model):
                 (_("Our ref."), self._doc_our_ref())]
         return [(label, value) for label, value in rows if value]
 
+    def _doc_grn_meta(self):
+        """The Band GRN's box under the title: the day received, the purchase
+        order, the supplier's delivery note and reference, the vehicle."""
+        self.ensure_one()
+        refs = self._doc_refs()
+        rows = [(_("Date received"), self._doc_date(self.date_done or self.scheduled_date)),
+                (_("Purchase order"), refs["order"]),
+                (_("Supplier delivery note"), self.doc_supplier_ref),
+                (_("Supplier ref."), refs["supplier_ref"]),
+                (_("Vehicle / driver"), self.doc_vehicle)]
+        return [(label, value) for label, value in rows if value]
+
     def _doc_refs(self):
         """The order and invoice numbers the transfer's documents print. Read
         with sudo: a storekeeper prints the delivery note without being able

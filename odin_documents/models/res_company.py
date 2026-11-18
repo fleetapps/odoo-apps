@@ -33,7 +33,8 @@ class ResCompany(models.Model):
     doc_invoice_style = fields.Selection(
         [("letterhead", "Letterhead"), ("band", "Band")], string="Document style",
         default="letterhead", required=True,
-        help="Letterhead: on the company's letterhead. Band, for the Sales Invoice and the Delivery Note: a "
+        help="Letterhead: on the company's letterhead. Band, for the sales and commercial invoices, the "
+             "delivery note and the GRN: a "
              "shaded band across the top of each page, the company on the left (with an invoice's payment terms "
              "and CU number), the logo in the middle and the customer on the right; the title, the table's "
              "heading and the total in the accent colour. The other documents stay on the letterhead.")

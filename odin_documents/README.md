@@ -41,6 +41,8 @@ A delivery note carries its invoice's number: the invoice 89403's delivery note 
 
 Where these documents replace Odoo's, Odoo's own **Print** on a done transfer (its delivery slip, with HS codes and a time stamp) is hidden: **Print Delivery Note**, **Print GRN** and the other buttons print the transfer's document, and a delivery slip printed by Odoo itself (auto-print on validating) is the transfer's document too.
 
+The **Commercial Invoice** and the **Goods Received Note** follow it too. The commercial invoice keeps every field of the letterhead's, laid out again in landscape, edge to edge: the seller and the buyer in the band (with the payment terms and the CU number under the seller's PIN), the invoice's particulars, the bank and the countries, the shipment, the lines in both currencies, the weights beside the totals, both amounts in words, the terms and who authorised it with the company stamp. The GRN carries the supplier on the right, the day received (no time) and the supplier's references, the SKU, ordered and received quantities with a Remarks column, the terms, and boxes for the stores, quality and the supplier.
+
 ### Sales invoice
 
 **Letterhead** (the default) prints the Sales Invoice on the company letterhead,

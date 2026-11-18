@@ -20,7 +20,8 @@ REPLACED_REPORTS = (
 
 
 # The reports whose paper format follows the company's document style.
-BAND_REPORTS = ("odin_documents.report_sales_invoice", "odin_documents.report_delivery_note")
+BAND_REPORTS = ("odin_documents.report_sales_invoice", "odin_documents.report_delivery_note",
+                "odin_documents.report_commercial_invoice", "odin_documents.report_grn")
 
 
 class IrActionsActions(models.Model):
@@ -65,14 +66,16 @@ class IrActionsReport(models.Model):
         return super().report_action(docids, data=data, config=config)
 
     def get_paperformat(self):
-        """A Band document (the Sales Invoice, the Delivery Note) of a company
+        """A Band document (sales and commercial invoice, delivery note, GRN) of a company
         on the Band style prints edge to edge, on its own paper format: the
         band reaches the page's edges."""
+        paperformat = super().get_paperformat()
         if len(self) == 1 and self.report_name in BAND_REPORTS and self.env.company.doc_invoice_style == "band":
-            band = self.env.ref("odin_documents.paperformat_band", raise_if_not_found=False)
-            if band:
-                return band
-        return super().get_paperformat()
+            # The same orientation as the document's own: the commercial invoice is landscape.
+            xmlid = "odin_documents.paperformat_band_landscape" if paperformat.orientation == "Landscape" \
+                else "odin_documents.paperformat_band"
+            return self.env.ref(xmlid, raise_if_not_found=False) or paperformat
+        return paperformat
 
     def _render_qweb_pdf(self, report_ref, res_ids=None, data=None):
         ids = [res_ids] if isinstance(res_ids, int) else list(res_ids or [])

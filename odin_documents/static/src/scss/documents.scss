@@ -179,6 +179,7 @@ $odoc-amount: #eef0f5;
         .o_odoc_num { text-align: right; white-space: nowrap; }
         .o_odoc_b_amount { background: $odoc-amount; }
         .o_odoc_b_sku { white-space: nowrap; width: 1%; }
+        .o_odoc_b_remarks { width: 22%; }
         .o_odoc_section td { font-weight: bold; background: #f7f7f7; }
         .o_odoc_note td { font-style: italic; }
     }
@@ -203,6 +204,21 @@ $odoc-amount: #eef0f5;
         .o_odoc_b_grand th { border-bottom-left-radius: 8px; }
         .o_odoc_b_grand td { border-bottom-right-radius: 8px; }
     }
+    // The commercial invoice: twelve columns, two currencies.
+    .o_odoc_b_small { font-size: 8.5pt; th, td { padding: 5px 5px; } }
+    .o_odoc_b_after .o_odoc_b_weights_cell { width: 34%; padding-top: 10px; }
+    .o_odoc_b_after .o_odoc_b_gap { width: auto; }
+    .o_odoc_b_totals.o_odoc_b_boxed {
+        border-top: 1px solid $odoc-rule;
+        border-radius: 8px;
+        tr:first-child th, tr:first-child td { border-top: none; }
+    }
+    .o_odoc_b_after .o_odoc_b_totals_cell .o_odoc_b_boxed { margin-top: 10px; }
+    .o_odoc_b_cur td { font-weight: bold; }
+    .o_odoc_b_weights_cell .o_odoc_b_totals th { text-align: left; }
+    .o_odoc_b_meta.o_odoc_b_tight { margin-bottom: 6px; td { padding: 4px 8px; } }
+    .o_odoc_b_words { margin: 12px 0 0; text-transform: uppercase; font-size: 8.5pt; }
+    .o_odoc_b_sign .o_odoc_b_stamp img { max-width: 100%; max-height: 80px; }
     .o_odoc_b_box {
         width: 100%;
         margin-top: 16px;
