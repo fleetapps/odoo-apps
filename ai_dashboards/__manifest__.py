@@ -44,10 +44,12 @@ What you get
 * **A light editor.** Drag to reorder, resize, rename, recolour — without
   going back to the chat for small things.
 * **Every version kept.** One-click revert when a change was wrong.
-* **Email it to yourself.** Every weekday, week or month — and each email is
-  calculated with *your* permissions at the moment it is sent, so a shared
-  dashboard mails each person their own figures rather than a copy of
-  somebody else's.
+* **Email it on a schedule** — to yourself, or to anyone you share it with.
+  Every weekday, week or month, and each email is calculated with *its
+  recipient's* permissions at the moment it is sent, so a shared dashboard
+  mails each person their own figures rather than a copy of somebody else's.
+  Every schedule is listed with who it goes to, can be switched off or
+  deleted, and recipients can always stop theirs.
 * **Share with people or teams.** Sharing grants sight, never edit.
 * **Compare against last year** — or the previous period — across the whole
   dashboard at once, switchable by whoever is reading it.
