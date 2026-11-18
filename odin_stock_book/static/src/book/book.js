@@ -10,6 +10,7 @@ import { debounce } from "@web/core/utils/timing";
 import { download } from "@web/core/network/download";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { parseAmount, parseDay } from "./utils";
+import { BillDialog } from "./bill_dialog";
 import { PurchaseDialog } from "./purchase_dialog";
 
 const WITH_PARTNER = new Set(["sale", "return", "received"]);
@@ -921,6 +922,10 @@ export class StockBook extends Component {
                    && this.state.book && !this.state.book.empty) {
             ev.preventDefault();
             this.openPurchase();
+        } else if (ev.key === "b" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey
+                   && this.state.book && !this.state.book.empty) {
+            ev.preventDefault();
+            this.openAddBill();
         } else if (ev.key === "n" && !typing && this.state.view === "log" && !ev.ctrlKey && !ev.metaKey) {
             ev.preventDefault();
             this.startNew();
@@ -1071,6 +1076,27 @@ export class StockBook extends Component {
             lineId, items, kind, loaded,
             onSaved: (result) => this.purchaseSaved(result),
         });
+    }
+
+    /** A bill already paid, for what is not stock: it goes to Accounting, not on the book. */
+    openAddBill() {
+        this.dialog.add(BillDialog, {
+            warehouseId: this.state.warehouseId || this.state.book?.warehouse?.id || false, kind: "bill",
+            onSaved: (result) => this.billSaved(result),
+        });
+    }
+
+    billSaved(result) {
+        const buttons = result.can_open ? [{
+            name: _t("Open bill"), primary: true,
+            onClick: () => this.action.doAction({ type: "ir.actions.act_window", res_model: "account.move",
+                                                  res_id: result.bill_id, views: [[false, "form"]] }),
+        }] : [];
+        const money = `${this.state.book?.currency || ""} ${this.fmt(result.total, 2)}`;
+        const scan = result.files ? _t(", with its scan") : "";
+        this.notification.add(_t("Bill %(bill)s (%(ref)s) posted and paid from %(paid)s · %(money)s%(scan)s. It is in Accounting, not on the book.", {
+            bill: result.bill, ref: result.purchase_ref, paid: result.paid_from, money, scan,
+        }), { type: "success", buttons });
     }
 
     openPurchaseFor(row) {

@@ -10,10 +10,11 @@ The MOVEMENT LOG and MAIN INVENTORY sheets the store keeps, inside Odoo: date,
 item, added, removed, reason, customer, on hand after - typed in the last row.
 Bottle filling and production batches fill their components from the recipe;
 posting creates the manufacturing order, delivery, return, purchase order with
-its receipt, or scrap.
+its receipt, or scrap. Add bill enters a paid bill for what is not stock, with
+its lines on accounts, its VAT and its scan.
 See README.md.
 """,
-    "version": "19.0.1.10.0",
+    "version": "19.0.1.11.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",
@@ -26,6 +27,7 @@ See README.md.
         "data/ir_sequence_data.xml",
         "data/ir_cron_data.xml",
         "views/stock_book_views.xml",
+        "views/account_move_views.xml",
         "views/menus.xml",
         "report/movement_log.xml",
     ],
