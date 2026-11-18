@@ -169,17 +169,37 @@ class StockPicking(models.Model):
             return "replacement_note" if self.return_id else "grn"
         return "transfer_form"
 
+    def _doc_number(self):
+        """The number a delivery note prints as: its invoice's, so the delivery
+        note and the invoice carry one number (QuickBooks's). The transfer's
+        own until it is invoiced, and for any other transfer."""
+        self.ensure_one()
+        if self.picking_type_code == "outgoing" and not self.return_id:
+            numbers = [number for number in self._doc_refs()["invoices"].split(", ") if number]
+            if numbers:
+                return ", ".join(numbers)
+        return self.name
+
+    def _doc_our_ref(self):
+        """The transfer's own number, printed as our reference when the delivery
+        note carries its invoice's."""
+        self.ensure_one()
+        return self.name if self._doc_number() != self.name else ""
+
     def _doc_band_meta(self):
         """The Band delivery note's box under the title: the date (no time),
-        the order and invoice numbers, the vehicle."""
+        the order number, the vehicle, and the transfer's own number."""
         self.ensure_one()
         refs = self._doc_refs()
+        number = self._doc_number()
         # _doc_date prints the day only, in the user's time zone.
         rows = [(_("Delivery Date"), self._doc_date(self.date_done or self.scheduled_date)),
                 (_("Order no."), refs["order"]),
                 (_("Customer order no."), refs["customer_ref"]),
-                (_("Invoice no."), refs["invoices"]),
-                (_("Vehicle / driver"), self.doc_vehicle)]
+                # The delivery note's number is the invoice's: printed once.
+                (_("Invoice no."), refs["invoices"] if refs["invoices"] != number else ""),
+                (_("Vehicle / driver"), self.doc_vehicle),
+                (_("Our ref."), self._doc_our_ref())]
         return [(label, value) for label, value in rows if value]
 
     def _doc_refs(self):

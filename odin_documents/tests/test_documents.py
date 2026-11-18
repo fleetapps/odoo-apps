@@ -415,10 +415,11 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertNotRegex(html, r"\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}", "the date, no time")
         self.assertNotIn("HS Code", html)
         self.assertNotIn("HS code", html)
-        for text in ("Terms of Delivery", "checking quantities", "KDA 123B", "Delivered by",
+        for text in ("Terms of Delivery", "checking quantities", "KDA 123B",
                      "Received for the buyer", "Buyer's company stamp", "Total delivered",
                      "We are authorised to accept goods on behalf of the buyer"):
             self.assertIn(text, html)
+        self.assertNotIn("Delivered by", html, "only the buyer signs")
         self.company.doc_invoice_style = "letterhead"
         self.assertNotIn("o_odoc_band", self.render("action_report_delivery_note", delivery))
 
@@ -444,6 +445,35 @@ class TestDocuments(AccountTestInvoicingCommon):
             "odin_documents.action_report_delivery_note", order.picking_ids.ids)
         self.assertIn("LPO-77", html.decode(), "the customer's order number, without sales rights")
         self.assertIn(order.name, html.decode())
+
+    def test_a_delivery_note_carries_its_invoices_number(self):
+        order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "order_line": [
+            Command.create({"product_id": self.product_a.id, "product_uom_qty": 6, "price_unit": 199.0})]})
+        order.action_confirm()
+        delivery = order.picking_ids
+        self.assertEqual(delivery._doc_number(), delivery.name, "not invoiced yet: the transfer's own number")
+        self.env["stock.quant"]._update_available_quantity(self.product_a, self.warehouse.lot_stock_id, 6)
+        delivery.action_assign()
+        delivery.move_ids.write({"quantity": 6, "picked": True})
+        delivery.button_validate()
+        invoice = order._create_invoices()
+        invoice.write({"invoice_date": "2026-11-02", "doc_tax_invoice_no": "89403"})
+        invoice.action_post()
+        self.assertEqual(invoice.name, "89403")
+        self.assertEqual(delivery._doc_number(), "89403", "the delivery note carries the invoice's number")
+        self.assertEqual(invoice._doc_delivery_numbers(), "89403")
+        self.assertEqual(self.meta(self.render("action_report_sales_invoice", invoice), "Delivery note"), "89403")
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertEqual(self.meta(html, "Delivery no."), "89403")
+        self.assertEqual(self.meta(html, "Our ref."), delivery.name, "the transfer's own number as our reference")
+        self.assertIsNone(self.meta(html, "Invoice no."), "one number, printed once")
+
+        self.company.doc_invoice_style = "band"
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertRegex(html, r"Delivery Note\s+89403\s*</h2>")
+        self.assertIn(delivery.name, html)
+        self.assertIn("89403", self.render("action_report_sales_invoice", invoice))
+        self.assertEqual(dict(invoice._doc_band_meta())["Delivery note"], "89403", "on the Band invoice too")
 
     def test_count_sheet_is_one_document_for_the_lines_counted(self):
         Quant = self.env["stock.quant"]

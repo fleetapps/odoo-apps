@@ -59,7 +59,7 @@
         <t t-call="odin_documents.layout_band">
             <div class="page">
                 <h2 class="o_odoc_b_title" t-attf-style="color: #{accent};">
-                    Delivery Note <t t-out="o.name"/>
+                    Delivery Note <t t-out="o._doc_number()"/>
                 </h2>
                 <t t-set="meta" t-value="o._doc_band_meta()"/>
                 <table class="o_odoc_b_meta" t-if="meta">
@@ -140,8 +140,8 @@
                 </table>
                 <table class="o_odoc_b_sign">
                     <tr>
-                        <td t-foreach="['Delivered by', 'Received for the buyer']" t-as="box">
-                            <div class="o_odoc_b_meta_label" t-out="box"/>
+                        <td class="o_odoc_b_receive">
+                            <div class="o_odoc_b_meta_label">Received for the buyer</div>
                             <div class="o_odoc_b_line">Name</div>
                             <div class="o_odoc_b_line">Signature</div>
                             <div class="o_odoc_b_line">Date</div>
@@ -157,7 +157,7 @@
 
     <template id="delivery_note_letterhead">
         <t t-set="company" t-value="o._doc_company()"/>
-        <t t-set="doc_number" t-value="o.name"/>
+        <t t-set="doc_number" t-value="o._doc_number()"/>
         <t t-set="refs" t-value="o._doc_refs()"/>
         <t t-call="odin_documents.layout">
             <div class="page">
@@ -170,11 +170,12 @@
                         </td>
                         <td>
                             <t t-set="doc_title" t-value="'Delivery Note'"/>
-                            <t t-set="meta" t-value="[('Delivery no.', o.name),
+                            <t t-set="meta" t-value="[('Delivery no.', o._doc_number()),
                                 ('Date', o._doc_date((o.date_done or o.scheduled_date))),
                                 ('Order no.', refs['order']),
                                 ('Customer order no.', refs['customer_ref']),
-                                ('Invoice no.', refs['invoices']),
+                                ('Invoice no.', refs['invoices'] if refs['invoices'] != o._doc_number() else ''),
+                                ('Our ref.', o._doc_our_ref()),
                                 ('Vehicle / driver', o.doc_vehicle)]"/>
                             <t t-call="odin_documents.title"/>
                         </td>

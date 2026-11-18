@@ -297,7 +297,7 @@
                                 ('Due date', o._doc_date(o.invoice_date_due)),
                                 ('Customer no.', o.commercial_partner_id.ref),
                                 ('Order no.', o._doc_order_ref()),
-                                ('Delivery note', ', '.join(o._doc_pickings().mapped('name'))),
+                                ('Delivery note', o._doc_delivery_numbers()),
                                 ('Payment terms', o.invoice_payment_term_id.name),
                                 ('Our ref.', o._doc_our_ref())]"/>
                             <t t-call="odin_documents.title"/>

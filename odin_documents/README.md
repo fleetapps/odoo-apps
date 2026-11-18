@@ -35,7 +35,9 @@ An invoice signed with KRA in another system, QuickBooks say, carries that syste
 
 ## Document style
 
-The **Delivery Note** follows the same style: on the Band, the company and the logo across the top with where the goods go on the right; the delivery date (no time), the order, invoice and vehicle; the lines with their cartons and pallets, no HS code; the totals; the **Terms of Delivery** beside what the buyer confirms on receipt; and boxes for who delivered, who received and the buyer's stamp.
+The **Delivery Note** follows the same style: on the Band, the company and the logo across the top with where the goods go on the right; the delivery date (no time), the order, invoice and vehicle; the lines with their cartons and pallets, no HS code; the totals; the **Terms of Delivery** beside what the buyer confirms on receipt; and a box for who received it with the buyer's stamp.
+
+A delivery note carries its invoice's number: the invoice 89403's delivery note prints as Delivery Note 89403, and the invoice prints *Delivery note: 89403*. The transfer's own number (WH/OUT/...) is then printed as *Our ref.*; until the delivery is invoiced, the delivery note prints the transfer's number.
 
 Where these documents replace Odoo's, Odoo's own **Print** on a done transfer (its delivery slip, with HS codes and a time stamp) is hidden: **Print Delivery Note**, **Print GRN** and the other buttons print the transfer's document, and a delivery slip printed by Odoo itself (auto-print on validating) is the transfer's document too.
 
