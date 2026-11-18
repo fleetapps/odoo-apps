@@ -29,6 +29,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 
+from . import ai_dashboard_labels as labels_lib
+
 from . import ai_dashboard_spec as spec_lib
 
 _logger = logging.getLogger(__name__)
@@ -106,11 +108,15 @@ class AIDashboardPivot(models.AbstractModel):
         groups = groups[:CAP]
 
         values = []
+        # The same words the charts use: a state's label, "Mar 2026", Yes/No.
+        labeler = labels_lib.Labeler(self.env, model, spec)
         for row in groups:
             raw = row[0]
+            label, short = labeler.labels(raw)
             values.append({
                 "key": self._key(raw),
-                "label": self._label(raw, granularity),
+                "label": label,
+                "short": short,
                 "raw": self._raw(raw),
             })
         return {
@@ -121,17 +127,29 @@ class AIDashboardPivot(models.AbstractModel):
             "offset": offset,
             "has_more": has_more,
             "has_previous": offset > 0,
-            "total": self._distinct(model, domain, root),
+            "total": self._distinct(model, domain, root, spec if granularity else None),
             "cap": CAP,
         }
 
-    def _distinct(self, model, domain, field):
+    def _distinct(self, model, domain, field, bucketed=None):
         """How many distinct values this axis has in total.
 
         `count_distinct` is one aggregate over the same domain — far cheaper
         than materialising every group just to take its length, which is what
         an honest "of 2,143" would otherwise cost.
+
+        Not for a date axis, though: counting distinct *dates* reported a year
+        of quarters as "of 226". There the buckets are what the axis shows,
+        and there are few of them, so they are counted as grouped.
         """
+        if bucketed:
+            try:
+                buckets = model._read_group(domain, groupby=[bucketed],
+                                            aggregates=["__count"],
+                                            limit=COUNT_CEILING + 1)
+            except (ValueError, KeyError):
+                return None
+            return min(len(buckets), COUNT_CEILING)
         try:
             rows = model._read_group(
                 domain, groupby=[], aggregates=["%s:count_distinct" % field])
@@ -150,8 +168,8 @@ class AIDashboardPivot(models.AbstractModel):
             return empty
 
         scoped = list(domain)
-        scoped += self._restrict(rows)
-        scoped += self._restrict(cols)
+        scoped += self._restrict(rows, model)
+        scoped += self._restrict(cols, model)
 
         # At most CAP x CAP combinations can match, so this is bounded by
         # construction; the +1 is the usual truncation tell.
@@ -178,8 +196,14 @@ class AIDashboardPivot(models.AbstractModel):
             grand += value
         return cells, {"rows": row_totals, "cols": col_totals, "grand": grand}
 
-    def _restrict(self, axis):
-        """Narrow the cell query to the values this page shows."""
+    def _restrict(self, axis, model=None):
+        """Narrow the cell query to the values this page shows.
+
+        A date axis was bucketed in the reader's time zone, so on a datetime
+        field the window's edges are the UTC instants of local midnight —
+        with bare dates, orders placed in the small hours of the 1st landed
+        in the row total but in no cell, and the grid stopped adding up.
+        """
         values = axis["values"]
         if not values:
             return []
@@ -192,6 +216,12 @@ class AIDashboardPivot(models.AbstractModel):
             first, last = min(starts), max(starts)
             span = GRANULARITY_SPANS.get(axis["granularity"],
                                          relativedelta(months=1))
+            if model is not None:
+                render = self.env["ai.dashboard.render"]
+                return [[axis["field"], ">=",
+                         render._bound(model._name, axis["field"], first)],
+                        [axis["field"], "<",
+                         render._bound(model._name, axis["field"], last + span)]]
             return [[axis["field"], ">=", fields.Date.to_string(first)],
                     [axis["field"], "<", fields.Date.to_string(last + span)]]
         raws = [v["raw"] for v in values]

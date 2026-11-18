@@ -25,7 +25,8 @@ class TestRender(TransactionCase):
         cls.Render = cls.env["ai.dashboard.render"]
         cls.employee = cls.env["res.users"].create({
             "name": "Render Employee", "login": "ai_dash_render",
-            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id])],
+            "group_ids": [(6, 0, [cls.env.ref("base.group_user").id,
+                                  cls.env.ref("ai_dashboards.group_dashboard_user").id])],
         })
         cls.env["res.partner"].create([
             {"name": "AID Co A", "is_company": True},
@@ -94,7 +95,8 @@ class TestRender(TransactionCase):
     def test_two_people_see_their_own_figures(self):
         """The property that makes sharing safe. The renderer must never use
         sudo for the data itself."""
-        board = self._board()
+        # Shared with them, so they may open it — and see their own figures.
+        board = self._board(share_user_ids=[(6, 0, [self.employee.id])])
         as_admin = self.Render.render(board.id)
         as_employee = self.Render.with_user(self.employee).render(board.id)
         self.assertIn("widgets", as_employee)

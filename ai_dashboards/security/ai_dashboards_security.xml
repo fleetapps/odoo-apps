@@ -70,12 +70,16 @@
             <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
         </record>
 
-        <!-- A subscription is a standing instruction to render as you, so it
-             is yours alone to hold. -->
+        <!-- A scheduled email is a standing instruction to render as its
+             recipient. The recipient can always see, pause and delete it; the
+             dashboard's owner can too, for the people they send it to. Nobody
+             else sees who receives what. Who may be scheduled at all is
+             checked on the model (_check_recipient): yourself, or someone a
+             dashboard of yours is shared with. -->
         <record id="rule_subscription_own" model="ir.rule">
-            <field name="name">Dashboard subscriptions: own only</field>
+            <field name="name">Dashboard subscriptions: mine, or on my dashboards</field>
             <field name="model_id" ref="model_ai_dashboard_subscription"/>
-            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('user_id', '=', user.id), ('dashboard_id.owner_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_dashboard_user'))]"/>
         </record>
 
