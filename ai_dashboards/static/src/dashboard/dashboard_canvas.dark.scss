@@ -1,0 +1,45 @@
+// Dark steps of the fixed colours in tokens.scss. Compiled into
+// web.assets_web_dark only (see the manifest), after the light values, so
+// these win there and nowhere else. The neutral tokens need nothing here:
+// they are mixed from Odoo's own variables, which the dark bundle redefines.
+
+.o_ai_dash,
+.o_ai_dashboard_list,
+.o_ai_dashboard_kanban,
+.o_ai_share {
+    --ai-shadow-sm: none;
+    --ai-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+    --ai-edge: rgba(255, 255, 255, 0.06);
+
+    --ai-s1: #3987e5;
+    --ai-s2: #d95926;
+    --ai-s3: #199e70;
+    --ai-s4: #c98500;
+    --ai-s5: #d55181;
+    --ai-s6: #0ca30c;
+    --ai-s7: #9085e9;
+    --ai-s8: #e66767;
+
+    // On a dark surface the ramp runs the other way: further along, brighter.
+    --ai-o1: #184f95;
+    --ai-o2: #256abf;
+    --ai-o3: #3987e5;
+    --ai-o4: #6da7ec;
+    --ai-o5: #9ec5f4;
+    --ai-o-ink-1: #ffffff;
+    --ai-o-ink-2: #ffffff;
+    --ai-o-ink-3: #ffffff;
+    --ai-o-ink-4: #0b0b0b;
+    --ai-o-ink-5: #0b0b0b;
+
+    --ai-good: #4cc38a;
+    --ai-good-bg: #173a28;
+    --ai-good-line: #3fb57c;
+    --ai-bad: #f0a070;
+    --ai-bad-bg: #3d2a1d;
+    --ai-bad-line: #ef8a6f;
+    --ai-warn: #f5c26b;
+    --ai-warn-bg: #3a2e12;
+    --ai-critical: #ff8a80;
+    --ai-critical-bg: #3f2020;
+}

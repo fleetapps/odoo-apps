@@ -1,0 +1,261 @@
+// The list of dashboards, the phone rows and the share dialog.
+//
+// Scoped to the classes this module puts on its own views (<list class>,
+// <kanban class>, <form class>) — Odoo's list everywhere else is untouched.
+// Colours are the tokens in ../dashboard/tokens.scss.
+
+// ------------------------------------------------------------- shared bits
+.o_ai_dashboard_list,
+.o_ai_dashboard_kanban {
+    .o_ai_dash_icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+
+        svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        i {
+            font-size: 15px;
+        }
+    }
+
+    @for $i from 1 through 8 {
+        .o_ai_dash_icon.o_ai_sw-#{$i} {
+            background-color: color-mix(in srgb, var(--ai-s#{$i}) 14%, transparent);
+            color: var(--ai-s#{$i});
+        }
+    }
+}
+
+// ------------------------------------------------------------------- list
+.o_list_view.o_ai_dashboard_list {
+    background-color: var(--ai-plane);
+
+    .o_list_renderer {
+        // Odoo gives the renderer the whole height on desktop (for its sticky
+        // header); here it wraps its rows, and scrolls inside once it is long.
+        height: auto;
+        max-height: calc(100% - 52px);
+        margin: 20px 24px 32px;
+        border: 1px solid var(--ai-edge);
+        border-radius: var(--ai-radius);
+        background-color: var(--ai-surface);
+        box-shadow: var(--ai-shadow-sm);
+
+        @include media-breakpoint-down(md) {
+            margin: 12px;
+        }
+    }
+
+    .o_list_table {
+        // Hairlines and a hover, never zebra stripes.
+        --bs-table-striped-bg: transparent;
+        --bs-table-hover-bg: var(--ai-hover);
+        --bs-table-bg: transparent;
+        margin: 0;
+
+        thead th {
+            height: 40px;
+            border-bottom: 1px solid var(--ai-hair);
+            background-color: var(--ai-surface);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ai-muted);
+            vertical-align: middle;
+        }
+
+        tbody td {
+            height: 60px;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--ai-hair);
+            border-top: 0;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        // Bootstrap 5.3 paints a cell's stripe and hover as an inset shadow;
+        // here a row is plain until it is pointed at.
+        tbody tr > * {
+            box-shadow: none !important;
+        }
+
+        tbody tr.o_data_row:hover > * {
+            background-color: var(--ai-hover);
+        }
+
+        tfoot {
+            display: none;
+        }
+
+        // The checkbox and the star wait for the row to be pointed at, and
+        // stay once used, so a list being read looks like a list.
+        .o_data_row:not(.o_data_row_selected) .o_list_record_selector .o-checkbox,
+        .o_data_row .o_field_boolean_favorite .fa-star-o {
+            opacity: 0;
+            transition: opacity 120ms;
+        }
+
+        .o_data_row:hover .o_list_record_selector .o-checkbox,
+        .o_data_row:hover .o_field_boolean_favorite .fa-star-o {
+            opacity: 1;
+        }
+    }
+
+    .o_ai_title_cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .o_ai_title_text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    .o_ai_title_line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .o_ai_title_name {
+        overflow: hidden;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ai-ink);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .o_ai_title_desc {
+        overflow: hidden;
+        font-size: 13px;
+        color: var(--ai-muted);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .o_ai_badge_draft {
+        flex: none;
+        padding: 1px 8px;
+        border-radius: 999px;
+        background-color: var(--ai-warn-bg);
+        color: var(--ai-warn);
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .o_ai_reltime {
+        color: var(--ai-muted);
+        white-space: nowrap;
+    }
+}
+
+// ------------------------------------------------------------- phone rows
+.o_kanban_view.o_ai_dashboard_kanban {
+    .o_kanban_record {
+        border-radius: var(--ai-radius);
+    }
+
+    .o_ai_dash_card_main {
+        min-width: 0;
+    }
+}
+
+// ----------------------------------------------------------- share dialog
+.o_form_view.o_ai_share {
+    .o_form_renderer {
+        padding: 20px 24px 8px;
+    }
+
+    .o_ai_share_section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        & + .o_ai_share_section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--ai-hair);
+        }
+    }
+
+    .o_ai_share_heading {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ai-ink);
+    }
+
+    .o_ai_share_owner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .o_ai_share_role {
+        margin-left: auto;
+        font-size: 13px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_share_row {
+        display: grid;
+        grid-template-columns: 80px minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+
+        label {
+            margin: 0;
+            font-size: 13px;
+            color: var(--ai-muted);
+        }
+    }
+
+    .o_ai_share_note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_schedules .o_list_table {
+        --bs-table-striped-bg: transparent;
+
+        // Odoo pads a short list with empty rows; a schedule list ends at its
+        // last schedule and its "Add a line".
+        tbody tr:not(.o_data_row) > td[colspan]:not(.o_field_x2many_list_row_add) {
+            display: none;
+        }
+
+        thead th {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ai-muted);
+        }
+    }
+
+    .o_ai_about {
+        white-space: pre-line;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ai-ink-2);
+    }
+}

@@ -20,6 +20,15 @@
                 <t t-if="dashboard.description"><t t-esc="dashboard.description"/><br/></t>
                 Calculated just now with your own Odoo permissions.
             </p>
+            <!-- The filters it was worked out with. On screen the bar says so;
+                 an email of figures for one vendor that never mentions the
+                 vendor reads as the whole business. -->
+            <t t-set="applied" t-value="[f for f in data.get('filters', []) if f.get('display') and f.get('available', True)]"/>
+            <p t-if="applied" style="margin: -12px 0 20px; color: #6b7f82; font-size: 13px;">
+                <t t-foreach="applied" t-as="f" t-key="f['key']">
+                    <t t-esc="f['label']"/>: <strong style="color: #1f2d30;" t-esc="f['display']"/><t t-if="not f_last"> · </t>
+                </t>
+            </p>
 
             <!-- KPIs first: on a phone these are usually the whole reason the
                  email gets opened. -->
@@ -138,11 +147,14 @@
             </p>
 
             <p style="margin: 18px 0 0; font-size: 11px; color: #8fa3a5; border-top: 1px solid #eef3f2; padding-top: 12px;">
-                You asked for this
-                <t t-if="subscription.interval == 'daily'">every weekday morning</t>
-                <t t-elif="subscription.interval == 'weekly'">every Monday morning</t>
+                <t t-if="subscription.created_by_id and subscription.created_by_id != subscription.user_id">
+                    <t t-esc="subscription.created_by_id.name"/> scheduled this for you
+                </t>
+                <t t-else="">You scheduled this</t>
+                <t t-if="subscription.interval == 'daily'">every weekday</t>
+                <t t-elif="subscription.interval == 'weekly'">every week</t>
                 <t t-else="">on the first of each month</t>.
-                Turn it off from the dashboard's <b>Email me this</b> button.
+                <a t-att-href="manage_url" style="color: #6b7f82;">Manage or stop these emails</a>.
                 Figures were calculated with your own permissions, so they may
                 differ from a colleague's copy.
             </p>
