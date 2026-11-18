@@ -22,6 +22,9 @@
                         <button t-if="state.view === 'log' and state.book and !state.book.empty" class="btn btn-secondary o_sb_add_sale" t-on-click="() => this.openPurchase({ kind: 'sale' })" data-tooltip="An invoice in one go: customer, number, items, prices and VAT. Saving delivers the goods and books the invoice.">
                             <i class="fa fa-file-text-o me-1"/>Add sale
                         </button>
+                        <button t-if="state.view === 'log' and state.book and !state.book.empty" class="btn btn-secondary o_sb_add_bill" t-on-click="() => this.openAddBill()" data-tooltip="A bill already paid, for something not kept in stock: stationery, electricity, a repair. Each line says what it was for, with its account and VAT; the scan is optional. Saving posts the vendor bill in Accounting and pays it. Nothing goes on the book. Shortcut: B">
+                            <i class="fa fa-money me-1"/>Add bill
+                        </button>
                         <button t-if="state.view === 'log' and state.book and state.book.can_post and readyIds.length" class="btn btn-success" t-on-click="postAll">
                             <i class="fa fa-check me-1"/>Post <t t-esc="readyIds.length"/> ready
                         </button>
