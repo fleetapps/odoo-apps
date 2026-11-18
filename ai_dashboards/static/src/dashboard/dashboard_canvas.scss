@@ -1,269 +1,738 @@
-// The dashboard canvas.
-// Uses Odoo's own CSS variables so a dashboard follows the active theme
-// (dark mode included) rather than carrying a palette that drifts from the
-// rest of the backend.
+// The dashboard page.
+//
+// Colours come from tokens.scss (CSS custom properties built from Odoo's own
+// SCSS variables), so nothing here names a colour of its own. Calm by
+// default: soft surfaces, light-weight figures, one accent, colour kept for
+// data and status.
 
-.o_ai_dash {
-    --o-ai-gap: 1rem;
+// ------------------------------------------------- the form around the page
+// The dashboard is a form with no sheet, header or chatter: the page fills it.
+.o_form_view.o_ai_dashboard_form {
+    background-color: $o-webclient-background-color;
 
-    .o_ai_dash_loading,
-    .o_ai_dash_blank {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 12rem;
-        color: var(--gray-500, #8a8f98);
+    .o_form_renderer {
+        padding: 0;
+        max-width: none;
+        background-color: transparent;
     }
 
-    // ------------------------------------------------------------ filters
-    // One row of controls that wraps, each a label and its control at the
-    // same height, so a Period, a Vendor and a Status read as one toolbar
-    // rather than three widgets that happened to land together.
-    .o_ai_dash_filters {
-        --o-ai-filter-height: calc(1.5em + .5rem + 2 * var(--border-width, 1px));
+    .o_field_widget.o_field_ai_dashboard_canvas {
+        display: block;
+        width: 100%;
+    }
+}
 
+.o_ai_dash {
+    position: relative;
+    padding: 28px 32px 48px;
+    background-color: var(--ai-plane);
+    color: var(--ai-ink);
+    min-height: 100%;
+
+    @include media-breakpoint-down(md) {
+        padding: 16px 16px 40px;
+    }
+
+    // ------------------------------------------------------------- header
+    .o_ai_header {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .o_ai_header_row {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: .5rem 1rem;
-        margin-bottom: var(--o-ai-gap);
+        justify-content: space-between;
+        gap: 12px 24px;
+
+        &--sub {
+            align-items: flex-end;
+        }
     }
 
-    .o_ai_dash_filter {
+    .o_ai_titleline {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 12px;
+        min-width: 0;
+    }
+
+    .o_ai_title {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        color: var(--ai-ink);
+    }
+
+    .o_ai_title_input {
+        font-size: 24px;
+        font-weight: 500;
+        max-width: 560px;
+    }
+
+    .o_ai_renamable {
+        cursor: text;
+        border-bottom: 1px dashed transparent;
+
+        &:hover {
+            border-bottom-color: var(--ai-axis);
+        }
+    }
+
+    .o_ai_actions {
         display: flex;
         align-items: center;
-        gap: .4rem;
+        gap: 8px;
+
+        .btn {
+            border-radius: 8px;
+        }
+    }
+
+    .o_ai_header_meta {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
         min-width: 0;
-
-        select {
-            width: auto;
-            min-width: 8.5rem;
-        }
+        flex: 1 1 380px;
+        max-width: 760px;
     }
 
-    .o_ai_dash_filter_label {
+    .o_ai_description {
         margin: 0;
-        font-size: .85rem;
-        color: var(--gray-600, #6c757d);
+        font-size: 14px;
+        color: var(--ai-ink-2);
+    }
+
+    .o_ai_live {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_live_dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--ai-good-line);
+    }
+
+    // -------------------------------------------------------------- pills
+    .o_ai_pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        padding: 0 10px;
+        border: 1px solid var(--ai-hair);
+        border-radius: 999px;
+        background-color: var(--ai-surface);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--ai-ink-2);
         white-space: nowrap;
+
+        &--warn {
+            border-color: transparent;
+            background-color: var(--ai-warn-bg);
+            color: var(--ai-warn);
+        }
+
+        &--good {
+            border-color: transparent;
+            background-color: var(--ai-good-bg);
+            color: var(--ai-good);
+        }
     }
 
-    // A filter that is narrowing the figures says so in its label: easy to
-    // spot at a glance, quiet enough not to compete with the tiles.
-    .o_ai_dash_filter--set .o_ai_dash_filter_label {
-        color: var(--gray-900, #212529);
-        font-weight: 600;
+    .o_ai_faces {
+        display: inline-flex;
+        margin-left: -6px;
     }
 
-    .o_ai_dash_filter_na {
-        font-size: .8rem;
-        font-style: italic;
+    .o_ai_face {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        object-fit: cover;
+        box-shadow: 0 0 0 2px var(--ai-surface);
+
+        & + .o_ai_face {
+            margin-left: -5px;
+        }
     }
 
-    // Odoo's record picker draws as a form field — underlined, borderless.
-    // In a toolbar beside boxed selects that reads as a different kind of
-    // control, so here it takes the same box, height and focus colour as a
-    // small select. A fixed width keeps the bar from shifting each time a
-    // vendor is added; the picks wrap inside the box once they fill it.
-    .o_ai_dash_filter_records {
-        width: 22rem;
-        max-width: 100%;
+    // ------------------------------------------------------------ callouts
+    .o_ai_callout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 12px;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border: 1px solid var(--ai-edge);
+        border-radius: var(--ai-radius);
+        background-color: var(--ai-surface);
+        box-shadow: var(--ai-shadow-sm);
+        font-size: 14px;
 
-        .o_multi_record_selector {
-            min-height: var(--o-ai-filter-height);
-            padding: .125rem .5rem;
-            border: var(--border-width, 1px) solid var(--border-color, #dee2e6);
-            border-radius: var(--border-radius-sm, .25rem);
-            background-color: var(--body-bg, #fff);
-            font-size: .875rem;
-            align-items: center;
+        &--draft {
+            background-color: var(--ai-warn-bg);
+            border-color: transparent;
+            color: var(--ai-warn);
+        }
 
-            &:focus-within {
-                border-color: var(--primary, #714b67);
+        &--error {
+            background-color: var(--ai-critical-bg);
+            border-color: transparent;
+            color: var(--ai-critical);
+        }
+    }
+
+    .o_ai_callout_text {
+        flex: 1 1 260px;
+    }
+
+    .o_ai_empty {
+        padding: 48px 0;
+        text-align: center;
+        color: var(--ai-muted);
+    }
+
+    // ------------------------------------------------------------- filters
+    .o_ai_filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .o_ai_select {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 10px 0 12px;
+        border: 1px solid var(--ai-hair);
+        border-radius: 8px;
+        background-color: var(--ai-surface);
+        box-shadow: var(--ai-shadow-sm);
+        color: var(--ai-ink);
+        font-size: 13px;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--ai-hover);
+        }
+
+        &--static {
+            cursor: default;
+            color: var(--ai-ink-2);
+
+            &:hover {
+                background-color: var(--ai-surface);
             }
+        }
 
-            // In a form Odoo gives the search box a line of its own under
-            // the picked records. In a one-line toolbar that doubles the
-            // box's height the moment anything is picked, so here it sits
-            // beside them and takes whatever room is left.
-            .o_record_autocomplete_with_caret {
-                min-width: 3rem;
-                flex: 1 1 3rem;
-            }
+        &--na {
+            color: var(--ai-muted);
+        }
 
-            input {
+        &--set {
+            border-color: var(--ai-axis);
+        }
+
+        // A record picker is a tag input; it sits in the same box as the others.
+        &--records {
+            cursor: default;
+            height: auto;
+            min-height: 34px;
+            max-width: 420px;
+
+            .o_input {
                 border: 0;
-                background: transparent;
                 box-shadow: none;
+                background: transparent;
+                min-width: 120px;
+                font-size: 13px;
             }
         }
     }
 
-    .o_ai_dash_filter--set .o_multi_record_selector {
-        border-color: var(--gray-500, #adb5bd);
+    .o_ai_select_label {
+        color: var(--ai-muted);
     }
 
-    .o_ai_dash_reset {
-        padding-left: 0;
-        padding-right: 0;
-        white-space: nowrap;
+    .o_ai_select_icon,
+    .o_ai_caret {
+        color: var(--ai-muted);
     }
 
-    // Unsaved work says so where the work happened, not only up in the
-    // breadcrumb.
-    .o_ai_dash_unsaved {
-        margin-bottom: 12px;
-        padding: 8px 12px;
+    .o_ai_reset {
+        font-size: 13px;
+        padding: 0 4px;
     }
 
-    // A reload keeps what you are reading on screen and just dims it. Swapping
-    // a dashboard for a spinner every time a filter moves loses your place.
-    &.o_ai_dash--busy .o_ai_dash_grid {
+    // ---------------------------------------------------------- highlights
+    .o_ai_highlights {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 16px 20px;
+        border: 1px solid var(--ai-edge);
+        border-radius: var(--ai-radius);
+        box-shadow: var(--ai-shadow-sm);
+        background: linear-gradient(90deg,
+            color-mix(in srgb, var(--ai-s1) 6%, var(--ai-surface)),
+            var(--ai-surface) 60%);
+    }
+
+    .o_ai_highlights_icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background-color: color-mix(in srgb, var(--ai-s1) 12%, transparent);
+        color: var(--ai-s1);
+
+        svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    }
+
+    .o_ai_highlights_text {
+        flex: 1 1 auto;
+        margin: 0;
+        min-width: 0;
+        font-size: 15px;
+
+        strong {
+            font-weight: 600;
+        }
+    }
+
+    .o_ai_dots {
+        display: flex;
+        gap: 6px;
+        flex: none;
+    }
+
+    .o_ai_dot {
+        width: 8px;
+        height: 8px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background-color: var(--ai-axis);
+        cursor: pointer;
+
+        &--on {
+            background-color: var(--ai-s1);
+        }
+    }
+
+    // ---------------------------------------------------------------- grid
+    .o_ai_grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+
+        @media (min-width: 1440px) {
+            gap: 20px;
+        }
+    }
+
+    @for $i from 1 through 12 {
+        .o_ai_w#{$i} {
+            grid-column: span #{$i};
+        }
+    }
+
+    @include media-breakpoint-down(lg) {
+        @for $i from 1 through 5 {
+            .o_ai_w#{$i} {
+                grid-column: span 6;
+            }
+        }
+    }
+
+    @include media-breakpoint-down(md) {
+        .o_ai_grid > .o_ai_tile {
+            grid-column: span 12;
+        }
+    }
+
+    // A reload keeps what is on screen and dims it, rather than a spinner.
+    &.o_ai_dash--busy .o_ai_grid {
         opacity: 0.55;
         pointer-events: none;
         transition: opacity 120ms ease-out;
     }
 
-    .o_ai_dash_editswitch {
-        margin-left: 8px;
+    // ---------------------------------------------------------------- tile
+    .o_ai_tile {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+        padding: 20px;
+        border: 1px solid var(--ai-edge);
+        border-radius: var(--ai-radius);
+        background-color: var(--ai-surface);
+        box-shadow: var(--ai-shadow-sm);
+        overflow: hidden;
+    }
+
+    .o_ai_tile_head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 24px;
+    }
+
+    .o_ai_tile_title {
+        flex: 1 1 auto;
+        min-width: 0;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.35;
+        color: var(--ai-ink);
+    }
+
+    .o_ai_tile_aside {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex: none;
+    }
+
+    .o_ai_chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 24px;
+        padding: 0 6px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--ai-muted);
+        font-size: 12px;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: var(--ai-hover);
+            color: var(--ai-ink);
+        }
+    }
+
+    .o_ai_asof {
+        font-size: 12px;
+        color: var(--ai-muted);
         white-space: nowrap;
     }
 
-    // A title you can rename looks like one, but only while editing.
-    .o_ai_dash_renamable {
-        cursor: text;
-        border-bottom: 1px dashed transparent;
+    .o_ai_icon_btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--ai-muted);
 
-        &:hover { border-bottom-color: var(--o-gray-400, #ced4da); }
+        &:hover:not(:disabled) {
+            background-color: var(--ai-hover);
+            color: var(--ai-ink);
+        }
+
+        &:disabled {
+            opacity: 0.35;
+        }
     }
 
-    .o_ai_dash_took {
-        margin-left: auto;
-        font-size: .75rem;
-    }
-
-    // --------------------------------------------------------------- grid
-    .o_ai_dash_grid {
-        display: grid;
-        grid-template-columns: repeat(12, minmax(0, 1fr));
-        gap: var(--o-ai-gap);
-    }
-
-    .o_ai_dash_tile {
+    // -------------------------------------------------------------- figures
+    .o_ai_figure_block {
         display: flex;
         flex-direction: column;
-        min-width: 0;              // lets a wide table scroll instead of pushing
-        background: var(--white, #fff);
-        border: 1px solid var(--gray-300, #dee2e6);
-        border-radius: 10px;
-        padding: .9rem 1.1rem 1rem;
+        gap: 4px;
     }
 
-    .o_ai_dash_tile_head {
+    .o_ai_figure {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: .5rem;
-        margin-bottom: .5rem;
-        min-height: 1.75rem;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 6px;
+        font-size: 28px;
+        font-weight: 400;
+        line-height: 1.15;
+        letter-spacing: -0.015em;
+        color: var(--ai-ink);
 
-        h4 {
-            font-size: .95rem;
-            font-weight: 600;
-            margin: 0;
-            color: var(--gray-700, #495057);
+        &--sm {
+            font-size: 18px;
+        }
+
+        &--xs {
+            font-size: 15px;
         }
     }
 
-    // Editing controls stay out of the way until the tile is hovered, so a
-    // dashboard being read looks like a dashboard rather than a workbench.
-    .o_ai_dash_tools {
-        display: flex;
-        align-items: center;
-        gap: .05rem;
-        opacity: 0;
-        transition: opacity .12s ease;
-
-        .btn { padding: .1rem .3rem; font-size: .75rem; }
-    }
-    .o_ai_dash_tile:hover .o_ai_dash_tools,
-    .o_ai_dash_tools:focus-within { opacity: 1; }
-
-    // --------------------------------------------------------- summary cards
-    &.o_ai_dash--cards {
-        padding: 1rem;
-        background: var(--gray-100, #f4f5f8);
+    .o_ai_sym {
+        font-size: 0.7em;
+        color: var(--ai-muted);
+        letter-spacing: 0;
     }
 
-    .o_ai_dash_tile--card {
-        padding: 1.1rem 1.25rem 1.25rem;
-        border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+    .o_ai_num {
+        white-space: nowrap;
+    }
 
-        .o_ai_dash_tile_head {
-            margin-bottom: .75rem;
+    .o_ai_caption {
+        margin: 0;
+        font-size: 12px;
+        color: var(--ai-muted);
 
-            h4 {
-                font-size: .78rem;
-                font-weight: 700;
-                letter-spacing: .03em;
-                text-transform: uppercase;
-                color: var(--gray-800, #393a3d);
-            }
+        &--lead {
+            margin-top: -6px;
         }
     }
 
-    .o_ai_card_period {
-        flex: 0 0 auto;
-        max-width: 8rem;
-        padding: 0 .1rem;
-        border: 0;
-        background: transparent;
-        color: var(--gray-700, #393a3d);
-        font-size: .8rem;
+    .o_ai_overdue {
+        color: var(--ai-warn);
+        font-weight: 500;
+    }
+
+    .o_ai_delta {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        margin-left: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0;
+        white-space: nowrap;
+        color: var(--ai-muted);
+
+        &--good {
+            color: var(--ai-good);
+        }
+
+        &--bad {
+            color: var(--ai-bad);
+        }
+
+        &--inline {
+            margin: 0 6px 0 0;
+        }
+    }
+
+    .o_ai_arrow {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .o_ai_clickable {
         cursor: pointer;
     }
 
-    .o_ai_card_asof {
-        flex: 0 0 auto;
-        color: var(--gray-600, #6b6c72);
-        font-size: .8rem;
+    // ------------------------------------------------------------- sparkline
+    .o_ai_spark_wrap {
+        height: 56px;
+        margin: auto -20px -20px;
     }
 
-    .o_ai_card_big {
-        font-size: 1.9rem;
-        font-weight: 700;
-        line-height: 1.15;
-        color: var(--gray-900, #393a3d);
-        font-variant-numeric: tabular-nums;
-        overflow-wrap: anywhere;
+    .o_ai_spark {
+        display: block;
+        width: 100%;
+        height: 100%;
+        --ai-spark: var(--ai-s1);
 
-        &.text-danger { color: #d52b1e !important; }
+        &--good {
+            --ai-spark: var(--ai-good-line);
+        }
+
+        &--bad {
+            --ai-spark: var(--ai-bad-line);
+        }
     }
 
-    .o_ai_card_caption {
-        margin-bottom: .9rem;
-        color: var(--gray-600, #6b6c72);
-        font-size: .8rem;
+    .o_ai_spark_top {
+        stop-color: var(--ai-spark);
+        stop-opacity: 0.22;
     }
 
-    .o_ai_card_none {
-        padding: 2.5rem 0;
-        color: var(--gray-600, #6b6c72);
-        font-size: .85rem;
-        text-align: center;
+    .o_ai_spark_bottom {
+        stop-color: var(--ai-spark);
+        stop-opacity: 0;
     }
 
-    .o_ai_card_chart { height: 13rem; }
+    .o_ai_spark_area {
+        stroke: none;
+    }
 
-    .o_ai_card_ring {
+    .o_ai_spark_line {
+        fill: none;
+        stroke: var(--ai-spark);
+        stroke-width: 1.75px;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        vector-effect: non-scaling-stroke;
+    }
+
+    // --------------------------------------------------------------- charts
+    .o_ai_chart {
+        position: relative;
+        min-width: 0;
+
+        canvas {
+            display: block;
+        }
+
+        // A captioned line at a third of the page runs to the tile's edges.
+        &--hero {
+            margin: auto -20px -20px;
+        }
+    }
+
+    .o_ai_legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 12px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_legend_key {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    // Colour swatches by slot; a legend's mark mirrors the chart's.
+    .o_ai_sw {
+        display: inline-block;
+        flex: none;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        background-color: var(--ai-s1);
+
+        &--dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        &--compare {
+            background-color: var(--ai-compare);
+        }
+
+        &--other {
+            background-color: var(--ai-other);
+        }
+    }
+
+    @for $i from 1 through 8 {
+        .o_ai_sw-#{$i} {
+            background-color: var(--ai-s#{$i});
+        }
+    }
+
+    .o_ai_single {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 8px;
+        flex: 1 1 auto;
+        min-height: 120px;
+        padding: 16px;
+        border: 1px dashed var(--ai-hair);
+        border-radius: var(--ai-radius);
+        font-size: 13px;
+        color: var(--ai-ink-2);
+    }
+
+    // ----------------------------------------------------------------- ring
+    .o_ai_ring {
         display: flex;
         align-items: center;
-        gap: .75rem;
+        gap: 20px;
+        min-width: 0;
     }
 
-    .o_ai_card_legend {
-        flex: 1 1 50%;
+    .o_ai_ring_chart {
+        position: relative;
+        flex: none;
+        width: 148px;
+    }
+
+    // On a phone the legend needs the whole width for its names.
+    @include media-breakpoint-down(sm) {
+        .o_ai_ring {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .o_ai_ring_chart {
+            align-self: center;
+        }
+    }
+
+    .o_ai_ring_center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    .o_ai_ring_sym {
+        font-size: 11px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_ring_total {
+        font-size: 18px;
+        letter-spacing: -0.01em;
+    }
+
+    .o_ai_legend_list {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        flex: 1 1 auto;
         min-width: 0;
         margin: 0;
         padding: 0;
@@ -271,272 +740,381 @@
 
         li {
             display: flex;
-            gap: .5rem;
-            margin-bottom: .4rem;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            font-size: 13px;
         }
 
-        i {
-            flex: 0 0 .7rem;
-            width: .7rem;
-            height: .7rem;
-            margin-top: .25rem;
-            border-radius: 50%;
-        }
-
-        div { min-width: 0; }
-
-        strong {
-            display: block;
-            font-size: .85rem;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            line-height: 1.2;
-        }
-
-        small {
-            display: block;
-            overflow: hidden;
-            color: var(--gray-600, #6b6c72);
-            font-size: .75rem;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        &--compact {
+            gap: 6px;
         }
     }
 
-    .o_ai_card_donut {
-        position: relative;
-        flex: 1 1 50%;
+    .o_ai_legend_label {
+        flex: 1 1 auto;
         min-width: 0;
-        height: 10.5rem;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--ai-ink-2);
     }
 
-    .o_ai_pnl_row { margin-top: .9rem; }
+    .o_ai_legend_value {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
 
-    .o_ai_pnl_figure {
+    .o_ai_legend_share {
+        width: 34px;
+        text-align: right;
+        font-size: 12px;
+        color: var(--ai-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    // ------------------------------------------------------------------ P&L
+    .o_ai_pnl {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    .o_ai_pnl_main .o_ai_caption {
+        display: flex;
+        align-items: center;
+        margin-top: 4px;
+    }
+
+    .o_ai_pnl_side {
         display: flex;
         flex-direction: column;
-        margin-bottom: .3rem;
+        gap: 16px;
+        padding-left: 20px;
+        border-left: 1px solid var(--ai-hair);
+    }
 
-        span {
-            font-size: 1.05rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-        }
+    .o_ai_pnl_item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
 
-        small {
-            color: var(--gray-600, #6b6c72);
-            font-size: .75rem;
+    .o_ai_pnl_label {
+        display: block;
+        font-size: 12px;
+        color: var(--ai-muted);
+    }
+
+    .o_ai_meter {
+        display: block;
+        height: 4px;
+        margin-top: 4px;
+        border-radius: 999px;
+        background-color: var(--ai-track);
+    }
+
+    .o_ai_meter_fill {
+        display: block;
+        height: 4px;
+        border-radius: 999px;
+    }
+
+    // ---------------------------------------------------------------- ageing
+    .o_ai_segbar {
+        display: flex;
+        gap: 2px;
+        height: 28px;
+    }
+
+    .o_ai_seg {
+        display: flex;
+        align-items: center;
+        min-width: 3px;
+        padding-left: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    @for $i from 1 through 5 {
+        .o_ai_ramp-#{$i} {
+            background-color: var(--ai-o#{$i});
+            color: var(--ai-o-ink-#{$i});
         }
     }
 
-    .o_ai_pnl_track {
-        height: 1.25rem;
-        background: var(--gray-200, #eceef1);
+    // ----------------------------------------------------------------- banks
+    .o_ai_banks {
+        display: flex;
+        flex-direction: column;
+        margin-top: -6px;
     }
-
-    .o_ai_pnl_bar { height: 100%; }
-    .o_ai_pnl_bar--in { background: #2ca01c; }
-    .o_ai_pnl_bar--out { background: #00b7c3; }
 
     .o_ai_bank {
-        padding: .65rem 0;
-        border-bottom: 1px solid var(--gray-200, #eceef1);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--ai-hair);
 
-        &:first-child { padding-top: 0; }
-        &:last-child { border-bottom: 0; }
+        &:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+        }
     }
 
     .o_ai_bank_head {
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        gap: .5rem;
-        margin-bottom: .2rem;
+        gap: 8px;
     }
 
-    .o_ai_bank_review {
-        color: #0077c5;
-        font-size: .8rem;
-        white-space: nowrap;
+    .o_ai_bank_name {
+        font-size: 14px;
+        font-weight: 500;
     }
 
-    .o_ai_bank_line {
-        display: flex;
-        justify-content: space-between;
-        gap: .5rem;
-        color: var(--gray-600, #6b6c72);
-        font-size: .8rem;
-        font-variant-numeric: tabular-nums;
+    .o_ai_bank_figures {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
     }
 
-    // ---------------------------------------------------------------- kpi
-    .o_ai_dash_kpi {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        flex: 1 1 auto;
-        min-height: 4.5rem;
+    // ---------------------------------------------------------------- tables
+    .o_ai_tablewrap {
+        max-height: 372px;
+        overflow: auto;
+
+        &--pivot {
+            max-height: 420px;
+        }
     }
 
-    .o_ai_dash_kpi_value {
-        font-size: clamp(1.6rem, 3.2vw, 2.4rem);
-        font-weight: 600;
-        line-height: 1.1;
-        font-variant-numeric: tabular-nums;
-        overflow-wrap: anywhere;
-    }
+    .o_ai_table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
 
-    .o_ai_dash_kpi_delta { font-size: .82rem; margin-top: .25rem; }
-
-    .o_ai_dash_clickable {
-        cursor: pointer;
-        border-radius: 6px;
-
-        &:hover { background: var(--gray-100, #f6f7f9); }
-    }
-
-    // -------------------------------------------------------------- chart
-    .o_ai_dash_chart {
-        position: relative;
-        flex: 1 1 auto;
-        min-height: 13rem;
-        height: 13rem;             // Chart.js needs a bounded box to size into
-    }
-
-    // -------------------------------------------------------------- table
-    .o_ai_dash_tablewrap {
-        overflow-x: auto;          // wide tables scroll themselves, never the page
-        max-height: 18rem;
-        overflow-y: auto;
-
-        table { margin: 0; font-size: .85rem; }
-        th {
-            position: sticky;
-            top: 0;
-            background: var(--white, #fff);
-            font-weight: 500;
-            color: var(--gray-600, #6c757d);
+        th,
+        td {
+            height: 40px;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--ai-hair);
+            text-align: left;
             white-space: nowrap;
         }
-        td { font-variant-numeric: tabular-nums; }
-    }
 
-    // -------------------------------------------------------------- pivot
-    .o_ai_dash_pivot {
-        max-height: 26rem;         // taller than a plain table: it has two axes
-
-        // The row header stays put while you scan right, and the column
-        // header while you scan down. Without both, a wide pivot is a grid of
-        // numbers with nothing to attach them to.
-        .o_ai_dash_pivot_rowhead {
+        thead th {
             position: sticky;
-            left: 0;
-            z-index: 1;
-            background: var(--white, #fff);
+            top: 0;
+            z-index: 2;
+            height: 36px;
+            background-color: var(--ai-surface);
             font-weight: 500;
-            white-space: nowrap;
-            max-width: 16rem;
+            color: var(--ai-muted);
+        }
+
+        td:first-child {
+            max-width: 320px;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        // The corner cell sits at both intersections, so it needs to outrank
-        // each of them or one will scroll over it.
-        .o_ai_dash_pivot_corner {
-            position: sticky;
-            left: 0;
-            top: 0;
-            z-index: 3;
-            background: var(--white, #fff);
+        tbody tr.o_ai_clickable:hover td,
+        tbody td.o_ai_clickable:hover {
+            background-color: var(--ai-hover);
         }
 
-        thead th { z-index: 2; }
+        .o_ai_num_col {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
 
-        .o_ai_dash_pivot_total {
+        .o_ai_total {
+            background-color: var(--ai-tint);
             font-weight: 600;
-            background: var(--gray-100, #f6f7f9);
         }
 
-        tfoot td, tfoot th {
+        tfoot td,
+        tfoot th {
             position: sticky;
             bottom: 0;
-            background: var(--gray-100, #f6f7f9);
-            border-top: 2px solid var(--gray-300, #dee2e6);
+            border-bottom: 0;
+            // A border on a sticky cell scrolls away under border-collapse;
+            // an inset shadow stays with the row.
+            box-shadow: inset 0 1px 0 var(--ai-axis);
+            background-color: var(--ai-tint);
+            font-weight: 600;
+        }
+
+        .o_ai_blank {
+            color: var(--ai-axis);
         }
     }
 
-    // A swatch showing the tile's current colour, clicked to cycle. Sits in
-    // the hover toolbar so it is found where every other tile control is.
-    .o_ai_dash_swatch {
-        width: 1rem;
-        height: 1rem;
-        flex: 0 0 auto;
-        border: 1px solid rgba(0, 0, 0, .15);
-        border-radius: 50%;
-        padding: 0;
-        margin: 0 .15rem;
-        cursor: pointer;
+    .o_ai_pivot {
+        .o_ai_pivot_rowhead,
+        .o_ai_pivot_corner {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            max-width: 260px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background-color: var(--ai-surface);
+            font-weight: 500;
+        }
 
-        &:hover { outline: 2px solid var(--gray-400, #ced4da); outline-offset: 1px; }
+        thead .o_ai_pivot_corner {
+            z-index: 3;
+        }
     }
 
-    .o_ai_dash_pager {
+    .o_ai_pager {
         display: flex;
         flex-wrap: wrap;
-        gap: .25rem 1.5rem;
-        margin-top: .5rem;
-        font-size: .78rem;
+        gap: 4px 20px;
+        font-size: 12px;
+        color: var(--ai-muted);
     }
 
-    .o_ai_dash_pager_axis {
-        display: flex;
+    .o_ai_pager_axis {
+        display: inline-flex;
         align-items: center;
-        gap: .2rem;
+        gap: 2px;
 
-        .btn { padding: .1rem .35rem; font-size: .78rem; }
-        .btn:disabled { opacity: .3; }
+        > span {
+            margin-right: 4px;
+        }
     }
 
-    // ------------------------------------------------------------ messages
-    .o_ai_dash_msg {
+    // -------------------------------------------------------------- messages
+    .o_ai_msg {
         display: flex;
         align-items: center;
+        gap: 8px;
         flex: 1 1 auto;
-        min-height: 5rem;
-        font-size: .85rem;
-        color: var(--gray-600, #6c757d);
+        min-height: 80px;
+        font-size: 13px;
+        color: var(--ai-muted);
 
-        &--error { color: var(--danger, #d9534f); }
-    }
-
-    .o_ai_dash_more {
-        margin-top: .4rem;
-        font-size: .75rem;
-        color: var(--warning-dark, #8a6d00);
-    }
-
-    .o_ai_dash_foot {
-        margin: var(--o-ai-gap) 0 0;
-        font-size: .78rem;
-    }
-
-    // ------------------------------------------------------------- mobile
-    // One column below tablet: a 3-of-12 KPI is unreadable on a phone.
-    @media (max-width: 768px) {
-        .o_ai_dash_grid > .o_ai_dash_tile {
-            grid-column: span 12 !important;
+        &--error {
+            color: var(--ai-critical);
         }
-        .o_ai_dash_tools { opacity: 1; }
+    }
 
-        // Each filter takes the full width, label above its control, so a
-        // picker with three vendors in it is still readable on a phone.
-        .o_ai_dash_filter {
-            flex: 1 1 100%;
-            flex-direction: column;
-            align-items: stretch;
-            gap: .2rem;
+    .o_ai_note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--ai-muted);
+    }
 
-            select { width: 100%; }
+    // -------------------------------------------------------------- skeleton
+    .o_ai_tile_body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .o_ai_skel {
+        display: block;
+        border-radius: 6px;
+        background: linear-gradient(90deg, var(--ai-track) 25%, var(--ai-hover) 50%, var(--ai-track) 75%);
+        background-size: 200% 100%;
+        animation: o_ai_shimmer 1.2s ease-in-out infinite;
+
+        &--title {
+            width: 40%;
+            height: 14px;
         }
-        .o_ai_dash_filter_records { width: 100%; max-width: 100%; }
+
+        &--figure {
+            width: 55%;
+            height: 28px;
+        }
+
+        &--body {
+            height: 96px;
+        }
+    }
+
+    // ------------------------------------------------------------ edit mode
+    &.o_ai_dash--editing .o_ai_tile {
+        border-style: dashed;
+        border-color: var(--ai-axis);
+        box-shadow: none;
+    }
+
+    .o_ai_drag {
+        color: var(--ai-muted);
+        cursor: grab;
+    }
+
+    .o_ai_swatch {
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--ai-hair);
+        cursor: pointer;
+    }
+
+    // The bar that says there is something to save, where the work happened.
+    .o_ai_savebar {
+        position: sticky;
+        bottom: 16px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        max-width: calc(100% - 32px);
+        margin: 24px auto 0;
+        padding: 8px 8px 8px 16px;
+        border: 1px solid var(--ai-hair);
+        border-radius: 12px;
+        background-color: var(--ai-surface);
+        box-shadow: var(--ai-shadow);
+        font-size: 13px;
+    }
+}
+
+// Menus open in an overlay outside the page, so they are styled on their own.
+.o_ai_menu {
+    min-width: 200px;
+    padding: 6px;
+    border-radius: 10px;
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .o_ai_check {
+        width: 14px;
+    }
+}
+
+@keyframes o_ai_shimmer {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .o_ai_dash .o_ai_skel {
+        animation: none;
     }
 }

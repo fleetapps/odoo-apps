@@ -316,7 +316,8 @@ class TestStoredFields(TransactionCase):
 
     def test_a_stored_measure_is_accepted(self):
         spec = minimal()
-        spec["widgets"][0]["query"]["measures"] = ["credit_limit:sum"]
+        # A stored float base always has (credit_limit needs Accounting).
+        spec["widgets"][0]["query"]["measures"] = ["partner_latitude:sum"]
         spec_lib.validate(spec, self.env, self.scope)   # must not raise
 
     def test_count_is_always_allowed(self):

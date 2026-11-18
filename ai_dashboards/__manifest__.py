@@ -3,7 +3,7 @@
 # https://www.odoo.com/documentation/19.0/developer/reference/backend/module.html
 {
     "name": "AI Dashboards Pro",
-    "version": "19.0.3.2.0",
+    "version": "19.0.4.0.0",
     "category": "Productivity/Dashboard",
     "summary": "Build Odoo dashboards by chatting with Claude, ChatGPT or any "
                "MCP client — then open them in Odoo like any other app. No API "
@@ -81,10 +81,23 @@ URL, one sign-in, one log.
         "views/ai_dashboard_menus.xml",
     ],
     "assets": {
+        # Asset bundles: https://www.odoo.com/documentation/19.0/developer/reference/frontend/assets.html
         "web.assets_backend": [
+            "ai_dashboards/static/src/dashboard/tokens.scss",
             "ai_dashboards/static/src/dashboard/*.scss",
+            "ai_dashboards/static/src/list/*.scss",
+            # Dark steps belong to the dark bundle only (as mail does it).
+            ("remove", "ai_dashboards/static/src/**/*.dark.scss"),
             "ai_dashboards/static/src/dashboard/*.js",
             "ai_dashboards/static/src/dashboard/*.xml",
+            "ai_dashboards/static/src/list/*.js",
+            "ai_dashboards/static/src/list/*.xml",
+        ],
+        "web.assets_web_dark": [
+            "ai_dashboards/static/src/**/*.dark.scss",
+        ],
+        "web.assets_unit_tests": [
+            "ai_dashboards/static/tests/**/*.test.js",
         ],
     },
     "pre_init_hook": "pre_init_check",

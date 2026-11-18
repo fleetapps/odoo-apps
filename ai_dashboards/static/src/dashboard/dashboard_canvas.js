@@ -1,37 +1,45 @@
 /** @odoo-module **/
-
-import { Component, onWillStart, onWillUnmount, useRef, useState, useEffect } from "@odoo/owl";
+/**
+ * The dashboard page.
+ *
+ * A field widget on ai.dashboard's form, so the page keeps everything a form
+ * gives for free — a deep link, breadcrumbs, the record's save and discard,
+ * the unsaved-changes guard — while drawing the whole page itself: the header
+ * and its actions, the filters, the highlights and the tiles. The form around
+ * it has no sheet, no header and no chatter (see ai_dashboard_views.xml).
+ *
+ * Record actions (Keep it, Duplicate, Email me this, …) are Odoo's own
+ * ViewButton, so they keep a form button's behaviour exactly: the record is
+ * saved first, `confirm` asks, and the form reloads after.
+ *
+ * Drawing is split by job: format.js turns numbers into words, chart_theme.js
+ * builds Chart.js configurations, highlights.js writes the highlight
+ * sentences, widgets.js holds the chart and sparkline components. Tile
+ * templates are sub-templates of this one (dashboard_canvas.xml).
+ */
+import { Component, onWillStart, useEffect, useRef, useState } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
-import { registry } from "@web/core/registry";
-import { standardFieldProps } from "@web/views/fields/standard_field_props";
-import { useRecordObserver } from "@web/model/relational_model/utils";
-import { useService } from "@web/core/utils/hooks";
 import { Dropdown } from "@web/core/dropdown/dropdown";
-import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
-import { KeepLast } from "@web/core/utils/concurrency";
+import { DropdownItem } from "@web/core/dropdown/dropdown_item";
 import { _t } from "@web/core/l10n/translation";
+import { MultiRecordSelector } from "@web/core/record_selectors/multi_record_selector";
+import { registry } from "@web/core/registry";
+import { user } from "@web/core/user";
+import { KeepLast } from "@web/core/utils/concurrency";
+import { useService } from "@web/core/utils/hooks";
+import { formatFloat } from "@web/core/utils/numbers";
+import { useSortable } from "@web/core/utils/sortable_owl";
+import { useRecordObserver } from "@web/model/relational_model/utils";
+import { standardFieldProps } from "@web/views/fields/standard_field_props";
+import { ViewButton } from "@web/views/view_button/view_button";
+import { cartesianConfig, readTokens, ringConfig } from "./chart_theme";
+import { axisLabels, compactNumber, describeChange, formatParts, formatValue } from "./format";
+import { computeHighlights } from "./highlights";
+import { AiChart, AiSparkline } from "./widgets";
 
-// Chart.js ships with Odoo but is lazy-loaded rather than sitting in
-// assets_backend — the graph view pulls it the same way. Loading it here keeps
-// the promise that this module adds no external dependency.
+// Chart.js ships with Odoo but is lazy-loaded, as the graph view loads it.
 const CHART_BUNDLE = "web.chartjs_lib";
 
-// Odoo's own kanban colour ramp, so a dashboard looks like the rest of the
-// database rather than like a third-party widget bolted on.
-const PALETTE = [
-    "#5B8FF9", "#61DDAA", "#F6BD16", "#7262FD", "#78D3F8", "#9661BC",
-    "#F6903D", "#008685", "#F08BB4", "#6DC8EC", "#269A99", "#D8584B",
-];
-
-const CHART_TYPES = ["bar", "line", "pie", "donut", "aging"];
-// Summary cards draw their own figures, and do not change into anything else.
-const CARD_TYPES = ["pnl", "aging", "banks"];
-// A card's green, then what sits beside it.
-const CARD_PALETTE = ["#2ca01c", "#0077c5", "#ffb000", "#00b7c3", "#ff8000", "#7d2ae8", "#d52b1e", "#8d9096"];
-// Every period the server knows, in the order a person scans them: shortest
-// first, each "this" beside its "last", and "All time" at the end. The same
-// list serves the page's Period filter and a card's own period, so a card set
-// to "this week" by the assistant can still show what it is set to.
 const PERIOD_OPTIONS = [
     ["today", _t("Today")],
     ["this_week", _t("This week")],
@@ -47,51 +55,43 @@ const PERIOD_OPTIONS = [
     ["last_year", _t("Last year")],
     ["all_time", _t("All time")],
 ];
-// Which figures a tile needs. Two types in the same family are drawn from the
-// same payload, so switching between them is instant and local; crossing
-// families needs the server to shape the data differently. This one table is
-// what lets the editor know when it may repaint on its own and when it has to
-// ask — instead of asking every time, which is what made every edit feel like
-// it had failed.
+// Two types in one family draw from the same figures, so switching between
+// them repaints locally; crossing families needs the server.
 const SHAPE_FAMILY = {
     kpi: "kpi", table: "table", pivot: "pivot",
     bar: "chart", line: "chart", pie: "chart", donut: "chart",
     pnl: "pnl", aging: "aging", banks: "banks",
 };
-// A comparison is a question you ask of a whole dashboard — "how does all of
-// this look against last year?" — so it lives beside the period rather than
-// per tile. A tile can still opt out in its spec.
 const COMPARE_MODES = [
-    ["none", "No comparison"],
-    ["previous_period", "vs previous period"],
-    ["previous_year", "vs last year"],
+    ["none", _t("No comparison")],
+    ["previous_period", _t("vs previous period")],
+    ["previous_year", _t("vs last year")],
 ];
-// Drawn in the same hue as the series it sits beside, at reduced strength, so
-// which is "now" and which is "then" reads without consulting the legend.
-const COMPARE_ALPHA = "44";
+// Cards that show today's position take no period.
+const POSITION_CARDS = ["aging", "banks"];
+const CHART_TYPES = ["bar", "line", "pie", "donut"];
 const FORMAT_KINDS = ["plain", "integer", "monetary", "percent"];
-// "Show me the top ten" and "by quarter, not by month" are the two things
-// people ask of a chart more than any other, and both used to mean going back
-// to the assistant. They change the question rather than its appearance, so
-// they are the only edits here that refetch.
+const FORMAT_LABELS = {
+    plain: _t("a plain number"),
+    integer: _t("a whole number"),
+    monetary: _t("money"),
+    percent: _t("a percentage"),
+};
 const ROW_LIMITS = [5, 10, 20, 50];
 const GRANULARITIES = ["day", "week", "month", "quarter", "year"];
 const GRANULARITY_LABELS = {
-    day: "by day", week: "by week", month: "by month",
-    quarter: "by quarter", year: "by year",
+    day: _t("by day"), week: _t("by week"), month: _t("by month"),
+    quarter: _t("by quarter"), year: _t("by year"),
 };
-// Named for a person, not for the schema: nobody reading a dashboard thinks
-// "monetary".
-const FORMAT_LABELS = {
-    plain: "a plain number",
-    integer: "a whole number",
-    monetary: "money",
-    percent: "a percentage",
-};
+const SIZES = [[3, _t("Small")], [4, _t("Medium")], [6, _t("Half")], [8, _t("Wide")], [12, _t("Full width")]];
+const SERIES_SLOTS = 8;
+// A horizontal bar reads long names; a vertical one, short ones and dates.
+const LONG_LABEL = 14;
+const MANY_BARS = 8;
 
 export class AIDashboardCanvas extends Component {
     static template = "ai_dashboards.Canvas";
-    static components = { Dropdown, MultiRecordSelector };
+    static components = { AiChart, AiSparkline, Dropdown, DropdownItem, MultiRecordSelector, ViewButton };
     static props = { ...standardFieldProps };
 
     setup() {
@@ -99,58 +99,38 @@ export class AIDashboardCanvas extends Component {
         this.action = useService("action");
         this.notification = useService("notification");
         this.rootRef = useRef("root");
-        // Only the newest answer is ever drawn. Picking three vendors in
-        // quick succession sends three requests that can come back in any
-        // order; without this the second could land last and the screen
-        // would show figures for a selection nobody is looking at any more.
+        this.gridRef = useRef("grid");
         this.keepLast = new KeepLast();
 
         this.state = useState({
             loading: true,
             error: null,
             data: null,
+            // Bumped on every new set of figures, so each chart redraws once.
+            stamp: 0,
             filters: {},
-            // Per-pivot paging, keyed by widget id. Kept in view state rather
-            // than in the spec: which page you are looking at is not a
-            // property of the dashboard, and paging must never dirty the
-            // record or prompt anyone to save.
+            // Per-pivot paging. View state, never part of the dashboard.
             offsets: {},
-            editing: null,   // widget id currently being renamed
-            // Set the moment the spec on screen stops matching the database.
-            // Tracked explicitly rather than read off the record, because the
-            // record is also dirtied by the name and description fields, and
-            // those do not change a single figure.
-            pending: false,
-            // A saved dashboard is something you read. Arrows, handles and
-            // menus on every tile turn reading into operating, so they stay
-            // out of the way until you say you are editing.
+            // A saved dashboard is for reading; tools appear only on request.
             editMode: false,
+            editing: null,
+            renamingTitle: false,
+            // Set the moment the spec on screen stops matching the database.
+            pending: false,
+            highlight: 0,
+            isAdmin: false,
         });
 
-        // One Chart instance per canvas element, torn down explicitly: Chart.js
-        // keeps its own registry keyed on the canvas, and leaking them is how a
-        // dashboard gets slower every time you reopen it.
-        this.charts = new Map();
-
         onWillStart(async () => {
-            await loadBundle(CHART_BUNDLE);
+            const [, isAdmin] = await Promise.all([
+                loadBundle(CHART_BUNDLE),
+                user.hasGroup("ai_dashboards.group_dashboard_admin"),
+            ]);
+            this.state.isAdmin = isAdmin;
             await this.load();
         });
 
-        // Redraw when the figures change *or* when the spec does. A chart is
-        // painted by Chart.js rather than by the template, so recolouring a
-        // tile or switching a bar to a line changes nothing on screen unless
-        // this runs — the second dependency is what makes those edits visible.
-        useEffect(
-            () => {
-                this.drawAll();
-                return () => this.destroyCharts();
-            },
-            () => [this.state.data, this.props.record.data[this.props.name]]
-        );
-
-        // Put the cursor in the title box the moment it opens, with the old
-        // name selected, so renaming is one gesture instead of three.
+        // Put the cursor in a rename box the moment it opens, old text selected.
         this.renamerRef = useRef("renamer");
         useEffect(
             (el) => {
@@ -162,44 +142,105 @@ export class AIDashboardCanvas extends Component {
             () => [this.renamerRef.el]
         );
 
-        // One rule, and it replaces a pile of special cases: if the figures we
-        // are holding cannot draw the spec that is now on screen, fetch new
-        // ones. That covers a tile switched from a chart to a pivot, a tile the
-        // assistant has just added, and a discard that puts back a spec we no
-        // longer have the data for. Everything else — a title, a colour, a
-        // width, a number format — is drawn from the spec directly and needs no
-        // round trip at all.
+        // Drag a tile by its handle to move it. Only while editing.
+        useSortable({
+            ref: this.gridRef,
+            elements: ".o_ai_tile",
+            handle: ".o_ai_drag",
+            enable: () => this.showTools,
+            cursor: "grabbing",
+            onDrop: ({ element, previous }) =>
+                this.moveAfter(element.dataset.id, previous ? previous.dataset.id : null),
+        });
+
+        // If the figures held cannot draw the spec now on screen — a tile
+        // turned from a chart into a pivot, one the assistant just added, a
+        // discard back to an older spec — fetch new ones. Anything that is
+        // only presentation is drawn from the spec with no round trip.
         useRecordObserver(() => {
             if (this.staleFigures()) {
                 this.load();
             }
         });
-
-        onWillUnmount(() => this.destroyCharts());
     }
 
-    // ------------------------------------------------------------- loading
+    /** Words handed to components as props, where a template's own text
+     *  would not be translated. */
+    get labels() {
+        return {
+            keep: _t("Keep it"),
+            discard: _t("Discard"),
+            discardConfirm: _t("Discard this draft? It was never added to your app tile."),
+            share: _t("Share"),
+            more: _t("More actions"),
+            archive: _t("Archive"),
+            archiveConfirm: _t("Archive this dashboard? People it is shared with will no longer see it. You can restore it from the Archived filter."),
+            renameTitle: _t("Click to rename"),
+            filters: _t("Filters"),
+            compare: _t("Compare"),
+            highlights: _t("Highlights"),
+            highlight: _t("Highlight"),
+            drag: _t("Drag to move"),
+            period: _t("Period"),
+            colour: _t("Change this tile's colour"),
+            tileMenu: _t("More options for this tile"),
+            now: _t("Now"),
+            comparison: _t("Comparison"),
+            netProfit: _t("Net profit"),
+            previousRows: _t("Previous rows"),
+            nextRows: _t("Next rows"),
+            previousCols: _t("Previous columns"),
+            nextCols: _t("Next columns"),
+        };
+    }
+
+    // ------------------------------------------------------------- record
+    get record() {
+        return this.props.record;
+    }
+
     get dashboardId() {
-        return this.props.record.resId;
+        return this.record.resId;
     }
 
     get spec() {
         try {
-            return JSON.parse(this.props.record.data[this.props.name] || "{}");
+            return JSON.parse(this.record.data[this.props.name] || "{}");
         } catch {
             return {};
         }
     }
 
-    get isEditable() {
-        return !this.props.readonly && this.state.data && this.state.data.is_owner;
+    get title() {
+        return this.record.data.name || "";
     }
 
-    /** Whether the tile controls are on screen.
-     *
-     *  Two separate questions, deliberately: *may* you edit this dashboard —
-     *  which is about who owns it — and are you editing it *right now*.
-     */
+    get description() {
+        return this.record.data.description || "";
+    }
+
+    get isDraft() {
+        return this.record.data.state === "draft";
+    }
+
+    get sharedPeople() {
+        const list = this.record.data.share_user_ids;
+        return (list && list.records ? list.records : []).slice(0, 4).map((r) => ({
+            id: r.resId,
+            name: r.data.display_name || "",
+            src: `/web/image/res.users/${r.resId}/avatar_128`,
+        }));
+    }
+
+    get sharedCount() {
+        return this.record.data.shared_count || 0;
+    }
+
+    get isEditable() {
+        return !this.props.readonly && !!this.state.data
+            && (this.state.data.is_owner || this.state.isAdmin);
+    }
+
     get showTools() {
         return this.isEditable && this.state.editMode;
     }
@@ -208,44 +249,97 @@ export class AIDashboardCanvas extends Component {
         this.state.editMode = on;
         if (!on) {
             this.state.editing = null;
+            this.state.renamingTitle = false;
         }
     }
 
-    /** Edits made here and not yet written to the database.
-     *
-     *  Both halves matter. Our own flag alone would keep claiming there was
-     *  something to save after the form's own Save button had already saved
-     *  it; the record's dirty flag alone would claim it about a change to the
-     *  dashboard's name, which this bar cannot save any differently.
-     */
+    /** Edits made here and not yet written to the database. */
     get hasUnsavedEdits() {
-        return this.state.pending && !!this.props.record.dirty;
+        return this.state.pending && !!this.record.dirty;
     }
 
-    /**
-     * The tiles to draw: the spec decides what exists, in what order and how
-     * it looks; the last render supplies the figures.
-     *
-     * This is the whole fix for "renaming a card does nothing". Presentation
-     * used to be read from the render payload, which comes from the database —
-     * so a rename updated the record, the canvas then redrew from the server,
-     * and the old title came straight back. Reading it from the spec instead
-     * means an edit appears the instant it is made, a discard puts the old one
-     * back just as fast, and neither costs a round trip.
-     */
+    // ------------------------------------------------------------- actions
+    /** The ⋯ menu: everything you do to a dashboard rather than read in it. */
+    get menuActions() {
+        const d = this.record.data;
+        const items = [];
+        if (d.state !== "draft") {
+            items.push(d.is_subscribed
+                ? { key: "unsub", name: "action_unsubscribe", string: _t("Stop emailing me") }
+                : { key: "sub", name: "action_subscribe", string: _t("Email me this") });
+            items.push({ key: "dup", name: "action_duplicate", string: _t("Duplicate") });
+        }
+        if ((d.version_count || 0) > 1) {
+            items.push({ key: "hist", name: "action_open_history", string: _t("History") });
+        }
+        items.push({ key: "about", name: "action_open_about", string: _t("What it reads") });
+        if (this.state.isAdmin && d.state !== "draft") {
+            items.push(d.is_pinned
+                ? { key: "unpin", name: "action_unpin", string: _t("Unpin from menu") }
+                : { key: "pin", name: "action_pin_to_menu", string: _t("Pin to menu") });
+        }
+        return items;
+    }
+
+    get canArchive() {
+        return this.isEditable && !this.isDraft;
+    }
+
+    /** The dashboard as a file: the spec is the portable unit. */
+    async exportSpec() {
+        const payload = await this.orm.call("ai.dashboard", "action_export_spec", [[this.dashboardId]]);
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${(this.title || "dashboard").replace(/[^\w-]+/g, "_")}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ------------------------------------------------------- title rename
+    startTitleRename() {
+        if (this.showTools) {
+            this.state.renamingTitle = true;
+        }
+    }
+
+    async commitTitle(value) {
+        const clean = (value || "").trim();
+        this.state.renamingTitle = false;
+        if (clean && clean !== this.title) {
+            this.state.pending = true;
+            await this.record.update({ name: clean });
+        }
+    }
+
+    onTitleKey(ev) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.commitTitle(ev.target.value);
+        } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            this.state.renamingTitle = false;
+        }
+    }
+
+    onTitleBlur(ev) {
+        if (this.state.renamingTitle) {
+            this.commitTitle(ev.target.value);
+        }
+    }
+
+    // ------------------------------------------------------------- loading
     get widgets() {
-        const drawn = new Map(
-            ((this.state.data && this.state.data.widgets) || [])
-                .map((w) => [w.id, w]));
+        const drawn = new Map(((this.state.data && this.state.data.widgets) || []).map((w) => [w.id, w]));
         return (this.spec.widgets || []).map((w) => {
             const figures = drawn.get(w.id);
-            const usable =
-                figures && SHAPE_FAMILY[figures.type] === SHAPE_FAMILY[w.type];
+            const usable = figures && SHAPE_FAMILY[figures.type] === SHAPE_FAMILY[w.type];
             return {
                 ...(usable ? figures : {}),
                 id: w.id,
-                // Everything below is what you see, and it comes from what is
-                // on screen rather than from what is stored.
+                // What it looks like comes from the spec on screen, so an
+                // edit shows the instant it is made and a discard undoes it.
                 type: w.type,
                 title: w.title,
                 caption: w.caption,
@@ -253,23 +347,16 @@ export class AIDashboardCanvas extends Component {
                 span: Math.max(1, Math.min(12, w.span || 6)),
                 color: w.color,
                 format: w.format || { kind: "plain" },
+                polarity: w.polarity || "up_is_good",
                 drill: w.drill !== false,
-                // Computed here rather than taken from the payload so a tile
-                // the assistant has only just added still knows what it may
-                // become, before its first figures have arrived.
                 group_count: ((w.query || {}).group_by || []).length,
-                // Carried through so the tile menu can offer "top ten" and
-                // "by quarter" without a round trip to find out the shape.
                 query: w.query || {},
-                // A tile whose figures do not match its type is honest about
-                // it. The observer above is already fetching the right ones.
                 calculating: !usable && !(figures && figures.error),
                 error: (figures && figures.error) || undefined,
             };
         });
     }
 
-    /** True when what we are holding cannot draw what is on screen. */
     staleFigures() {
         if (!this.state.data) {
             return false;
@@ -277,8 +364,7 @@ export class AIDashboardCanvas extends Component {
         const drawn = new Map(this.state.data.widgets.map((w) => [w.id, w]));
         return (this.spec.widgets || []).some((w) => {
             const figures = drawn.get(w.id);
-            return !figures ||
-                SHAPE_FAMILY[figures.type] !== SHAPE_FAMILY[w.type];
+            return !figures || SHAPE_FAMILY[figures.type] !== SHAPE_FAMILY[w.type];
         });
     }
 
@@ -287,7 +373,6 @@ export class AIDashboardCanvas extends Component {
         this.state.error = null;
         try {
             if (!this.dashboardId) {
-                // An unsaved record has nothing to calculate against yet.
                 this.state.data = null;
                 return;
             }
@@ -295,27 +380,28 @@ export class AIDashboardCanvas extends Component {
                 "ai.dashboard.render",
                 "render",
                 [this.dashboardId, this.state.filters, this.state.offsets,
-                 // Draw what the person is looking at, not what happens to be
-                 // stored. Without this, editing a tile into a shape the
-                 // stored spec does not have redraws the stored one.
+                 // Draw what is on screen, not what happens to be stored.
                  this.hasUnsavedEdits ? this.spec : null]
             ));
+            this.state.stamp++;
+            this.state.highlight = 0;
         } catch (error) {
-            this.state.error =
-                (error && error.data && error.data.message) ||
-                _t("This dashboard could not be calculated.");
+            this.state.error = (error && error.data && error.data.message)
+                || _t("This dashboard could not be calculated.");
         } finally {
             this.state.loading = false;
         }
     }
 
-    async setFilter(key, value) {
-        this.state.filters = { ...this.state.filters, [key]: value };
-        await this.load();
+    get currency() {
+        return (this.state.data && this.state.data.currency) || {};
     }
 
-    // -------------------------------------------------------- filter bar
-    /** The filters to draw, as the server resolved them for this reader. */
+    get tookMs() {
+        return this.state.data ? this.state.data.took_ms : null;
+    }
+
+    // ------------------------------------------------------------ filters
     get filterBar() {
         return (this.state.data && this.state.data.filters) || [];
     }
@@ -324,34 +410,31 @@ export class AIDashboardCanvas extends Component {
         return PERIOD_OPTIONS;
     }
 
-    /** What an empty record picker says. Translated at render time, not at
-     *  import, so the picker receives the plain string its props expect. */
     get allPlaceholder() {
         return _t("All");
     }
 
-    /**
-     * What a filter shows right now.
-     *
-     * The reader's own choice the instant they make it, and the server's
-     * resolved value otherwise. Reading only the server's would leave a
-     * control showing the old choice until the new figures arrive, which
-     * reads as the click not having taken.
-     */
+    /** The reader's own choice the instant they make it, else the server's. */
     filterValue(flt) {
         return flt.key in this.state.filters ? this.state.filters[flt.key] : flt.value;
     }
 
-    /** A many2one filter's records, as the ids MultiRecordSelector takes. */
     recordIds(flt) {
         const value = this.filterValue(flt);
-        return (Array.isArray(value) ? value : []).filter(
-            (id) => Number.isInteger(id) && id > 0
-        );
+        return (Array.isArray(value) ? value : []).filter((id) => Number.isInteger(id) && id > 0);
     }
 
-    /** Whether a filter is narrowing the figures, so it can say so.
-     *  A period always applies, so it is never singled out. */
+    periodName(value) {
+        const found = PERIOD_OPTIONS.find((option) => option[0] === value);
+        return found ? found[1] : value;
+    }
+
+    selectionName(flt) {
+        const value = this.filterValue(flt);
+        const found = (flt.options || []).find((option) => option[0] === value);
+        return found ? found[1] : _t("All");
+    }
+
     isNarrowed(flt) {
         if (flt.available === false) {
             return false;
@@ -359,24 +442,18 @@ export class AIDashboardCanvas extends Component {
         if (flt.type === "many2one") {
             return this.recordIds(flt).length > 0;
         }
-        if (flt.type === "selection") {
-            return Boolean(this.filterValue(flt));
-        }
-        return false;
+        return flt.type === "selection" && Boolean(this.filterValue(flt));
     }
 
-    filterInputId(flt) {
-        return `o_ai_dash_filter_${this.dashboardId}_${flt.key}`;
+    async setFilter(key, value) {
+        this.state.filters = { ...this.state.filters, [key]: value };
+        await this.load();
     }
 
-    /** Whether the reader has moved any filter from where the dashboard
-     *  starts, which is the only time "Reset" means anything. */
     get canResetFilters() {
         return this.filterBar.some((flt) => flt.key in this.state.filters);
     }
 
-    /** Back to the dashboard's own defaults, in one request. The comparison
-     *  and each card's period are separate choices and stay as they are. */
     async resetFilters() {
         const kept = { ...this.state.filters };
         for (const flt of this.filterBar) {
@@ -386,62 +463,8 @@ export class AIDashboardCanvas extends Component {
         await this.load();
     }
 
-    /**
-     * Page one axis of one pivot.
-     *
-     * Both axes move independently, because "the next fifty customers" and
-     * "the next twelve months" are different questions and answering one
-     * should not reset the other.
-     */
-    async pageAxis(widgetId, axis, direction) {
-        const current = this.state.offsets[widgetId] || { row: 0, col: 0 };
-        const pivot = this.pivotOf(widgetId);
-        if (!pivot) {
-            return;
-        }
-        const cap = pivot[axis === "row" ? "rows" : "cols"].cap;
-        const next = Math.max(0, (current[axis] || 0) + direction * cap);
-        this.state.offsets = {
-            ...this.state.offsets,
-            [widgetId]: { ...current, [axis]: next },
-        };
-        await this.load();
-    }
-
-    pivotOf(widgetId) {
-        const widget = this.widgets.find(
-            (w) => w.id === widgetId
-        );
-        return widget && widget.pivot;
-    }
-
-    /** "Showing 51–100 of 2,143" — never a bare count that hides the rest. */
-    axisRange(axis) {
-        const from = axis.values.length ? axis.offset + 1 : 0;
-        const to = axis.offset + axis.values.length;
-        if (axis.total == null) {
-            return _t("Showing %(from)s–%(to)s", { from, to });
-        }
-        return _t("Showing %(from)s–%(to)s of %(total)s", {
-            from,
-            to,
-            total: axis.total.toLocaleString(),
-        });
-    }
-
-    cell(pivot, rowKey, colKey) {
-        return pivot.cells[`${rowKey}|${colKey}`];
-    }
-
-    /** Whether any tile on this dashboard can carry a comparison at all. */
     get anyComparable() {
         return this.widgets.some((w) => w.comparable);
-    }
-
-    /** Whether any tile answers a click, so the footer does not promise one
-     *  that nothing delivers. */
-    get anyDrillable() {
-        return this.widgets.some((w) => w.drill && !w.error);
     }
 
     get compareModes() {
@@ -452,377 +475,310 @@ export class AIDashboardCanvas extends Component {
         return (this.state.data && this.state.data.compare) || "none";
     }
 
-    /** Applies to every tile that can carry one, in one action. */
+    /** "vs Oct 2026" when the server named the window, else the mode. */
+    get compareToggleLabel() {
+        const mode = this.compareMode;
+        if (mode === "none") {
+            return _t("No comparison");
+        }
+        const named = this.widgets.find((w) => w.compare_label);
+        if (named) {
+            return _t("vs %s", named.compare_label);
+        }
+        const found = COMPARE_MODES.find((m) => m[0] === mode);
+        return found ? found[1] : mode;
+    }
+
     async setCompare(mode) {
         await this.setFilter("__compare", mode);
     }
 
-    // ------------------------------------------------------------- drawing
-    destroyCharts() {
-        for (const chart of this.charts.values()) {
-            chart.destroy();
-        }
-        this.charts.clear();
+    async setCardPeriod(widget, value) {
+        await this.setFilter(`__period:${widget.id}`, value);
     }
 
-    drawAll() {
-        this.destroyCharts();
-        if (!this.state.data || !this.rootRef.el) {
-            return;
+    // --------------------------------------------------------- highlights
+    get highlights() {
+        if (!this.state.data || this.showTools) {
+            return [];
         }
-        for (const widget of this.widgets) {
-            // `calculating` means the figures on hand were computed for a
-            // different shape — handing those to Chart.js draws nonsense.
-            if (!CHART_TYPES.includes(widget.type) || widget.error
-                    || widget.calculating) {
-                continue;
-            }
-            const canvas = this.rootRef.el.querySelector(
-                `canvas[data-widget="${widget.id}"]`
-            );
-            if (canvas) {
-                this.charts.set(widget.id, new Chart(canvas, this.config(widget)));
-            }
-        }
+        return computeHighlights(this.widgets, this.currency);
     }
 
-    get isCardBoard() {
-        return this.widgets.length > 0 && this.widgets.every((w) => this.isCard(w));
+    get currentHighlight() {
+        const list = this.highlights;
+        return list[Math.min(this.state.highlight, list.length - 1)];
     }
 
-    /** Shaped like an accounting summary: its total first, under its title. */
-    isCard(widget) {
-        return CARD_TYPES.includes(widget.type) || Boolean(widget.caption || widget.period);
+    // ------------------------------------------------------------- tiles
+    spanClass(widget) {
+        return `o_ai_w${widget.span}`;
+    }
+
+    format(value, widget, options) {
+        return formatValue(value, widget.format, this.currency, options);
+    }
+
+    parts(value, widget) {
+        return formatParts(value, widget.format, this.currency, { compact: true });
     }
 
     total(widget) {
+        if (widget.value !== undefined && widget.value !== null && !widget.series) {
+            return widget.value;
+        }
         return (widget.series || []).reduce((sum, point) => sum + (point.value || 0), 0);
     }
 
-    cardColor(index) {
-        return CARD_PALETTE[index % CARD_PALETTE.length];
+    chartVersion(widget) {
+        return [this.state.stamp, widget.type, widget.color, widget.span,
+                widget.format && widget.format.kind, this.compareMode].join("|");
     }
 
-    /** Income and expenses drawn against the larger of the two. */
-    pnlShare(widget, value) {
-        const largest = Math.max(Math.abs(widget.income || 0), Math.abs(widget.expenses || 0));
-        return largest ? Math.round((Math.abs(value) / largest) * 100) : 0;
+    isDateAxis(widget) {
+        return (widget.series || []).some((p) => typeof p.raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(p.raw));
     }
 
-    config(widget) {
+    /** A captioned line at a third of the page or less runs edge to edge. */
+    isHero(widget) {
+        return widget.type === "line" && widget.span <= 4 && Boolean(widget.caption || widget.period);
+    }
+
+    isHorizontal(widget) {
+        if (widget.type !== "bar" || this.isDateAxis(widget)) {
+            return false;
+        }
         const series = widget.series || [];
-        const labels = series.map((point) => point.label);
-        const values = series.map((point) => point.value);
-        const isCircular = ["pie", "donut", "aging"].includes(widget.type);
-        const base = widget.color != null ? widget.color : 0;
-        if (this.isCard(widget)) {
-            return this.cardConfig(widget, labels, values, isCircular);
-        }
+        return series.length > MANY_BARS || series.some((p) => (p.label || "").length > LONG_LABEL);
+    }
 
-        const datasets = [];
-        if (widget.compare_series) {
-            // Behind the current series, not in front of it: the point of
-            // comparison is to read *this* period against a backdrop.
-            datasets.push({
-                label: this.compareLabel,
-                data: widget.compare_series,
-                backgroundColor: PALETTE[base % PALETTE.length] + COMPARE_ALPHA,
-                borderColor: PALETTE[base % PALETTE.length] + COMPARE_ALPHA,
-                borderWidth: widget.type === "line" ? 2 : 0,
-                borderDash: widget.type === "line" ? [4, 4] : undefined,
-                fill: false,
-                tension: 0.25,
+    /** A line needs two points; one is a figure, not a trend. */
+    isSinglePoint(widget) {
+        return widget.type === "line" && (widget.series || []).length < 2;
+    }
+
+    chartHeight(widget) {
+        if (this.isHorizontal(widget)) {
+            return Math.max(160, (widget.series || []).length * 30 + 24);
+        }
+        return this.isHero(widget) ? 128 : 240;
+    }
+
+    buildCartesian(widget) {
+        return (el) => {
+            const series = widget.series || [];
+            return cartesianConfig(readTokens(el), {
+                type: widget.type === "line" ? "line" : "bar",
+                labels: axisLabels(series),
+                titles: series.map((p) => p.label),
+                values: series.map((p) => p.value),
+                compare: widget.compare_series || null,
+                compareLabel: widget.compare_label || _t("Comparison"),
+                label: widget.title,
+                color: widget.color,
+                value: (v) => this.format(v, widget),
+                tick: (v) => compactNumber(v),
+                hero: this.isHero(widget),
+                horizontal: this.isHorizontal(widget),
+                // About two fifths of the chart's width for names, at ~8px a letter.
+                labelChars: Math.floor((el.parentElement ? el.parentElement.clientWidth : 400) / 20),
+                onPoint: widget.drill ? (i) => this.drillPoint(widget, series[i]) : null,
             });
-        }
-
-        return {
-            type: widget.type === "donut" ? "doughnut" : widget.type,
-            data: {
-                labels,
-                datasets: [
-                    ...datasets,
-                    {
-                        label: widget.title,
-                        data: values,
-                        backgroundColor: isCircular
-                            ? series.map((_p, i) => PALETTE[(base + i) % PALETTE.length])
-                            : PALETTE[base % PALETTE.length],
-                        borderColor: PALETTE[base % PALETTE.length],
-                        borderWidth: widget.type === "line" ? 2 : 0,
-                        fill: false,
-                        tension: 0.25,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: isCircular || Boolean(widget.compare_series),
-                        position: isCircular ? "right" : "top",
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) =>
-                                `${ctx.label}: ${this.format(ctx.parsed.y ?? ctx.parsed, widget)}`,
-                        },
-                    },
-                },
-                scales: isCircular
-                    ? {}
-                    : {
-                          y: {
-                              beginAtZero: true,
-                              ticks: { callback: (v) => this.format(v, widget) },
-                          },
-                      },
-                onClick: (_event, elements) => {
-                    if (!widget.drill || !elements.length) {
-                        return;
-                    }
-                    const point = series[elements[0].index];
-                    if (point) {
-                        this.drill(widget, point.raw);
-                    }
-                },
-            },
         };
     }
 
-    /** A card's chart: green, plain, and its legend written beside it. */
-    cardConfig(widget, labels, values, isCircular) {
-        const money = (v) => this.format(v, { ...widget, format: { ...widget.format, decimals: 0 } });
-        const compare = widget.compare_series
-            ? [{ label: this.compareLabel, data: widget.compare_series, backgroundColor: "#babec5",
-                 borderColor: "#babec5", borderDash: [5, 4], borderWidth: widget.type === "line" ? 2 : 0,
-                 pointRadius: 2, tension: 0 }]
-            : [];
-        // Nothing owed is still a ring, not a hole in the card.
-        const nothing = isCircular && !values.some((v) => v);
-        return {
-            type: isCircular ? "doughnut" : widget.type,
-            data: {
-                labels,
-                datasets: [...compare, {
-                    label: widget.title, data: nothing ? [1] : values,
-                    backgroundColor: nothing ? ["#e3e5e8"]
-                        : isCircular ? values.map((_v, i) => this.cardColor(i)) : CARD_PALETTE[0],
-                    borderColor: isCircular ? "#fff" : CARD_PALETTE[0],
-                    borderWidth: isCircular ? 2 : widget.type === "line" ? 2 : 0,
-                    pointBackgroundColor: "#fff", pointBorderWidth: 2, pointRadius: 4,
-                    tension: 0, maxBarThickness: 36,
-                }],
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                cutout: isCircular ? "58%" : undefined,
-                plugins: {
-                    legend: { display: !isCircular && Boolean(widget.compare_series), position: "top", align: "end",
-                              labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } } },
-                    tooltip: { enabled: !nothing,
-                               callbacks: { label: (ctx) => `${ctx.label}: ${this.format(ctx.parsed.y ?? ctx.parsed, widget)}` } },
-                },
-                scales: isCircular ? {} : {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 0, autoSkipPadding: 12 } },
-                    y: { beginAtZero: true, border: { display: false }, grid: { color: "#e3e5e8" },
-                         ticks: { font: { size: 11 }, maxTicksLimit: 6, callback: (v) => money(v) } },
-                },
-                onClick: (_event, elements) => {
-                    const point = (widget.series || [])[elements[0]?.index];
-                    if (widget.drill && point && point.raw != null) {
-                        this.drill(widget, point.raw);
-                    }
-                },
-            },
+    buildRing(widget) {
+        return (el) => {
+            const series = widget.series || [];
+            return ringConfig(readTokens(el), {
+                titles: series.map((p) => p.label),
+                values: series.map((p) => p.value),
+                others: series.map((p) => Boolean(p.other)),
+                color: widget.color,
+                value: (v) => this.format(v, widget),
+                onPoint: widget.drill ? (i) => this.drillPoint(widget, series[i]) : null,
+            });
         };
     }
 
-    // ------------------------------------------------------------ formatting
-    format(value, widget) {
-        if (value == null) {
-            return "—";
+    /** Legend rows for a ring: colour slot, name, value and share. */
+    ringLegend(widget) {
+        const series = widget.series || [];
+        const whole = series.reduce((sum, p) => sum + Math.max(0, p.value || 0), 0) || 1;
+        let slot = widget.color || 0;
+        return series.map((p, index) => ({
+            key: `${index}`,
+            label: p.other && p.count ? _t("Other (%s)", p.count) : p.label,
+            value: this.format(p.value, widget, { compact: true }),
+            share: `${Math.round((Math.max(0, p.value || 0) / whole) * 100)}%`,
+            swatch: p.other ? "o_ai_sw--other" : `o_ai_sw-${((slot++) % SERIES_SLOTS) + 1}`,
+            point: p,
+        }));
+    }
+
+    kpiView(widget) {
+        const change = widget.compare !== undefined
+            ? describeChange(widget.value, widget.compare, widget.polarity) : null;
+        let note = widget.window_label || "";
+        if (change && change.isNew) {
+            note = widget.compare_label ? _t("Nothing in %s", widget.compare_label) : _t("Nothing in the comparison period");
+        } else if (change) {
+            const was = this.format(widget.compare, widget, { compact: true });
+            note = widget.compare_label ? _t("was %(was)s · %(when)s", { was, when: widget.compare_label }) : _t("was %s", was);
         }
-        const fmt = widget.format || { kind: "plain" };
-        const currency = (this.state.data && this.state.data.currency) || {};
-        const decimals =
-            fmt.decimals != null
-                ? fmt.decimals
-                : fmt.kind === "monetary"
-                ? currency.decimals ?? 2
-                : fmt.kind === "integer"
-                ? 0
-                : 2;
-        const number = Number(value).toLocaleString(undefined, {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals,
+        return {
+            parts: this.parts(widget.value, widget),
+            full: this.format(widget.value, widget),
+            change,
+            note,
+            tone: change ? change.tone : "neutral",
+        };
+    }
+
+    pnlView(widget) {
+        const largest = Math.max(Math.abs(widget.income || 0), Math.abs(widget.expenses || 0)) || 1;
+        return {
+            net: this.parts(widget.value, widget),
+            loss: (widget.value || 0) < 0,
+            income: this.parts(widget.income || 0, widget),
+            expenses: this.parts(widget.expenses || 0, widget),
+            incomeWidth: Math.round((Math.abs(widget.income || 0) / largest) * 100),
+            expensesWidth: Math.round((Math.abs(widget.expenses || 0) / largest) * 100),
+        };
+    }
+
+    /** Ageing as one bar of buckets, oldest darkest, and the list beneath. */
+    agingView(widget) {
+        const series = widget.series || [];
+        const total = series.reduce((sum, p) => sum + (p.value || 0), 0);
+        const overdue = total - ((series[0] && series[0].value) || 0);
+        return {
+            total: this.parts(total, widget),
+            overdue: overdue > 0 ? this.format(overdue, widget, { compact: true }) : "",
+            segments: series.map((p, index) => {
+                const width = total ? ((p.value || 0) / total) * 100 : 0;
+                return {
+                    key: `${index}`,
+                    width,
+                    ramp: `o_ai_ramp-${Math.min(index + 1, 5)}`,
+                    inside: width >= 14 ? `${Math.round(width)}%` : "",
+                    title: `${p.label}: ${this.format(p.value, widget)}`,
+                };
+            }).filter((s) => s.width > 0),
+            rows: series.map((p, index) => ({
+                key: `${index}`,
+                label: p.label,
+                value: this.format(p.value, widget),
+                ramp: `o_ai_ramp-${Math.min(index + 1, 5)}`,
+            })),
+        };
+    }
+
+    tableCell(widget, value, index) {
+        if (index < (widget.numeric_from ?? 0)) {
+            return value;
+        }
+        const key = (widget.column_keys || [])[index];
+        return key === "__count" ? formatFloat(value || 0, { digits: [0, 0] }) : this.format(value, widget);
+    }
+
+    isNumericColumn(widget, index) {
+        return index >= (widget.numeric_from ?? Infinity);
+    }
+
+    // ------------------------------------------------------------ pivots
+    async pageAxis(widgetId, axis, direction) {
+        const current = this.state.offsets[widgetId] || { row: 0, col: 0 };
+        const widget = this.widgets.find((w) => w.id === widgetId);
+        const pivot = widget && widget.pivot;
+        if (!pivot) {
+            return;
+        }
+        const cap = pivot[axis === "row" ? "rows" : "cols"].cap;
+        const next = Math.max(0, (current[axis] || 0) + direction * cap);
+        this.state.offsets = { ...this.state.offsets, [widgetId]: { ...current, [axis]: next } };
+        await this.load();
+    }
+
+    /** "1–50 of 2,143": never a bare count that hides the rest. */
+    axisRange(axis) {
+        const from = axis.values.length ? axis.offset + 1 : 0;
+        const to = axis.offset + axis.values.length;
+        if (axis.total == null) {
+            return _t("%(from)s–%(to)s", { from, to });
+        }
+        return _t("%(from)s–%(to)s of %(total)s", {
+            from, to, total: formatFloat(axis.total, { digits: [0, 0] }),
         });
-        if (fmt.kind === "monetary" && currency.symbol) {
-            return currency.position === "before"
-                ? `${currency.symbol}${number}`
-                : `${number}${currency.symbol}`;
-        }
-        if (fmt.kind === "percent") {
-            return `${number}%`;
-        }
-        return fmt.suffix ? `${number}${fmt.suffix}` : number;
     }
 
-    get compareLabel() {
-        const found = COMPARE_MODES.find((m) => m[0] === this.compareMode);
-        return found ? _t(found[1]) : _t("comparison");
+    cell(pivot, rowKey, colKey) {
+        return pivot.cells[`${rowKey}|${colKey}`];
     }
 
-    /**
-     * The trend against the comparison period.
-     *
-     * A percentage against a previous value of zero is infinity, which is
-     * true and useless — so that case reports the movement in absolute terms
-     * instead of hiding the tile's only interesting fact behind a dash.
-     */
-    delta(widget) {
-        if (widget.compare == null) {
-            return null;
+    // ------------------------------------------------------------- drill
+    drillPoint(widget, point) {
+        if (!point || point.other) {
+            return;
         }
-        const previous = widget.compare;
-        const current = widget.value || 0;
-        if (!previous) {
-            if (!current) {
-                return null;
-            }
-            return {
-                value: this.format(current, widget),
-                up: current > 0,
-                absolute: true,
-            };
-        }
-        const change = ((current - previous) / Math.abs(previous)) * 100;
-        if (!isFinite(change)) {
-            return null;
-        }
-        return {
-            value: `${change > 0 ? "+" : ""}${change.toFixed(1)}%`,
-            up: change >= 0,
-            previous: this.format(previous, widget),
-        };
+        this.drill(widget, point.raw);
     }
 
-    // ------------------------------------------------------------ drilling
     async drill(widget, rawValue) {
+        if (!widget.drill) {
+            return;
+        }
         try {
             const act = await this.orm.call("ai.dashboard.render", "drill", [
-                this.dashboardId,
-                widget.id,
-                rawValue ?? null,
-                this.state.filters,
+                this.dashboardId, widget.id, rawValue ?? null, this.state.filters,
             ]);
             await this.action.doAction(act);
         } catch {
-            this.notification.add(
-                _t("The records behind this tile could not be opened."),
-                { type: "warning" }
-            );
+            this.notification.add(_t("The records behind this tile could not be opened."), { type: "warning" });
         }
     }
 
-    /**
-     * Open the records behind one pivot cell.
-     *
-     * The most specific figure on any dashboard — one row value and one column
-     * value — and until now the only one you could not get behind.
-     */
     async drillCell(widget, row, col) {
+        if (!widget.drill) {
+            return;
+        }
         try {
             const act = await this.orm.call("ai.dashboard.render", "drillCell", [
-                this.dashboardId,
-                widget.id,
+                this.dashboardId, widget.id,
                 row.raw === undefined ? null : row.raw,
                 col.raw === undefined ? null : col.raw,
                 this.state.filters,
             ]);
             await this.action.doAction(act);
         } catch {
-            this.notification.add(
-                _t("The records behind this cell could not be opened."),
-                { type: "warning" }
-            );
+            this.notification.add(_t("The records behind this cell could not be opened."), { type: "warning" });
         }
     }
 
-    // -------------------------------------------------------------- editing
+    // ------------------------------------------------------------ editing
     /**
-     * Apply a change to the spec on screen.
-     *
-     * The change goes into the form's own record, so Odoo's discard, its
-     * unsaved-changes guard and its Save button all keep working exactly as
-     * they do on any other field. Nothing is written to the database here —
-     * that is the Save button's job, and the bar at the top of the canvas
-     * says so plainly.
+     * Apply a change to the spec on screen, through the form's own record, so
+     * discard, the unsaved-changes guard and Save behave as on any field.
      */
     async updateSpec(mutate) {
         const spec = this.spec;
         mutate(spec);
         this.state.pending = true;
-        await this.props.record.update({ [this.props.name]: JSON.stringify(spec) });
+        await this.record.update({ [this.props.name]: JSON.stringify(spec) });
     }
 
-    widgetInSpec(spec, id) {
-        return (spec.widgets || []).find((w) => w.id === id);
-    }
-
-    /** Change one tile in place. */
     async patchWidget(id, mutate) {
         await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
+            const widget = (spec.widgets || []).find((w) => w.id === id);
             if (widget) {
                 mutate(widget);
             }
         });
     }
 
-    async rename(id, title) {
-        const clean = (title || "").trim();
-        this.state.editing = null;
-        if (!clean) {
-            // An empty title is a slip, not an instruction. Leave the old one.
-            return;
-        }
-        await this.patchWidget(id, (w) => (w.title = clean));
-    }
-
-    async resize(id, delta) {
-        await this.patchWidget(id, (w) => {
-            w.span = Math.max(1, Math.min(12, (w.span || 6) + delta));
-        });
-    }
-
-    async setType(id, type) {
-        await this.patchWidget(id, (w) => (w.type = type));
-    }
-
-    async setFormat(id, kind) {
-        await this.patchWidget(id, (w) => {
-            w.format = { ...(w.format || {}), kind };
-        });
-    }
-
-    async toggleDrill(id) {
-        await this.patchWidget(id, (w) => (w.drill = w.drill === false));
-    }
-
-    async setColor(id, color) {
-        await this.patchWidget(id, (w) => (w.color = color));
-    }
-
-    /**
-     * Change the question a tile asks, then fetch the answer.
-     *
-     * The only edits in this file that need the server. Everything else is
-     * presentation and is drawn straight from the spec.
-     */
     async patchQuery(id, mutate) {
         await this.updateSpec((spec) => {
-            const widget = this.widgetInSpec(spec, id);
+            const widget = (spec.widgets || []).find((w) => w.id === id);
             if (widget && widget.query) {
                 mutate(widget.query);
             }
@@ -830,36 +786,49 @@ export class AIDashboardCanvas extends Component {
         await this.load();
     }
 
-    async setLimit(id, limit) {
-        await this.patchQuery(id, (q) => {
-            q.limit = limit;
-        });
+    async rename(id, title) {
+        const clean = (title || "").trim();
+        this.state.editing = null;
+        if (clean) {
+            await this.patchWidget(id, (w) => (w.title = clean));
+        }
     }
 
-    /** Regroup a date axis. Only the first grouping is touched: on a pivot
-     *  that is the row axis, which is the one people mean. */
-    async setGranularity(id, granularity) {
-        await this.patchQuery(id, (q) => {
-            const groups = q.group_by || [];
-            if (groups.length) {
-                q.group_by = groups.map((g, i) =>
-                    i === 0 ? `${g.split(":")[0]}:${granularity}` : g);
+    startRename(id) {
+        if (this.showTools) {
+            this.state.editing = id;
+        }
+    }
+
+    onRenameKey(ev, id) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            this.rename(id, ev.target.value);
+        } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            this.state.editing = null;
+        }
+    }
+
+    onRenameBlur(ev, id) {
+        if (this.state.editing === id) {
+            this.rename(id, ev.target.value);
+        }
+    }
+
+    async moveAfter(id, afterId) {
+        await this.updateSpec((spec) => {
+            const widgets = spec.widgets || [];
+            const from = widgets.findIndex((w) => w.id === id);
+            if (from < 0) {
+                return;
             }
+            const [moved] = widgets.splice(from, 1);
+            const after = afterId ? widgets.findIndex((w) => w.id === afterId) : -1;
+            widgets.splice(after + 1, 0, moved);
         });
     }
 
-    /** The date granularity a tile is grouped by, or null if it is not a date
-     *  axis at all. Only date fields take a granularity, so the colon is a
-     *  reliable tell. */
-    granularityOf(widget) {
-        const first = ((widget.query || {}).group_by || [])[0] || "";
-        const parts = String(first).split(":");
-        return parts.length > 1 && GRANULARITIES.includes(parts[1])
-            ? parts[1] : null;
-    }
-
-    /** Copy a tile, so "the same thing but as a table" or "the same chart
-     *  filtered differently" starts from what is already right. */
     async duplicate(id) {
         await this.updateSpec((spec) => {
             const widgets = spec.widgets || [];
@@ -875,30 +844,13 @@ export class AIDashboardCanvas extends Component {
             }
             copy.id = `${id}_${suffix}`;
             copy.title = _t("%s (copy)", copy.title || "");
-            // Next to the original rather than at the end: you copied it to
-            // compare the two.
             widgets.splice(index + 1, 0, copy);
-        });
-    }
-
-    async move(id, direction) {
-        await this.updateSpec((spec) => {
-            const widgets = spec.widgets || [];
-            const index = widgets.findIndex((w) => w.id === id);
-            const target = index + direction;
-            if (index < 0 || target < 0 || target >= widgets.length) {
-                return;
-            }
-            [widgets[index], widgets[target]] = [widgets[target], widgets[index]];
         });
     }
 
     async remove(id) {
         if ((this.spec.widgets || []).length <= 1) {
-            this.notification.add(
-                _t("A dashboard needs at least one tile. Delete the whole dashboard instead."),
-                { type: "warning" }
-            );
+            this.notification.add(_t("A dashboard needs at least one tile. Delete the whole dashboard instead."), { type: "warning" });
             return;
         }
         await this.updateSpec((s) => {
@@ -906,181 +858,124 @@ export class AIDashboardCanvas extends Component {
         });
     }
 
-    // ------------------------------------------------------ keeping changes
-    /** Write the edits to the database, through the form's own record. */
-    async saveEdits() {
-        const saved = await this.props.record.save();
-        if (saved) {
-            this.state.pending = false;
-            this.notification.add(_t("Your changes are saved."),
-                                  { type: "success" });
-        }
-    }
-
-    /** Put back the last saved version, and redraw from it. */
-    async discardEdits() {
-        await this.props.record.discard();
-        this.state.pending = false;
-        await this.load();
-    }
-
-    // ---------------------------------------------------------- the renamer
-    /** Open the title for editing, with the old one selected so typing over
-     *  it is one gesture rather than a select-all first. */
-    startRename(id) {
-        if (this.showTools) {
-            this.state.editing = id;
-        }
-    }
-
-    onRenameKey(ev, id) {
-        if (ev.key === "Enter") {
-            ev.preventDefault();
-            this.rename(id, ev.target.value);
-        } else if (ev.key === "Escape") {
-            ev.preventDefault();
-            // Escape means "forget it", so close without committing — and
-            // without letting the blur that follows commit it anyway.
-            this.state.editing = null;
-            ev.target.blur();
-        }
-    }
-
-    onRenameBlur(ev, id) {
-        // Enter and Escape have both already closed the editor; this only
-        // fires for clicking away, which means "keep what I typed".
-        if (this.state.editing === id) {
-            this.rename(id, ev.target.value);
-        }
-    }
-
-    /**
-     * What this tile may safely become, decided by the shape of its query
-     * rather than by what it currently is.
-     *
-     * One grouping draws as any chart or as a table. Several groupings only
-     * make sense as a table. None at all is a KPI and nothing else. Offering
-     * a switch outside that would produce a spec the validator refuses — so
-     * anything structural stays the AI's job, and the editor only offers
-     * changes that are guaranteed to save.
-     */
+    /** What a tile may safely become, decided by the shape of its query. */
     switchableTypes(widget) {
         if (widget.type === "kpi" || widget.group_count === 0) {
             return [];
         }
         if (widget.group_count === 1) {
-            return [...CHART_TYPES.filter((type) => type !== "aging"), "table"];
+            return [...CHART_TYPES, "table"];
         }
         if (widget.group_count === 2) {
-            // Exactly two groupings is the shape a pivot needs, so a table of
-            // that shape can become one and back without touching the query.
             return ["table", "pivot"];
         }
         return ["table"];
     }
 
-    get formatKinds() {
-        return FORMAT_KINDS;
-    }
-
-    /** The colour this tile is currently drawn in. */
-    paletteFor(widget) {
-        return PALETTE[(widget.color || 0) % PALETTE.length];
+    granularityOf(widget) {
+        const first = ((widget.query || {}).group_by || [])[0] || "";
+        const parts = String(first).split(":");
+        return parts.length > 1 && GRANULARITIES.includes(parts[1]) ? parts[1] : null;
     }
 
     async nextColor(widget) {
-        await this.setColor(widget.id,
-            ((widget.color || 0) + 1) % PALETTE.length);
+        await this.patchWidget(widget.id, (w) => (w.color = ((w.color || 0) + 1) % SERIES_SLOTS));
     }
 
-    /**
-     * Everything you can do to a tile that is not moving or resizing it.
-     *
-     * A menu rather than a row of buttons: reordering and resizing are the two
-     * things you do repeatedly while arranging a dashboard, so they stay under
-     * the cursor. Changing a chart type or a number format happens once and
-     * then never again, and fourteen buttons hovering over every tile turned
-     * reading a dashboard into looking at a toolbar.
-     */
+    swatchClass(widget) {
+        return `o_ai_sw-${((widget.color || 0) % SERIES_SLOTS) + 1}`;
+    }
+
+    /** Everything you do to a tile once, rather than while arranging it. */
     tileMenu(widget) {
         const items = [
-            {
-                label: _t("Rename…"),
-                onSelected: () => this.startRename(widget.id),
-            },
-            {
-                label: _t("Duplicate this tile"),
-                onSelected: () => this.duplicate(widget.id),
-            },
+            { label: _t("Rename…"), onSelected: () => this.startRename(widget.id) },
+            { label: _t("Duplicate this tile"), onSelected: () => this.duplicate(widget.id) },
         ];
-        for (const type of this.switchableTypes(widget)) {
-            if (type === widget.type) {
-                continue;
+        for (const [span, label] of SIZES) {
+            if (span !== widget.span) {
+                items.push({ label: _t("Size: %s", label), onSelected: () => this.patchWidget(widget.id, (w) => (w.span = span)) });
             }
-            items.push({
-                label: _t("Show as %s", type),
-                onSelected: () => this.setType(widget.id, type),
-            });
+        }
+        for (const type of this.switchableTypes(widget)) {
+            if (type !== widget.type) {
+                items.push({ label: _t("Show as %s", type), onSelected: () => this.patchWidget(widget.id, (w) => (w.type = type)) });
+            }
         }
         const current = (widget.format && widget.format.kind) || "plain";
-        for (const kind of FORMAT_KINDS) {
-            if (kind === current || widget.type === "table") {
-                continue;
+        if (widget.type !== "table") {
+            for (const kind of FORMAT_KINDS) {
+                if (kind !== current) {
+                    items.push({
+                        label: _t("Format as %s", FORMAT_LABELS[kind]),
+                        onSelected: () => this.patchWidget(widget.id, (w) => (w.format = { ...(w.format || {}), kind })),
+                    });
+                }
             }
+        }
+        if (["kpi", "line", "bar"].includes(widget.type)) {
+            const downIsGood = widget.polarity === "down_is_good";
             items.push({
-                label: _t("Format as %s", FORMAT_LABELS[kind]),
-                onSelected: () => this.setFormat(widget.id, kind),
+                label: downIsGood ? _t("Treat a rise as good news") : _t("Treat a rise as bad news"),
+                onSelected: () => this.patchWidget(widget.id, (w) => {
+                    if (downIsGood) {
+                        delete w.polarity;
+                    } else {
+                        w.polarity = "down_is_good";
+                    }
+                }),
             });
         }
-        // How many rows. Meaningless without a grouping; a KPI is one number
-        // by definition; and a pivot pages both of its axes with its own caps,
-        // so a row limit there would fight the pager.
         if (!["kpi", "pivot"].includes(widget.type) && widget.group_count >= 1) {
             for (const limit of ROW_LIMITS) {
-                if (limit === widget.query.limit) {
-                    continue;
+                if (limit !== widget.query.limit) {
+                    items.push({ label: _t("Show the top %s", limit), onSelected: () => this.patchQuery(widget.id, (q) => (q.limit = limit)) });
                 }
-                items.push({
-                    label: _t("Show the top %s", limit),
-                    onSelected: () => this.setLimit(widget.id, limit),
-                });
             }
         }
-        // Only offered where there is a date axis to regroup.
         const granularity = this.granularityOf(widget);
         if (granularity) {
             for (const step of GRANULARITIES) {
-                if (step === granularity) {
-                    continue;
+                if (step !== granularity) {
+                    items.push({
+                        label: _t("Group %s", GRANULARITY_LABELS[step]),
+                        onSelected: () => this.patchQuery(widget.id, (q) => {
+                            q.group_by = (q.group_by || []).map((g, i) => (i === 0 ? `${g.split(":")[0]}:${step}` : g));
+                        }),
+                    });
                 }
-                items.push({
-                    label: _t("Group %s", GRANULARITY_LABELS[step]),
-                    onSelected: () => this.setGranularity(widget.id, step),
-                });
             }
         }
         items.push({
-            label: widget.drill
-                ? _t("Stop clicks opening records")
-                : _t("Let clicks open the records"),
-            onSelected: () => this.toggleDrill(widget.id),
+            label: widget.drill ? _t("Stop clicks opening records") : _t("Let clicks open the records"),
+            onSelected: () => this.patchWidget(widget.id, (w) => (w.drill = w.drill === false)),
         });
-        items.push({
-            label: _t("Remove this tile"),
-            class: "text-danger",
-            onSelected: () => this.remove(widget.id),
-        });
+        items.push({ label: _t("Remove this tile"), class: "text-danger", onSelected: () => this.remove(widget.id) });
         return items;
     }
 
-    get palette() {
-        return PALETTE;
+    async saveEdits() {
+        const saved = await this.record.save();
+        if (saved) {
+            this.state.pending = false;
+            this.notification.add(_t("Your changes are saved."), { type: "success" });
+        }
+    }
+
+    async discardEdits() {
+        await this.record.discard();
+        this.state.pending = false;
+        await this.load();
+    }
+
+    get positionCards() {
+        return POSITION_CARDS;
     }
 }
 
 export const aiDashboardCanvas = {
     component: AIDashboardCanvas,
-    displayName: _t("Dashboard canvas"),
+    displayName: _t("Dashboard"),
     supportedTypes: ["text"],
 };
 

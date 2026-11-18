@@ -1,52 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- View architectures: https://www.odoo.com/documentation/19.0/developer/reference/user_interface/view_architectures.html -->
 <odoo>
     <!-- ========================================= The app landing ========== -->
-    <!-- A kanban of dashboards rather than a list: these are things you
-         recognise by name and open, not rows you compare. -->
+    <!-- A list rather than cards: dashboards are recognised by name and
+         opened, and a list shows forty of them where cards showed nine. The
+         name cell (widget ai_dashboard_title) carries the description under
+         it and a Draft badge beside it; the styling lives under
+         .o_ai_dashboard_list. "New" is replaced by "New with AI", because a
+         dashboard is made by asking an assistant, not by filling a form. -->
+    <record id="ai_dashboard_view_list" model="ir.ui.view">
+        <field name="name">ai.dashboard.list</field>
+        <field name="model">ai.dashboard</field>
+        <field name="arch" type="xml">
+            <list class="o_ai_dashboard_list" create="0" default_order="write_date desc">
+                <header>
+                    <button name="%(mcp_governance_suite.mcp_connect_action)d" type="action"
+                            string="New with AI" class="btn-primary" display="always"/>
+                </header>
+                <field name="is_favorite" widget="boolean_favorite" nolabel="1" width="40px"/>
+                <field name="name" widget="ai_dashboard_title"/>
+                <field name="widget_count" string="Tiles" width="72px" optional="show"/>
+                <field name="share_user_ids" widget="many2many_avatar_user" string="Shared with"
+                       optional="show" width="150px"/>
+                <field name="owner_id" widget="many2one_avatar_user" optional="show" width="160px"/>
+                <field name="write_date" string="Updated" widget="ai_relative_time" width="130px"/>
+                <field name="description" column_invisible="1"/>
+                <field name="state" column_invisible="1"/>
+                <field name="color" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Phones get compact rows instead of the list (Odoo opens the kanban
+         on small screens: ir.actions.act_window.mobile_view_mode). -->
     <record id="ai_dashboard_view_kanban" model="ir.ui.view">
         <field name="name">ai.dashboard.kanban</field>
         <field name="model">ai.dashboard</field>
         <field name="arch" type="xml">
-            <kanban highlight_color="color" class="o_ai_dashboard_kanban">
+            <kanban class="o_ai_dashboard_kanban" create="0">
                 <field name="state"/>
-                <field name="is_shared"/>
-                <field name="built_by_ai"/>
-                <field name="is_pinned"/>
+                <field name="color"/>
                 <templates>
-                    <t t-name="card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="fw-bold fs-5">
-                                <field name="name"/>
+                    <t t-name="card" class="flex-row align-items-center gap-3">
+                        <span class="o_ai_dash_icon"
+                              t-att-class="'o_ai_sw-' + (((record.color.raw_value or record.id.raw_value or 0) % 8) + 1)"
+                              aria-hidden="true"><i class="fa fa-line-chart" title="Dashboard"/></span>
+                        <main class="flex-grow-1 o_ai_dash_card_main">
+                            <div class="d-flex align-items-center gap-2">
+                                <field name="name" class="fw-semibold text-truncate"/>
+                                <span t-if="record.state.raw_value == 'draft'" class="badge text-bg-warning">Draft</span>
                             </div>
-                            <field name="is_favorite" widget="boolean_favorite"
-                                   nolabel="1"/>
-                        </div>
-
-                        <div t-if="record.state.raw_value == 'draft'"
-                             class="mt-1">
-                            <span class="badge text-bg-warning">Draft — not kept yet</span>
-                        </div>
-
-                        <field name="description" class="text-muted mt-2 small"/>
-
-                        <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <span t-if="record.built_by_ai.raw_value"
-                                  class="badge text-bg-light" title="Built with an AI assistant">
-                                <i class="fa fa-comments-o me-1"/>AI
-                            </span>
-                            <span t-if="record.is_shared.raw_value"
-                                  class="badge text-bg-light">
-                                <i class="fa fa-users me-1"/>Shared
-                            </span>
-                            <span t-if="record.is_pinned.raw_value"
-                                  class="badge text-bg-light">
-                                <i class="fa fa-thumb-tack me-1"/>Pinned
-                            </span>
-                        </div>
-
-                        <footer class="pt-2 text-muted small">
-                            <field name="owner_id" widget="many2one_avatar_user"/>
-                        </footer>
+                            <field name="description" class="text-muted small text-truncate"/>
+                        </main>
+                        <field name="is_favorite" widget="boolean_favorite" nolabel="1"/>
                     </t>
                 </templates>
             </kanban>
@@ -54,125 +60,115 @@
     </record>
 
     <!-- ====================================== The dashboard itself ======== -->
-    <!-- A form view, not a client action: it is deep-linkable, breadcrumbed and
-         favouritable for free, and the light editor is simply the form's edit
-         mode acting on the spec field. -->
+    <!-- A form with nothing but the page: no header, no sheet, no notebook and
+         no chatter (mail.thread stays on the model for its change history).
+         The canvas draws the title, the actions, the filters and the tiles
+         itself; record actions in it are ViewButtons, so they behave exactly
+         as form buttons do. Deep links, breadcrumbs and the unsaved-changes
+         guard come from the form for free. -->
     <record id="ai_dashboard_view_form" model="ir.ui.view">
         <field name="name">ai.dashboard.form</field>
         <field name="model">ai.dashboard</field>
         <field name="arch" type="xml">
-            <form class="o_ai_dashboard_form">
-                <header>
-                    <button name="action_publish" type="object" string="Keep it"
-                            class="btn-primary" invisible="state != 'draft'"
-                            help="Put this on your app tile."/>
-                    <button name="action_discard" type="object"
-                            string="Discard" invisible="state != 'draft'"
-                            confirm="Discard this draft? It was never added to your app tile."/>
-                    <button name="action_open_history" type="object"
-                            string="History" invisible="version_count &lt; 2"/>
-                    <button name="action_duplicate" type="object"
-                            string="Duplicate"
-                            invisible="state == 'draft'"/>
-                    <button name="action_subscribe" type="object"
-                            string="Email me this" icon="fa-envelope-o"
-                            invisible="state == 'draft' or is_subscribed"/>
-                    <button name="action_unsubscribe" type="object"
-                            string="Stop emailing me" icon="fa-envelope-open-o"
-                            invisible="not is_subscribed"/>
-                    <button name="action_pin_to_menu" type="object"
-                            string="Pin to menu"
-                            groups="ai_dashboards.group_dashboard_admin"
-                            invisible="state == 'draft' or is_pinned"/>
-                    <button name="action_unpin" type="object" string="Unpin"
-                            groups="ai_dashboards.group_dashboard_admin"
-                            invisible="not is_pinned"/>
-                    <field name="state" widget="statusbar"/>
-                </header>
-                <sheet>
-                    <div class="alert alert-warning" role="alert"
-                         invisible="state != 'draft'">
-                        <b>This is a draft.</b> Nobody else can see it and it
-                        is not on your app tile yet. Look it over, then click
-                        <b>Keep it</b> — or Discard and ask for something
-                        different.
+            <form class="o_ai_dashboard_form" create="0" duplicate="0">
+                <field name="spec_json" widget="ai_dashboard_canvas" nolabel="1"/>
+                <field name="name" invisible="1"/>
+                <field name="description" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="owner_id" invisible="1"/>
+                <field name="share_user_ids" widget="many2many_tags" invisible="1"/>
+                <field name="shared_count" invisible="1"/>
+                <field name="is_shared" invisible="1"/>
+                <field name="is_subscribed" invisible="1"/>
+                <field name="is_pinned" invisible="1"/>
+                <field name="is_slow" invisible="1"/>
+                <field name="version_count" invisible="1"/>
+                <field name="built_by_ai" invisible="1"/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================ Share and schedule -->
+    <!-- One dialog for who can open a dashboard and who it is emailed to.
+         Schedules are listed paused ones included (schedule_ids carries
+         active_test=False), each with who set it up, its next and last send,
+         an on/off switch, Send now and delete. Only people who can open the
+         dashboard can be picked as recipients. -->
+    <record id="ai_dashboard_view_form_share" model="ir.ui.view">
+        <field name="name">ai.dashboard.form.share</field>
+        <field name="model">ai.dashboard</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form class="o_ai_share" create="0" duplicate="0" delete="0">
+                <field name="allowed_recipient_ids" invisible="1"/>
+                <div class="o_ai_share_section">
+                    <h3 class="o_ai_share_heading">People with access</h3>
+                    <div class="o_ai_share_owner">
+                        <field name="owner_id" widget="many2one_avatar_user" readonly="1" nolabel="1"/>
+                        <span class="o_ai_share_role">Owner</span>
                     </div>
-
-                    <div class="alert alert-info" role="alert"
-                         invisible="not is_slow">
-                        <b>This dashboard is slow to open.</b> One of its tiles
-                        is asking a large question. Narrowing a date filter or
-                        grouping by something coarser usually fixes it.
+                    <div class="o_ai_share_row">
+                        <label for="share_user_ids" string="People"/>
+                        <field name="share_user_ids" widget="many2many_avatar_user"
+                               placeholder="Add a colleague by name…"
+                               options="{'no_create': True}" nolabel="1"/>
                     </div>
-
-                    <div class="oe_title">
-                        <h1><field name="name" placeholder="e.g. P&amp;L"/></h1>
-                        <field name="description" class="text-muted"
-                               placeholder="What does this show?"/>
+                    <div class="o_ai_share_row">
+                        <label for="group_ids" string="Teams"/>
+                        <field name="group_ids" widget="many2many_tags"
+                               placeholder="Or share with a whole team…"
+                               options="{'no_create': True}" nolabel="1"/>
                     </div>
+                    <p class="o_ai_share_note">
+                        <i class="fa fa-lock me-1" aria-hidden="true"/>
+                        They can open it, not change it — and each sees only the figures their own access allows.
+                    </p>
+                </div>
 
-                    <!-- The dashboard. Renders in readonly; in edit mode it
-                         allows reordering, resizing and per-tile cosmetics. -->
-                    <field name="spec_json" widget="ai_dashboard_canvas"
-                           nolabel="1" options="{'no_label': true}"/>
+                <div class="o_ai_share_section">
+                    <h3 class="o_ai_share_heading">Scheduled emails</h3>
+                    <field name="schedule_ids" nolabel="1" context="{'default_dashboard_id': id}">
+                        <list editable="bottom" class="o_ai_schedules"
+                              decoration-muted="not active">
+                            <field name="user_id" string="Recipient" widget="many2one_avatar_user"
+                                   domain="[('id', 'in', parent.allowed_recipient_ids)]"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="created_by_id" widget="many2one_avatar_user" optional="show"/>
+                            <field name="interval"/>
+                            <field name="weekday" invisible="interval != 'weekly'"/>
+                            <field name="send_time"/>
+                            <field name="next_send" string="Next email" readonly="1"/>
+                            <field name="last_error" column_invisible="1"/>
+                            <field name="last_state" readonly="1"
+                                   decoration-danger="last_error"/>
+                            <field name="active" string="On" widget="boolean_toggle" width="56px"/>
+                            <button name="action_send_now" type="object" icon="fa-paper-plane"
+                                    title="Send one now" invisible="not id or not active"/>
+                        </list>
+                    </field>
+                    <p class="o_ai_share_note">
+                        Each email is calculated with its recipient's own permissions, at the moment it is sent, in their own timezone. Recipients can pause or stop any email from their Scheduled sends.
+                    </p>
+                </div>
+                <footer>
+                    <button string="Done" special="save" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
 
-                    <notebook>
-                        <page string="Sharing" name="sharing">
-                            <group>
-                                <field name="owner_id" readonly="1"/>
-                                <field name="share_user_ids" widget="many2many_tags"
-                                       placeholder="Add a colleague by name"
-                                       options="{'no_create': True}"/>
-                                <field name="group_ids" widget="many2many_tags"
-                                       placeholder="Or share with a whole team"
-                                       options="{'no_create': True}"/>
-                            </group>
-                            <div class="text-muted">
-                                <i class="fa fa-lock me-1"/>
-                                Sharing lets people <b>open</b> this dashboard, not
-                                change it. Each of them sees only the records their
-                                own Odoo permissions allow — so one dashboard shows
-                                each person their own figures.
-                            </div>
-                        </page>
-
-                        <page string="Scheduled sends" name="scheduled">
-                            <field name="subscription_ids" readonly="1">
-                                <list>
-                                    <field name="user_id"/>
-                                    <field name="interval"/>
-                                    <field name="next_send"/>
-                                    <field name="last_sent"/>
-                                    <field name="last_error" optional="show"/>
-                                </list>
-                            </field>
-                            <div class="text-muted mt-2">
-                                Each email is calculated with its recipient's own
-                                permissions at the moment it is sent — so one
-                                dashboard mails each person their own figures.
-                            </div>
-                        </page>
-
-                        <page string="What it reads" name="about">
-                            <field name="explanation" nolabel="1" readonly="1"
-                                   class="text-muted"/>
-                            <div class="mt-3">
-                                <button name="action_export_spec" type="object"
-                                        string="Export this dashboard"
-                                        class="btn btn-link ps-0"
-                                        invisible="state == 'draft'"
-                                        help="Copy it, to rebuild this dashboard on another database."/>
-                            </div>
-                        </page>
-                    </notebook>
-
-                    <field name="version_count" invisible="1"/>
-                    <field name="is_pinned" invisible="1"/>
-                    <field name="is_slow" invisible="1"/>
-                    <field name="built_by_ai" invisible="1"/>
-                    <field name="is_shared" invisible="1"/>
-                    <field name="is_subscribed" invisible="1"/>
-                </sheet>
+    <!-- ===================================================== What it reads -->
+    <record id="ai_dashboard_view_form_about" model="ir.ui.view">
+        <field name="name">ai.dashboard.form.about</field>
+        <field name="model">ai.dashboard</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form class="o_ai_share" create="0" duplicate="0" delete="0" edit="0">
+                <field name="explanation" nolabel="1" readonly="1" class="o_ai_about"/>
+                <footer>
+                    <button string="Close" special="cancel" class="btn-primary"/>
+                </footer>
             </form>
         </field>
     </record>
@@ -212,35 +208,28 @@
     <record id="action_dashboards" model="ir.actions.act_window">
         <field name="name">Dashboards</field>
         <field name="res_model">ai.dashboard</field>
-        <field name="view_mode">kanban,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="ai_dashboard_view_search"/>
         <field name="context">{'search_default_f_mine': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Ask your assistant for a dashboard</p>
-            <p>
-                Open Claude, ChatGPT or whichever assistant you connected, and
-                describe what you want to see — <i>"a P&amp;L for this year"</i>,
-                <i>"sales by rep, monthly"</i>. It builds the dashboard and it
-                appears here.
-            </p>
-            <p>
-                Every figure is calculated when you open it, using your own Odoo
-                permissions. Nothing is copied out of your database, and a
-                dashboard you share shows each colleague their own numbers.
-            </p>
+            <p>Describe what you want to see — <i>"a P&amp;L for this year"</i>,
+               <i>"sales by rep, monthly"</i> — and it appears here, calculated
+               live with your own permissions.</p>
         </field>
     </record>
 
     <record id="action_dashboards_shared" model="ir.actions.act_window">
         <field name="name">Shared with me</field>
         <field name="res_model">ai.dashboard</field>
-        <field name="view_mode">kanban,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="ai_dashboard_view_search"/>
         <field name="domain">[('owner_id', '!=', uid)]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nothing shared with you yet</p>
-            <p>When a colleague shares a dashboard with a group you belong to,
-               it appears here — showing your figures, not theirs.</p>
+            <p>Dashboards colleagues share with you appear here — showing your figures, not theirs.</p>
         </field>
     </record>
 
@@ -249,31 +238,28 @@
         <field name="name">ai.dashboard.subscription.form</field>
         <field name="model">ai.dashboard.subscription</field>
         <field name="arch" type="xml">
-            <form>
+            <form class="o_ai_share">
                 <sheet>
-                    <div class="alert alert-info" role="alert">
-                        Each email is calculated <b>with your own permissions</b>,
-                        at the moment it is sent — so it shows your figures, not
-                        the owner's, and it is never a stale copy.
-                    </div>
+                    <p class="o_ai_share_note">
+                        Each email is calculated <b>with your own permissions</b>, at the moment it is sent.
+                    </p>
                     <group>
                         <field name="dashboard_id" readonly="1"/>
-                        <field name="user_id" readonly="1"/>
+                        <field name="user_id" readonly="1" widget="many2one_avatar_user"/>
                         <field name="interval"/>
-                        <field name="send_hour"
-                               help="Hour of the day in your own timezone."/>
-                        <field name="active"/>
+                        <field name="weekday" invisible="interval != 'weekly'"/>
+                        <field name="send_time"/>
+                        <field name="active" string="On" widget="boolean_toggle"/>
                     </group>
-                    <group string="History" invisible="not send_count">
+                    <group string="History" invisible="not send_count and not last_error">
                         <field name="next_send" readonly="1"/>
                         <field name="last_sent" readonly="1"/>
                         <field name="send_count" readonly="1"/>
-                        <field name="last_error" readonly="1"
-                               invisible="not last_error"/>
+                        <field name="last_error" readonly="1" invisible="not last_error"/>
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_send_now" type="object" string="Send now"
+                    <button name="action_send_now" type="object" string="Send one now"
                             class="btn-primary"
                             help="Sends one immediately, so you can see what it looks like without waiting for the schedule."/>
                     <button string="Done" special="save" class="btn-secondary"/>
@@ -282,22 +268,47 @@
         </field>
     </record>
 
+    <!-- Everything you manage: your own emails, and the ones on your
+         dashboards that go to other people. Switch any of them off here. -->
     <record id="ai_dashboard_subscription_view_list" model="ir.ui.view">
         <field name="name">ai.dashboard.subscription.list</field>
         <field name="model">ai.dashboard.subscription</field>
         <field name="arch" type="xml">
-            <list>
-                <field name="dashboard_id"/>
-                <field name="user_id" column_invisible="1"/>
+            <list class="o_ai_dashboard_list" editable="bottom" create="0"
+                  decoration-muted="not active">
+                <field name="dashboard_id" readonly="1"/>
+                <field name="user_id" string="Recipient" widget="many2one_avatar_user" readonly="1"/>
+                <field name="created_by_id" widget="many2one_avatar_user" optional="show"/>
                 <field name="interval"/>
-                <field name="next_send"/>
-                <field name="last_sent"/>
-                <field name="send_count"/>
-                <field name="last_error" optional="show"/>
-                <field name="active" widget="boolean_toggle"/>
-                <button name="action_send_now" type="object" string="Send now"
-                        icon="fa-paper-plane"/>
+                <field name="weekday" invisible="interval != 'weekly'"/>
+                <field name="send_time"/>
+                <field name="next_send" string="Next email" readonly="1"/>
+                <field name="last_error" column_invisible="1"/>
+                <field name="last_state" readonly="1" decoration-danger="last_error"/>
+                <field name="active" string="On" widget="boolean_toggle" width="56px"/>
+                <button name="action_send_now" type="object" icon="fa-paper-plane"
+                        title="Send one now" invisible="not active"/>
             </list>
+        </field>
+    </record>
+
+    <record id="ai_dashboard_subscription_view_search" model="ir.ui.view">
+        <field name="name">ai.dashboard.subscription.search</field>
+        <field name="model">ai.dashboard.subscription</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="dashboard_id"/>
+                <field name="user_id"/>
+                <filter name="f_mine" string="Sent to me" domain="[('user_id', '=', uid)]"/>
+                <filter name="f_others" string="Sent to others" domain="[('user_id', '!=', uid)]"/>
+                <separator/>
+                <filter name="f_paused" string="Paused" domain="[('active', '=', False)]"/>
+                <filter name="f_failing" string="Failing" domain="[('last_error', '!=', False)]"/>
+                <group>
+                    <filter name="group_dashboard" string="Dashboard"
+                            context="{'group_by': 'dashboard_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -305,11 +316,11 @@
         <field name="name">Scheduled sends</field>
         <field name="res_model">ai.dashboard.subscription</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="ai_dashboard_subscription_view_search"/>
+        <field name="context">{'active_test': False, 'search_default_group_dashboard': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Nothing scheduled yet</p>
-            <p>Open a dashboard and click <b>Email me this</b> to have it
-               delivered every weekday, week or month — calculated with your own
-               permissions each time.</p>
+            <p>Open a dashboard and choose <b>Email me this</b>, or <b>Share</b> to email it to the people it is shared with.</p>
         </field>
     </record>
 
@@ -322,7 +333,7 @@
                   decoration-bf="is_current">
                 <field name="create_date" string="When"/>
                 <field name="note" string="What changed"/>
-                <field name="author_id" string="By"/>
+                <field name="author_id" string="By" widget="many2one_avatar_user"/>
                 <field name="is_current" string="Current" widget="boolean"/>
                 <button name="action_restore" type="object" string="Restore"
                         icon="fa-undo" invisible="is_current"

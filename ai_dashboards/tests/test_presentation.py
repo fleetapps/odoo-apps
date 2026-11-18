@@ -201,3 +201,11 @@ class TestPresentation(TransactionCase):
             "name": "Count", "spec_json": json.dumps(minimal(widgets=[
                 _widget(), _widget(id="w2")]))})
         self.assertEqual(board.widget_count, 2)
+
+    # ---------------------------------------------------------------- pivot
+    def test_a_date_axis_counts_its_buckets_not_its_dates(self):
+        out = self._render([_widget(type="pivot", span=12, query={
+            "model": "res.partner", "group_by": ["country_id", "create_date:year"],
+            "measures": ["__count"]})])
+        cols = out["widgets"][0]["pivot"]["cols"]
+        self.assertEqual(cols["total"], len(cols["values"]))

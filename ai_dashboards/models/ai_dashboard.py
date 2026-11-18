@@ -73,6 +73,15 @@ class AIDashboard(models.Model):
     shared_count = fields.Integer(compute="_compute_is_shared", store=True)
     subscription_ids = fields.One2many(
         "ai.dashboard.subscription", "dashboard_id", string="Scheduled sends")
+    # The same schedules, paused ones included, for the share dialog: a
+    # switched-off email is still there to switch back on.
+    schedule_ids = fields.One2many(
+        "ai.dashboard.subscription", "dashboard_id", string="Scheduled emails",
+        context={"active_test": False})
+    allowed_recipient_ids = fields.Many2many(
+        "res.users", compute="_compute_allowed_recipient_ids",
+        string="Can be emailed",
+        help="Who this dashboard can be emailed to: whoever can open it.")
     my_subscription_id = fields.Many2one(
         "ai.dashboard.subscription", compute="_compute_my_subscription")
     is_subscribed = fields.Boolean(compute="_compute_my_subscription")
@@ -142,11 +151,32 @@ class AIDashboard(models.Model):
         return [("favorite_user_ids", "in" if wants_favorites else "not in",
                  [self.env.uid])]
 
+    def _allowed_recipients(self):
+        """Everyone who can open this dashboard, as the record rule says.
+
+        The owner; and, once it is published, the people and the members of
+        the teams it is shared with — each of whom must also use AI
+        Dashboards, or their copy could not be calculated at all.
+        """
+        self.ensure_one()
+        users = self.owner_id
+        if self.state == "published":
+            users |= self.share_user_ids | self.group_ids.all_user_ids
+        return users.filtered(lambda u: u.active and u.has_group(GROUP_USER))
+
+    @api.depends("owner_id", "state", "share_user_ids", "group_ids")
+    def _compute_allowed_recipient_ids(self):
+        for rec in self:
+            rec.allowed_recipient_ids = rec.sudo()._allowed_recipients()
+
     @api.depends("spec_json")
     def _compute_widget_count(self):
         for rec in self:
             rec.widget_count = len(rec.spec().get("widgets") or [])
 
+    # Without a dependency the count stayed cached after a restore, so
+    # "history is append-only" could not even be checked in one transaction.
+    @api.depends("version_ids")
     def _compute_version_count(self):
         data = self.env["ai.dashboard.version"].sudo()._read_group(
             [("dashboard_id", "in", self.ids)],
@@ -227,12 +257,30 @@ class AIDashboard(models.Model):
         if spec_changed:
             self._check_owner(_("edit"))
             vals["spec_json"] = self._validated_json(vals["spec_json"])
+        resharing = {"owner_id", "group_ids", "share_user_ids", "state"} & set(vals)
         if {"owner_id", "group_ids", "share_user_ids"} & set(vals):
             self._check_owner(_("reshare"))
         result = super().write(vals)
         if spec_changed:
             self._snapshot(note or _("Edited"))
+        if resharing:
+            self._pause_unreachable_schedules()
         return result
+
+    def _pause_unreachable_schedules(self):
+        """Switch off emails to people who can no longer open the dashboard.
+
+        Their copy would only be an access error from now on. Paused rather
+        than deleted, with the reason, so sharing it again and switching the
+        email back on is one click.
+        """
+        for rec in self:
+            allowed = rec.sudo()._allowed_recipients()
+            lost = rec.sudo().subscription_ids.filtered(
+                lambda s: s.user_id not in allowed)
+            if lost:
+                lost.write({"active": False,
+                            "paused_reason": _("Paused: no longer shared with them")})
 
     def unlink(self):
         self._check_owner(_("delete"))
@@ -301,7 +349,38 @@ class AIDashboard(models.Model):
         published = self - drafts
         published.write({"active": False})
         drafts.unlink()
-        return {"type": "ir.actions.act_window_close"}
+        # Back to the list: the page that was open no longer has a dashboard.
+        action = self.env["ir.actions.act_window"]._for_xml_id(
+            "ai_dashboards.action_dashboards")
+        action["target"] = "main"
+        return action
+
+    def action_open_sharing(self):
+        """Who can open this dashboard, and who it is emailed to, in one place."""
+        self.ensure_one()
+        self._check_owner(_("share"))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Share and schedule"),
+            "res_model": "ai.dashboard",
+            "res_id": self.id,
+            "view_mode": "form",
+            "views": [(self.env.ref("ai_dashboards.ai_dashboard_view_form_share").id, "form")],
+            "target": "new",
+        }
+
+    def action_open_about(self):
+        """What this dashboard reads, and whose permissions it runs under."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("What it reads"),
+            "res_model": "ai.dashboard",
+            "res_id": self.id,
+            "view_mode": "form",
+            "views": [(self.env.ref("ai_dashboards.ai_dashboard_view_form_about").id, "form")],
+            "target": "new",
+        }
 
     def action_open(self):
         self.ensure_one()

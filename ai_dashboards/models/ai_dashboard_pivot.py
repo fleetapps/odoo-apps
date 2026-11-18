@@ -127,17 +127,29 @@ class AIDashboardPivot(models.AbstractModel):
             "offset": offset,
             "has_more": has_more,
             "has_previous": offset > 0,
-            "total": self._distinct(model, domain, root),
+            "total": self._distinct(model, domain, root, spec if granularity else None),
             "cap": CAP,
         }
 
-    def _distinct(self, model, domain, field):
+    def _distinct(self, model, domain, field, bucketed=None):
         """How many distinct values this axis has in total.
 
         `count_distinct` is one aggregate over the same domain — far cheaper
         than materialising every group just to take its length, which is what
         an honest "of 2,143" would otherwise cost.
+
+        Not for a date axis, though: counting distinct *dates* reported a year
+        of quarters as "of 226". There the buckets are what the axis shows,
+        and there are few of them, so they are counted as grouped.
         """
+        if bucketed:
+            try:
+                buckets = model._read_group(domain, groupby=[bucketed],
+                                            aggregates=["__count"],
+                                            limit=COUNT_CEILING + 1)
+            except (ValueError, KeyError):
+                return None
+            return min(len(buckets), COUNT_CEILING)
         try:
             rows = model._read_group(
                 domain, groupby=[], aggregates=["%s:count_distinct" % field])
