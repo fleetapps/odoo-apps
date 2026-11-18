@@ -158,6 +158,9 @@ class MCPEngine(models.AbstractModel):
                              "measure the residual), banks over account.journal: each works out its own groups. "
                              "On a chart, `caption` leads with the total in those words; `period` gives a card its "
                              "own period, which the reader can change on the card.",
+            "polarity": "Optional `polarity` on a widget: \"up_is_good\" (the default) or \"down_is_good\". It colours "
+                        "the tile's change against the comparison: set \"down_is_good\" on costs, expenses, "
+                        "overdue amounts, returns and anything else where a rise is bad news.",
             "format_negate": "format {\"negate\": true} flips the sign on a kpi, line or bar: ledger balances "
                              "read debit-positive, so a profit tile over account.move.line needs it.",
             "compare": {

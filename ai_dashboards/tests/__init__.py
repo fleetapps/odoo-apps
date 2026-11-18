@@ -1,5 +1,6 @@
 from . import test_spec
 from . import test_render
+from . import test_presentation
 from . import test_compare
 from . import test_filters
 from . import test_suggest

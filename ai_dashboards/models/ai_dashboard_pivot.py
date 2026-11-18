@@ -29,6 +29,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
 
+from . import ai_dashboard_labels as labels_lib
+
 from . import ai_dashboard_spec as spec_lib
 
 _logger = logging.getLogger(__name__)
@@ -106,11 +108,15 @@ class AIDashboardPivot(models.AbstractModel):
         groups = groups[:CAP]
 
         values = []
+        # The same words the charts use: a state's label, "Mar 2026", Yes/No.
+        labeler = labels_lib.Labeler(self.env, model, spec)
         for row in groups:
             raw = row[0]
+            label, short = labeler.labels(raw)
             values.append({
                 "key": self._key(raw),
-                "label": self._label(raw, granularity),
+                "label": label,
+                "short": short,
                 "raw": self._raw(raw),
             })
         return {

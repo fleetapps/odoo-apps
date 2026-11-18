@@ -87,6 +87,9 @@ class AIDashboard(models.Model):
     version_ids = fields.One2many(
         "ai.dashboard.version", "dashboard_id", string="History")
     version_count = fields.Integer(compute="_compute_version_count")
+    widget_count = fields.Integer(
+        string="Tiles", compute="_compute_widget_count",
+        help="How many tiles this dashboard has.")
 
     last_render_ms = fields.Integer(
         string="Last render (ms)", readonly=True,
@@ -138,6 +141,11 @@ class AIDashboard(models.Model):
         wants_favorites = (operator == "=") == bool(value)
         return [("favorite_user_ids", "in" if wants_favorites else "not in",
                  [self.env.uid])]
+
+    @api.depends("spec_json")
+    def _compute_widget_count(self):
+        for rec in self:
+            rec.widget_count = len(rec.spec().get("widgets") or [])
 
     def _compute_version_count(self):
         data = self.env["ai.dashboard.version"].sudo()._read_group(

@@ -98,7 +98,11 @@ PIVOT_AXIS_CAP = 50
 TOP_LEVEL_KEYS = {"schema", "title", "description", "filters", "widgets",
                   "compare"}
 WIDGET_KEYS = {"id", "type", "title", "span", "query", "format", "compare",
-               "drill", "color", "period", "caption"}
+               "drill", "color", "period", "caption", "polarity"}
+
+# Whether a rise in a tile's figure is good news. Colours its change: revenue
+# up is green, costs up are not. The default is the common case.
+POLARITIES = {"up_is_good", "down_is_good"}
 QUERY_KEYS = {"model", "domain", "group_by", "measures", "order", "limit"}
 FILTER_KEYS = {"key", "type", "label", "default", "field", "domain", "fields"}
 FORMAT_KEYS = {"kind", "decimals", "suffix", "negate"}
@@ -532,6 +536,14 @@ def _validate_widget(widget, index, seen_ids, env=None, scope=None):
     if widget.get("caption"):
         # With it, the card leads with its total, in these words under it.
         clean["caption"] = _text(widget["caption"], _("%s caption") % what)
+
+    if widget.get("polarity") is not None:
+        if widget["polarity"] not in POLARITIES:
+            _fail(_("Widget '%(w)s': polarity '%(p)s' is not one of: %(ok)s.",
+                    w=widget_id, p=widget["polarity"],
+                    ok=", ".join(sorted(POLARITIES))))
+        if widget["polarity"] != "up_is_good":
+            clean["polarity"] = widget["polarity"]
 
     if "color" in widget:
         color = widget["color"]

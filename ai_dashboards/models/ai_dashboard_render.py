@@ -21,6 +21,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError
 
+from . import ai_dashboard_labels as labels_lib
 from . import ai_dashboard_spec as spec_lib
 
 _logger = logging.getLogger(__name__)
@@ -28,6 +29,14 @@ _logger = logging.getLogger(__name__)
 # A hard ceiling on rows any single widget may pull back, independent of what
 # the spec asks for. A chart with 5,000 categories is not a chart.
 WIDGET_ROW_CAP = 500
+
+# A pie or donut shows this many slices and folds the rest into "Other". Past
+# about six, slices stop being comparable by eye and colours start repeating.
+RING_SLICES = 6
+
+# The most points a KPI's trend line carries: a month by day, half a year by
+# week, or two years by month.
+TREND_POINTS = 31
 
 # Periods that are a run of days ending today rather than a calendar unit. The
 # period before "the last 30 days" is the 30 days before that, never the month
@@ -188,6 +197,7 @@ class AIDashboardRender(models.AbstractModel):
                     grid.get("rows", {}).get("values", [])[:5]]
             elif kind == "table":
                 row["columns"] = rendered.get("columns", [])
+                row["column_keys"] = rendered.get("column_keys", [])
                 row["sample_rows"] = (rendered.get("rows") or [])[:5]
             else:
                 row["series"] = (rendered.get("series") or [])[:5]
@@ -219,6 +229,10 @@ class AIDashboardRender(models.AbstractModel):
             # editor produces a spec the validator then refuses.
             "group_count": len((widget.get("query") or {}).get("group_by") or []),
             "comparable": widget.get("type") in spec_lib.COMPARABLE_TYPES,
+            # Whether a rise is good news. Revenue up is green; costs up are
+            # not, and colouring them green as most dashboards do is how a
+            # reader learns to stop trusting the colours.
+            "polarity": widget.get("polarity") or "up_is_good",
         }
         if widget.get("caption"):
             base["caption"] = widget["caption"]
@@ -261,7 +275,8 @@ class AIDashboardRender(models.AbstractModel):
                                   widget.get("id"))
                 return dict(base, error=_("This card could not be calculated "
                                           "(%s).") % type(exc).__name__)
-            return dict(base, **shaped, domain=domain, model=model_name)
+            return dict(base, **shaped, domain=domain, model=model_name,
+                        window_label=self._window_words(domain))
 
         if widget.get("type") == "pivot":
             try:
@@ -288,6 +303,10 @@ class AIDashboardRender(models.AbstractModel):
         try:
             domain = self._effective_domain(query, spec, filter_values)
             rows = self._read(model, query, domain)
+            fill = widget.get("type") in ("line", "bar")
+            if fill:
+                rows = self._fill_dates(model, query, rows,
+                                        self._domain_window(domain), today=True)
             # The comparison is read from the *effective* domain, which is the
             # bug this rewrite fixes: the old code looked at the widget's raw
             # domain, so a dashboard whose period comes from a filter - which
@@ -300,6 +319,18 @@ class AIDashboardRender(models.AbstractModel):
                     self._rolling_fields(query, spec, filter_values))
                 if shifted is not None:
                     previous = self._read(model, query, shifted)
+                    # "was KSh 20,345 · Oct 2026": what the change is against.
+                    base["compare_label"] = self._window_words(shifted,
+                                                               compact=True)
+                    if fill:
+                        # Filled over its own whole window, so position N of
+                        # the comparison is the same bucket as position N now.
+                        previous = self._fill_dates(
+                            model, query, previous,
+                            self._domain_window(shifted), today=False)
+            trend = None
+            if widget.get("type") == "kpi":
+                trend = self._trend(model, query, domain)
         except (AccessError, UserError) as exc:
             return dict(base, error=str(exc))
         except Exception as exc:  # noqa: BLE001 - one bad tile, not a dead page
@@ -308,7 +339,12 @@ class AIDashboardRender(models.AbstractModel):
             return dict(base, error=_("This tile could not be calculated (%s).")
                         % type(exc).__name__)
 
-        shaped = self._negated(widget, self._shape(widget, query, rows, previous))
+        shaped = self._shape(widget, query, rows, previous, model=model)
+        if trend:
+            shaped["trend"] = trend
+        if widget.get("type") in ("pie", "donut"):
+            shaped = self._fold_ring(model, rows, domain, shaped)
+        shaped = self._negated(widget, shaped)
         if mode != "none":
             shaped["compare_mode"] = mode
             if previous is None:
@@ -321,7 +357,16 @@ class AIDashboardRender(models.AbstractModel):
             shaped["empty"] = _("No %s records match this tile's filters — for "
                                 "you. Someone with wider access may see more.") \
                 % self._model_label(model_name)
-        return dict(base, **shaped, domain=domain, model=model_name)
+        return dict(base, **shaped, domain=domain, model=model_name,
+                    window_label=self._window_words(domain))
+
+    def _window_words(self, domain, compact=False):
+        """The date window a domain covers, in words; "" when it has none."""
+        found = self._domain_window(domain)
+        if not found:
+            return ""
+        _field, start, end = found
+        return labels_lib.range_label(self.env, start, end, compact=compact)
 
     def _total(self, model, domain, measure):
         rows = model._read_group(domain, aggregates=[measure])
@@ -386,7 +431,132 @@ class AIDashboardRender(models.AbstractModel):
             point["value"] = flip(point["value"])
         if shaped.get("compare_series"):
             shaped["compare_series"] = [flip(n) for n in shaped["compare_series"]]
+        if shaped.get("trend"):
+            shaped["trend"] = [flip(n) for n in shaped["trend"]]
         return shaped
+
+    # ------------------------------------------------------------ date axes
+    def _fill_dates(self, model, query, read, window, today=False):
+        """A date axis with every bucket on it, empty ones as zero.
+
+        ``_read_group`` only returns the months that have records, so a chart
+        over "this year" for a business that started selling in October drew
+        two points, October and November, and looked like a slope it was not.
+        Filled, it shows January to November, flat then rising — which is the
+        true picture. ``today`` stops a window at the current bucket, so
+        "this year" does not run on into empty future months.
+
+        Only a single date grouping, read in its own order, and only when the
+        read is complete: a "top 10 by value" or a capped read is not an axis.
+        """
+        group_by = read["group_by"]
+        if len(group_by) != 1 or read["has_more"] or query.get("limit"):
+            return read
+        fname, granularity = labels_lib.split_spec(group_by[0])
+        if granularity not in labels_lib.GRANULARITIES:
+            return read
+        order = (query.get("order") or "").strip()
+        if order and not order.startswith(group_by[0]):
+            return read
+        field = model._fields.get(fname)
+        if field is None or field.type not in ("date", "datetime"):
+            return read
+
+        present = {}
+        undated = []
+        for row in read["rows"]:
+            day = labels_lib.as_date(row[0]) if row[0] else None
+            if day:
+                present[day] = row
+            else:
+                undated.append(row)
+        if window:
+            _field, start, end = window
+        elif present:
+            start = min(present)
+            end = max(present) + labels_lib.bucket_step(granularity)
+        else:
+            return read
+        if today:
+            end = min(end, fields.Date.context_today(self) + timedelta(days=1))
+        if not start or not end or start >= end:
+            return read
+
+        width = 1 + len(read["aggregates"])
+        filled = []
+        for day in labels_lib.buckets(self.env, start, end, granularity):
+            row = present.get(day)
+            if row is None:
+                row = (labels_lib.midnight(day, field.type == "datetime"),) \
+                    + (0,) * (width - 1)
+            filled.append(row)
+        # A bucket the walk did not reach (outside the window) is kept rather
+        # than silently dropped, so nothing the ORM returned goes missing.
+        reached = {labels_lib.as_date(row[0]) for row in filled}
+        filled += [row for day, row in sorted(present.items())
+                   if day not in reached]
+        return dict(read, rows=filled + undated)
+
+    def _trend(self, model, query, domain):
+        """A KPI's figure over its own window, bucket by bucket.
+
+        One extra grouped read, only when the tile has a date window to lay
+        out — "this month" by day, a quarter by week, a year by month — and
+        the field that window is on is stored, which grouping needs.
+        """
+        found = self._domain_window(domain)
+        if not found:
+            return None
+        fname, start, end = found
+        field = model._fields.get(fname)
+        if field is None or field.type not in ("date", "datetime") \
+                or not field.store:
+            return None
+        end = min(end, fields.Date.context_today(self) + timedelta(days=1))
+        days = (end - start).days if start and end else 0
+        if days < 2:
+            return None
+        granularity = "day" if days <= 31 else "week" if days <= 92 else "month"
+        spec = "%s:%s" % (fname, granularity)
+        measure = (query.get("measures") or ["__count"])[0]
+        rows = model.with_context(**self._company_context())._read_group(
+            domain, groupby=[spec], aggregates=[measure])
+        read = {"rows": rows, "has_more": False, "group_by": [spec],
+                "aggregates": [measure]}
+        read = self._fill_dates(model, {}, read, (fname, start, end))
+        points = [self._number(row[1]) for row in read["rows"] if row[0]]
+        return points[-TREND_POINTS:] if len(points) > 1 else None
+
+    def _fold_ring(self, model, read, domain, shaped):
+        """At most six slices and an "Other", for a pie or donut.
+
+        Only for a measure that adds up — a count or a sum. Averages do not,
+        and an "Other" average would be a made-up number. When the read was
+        capped, the remainder comes from one ungrouped total, so "Other" is
+        exactly what the shown slices leave out.
+        """
+        series = shaped.get("series") or []
+        aggregates = read["aggregates"]
+        if not aggregates:
+            return shaped
+        measure = aggregates[0]
+        if measure != "__count" and not measure.endswith(":sum"):
+            return shaped
+        if len(series) <= RING_SLICES + 1 and not read["has_more"]:
+            return shaped
+        kept = sorted(series, key=lambda point: -abs(point["value"]))[:RING_SLICES]
+        if read["has_more"]:
+            total = self._total(model.with_context(**self._company_context()),
+                                domain, measure)
+        else:
+            total = sum(point["value"] for point in series)
+        rest = total - sum(point["value"] for point in kept)
+        folded = len(series) - len(kept)
+        if abs(rest) > 1e-9:
+            word = _("Other")
+            kept.append({"label": word, "short": word, "value": rest,
+                         "raw": None, "other": True, "count": folded})
+        return dict(shaped, series=kept, has_more=False)
 
     def _read(self, model, query, domain):
         group_by = list(query.get("group_by") or [])
@@ -415,11 +585,18 @@ class AIDashboardRender(models.AbstractModel):
         return {"rows": rows[:limit], "has_more": has_more,
                 "group_by": group_by, "aggregates": aggregates}
 
-    def _shape(self, widget, query, read, previous=None):
-        """Turn ORM tuples into something Chart.js can draw."""
+    def _shape(self, widget, query, read, previous=None, model=None):
+        """Turn ORM tuples into something Chart.js can draw.
+
+        ``model`` is what the values are put into words against — a state's
+        label rather than its key, "Mar 2026" rather than a datetime. Without
+        it (an old caller) the raw value is used, as before.
+        """
         rows, group_by = read["rows"], read["group_by"]
         aggregates = read["aggregates"]
         out = {"has_more": read["has_more"]}
+        labelers = [labels_lib.Labeler(self.env, model, spec)
+                    for spec in group_by] if model is not None else []
 
         if widget.get("type") == "kpi":
             value = 0
@@ -435,10 +612,18 @@ class AIDashboardRender(models.AbstractModel):
 
         series = []
         for row in rows:
-            label = self._label(row[0]) if group_by else _("Total")
+            if not group_by:
+                label = short = _("Total")
+            elif labelers:
+                label, short = labelers[0].labels(row[0])
+            else:
+                label = short = self._label(row[0])
             value = self._number(row[len(group_by)]) if len(row) > len(group_by) else 0
             series.append({
                 "label": label,
+                # An axis whose points all share a year drops it ("Mar"); the
+                # canvas decides, the server only offers both.
+                "short": short,
                 "value": value,
                 # Carried so a click can filter the drill-down to this slice.
                 "raw": self._raw(row[0]) if group_by else None,
@@ -472,9 +657,16 @@ class AIDashboardRender(models.AbstractModel):
                     lookup.get(self._group_key(row[0]), 0) for row in rows
                 ]
         if widget.get("type") == "table":
-            out["columns"] = group_by + aggregates
+            keys = group_by + aggregates
+            # Headed in words ("Customer", "Count"), not in field names. The
+            # keys stay alongside for anything that has to match them.
+            out["columns"] = [labels_lib.column_title(model, key) for key in keys] \
+                if model is not None else keys
+            out["column_keys"] = keys
+            out["numeric_from"] = len(group_by)
             out["rows"] = [
-                [self._label(cell) for cell in row[:len(group_by)]]
+                [(labelers[i].label(cell) if labelers else self._label(cell))
+                 for i, cell in enumerate(row[:len(group_by)])]
                 + [self._number(cell) for cell in row[len(group_by):]]
                 for row in rows
             ]
@@ -653,6 +845,11 @@ class AIDashboardRender(models.AbstractModel):
                 out["value"] = spec_lib.filter_value(flt, filter_values) \
                     or "all_time"
                 out["display"] = self._period_label(out["value"])
+                # The dates "this month" means today, beside the name of it,
+                # so nobody has to work out what "last quarter" covers.
+                window = self._period_bounds(out["value"])
+                out["range"] = labels_lib.range_label(
+                    self.env, *window, compact=False) if window else ""
                 resolved.append(out)
                 continue
             meta = None
@@ -890,7 +1087,11 @@ class AIDashboardRender(models.AbstractModel):
 
     def _currency(self):
         currency = self.env.company.currency_id
-        return {"symbol": currency.symbol, "position": currency.position,
+        # `id` lets the canvas format through Odoo's own formatCurrency
+        # (@web/core/currency), which knows the reader's thousands separator
+        # and decimal point; the rest is kept for the email template.
+        return {"id": currency.id, "symbol": currency.symbol,
+                "position": currency.position,
                 "decimals": currency.decimal_places}
 
     def _model_label(self, model_name):
@@ -911,7 +1112,7 @@ class AIDashboardRender(models.AbstractModel):
         if value in (False, None):
             return _("Unassigned")
         if isinstance(value, (date, datetime)):
-            return fields.Date.to_string(value)
+            return labels_lib.date_labels(self.env, value, "day")[0]
         return str(value)
 
     @staticmethod
