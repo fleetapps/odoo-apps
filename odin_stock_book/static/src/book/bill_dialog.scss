@@ -1,0 +1,76 @@
+// Add bill: the purchase window's layout (purchase_dialog.scss), with the
+// columns of a bill: what for, account, quantity, price, VAT, VAT amount,
+// amount. Bootstrap's variables are written with #{$prefix}, as there.
+
+.o_sb_bd_row.o_sb_pd_row {
+    grid-template-columns: minmax(12rem, 1.4fr) minmax(11rem, 1fr) 4.5rem 7.5rem 9rem 6.5rem 7.5rem 2rem;
+}
+
+// The empty last row: what a new line starts with, not yet a line.
+.o_sb_bd_waiting {
+    color: var(--#{$prefix}secondary-color);
+}
+
+// The scan: a button, or a file dropped anywhere on the window.
+.o_sb_bd_files {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+}
+
+.o_sb_bd_files_hint {
+    font-size: 0.85rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_sb_bd_file_list {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+    }
+
+    a {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 22rem;
+    }
+
+    small {
+        color: var(--#{$prefix}secondary-color);
+    }
+}
+
+.o_sb_bd.o_sb_bd_dragging {
+    outline: 2px dashed var(--#{$prefix}primary);
+    outline-offset: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+// Not a stop: what KRA needs for the VAT to count.
+.o_sb_bd_note {
+    font-size: 0.85rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+@media (max-width: 991.98px) {
+    .o_sb_bd_row.o_sb_pd_row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .o_sb_bd_what,
+    .o_sb_bd_account {
+        grid-column: 1 / -1;
+    }
+}

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Add bill: the paper as it reads. Supplier, number, date, where it was
+         paid from, the supplier's PIN and CU number; a line for each thing it
+         is for, charged to an account, with its VAT; the scan. -->
+    <t t-name="odin_stock_book.BillDialog">
+        <Dialog title="title" size="'xl'" beforeDismiss="beforeDismiss">
+            <div class="o_sb_pd o_sb_bd" t-ref="root" t-att-class="{ o_sb_bd_dragging: state.dragging }"
+                 t-on-dragover="onDragOver" t-on-dragleave="onDragLeave" t-on-drop="onDrop">
+                <div class="o_sb_pd_head o_sb_bd_head">
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_supplier" t-esc="words.partner"/>
+                        <input id="o_sb_bd_supplier" data-pd="supplier" class="form-control" autocomplete="off"
+                               t-att-class="{ 'is-invalid': state.tried and !state.supplier }" t-att-value="state.supplierQuery"
+                               t-att-placeholder="words.partnerHint" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
+                               t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickSupplier(item))"/>
+                    </div>
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_ref" t-esc="words.ref"/>
+                        <input id="o_sb_bd_ref" data-pd="ref" class="form-control" autocomplete="off"
+                               t-att-class="{ 'is-invalid': state.refProblem or (state.tried and !state.ref.trim()) }" t-att-value="state.ref"
+                               placeholder="e.g. INV-2001321" title="The supplier's number on the paper"
+                               t-on-input="onRefInput" t-on-change="checkRef" t-on-keydown="onRefKey"/>
+                    </div>
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_date" t-esc="words.date"/>
+                        <input id="o_sb_bd_date" data-pd="date" type="date" class="form-control" t-att-max="state.options.today"
+                               t-att-class="{ 'is-invalid': state.tried and (!state.date or state.date > state.options.today) }"
+                               t-att-value="state.date" t-on-change="onDate"/>
+                    </div>
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_paid" t-esc="words.paid"/>
+                        <select id="o_sb_bd_paid" data-pd="paid" class="form-select" t-att-class="{ 'is-invalid': state.tried and !state.paid }"
+                                t-on-change="onPaid" t-on-keydown="onPaidKey">
+                            <option value="" t-att-selected="!state.paid">Choose</option>
+                            <option t-foreach="state.options.journals" t-as="journal" t-key="journal.id" t-att-value="journal.id"
+                                    t-att-selected="'' + journal.id === state.paid" t-esc="journal.label"/>
+                        </select>
+                    </div>
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_pin" t-esc="words.pin"/>
+                        <input id="o_sb_bd_pin" data-pd="pin" class="form-control text-uppercase" autocomplete="off"
+                               t-att-class="{ 'is-invalid': state.tried and pinProblem }" t-att-value="state.pin"
+                               placeholder="e.g. P051234567X"
+                               title="On the bill, beside the supplier's name. Saved on the supplier; KRA matches purchases by it."
+                               t-on-input="(ev) => this.state.pin = ev.target.value" t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
+                    </div>
+                    <div class="o_sb_pd_field">
+                        <label for="o_sb_bd_cu" t-esc="words.cu"/>
+                        <input id="o_sb_bd_cu" data-pd="cu" class="form-control" autocomplete="off" t-att-value="state.cu"
+                               t-att-class="{ 'is-invalid': state.cuProblem }" placeholder="Optional, e.g. KRACU0100000001/152"
+                               title="The CU invoice number on the supplier's eTIMS invoice, by its QR code. KRA allows the VAT as input tax only on an eTIMS invoice. It can be added on the bill later."
+                               t-on-input="onCuInput" t-on-change="checkCu"
+                               t-on-keydown="(ev) => this.onHeadKey(this.firstLineCell(state.lines[0]), ev)"/>
+                    </div>
+                    <div t-if="state.refProblem" class="o_sb_pd_alert alert alert-danger" role="alert"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.refProblem"/></div>
+                    <div t-if="state.cuProblem" class="o_sb_pd_alert alert alert-danger" role="alert"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="state.cuProblem"/></div>
+                </div>
+
+                <div class="o_sb_pd_lines" role="table" aria-label="What the bill is for" t-on-scroll="() => this.state.suggest = null">
+                    <div class="o_sb_pd_row o_sb_bd_row o_sb_pd_title" role="row">
+                        <span role="columnheader">What for</span>
+                        <span role="columnheader">Account</span>
+                        <span role="columnheader" class="o_sb_pd_num">Qty</span>
+                        <span role="columnheader" class="o_sb_pd_num" t-esc="words.cost" title="Before VAT, unless the VAT chosen says incl."/>
+                        <span role="columnheader">VAT</span>
+                        <span role="columnheader" class="o_sb_pd_num">VAT amount</span>
+                        <span role="columnheader" class="o_sb_pd_num">Amount</span>
+                        <span/>
+                    </div>
+                    <div t-foreach="state.lines" t-as="line" t-key="line.key" class="o_sb_pd_row o_sb_bd_row" role="row">
+                        <div class="o_sb_bd_what" data-label="What for">
+                            <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'name-' + line.key" t-att-value="line.name"
+                                   t-att-class="{ 'is-invalid': missing(line, 'name') }" placeholder="e.g. A4 printing paper, 10 reams" aria-label="What for"
+                                   t-on-input="(ev) => this.onNameInput(line, ev)" t-on-keydown="(ev) => this.onNameKey(line, ev)"/>
+                        </div>
+                        <div class="o_sb_bd_account" data-label="Account">
+                            <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'account-' + line.key" t-att-value="line.accountQuery"
+                                   t-att-title="line.account ? line.account.label : ''"
+                                   t-att-class="{ 'is-invalid': missing(line, 'account'), o_sb_bd_waiting: isBlank(line) }" placeholder="e.g. stationery" aria-label="Account"
+                                   t-on-input="(ev) => this.onAccountInput(line, ev)" t-on-focus="(ev) => this.onAccountFocus(line, ev)"
+                                   t-on-blur="onBlurSuggest" t-on-keydown="(ev) => this.onAccountKey(line, ev)"/>
+                        </div>
+                        <div data-label="Qty"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'qty-' + line.key" t-att-value="line.qty"
+                               t-att-class="{ 'is-invalid': missing(line, 'qty') }" placeholder="1" aria-label="Quantity"
+                               t-on-input="(ev) => this.onNumber(line, 'qty', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'qty', ev)"/></div>
+                        <div t-att-data-label="words.cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
+                               t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-aria-label="words.cost" title="Before VAT, unless the VAT chosen says incl."
+                               t-on-input="(ev) => this.onNumber(line, 'cost', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'cost', ev)"/></div>
+                        <div data-label="VAT">
+                            <select class="form-select form-select-sm" t-att-data-pd="'tax-' + line.key" t-att-class="{ 'is-invalid': missing(line, 'tax'), o_sb_bd_waiting: isBlank(line) }" aria-label="VAT" t-on-change="(ev) => this.onTax(line, ev)">
+                                <option value="" t-att-selected="!line.taxId">Choose</option>
+                                <option t-foreach="state.options.taxes" t-as="tax" t-key="tax.id" t-att-value="tax.id" t-att-selected="tax.id === line.taxId" t-esc="tax.label"/>
+                            </select>
+                        </div>
+                        <div class="o_sb_pd_num o_sb_pd_amount" data-label="VAT amount" t-esc="line.amount ? money(line.amount.vat) : ''"/>
+                        <div class="o_sb_pd_num o_sb_pd_amount" data-label="Amount" t-esc="line.amount ? money(line.amount.total) : ''"/>
+                        <div><button t-if="!isBlank(line)" type="button" class="btn btn-link btn-sm o_sb_pd_remove" tabindex="-1" aria-label="Remove line" t-on-click="() => this.removeLine(line)"><i class="fa fa-times"/></button></div>
+                    </div>
+                </div>
+
+                <ul t-if="state.suggest" class="dropdown-menu o_sb_pd_suggest" t-att-style="suggestStyle" role="listbox">
+                    <li t-if="state.suggest.none" class="o_sb_pd_none">No account matches. Try a word of its name, or its code.</li>
+                    <li t-if="state.suggest.empty" class="o_sb_pd_none" t-esc="words.noPartner"/>
+                    <t t-if="state.suggest.kind === 'supplier'">
+                        <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
+                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
+                    </t>
+                    <t t-else="">
+                        <t t-set="suggestLine" t-value="state.lines.find((l) => l.key === state.suggest.key)"/>
+                        <li t-foreach="state.suggest.items" t-as="item" t-key="item.id" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index }"
+                            t-on-mousedown.prevent="() => this.pickAccount(suggestLine, item)">
+                            <t t-esc="item.label"/>
+                            <small t-if="item.used">Used on this supplier's bills</small>
+                        </li>
+                    </t>
+                </ul>
+
+                <div class="o_sb_bd_files">
+                    <input type="file" class="o_sb_bd_file_input d-none" multiple="multiple" t-att-accept="state.options.file_types.join(',')"
+                           t-on-change="onFileInput"/>
+                    <button type="button" class="btn btn-light border btn-sm" t-on-click="openFiles">
+                        <i class="fa fa-paperclip me-1"/>Attach the scan
+                    </button>
+                    <span class="o_sb_bd_files_hint">Optional: a PDF or photo of the bill, or drop it here. It shows beside the bill in Accounting.</span>
+                    <ul t-if="state.files.length" class="o_sb_bd_file_list">
+                        <li t-foreach="state.files" t-as="file" t-key="file.key">
+                            <i t-att-class="file.type === 'application/pdf' ? 'fa fa-file-pdf-o me-1' : 'fa fa-file-image-o me-1'"/>
+                            <a t-att-href="file.url" target="_blank" rel="noopener" t-esc="file.name"/>
+                            <small class="ms-1" t-esc="fileSize(file)"/>
+                            <button type="button" class="btn btn-link btn-sm o_sb_pd_remove" t-att-aria-label="'Remove ' + file.name" t-on-click="() => this.removeFile(file)"><i class="fa fa-times"/></button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="o_sb_pd_foot">
+                    <div class="o_sb_pd_msgs" aria-live="polite">
+                        <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
+                        <div t-elif="state.tried and problem and problem[1] !== state.refProblem and problem[1] !== state.cuProblem" class="alert alert-warning" role="alert"><t t-esc="problem[1]"/></div>
+                        <div t-if="state.fileError" class="alert alert-warning mt-1" role="alert"><t t-esc="state.fileError"/></div>
+                        <div t-if="vatNote" class="o_sb_bd_note mt-1"><i class="fa fa-info-circle me-1"/><t t-esc="vatNote"/></div>
+                    </div>
+                    <div class="o_sb_pd_totals" aria-live="polite">
+                        <dl>
+                            <dt>Before VAT</dt><dd t-esc="state.totals ? money(state.totals.subtotal) : '—'"/>
+                            <t t-if="state.totals and state.totals.taxes.length">
+                                <t t-foreach="state.totals.taxes" t-as="tax" t-key="tax_index">
+                                    <dt t-esc="tax.name"/><dd t-esc="money(tax.amount)"/>
+                                </t>
+                            </t>
+                            <t t-else=""><dt>VAT</dt><dd t-esc="state.totals ? money(state.totals.vat) : '—'"/></t>
+                            <dt class="o_sb_pd_total">Total <t t-esc="state.options.currency"/></dt><dd class="o_sb_pd_total" t-esc="state.totals ? money(state.totals.total) : '—'"/>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="save">
+                    <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
+                </button>
+                <button class="btn btn-secondary" t-att-disabled="state.saving" t-on-click="discard">Cancel</button>
+                <small class="o_sb_pd_help" t-esc="saveHelp"/>
+            </t>
+        </Dialog>
+    </t>
+</templates>

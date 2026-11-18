@@ -4,4 +4,5 @@ from . import product
 from . import purchase
 from . import stock_purchase
 from . import stock_sale
+from . import stock_bill
 from . import stock_ledger

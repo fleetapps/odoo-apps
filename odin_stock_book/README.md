@@ -126,7 +126,7 @@ received another way show in *N to bill* on the book until they are billed.
 A line can be something not kept in stock, such as transport: it goes on the
 order and the bill, to its product's expense account, and not into stock or the
 item's cost. At least one line must be stock; a purchase with none is a bill to
-enter in Accounting.
+enter with *Add bill*, below.
 
 Inline lines read the cost as before VAT and take the VAT last used for the item
 or supplier, never one included in the price. In the window the VAT on each line
@@ -137,6 +137,71 @@ line in it, and saving replaces the line. A draft LPO reopens with *Edit purchas
 
 A receipt validated in Purchases, or a return to the supplier, adds its own
 posted line here. Enter a delivery in one place or the other, not both.
+
+## Bills (not stock)
+
+**Add bill** (shortcut `B`) is for what the business buys and has already paid
+that is not kept in stock: printing paper, electricity, a repair, rent. It is
+Odoo's own vendor bill, without a product or a purchase order, in one window
+and one step, and nothing of it goes on the book or into stock.
+
+* **The paper as it reads**: the supplier (or a new one, created as typed), the
+  bill or receipt number, the bill date, and where it was paid from. A line for
+  each thing the bill is for: what it was for, the account it is charged to,
+  the quantity (empty is 1), the unit price and the VAT, with each line's VAT
+  amount and amount, and the bill's total by VAT rate, as the bill will show
+  them, to compare with the paper.
+* **The account**: costs (expenses, cost of revenue) and what is paid now and
+  kept (prepayments, fixed assets). Never stock, receivable, payable, bank,
+  tax or income: stock is bought with *Add purchase*. A supplier billed before
+  starts its lines on the account its bills use most, and the list shows those
+  accounts first; picking an account takes its default VAT, as Odoo's bill does.
+* **The VAT** is chosen on each line, as for *Add purchase*: the price is read
+  before VAT unless the VAT chosen says *(incl.)*.
+* **The supplier's KRA PIN** and **CU invoice no.** (from the supplier's eTIMS
+  invoice, by its QR code) are optional. The PIN is saved on the supplier; the
+  CU number on the bill, as *Supplier eTIMS Invoice No.* under its Bill
+  Reference, where it can also be added later, once the supplier sends it. A CU
+  number already on another bill is refused.
+* **The scan** is optional: a PDF or photo (JPG, PNG, WebP; up to 5 files of 10
+  MB), attached or dropped on the window. It shows beside the bill in
+  Accounting and in its chatter. Nothing is read from it into the bill.
+* **Saving** posts the bill in *Accounting > Vendors > Bills*, dated and
+  numbered from the paper, and pays it in full from the journal chosen, in the
+  same transaction: all of it or none. The bill is in the accounts on the day of
+  the paper, unless a lock date closes that day: then on the first open one, as
+  Odoo dates it. A number already used for that supplier is refused, as in *Add
+  purchase*.
+* **Who**: anyone who uses the book, storekeepers included. The bill and the
+  payment are made for them without accounting rights, recorded as theirs. It
+  is corrected in Accounting (*Reset to Draft*, or a credit note), not here.
+* Journals are those whose payments reach the ledger, as for *Add purchase*:
+  what a petty cash float pays for goes through the Petty Cash book.
+
+### VAT on bills in Kenya
+
+What KRA allows, so that a bill's VAT can be claimed and its cost deducted:
+
+* Input VAT is claimable only on the supplier's **eTIMS (or TIMS) invoice that
+  KRA has received, with the company's PIN on it**. A manual invoice or a
+  receipt without it cannot be claimed. KRA pre-fills the purchases in the VAT
+  return from what suppliers transmit, and may list a purchase by its
+  CU invoice number rather than the number printed on the paper: that is what
+  the CU number is for.
+* It is claimable within **six months** (KRA's FAQ counts from the invoice date;
+  its VAT brochure from the end of the month of the purchase). A supplier on
+  KRA's VAT special table cannot be claimed from at all.
+* For **income tax**, an expense needs an eTIMS invoice too (Finance Act 2023,
+  Income Tax Act s.16(1)(c)), except wages under PAYE, imports, bank and
+  insurance charges, airline tickets and other exempt cases. From January 2026
+  iTax checks expenses against eTIMS when the return is filed.
+* An invoice can be checked by scanning its QR code, or with the invoice number
+  checker on iTax.
+
+The window says so, without stopping the bill, when it has VAT and no CU number.
+Sources: KRA's FAQs *The VAT auto-populated return* and *Learn about eTIMS*,
+KRA's VAT brochure (reviewed October 2024), KPMG Kenya's tax alert *eTIMS and the
+Shift to Data-Driven Income and Expense Validation* (2026).
 
 ## The cards
 
@@ -199,6 +264,12 @@ checked for contrast (text 4.5:1, stripes and dots 3:1) in both.
 administrators are supervisors; a supervisor need not be one. Posting,
 cancelling and references are the book's own: a line cannot be marked posted,
 turned back into a draft or renumbered by hand, from the form or over the API.
+
+## Upgrading to 19.0.1.11.0
+
+Upgrade the module (Apps > Stock Book > Upgrade) for *Add bill*: it adds the
+*Supplier eTIMS Invoice No.* to vendor bills (the same field as the Kenyan eTIMS
+module's, when that is installed).
 
 ## Upgrading to 19.0.1.9.0
 
