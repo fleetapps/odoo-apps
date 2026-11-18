@@ -33,7 +33,15 @@ receipt never offers a delivery note.
 
 An invoice signed with KRA in another system, QuickBooks say, carries that system's number in **Tax invoice no.** and the number eTIMS gave it in **CU invoice no.** (on the invoice, under the customer). The Sales Invoice, Credit Note, Sales Receipt, Commercial Invoice and the delivery's documents then print the tax invoice number as the invoice number, the CU invoice number under it, and Odoo's own number as *Our ref.*. A sales order reference that is the same number is not printed again as the order number. Stock Book's **Add sale** fills both in. Without a tax invoice number, Odoo's number is the invoice number, as before. An invoice or credit note posted with a tax invoice number is numbered with it, not by Odoo's sequence (posting again after Reset to Draft applies it too); *Our ref.* then prints only when Odoo's number is another.
 
-## Sales invoice style
+## Document style
+
+The **Delivery Note** follows the same style: on the Band, the company and the logo across the top with where the goods go on the right; the delivery date (no time), the order, invoice and vehicle; the lines with their cartons and pallets, no HS code; the totals; the **Terms of Delivery** beside what the buyer confirms on receipt; and a box for who received it with the buyer's stamp.
+
+A delivery note carries its invoice's number: the invoice 89403's delivery note prints as Delivery Note 89403, and the invoice prints *Delivery note: 89403*. The transfer's own number (WH/OUT/...) is then printed as *Our ref.*; until the delivery is invoiced, the delivery note prints the transfer's number.
+
+Where these documents replace Odoo's, Odoo's own **Print** on a done transfer (its delivery slip, with HS codes and a time stamp) is hidden: **Print Delivery Note**, **Print GRN** and the other buttons print the transfer's document, and a delivery slip printed by Odoo itself (auto-print on validating) is the transfer's document too.
+
+### Sales invoice
 
 **Letterhead** (the default) prints the Sales Invoice on the company letterhead,
 as the other documents. **Band** prints it with a shaded band across the top
@@ -41,7 +49,7 @@ of each page: the company's address and Tax ID on the left, with the
 invoice's **Payment terms** and its **CU invoice no.** (once there is one)
 under the PIN; the logo in the middle; the customer and their Tax ID on the
 right. Then the title with the invoice number, a box with the dates (and
-*Our ref.* when the number is QuickBooks's), the lines, the totals by VAT
+*Our ref.* when the number is QuickBooks's), the lines with each product's SKU (its Internal Reference) in a column of its own after the description, the totals by VAT
 rate, and a box with how to pay beside the Terms & Conditions. The title,
 the table's heading and the total are in the company's **Accent colour**.
 The band reaches the page's edges: the invoice then prints on its own paper

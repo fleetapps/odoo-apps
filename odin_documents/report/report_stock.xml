@@ -41,48 +41,162 @@
     <template id="report_delivery_note">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <t t-set="company" t-value="o._doc_company()"/>
-                <t t-set="doc_number" t-value="o.name"/>
-                <t t-set="refs" t-value="o._doc_refs()"/>
-                <t t-call="odin_documents.layout">
-                    <div class="page">
-                        <table class="o_odoc_cols">
-                            <tr>
-                                <td>
-                                    <t t-set="party" t-value="o.partner_id"/>
-                                    <t t-set="party_label" t-value="'Deliver to'"/>
-                                    <t t-call="odin_documents.party" t-if="o.partner_id"/>
-                                </td>
-                                <td>
-                                    <t t-set="doc_title" t-value="'Delivery Note'"/>
-                                    <t t-set="meta" t-value="[('Delivery no.', o.name),
-                                        ('Date', o._doc_date((o.date_done or o.scheduled_date))),
-                                        ('Order no.', refs['order']),
-                                        ('Customer order no.', refs['customer_ref']),
-                                        ('Invoice no.', refs['invoices']),
-                                        ('Vehicle / driver', o.doc_vehicle)]"/>
-                                    <t t-call="odin_documents.title"/>
-                                </td>
-                            </tr>
-                        </table>
-                        <t t-set="rows" t-value="o._doc_lines()"/>
-                        <t t-set="show_ordered" t-value="True"/>
-                        <t t-set="ordered_label" t-value="'Ordered'"/>
-                        <t t-set="qty_label" t-value="'Delivered'"/>
-                        <t t-set="show_cartons" t-value="any(row['cartons'] for row in rows)"/>
-                        <t t-set="show_remarks" t-value="False"/>
-                        <t t-call="odin_documents.picking_lines"/>
-                        <t t-set="terms" t-value="o._doc_terms('delivery_note')"/>
-                        <t t-call="odin_documents.terms"/>
-                        <t t-set="boxes" t-value="['Delivered by', 'Received for the buyer']"/>
-                        <t t-set="acknowledgement" t-value="o._doc_acknowledgement('delivery_note')"/>
-                        <t t-set="stamp" t-value="True"/>
-                        <t t-set="stamp_label" t-value="'Buyer\'s company stamp'"/>
-                        <t t-set="stamp_theirs" t-value="True"/>
-                        <t t-call="odin_documents.signoff"/>
-                    </div>
-                </t>
+                <t t-if="o._doc_company().doc_invoice_style == 'band'" t-call="odin_documents.delivery_note_band"/>
+                <t t-else="" t-call="odin_documents.delivery_note_letterhead"/>
             </t>
+        </t>
+    </template>
+
+    <!-- The Band: the company on the left of the band, the logo in the
+         middle, where the goods go on the right; the date (no time), the
+         order and invoice numbers, the lines with their cartons and pallets,
+         the totals, then the terms of delivery and the signatures. -->
+    <template id="delivery_note_band">
+        <t t-set="company" t-value="o._doc_company()"/>
+        <t t-set="band_party" t-value="o.partner_id"/>
+        <t t-set="band_extra" t-value="[]"/>
+        <t t-set="accent" t-value="company._doc_accent()"/>
+        <t t-call="odin_documents.layout_band">
+            <div class="page">
+                <h2 class="o_odoc_b_title" t-attf-style="color: #{accent};">
+                    Delivery Note <t t-out="o._doc_number()"/>
+                </h2>
+                <t t-set="meta" t-value="o._doc_band_meta()"/>
+                <table class="o_odoc_b_meta" t-if="meta">
+                    <tr>
+                        <td t-foreach="meta" t-as="row">
+                            <div class="o_odoc_b_meta_label" t-out="row[0]"/>
+                            <div t-out="row[1]"/>
+                        </td>
+                    </tr>
+                </table>
+                <t t-set="rows" t-value="o._doc_lines()"/>
+                <t t-set="show_cartons" t-value="any(row['cartons'] for row in rows)"/>
+                <t t-set="show_pallet" t-value="any(row['pallet'] for row in rows)"/>
+                <t t-set="show_lots" t-value="any(row['lots'] for row in rows)"/>
+                <table class="o_odoc_b_lines">
+                    <thead>
+                        <tr t-attf-style="background: #{accent};">
+                            <th class="o_odoc_b_first">Description</th>
+                            <th class="o_odoc_num">Ordered</th>
+                            <th class="o_odoc_num">Delivered</th>
+                            <th>Unit</th>
+                            <th t-if="show_cartons" class="o_odoc_num">Cartons</th>
+                            <th t-if="show_pallet">Pallet</th>
+                            <th t-if="show_lots">Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="rows" t-as="row">
+                            <td t-out="row['product'].name or row['description']"/>
+                            <td class="o_odoc_num" t-out="o._doc_qty(row['ordered'])"/>
+                            <td class="o_odoc_num o_odoc_b_amount" t-out="o._doc_qty(row['qty'])"/>
+                            <td t-out="row['uom']"/>
+                            <td t-if="show_cartons" class="o_odoc_num" t-out="row['cartons'] or ''"/>
+                            <td t-if="show_pallet" t-out="row['pallet']"/>
+                            <td t-if="show_lots" t-out="row['lots']"/>
+                        </tr>
+                    </tbody>
+                </table>
+                <t t-set="totals" t-value="o._doc_totals()"/>
+                <table class="o_odoc_b_after">
+                    <tr>
+                        <td class="o_odoc_b_notes"/>
+                        <td class="o_odoc_b_totals_cell">
+                            <table class="o_odoc_b_totals">
+                                <tr t-if="totals['cartons']">
+                                    <th>CARTONS</th>
+                                    <td t-out="'{:,}'.format(totals['cartons'])"/>
+                                </tr>
+                                <tr t-if="o.doc_pallets">
+                                    <th>PALLETS</th>
+                                    <td t-out="o.doc_pallets"/>
+                                </tr>
+                                <tr t-if="totals['gross']">
+                                    <th>GROSS WEIGHT</th>
+                                    <td><t t-out="o._doc_qty(totals['gross'])"/> kg</td>
+                                </tr>
+                                <tr class="o_odoc_b_grand" t-attf-style="background: #{accent};">
+                                    <th>Total delivered</th>
+                                    <td t-out="o._doc_qty(totals['qty'])"/>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+                <t t-set="terms" t-value="o._doc_terms('delivery_note')"/>
+                <t t-set="acknowledgement" t-value="o._doc_acknowledgement('delivery_note')"/>
+                <table class="o_odoc_b_box" t-if="terms or acknowledgement">
+                    <tr>
+                        <td class="o_odoc_b_terms o_odoc_b_half" t-if="terms">
+                            <div class="o_odoc_b_terms_title">Terms of Delivery</div>
+                            <t t-out="terms"/>
+                        </td>
+                        <td class="o_odoc_b_terms o_odoc_b_half" t-if="acknowledgement">
+                            <div class="o_odoc_b_terms_title">Received</div>
+                            <t t-out="acknowledgement"/>
+                        </td>
+                    </tr>
+                </table>
+                <table class="o_odoc_b_sign">
+                    <tr>
+                        <td class="o_odoc_b_receive">
+                            <div class="o_odoc_b_meta_label">Received for the buyer</div>
+                            <div class="o_odoc_b_line">Name</div>
+                            <div class="o_odoc_b_line">Signature</div>
+                            <div class="o_odoc_b_line">Date</div>
+                        </td>
+                        <td class="o_odoc_b_stamp">
+                            <div class="o_odoc_b_meta_label">Buyer's company stamp</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </t>
+    </template>
+
+    <template id="delivery_note_letterhead">
+        <t t-set="company" t-value="o._doc_company()"/>
+        <t t-set="doc_number" t-value="o._doc_number()"/>
+        <t t-set="refs" t-value="o._doc_refs()"/>
+        <t t-call="odin_documents.layout">
+            <div class="page">
+                <table class="o_odoc_cols">
+                    <tr>
+                        <td>
+                            <t t-set="party" t-value="o.partner_id"/>
+                            <t t-set="party_label" t-value="'Deliver to'"/>
+                            <t t-call="odin_documents.party" t-if="o.partner_id"/>
+                        </td>
+                        <td>
+                            <t t-set="doc_title" t-value="'Delivery Note'"/>
+                            <t t-set="meta" t-value="[('Delivery no.', o._doc_number()),
+                                ('Date', o._doc_date((o.date_done or o.scheduled_date))),
+                                ('Order no.', refs['order']),
+                                ('Customer order no.', refs['customer_ref']),
+                                ('Invoice no.', refs['invoices'] if refs['invoices'] != o._doc_number() else ''),
+                                ('Our ref.', o._doc_our_ref()),
+                                ('Vehicle / driver', o.doc_vehicle)]"/>
+                            <t t-call="odin_documents.title"/>
+                        </td>
+                    </tr>
+                </table>
+                <t t-set="rows" t-value="o._doc_lines()"/>
+                <t t-set="show_ordered" t-value="True"/>
+                <t t-set="ordered_label" t-value="'Ordered'"/>
+                <t t-set="qty_label" t-value="'Delivered'"/>
+                <t t-set="show_cartons" t-value="any(row['cartons'] for row in rows)"/>
+                <t t-set="show_remarks" t-value="False"/>
+                <t t-call="odin_documents.picking_lines"/>
+                <t t-set="terms" t-value="o._doc_terms('delivery_note')"/>
+                <t t-call="odin_documents.terms"/>
+                <t t-set="boxes" t-value="['Delivered by', 'Received for the buyer']"/>
+                <t t-set="acknowledgement" t-value="o._doc_acknowledgement('delivery_note')"/>
+                <t t-set="stamp" t-value="True"/>
+                <t t-set="stamp_label" t-value="'Buyer\'s company stamp'"/>
+                <t t-set="stamp_theirs" t-value="True"/>
+                <t t-call="odin_documents.signoff"/>
+            </div>
         </t>
     </template>
 

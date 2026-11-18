@@ -178,6 +178,7 @@ $odoc-amount: #eef0f5;
         td:first-child { border-left: none; }
         .o_odoc_num { text-align: right; white-space: nowrap; }
         .o_odoc_b_amount { background: $odoc-amount; }
+        .o_odoc_b_sku { white-space: nowrap; width: 1%; }
         .o_odoc_section td { font-weight: bold; background: #f7f7f7; }
         .o_odoc_note td { font-style: italic; }
     }
@@ -217,6 +218,26 @@ $odoc-amount: #eef0f5;
         .o_odoc_b_terms_title { font-weight: bold; text-decoration: underline; margin-bottom: 4px; }
         ol, ul { padding-left: 18px; margin-bottom: 0; }
         li { margin-bottom: 2px; }
+        .o_odoc_b_terms + .o_odoc_b_terms { border-left: 1px solid $odoc-rule; }
+        .o_odoc_b_half { width: 50%; }
+    }
+    // Signatures: who delivered, who received, the buyer's stamp.
+    .o_odoc_b_sign {
+        width: 100%;
+        margin-top: 12px;
+        border-collapse: separate;
+        border-spacing: 8px 0;
+        page-break-inside: avoid;
+        td {
+            width: 35%;
+            vertical-align: top;
+            padding: 8px 10px 10px;
+            border: 1px solid $odoc-rule;
+            border-radius: 8px;
+        }
+        .o_odoc_b_line { border-bottom: 1px dotted #999; padding-top: 14px; color: #666; font-size: 8.5pt; }
+        .o_odoc_b_receive { width: 62%; }
+        .o_odoc_b_stamp { width: 38%; height: 90px; }
     }
 }
 

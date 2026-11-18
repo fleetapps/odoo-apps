@@ -11,6 +11,12 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
+            <!-- Odoo's Print on a done transfer is its delivery slip (HS code,
+                 a time stamp, no terms): the company's document buttons
+                 below print instead, where these documents replace Odoo's. -->
+            <xpath expr="//button[@name='%(stock.action_report_delivery)d']" position="attributes">
+                <attribute name="invisible">state != 'done' or doc_replace_standard</attribute>
+            </xpath>
             <xpath expr="//button[@name='do_print_picking']" position="after">
                 <button name="action_doc_print" type="object" string="Print Delivery Note" context="{'doc_code': 'delivery_note'}"
                         invisible="picking_type_code != 'outgoing' or return_id"/>
@@ -28,6 +34,7 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="return_id" invisible="1"/>
                 <field name="doc_is_export" invisible="1"/>
+                <field name="doc_replace_standard" invisible="1"/>
                 <field name="doc_supplier_ref" invisible="picking_type_code != 'incoming' or return_id"
                        placeholder="Printed on the GRN"/>
                 <field name="doc_reason" invisible="not return_id" placeholder="Why the goods come or go back"/>

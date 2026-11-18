@@ -141,6 +141,17 @@ class AccountMove(models.Model):
         return self._doc_orders().picking_ids.filtered(
             lambda p: p.picking_type_code == "outgoing" and p.state == "done" and not p.return_id)
 
+    def _doc_delivery_numbers(self):
+        """The numbers of the invoice's delivery notes, as they print: the
+        invoice's own, so the invoice and its delivery note carry one number."""
+        self.ensure_one()
+        numbers = []
+        for picking in self._doc_pickings():
+            number = picking._doc_number()
+            if number not in numbers:
+                numbers.append(number)
+        return ", ".join(numbers)
+
     def _doc_invoice_number(self):
         """The number the invoice prints as: its tax invoice's, else Odoo's once posted."""
         self.ensure_one()
@@ -224,7 +235,7 @@ class AccountMove(models.Model):
         rows = [(_("Invoice Date"), self._doc_date(self.invoice_date)),
                 (_("Due Date"), self._doc_date(self.invoice_date_due)),
                 (_("Order no."), self._doc_order_ref()),
-                (_("Delivery note"), ", ".join(self._doc_pickings().mapped("name"))),
+                (_("Delivery note"), self._doc_delivery_numbers()),
                 (_("Customer no."), self.commercial_partner_id.ref),
                 (_("Our ref."), self._doc_our_ref())]
         return [(label, value) for label, value in rows if value]

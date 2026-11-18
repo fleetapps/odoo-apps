@@ -94,6 +94,9 @@ class StockPicking(models.Model):
     doc_total_net = fields.Float(string="Net weight (kg)", compute="_compute_doc_totals", digits="Stock Weight")
     doc_total_gross = fields.Float(string="Gross weight (kg)", compute="_compute_doc_totals", digits="Stock Weight")
     doc_packing_warning = fields.Text(compute="_compute_doc_totals")
+    # Odoo's own Print on a done transfer prints its delivery slip: hidden
+    # where these documents replace Odoo's.
+    doc_replace_standard = fields.Boolean(related="company_id.doc_replace_standard")
 
     @api.depends("picking_type_code", "partner_id.commercial_partner_id.country_id", "company_id.country_id")
     def _compute_doc_is_export(self):
@@ -155,6 +158,49 @@ class StockPicking(models.Model):
             totals["pallets"] += picking.doc_pallets
             totals["cbm"] += picking.doc_cbm
         return totals
+
+    def _doc_print_code(self):
+        """The document a transfer prints as: what Odoo's own Print gives way to."""
+        self.ensure_one()
+        code = self.picking_type_code
+        if code == "outgoing":
+            return "goods_return_note" if self.return_id else "delivery_note"
+        if code == "incoming":
+            return "replacement_note" if self.return_id else "grn"
+        return "transfer_form"
+
+    def _doc_number(self):
+        """The number a delivery note prints as: its invoice's, so the delivery
+        note and the invoice carry one number (QuickBooks's). The transfer's
+        own until it is invoiced, and for any other transfer."""
+        self.ensure_one()
+        if self.picking_type_code == "outgoing" and not self.return_id:
+            numbers = [number for number in self._doc_refs()["invoices"].split(", ") if number]
+            if numbers:
+                return ", ".join(numbers)
+        return self.name
+
+    def _doc_our_ref(self):
+        """The transfer's own number, printed as our reference when the delivery
+        note carries its invoice's."""
+        self.ensure_one()
+        return self.name if self._doc_number() != self.name else ""
+
+    def _doc_band_meta(self):
+        """The Band delivery note's box under the title: the date (no time),
+        the order number, the vehicle, and the transfer's own number."""
+        self.ensure_one()
+        refs = self._doc_refs()
+        number = self._doc_number()
+        # _doc_date prints the day only, in the user's time zone.
+        rows = [(_("Delivery Date"), self._doc_date(self.date_done or self.scheduled_date)),
+                (_("Order no."), refs["order"]),
+                (_("Customer order no."), refs["customer_ref"]),
+                # The delivery note's number is the invoice's: printed once.
+                (_("Invoice no."), refs["invoices"] if refs["invoices"] != number else ""),
+                (_("Vehicle / driver"), self.doc_vehicle),
+                (_("Our ref."), self._doc_our_ref())]
+        return [(label, value) for label, value in rows if value]
 
     def _doc_refs(self):
         """The order and invoice numbers the transfer's documents print. Read

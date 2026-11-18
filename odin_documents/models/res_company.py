@@ -31,12 +31,12 @@ class ResCompany(models.Model):
     doc_freight_terms = fields.Char(string="Freight charges (export)", default="On buyer")
     doc_brand = fields.Char(string="Brand on export documents", help="When the product has no brand of its own.")
     doc_invoice_style = fields.Selection(
-        [("letterhead", "Letterhead"), ("band", "Band")], string="Sales invoice style",
+        [("letterhead", "Letterhead"), ("band", "Band")], string="Document style",
         default="letterhead", required=True,
-        help="Letterhead: on the company's letterhead, as the other documents are. Band: a shaded band across "
-             "the top of each page, the company on the left (with the invoice's payment terms and CU number), "
-             "the logo in the middle and the customer on the right; the title, the table's heading and the "
-             "total in the accent colour.")
+        help="Letterhead: on the company's letterhead. Band, for the Sales Invoice and the Delivery Note: a "
+             "shaded band across the top of each page, the company on the left (with an invoice's payment terms "
+             "and CU number), the logo in the middle and the customer on the right; the title, the table's "
+             "heading and the total in the accent colour. The other documents stay on the letterhead.")
     doc_accent_color = fields.Char(
         string="Accent colour", default="#B1A58E",
         help="The Band invoice's title, table heading and total. A colour such as #B1A58E.")

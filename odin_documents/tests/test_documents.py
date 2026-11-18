@@ -228,6 +228,9 @@ class TestDocuments(AccountTestInvoicingCommon):
         self.assertRegex(html, r"Invoice\s+5400\s*</h2>", "the tax invoice's number is the invoice's")
         self.assertIn(invoice.name, html, "Odoo's number as our reference")
         self.assertIn("background: #B1A58E", html, "the heading and total in the accent colour")
+        self.assertRegex(html, r'class="o_odoc_b_first">Description</th>\s*<th class="o_odoc_b_sku">SKU</th>',
+                         "the SKU in its own column, after the description")
+        self.assertRegex(html, r'class="o_odoc_b_sku">FIN-PAK-095</td>')
         for text in ("SUB TOTAL", "982800", "110110", "3000184558", "Title to goods remains with",
                      f"Payment terms: {terms.name}"):
             self.assertIn(text, html)
@@ -401,6 +404,41 @@ class TestDocuments(AccountTestInvoicingCommon):
         transfer = self.picking(self.warehouse.int_type_id, False, qty=5)
         self.assertIn("Transfer Form", self.render("action_report_transfer_form", transfer))
 
+    def test_band_delivery_note_dated_without_a_time_and_with_its_terms(self):
+        delivery = self.picking(self.warehouse.out_type_id, self.partner_a, doc_vehicle="KDA 123B")
+        Note = self.report("action_report_delivery_note")
+        self.assertEqual(Note.get_paperformat(), self.env.ref("odin_documents.paperformat_portrait"))
+        self.company.doc_invoice_style = "band"
+        self.assertEqual(Note.get_paperformat(), self.env.ref("odin_documents.paperformat_band"))
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertRegex(html, r"Delivery Note\s+%s\s*</h2>" % re.escape(delivery.name))
+        self.assertIn("Tax ID: P052112729P", self.band(html, "from"))
+        self.assertIn(self.partner_a.display_name, self.band(html, "to"), "where the goods go")
+        self.assertIn(delivery._doc_date(delivery.scheduled_date), html)
+        self.assertNotRegex(html, r"\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}", "the date, no time")
+        self.assertNotIn("HS Code", html)
+        self.assertNotIn("HS code", html)
+        for text in ("Terms of Delivery", "checking quantities", "KDA 123B",
+                     "Received for the buyer", "Buyer's company stamp", "Total delivered",
+                     "We are authorised to accept goods on behalf of the buyer"):
+            self.assertIn(text, html)
+        self.assertNotIn("Delivered by", html, "only the buyer signs")
+        self.assertNotIn("o_odoc_b_sku", html, "the SKU column is the invoice's only")
+        self.company.doc_invoice_style = "letterhead"
+        self.assertNotIn("o_odoc_band", self.render("action_report_delivery_note", delivery))
+
+    def test_odoos_print_on_a_transfer_gives_way_to_its_document(self):
+        Slip = self.env.ref("stock.action_report_delivery")
+        delivery = self.picking(self.warehouse.out_type_id, self.partner_a)
+        self.assertTrue(delivery.doc_replace_standard, "Odoo's Print button is hidden")
+        self.assertEqual(Slip.report_action(delivery)["report_name"], "odin_documents.report_delivery_note")
+        receipt = self.picking(self.warehouse.in_type_id, self.partner_b)
+        self.assertEqual(Slip.report_action(receipt)["report_name"], "odin_documents.report_grn")
+        self.company.doc_replace_standard = False
+        self.assertFalse(delivery.doc_replace_standard)
+        self.assertEqual(Slip.report_action(delivery, config=False)["report_name"], "stock.report_deliveryslip",
+                         "switched off: Odoo's own")
+
     def test_a_storekeeper_prints_the_delivery_note_of_a_sale(self):
         order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "client_order_ref": "LPO-77",
                                                "order_line": [Command.create({"product_id": self.product_a.id,
@@ -411,6 +449,35 @@ class TestDocuments(AccountTestInvoicingCommon):
             "odin_documents.action_report_delivery_note", order.picking_ids.ids)
         self.assertIn("LPO-77", html.decode(), "the customer's order number, without sales rights")
         self.assertIn(order.name, html.decode())
+
+    def test_a_delivery_note_carries_its_invoices_number(self):
+        order = self.env["sale.order"].create({"partner_id": self.partner_a.id, "order_line": [
+            Command.create({"product_id": self.product_a.id, "product_uom_qty": 6, "price_unit": 199.0})]})
+        order.action_confirm()
+        delivery = order.picking_ids
+        self.assertEqual(delivery._doc_number(), delivery.name, "not invoiced yet: the transfer's own number")
+        self.env["stock.quant"]._update_available_quantity(self.product_a, self.warehouse.lot_stock_id, 6)
+        delivery.action_assign()
+        delivery.move_ids.write({"quantity": 6, "picked": True})
+        delivery.button_validate()
+        invoice = order._create_invoices()
+        invoice.write({"invoice_date": "2026-11-02", "doc_tax_invoice_no": "89403"})
+        invoice.action_post()
+        self.assertEqual(invoice.name, "89403")
+        self.assertEqual(delivery._doc_number(), "89403", "the delivery note carries the invoice's number")
+        self.assertEqual(invoice._doc_delivery_numbers(), "89403")
+        self.assertEqual(self.meta(self.render("action_report_sales_invoice", invoice), "Delivery note"), "89403")
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertEqual(self.meta(html, "Delivery no."), "89403")
+        self.assertEqual(self.meta(html, "Our ref."), delivery.name, "the transfer's own number as our reference")
+        self.assertIsNone(self.meta(html, "Invoice no."), "one number, printed once")
+
+        self.company.doc_invoice_style = "band"
+        html = self.render("action_report_delivery_note", delivery)
+        self.assertRegex(html, r"Delivery Note\s+89403\s*</h2>")
+        self.assertIn(delivery.name, html)
+        self.assertIn("89403", self.render("action_report_sales_invoice", invoice))
+        self.assertEqual(dict(invoice._doc_band_meta())["Delivery note"], "89403", "on the Band invoice too")
 
     def test_count_sheet_is_one_document_for_the_lines_counted(self):
         Quant = self.env["stock.quant"]
