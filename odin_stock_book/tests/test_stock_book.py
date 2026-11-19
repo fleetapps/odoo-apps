@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from odoo import Command
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -118,6 +120,29 @@ class TestStockBook(TransactionCase):
             line.action_post()
         line.action_post(allow_short=True)
         self.assertEqual(self.onhand(self.carton), -50)
+
+    def test_a_component_on_two_lines_is_short_on_what_both_take(self):
+        line = self.Line.create({"product_id": self.fg.id, "reason": "filling", "qty_in": 360})  # 30 cartons, 50 on hand
+        self.assertEqual(line._status()[0], "ready")
+        self.Book.book_component(line.id, product_id=self.carton.id, qty=30)  # 30 more, from the same shelf
+        key, label, _tone, detail = line._status()
+        self.assertEqual((key, label), ("short", "Short · 1 item"))
+        self.assertIn("Type G - Hand Wash 500Mlx12 (60 needed, 50 left)", detail)
+        with self.assertRaises(UserError):
+            line.action_post()
+        self.assertEqual(self.onhand(self.carton), 50)
+
+    def test_lines_posted_together_are_checked_together_before_any_moves(self):
+        first = self.Line.create({"product_id": self.fg.id, "reason": "spoiled", "qty_out": 60})
+        second = self.Line.create({"product_id": self.fg.id, "reason": "used", "qty_out": 60})
+        with self.assertRaisesRegex(UserError, r"\(60 needed, 40 left\)"):
+            (first | second).action_post()
+        self.assertEqual((first.state, second.state, self.onhand(self.fg)), ("draft", "draft", 100),
+                         "the second is refused before the first moves anything")
+        refill = self.Line.create({"product_id": self.fg.id, "reason": "return", "qty_in": 20, "partner_name": "A",
+                                   "date": first.date - timedelta(days=1)})
+        (first | second | refill).action_post()
+        self.assertEqual(self.onhand(self.fg), 0, "a return the day before lets both through, as the book projects")
 
     def test_sale_needs_customer_and_makes_a_delivery(self):
         line = self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 24})
