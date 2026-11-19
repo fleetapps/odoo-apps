@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The supplier's CU invoice number on the vendor bill, under its Bill
+     Reference: typed in Add bill, or later once the supplier sends the eTIMS
+     invoice. x_ke_etims shows the same field there itself; this one then
+     stays hidden. -->
+<odoo>
+    <record id="view_move_form_supplier_cu" model="ir.ui.view">
+        <field name="name">account.move.form.odin_stock_book.supplier_cu</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ref'][not(ancestor::page)]" position="after">
+                <field name="odin_supplier_cu_elsewhere" invisible="1"/>
+                <field name="ke_etims_supplier_invoice_ref"
+                       invisible="odin_supplier_cu_elsewhere or move_type not in ('in_invoice', 'in_refund')"
+                       placeholder="e.g. KRACU0100000001/152"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

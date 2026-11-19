@@ -660,7 +660,7 @@ class StockBook(models.AbstractModel):
             })
         if not vals_list:
             raise UserError(_("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter "
-                              "it in Accounting."))
+                              "it with Add bill."))
         if not partner:
             # Asked for by name in the window: as typed. Sudo as the book does
             # when posting: supervisors need not create contacts in general.

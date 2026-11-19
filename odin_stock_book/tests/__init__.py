@@ -3,3 +3,4 @@ from . import test_review
 from . import test_purchase
 from . import test_assets
 from . import test_ledger
+from . import test_bill

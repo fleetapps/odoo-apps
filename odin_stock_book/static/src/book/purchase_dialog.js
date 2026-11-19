@@ -28,15 +28,17 @@ const blankLine = () => ({
 const isBlank = (line) => !line.product && !line.query && !line.qty && !line.cost;
 // A KRA PIN as KRA writes it: A (an individual) or P (anyone else), nine digits and a letter.
 const KRA_PIN = /^[AP][0-9]{9}[A-Z]$/;
-const compactPin = (text) => (text || "").replace(/\s+/g, "").toUpperCase();
+export const compactPin = (text) => (text || "").replace(/\s+/g, "").toUpperCase();
 
-const SERVER = {
+export const SERVER = {
     purchase: { options: "book_purchase_options", partners: "book_purchase_suppliers", products: "book_purchase_products",
                 item: "book_purchase_item", check: "book_purchase_check", totals: "book_purchase_totals",
                 load: "book_purchase_load", save: "book_purchase_save" },
     sale: { options: "book_sale_options", partners: "book_sale_customers", products: "book_sale_products",
             item: "book_sale_item", check: "book_sale_check", totals: "book_sale_totals",
             load: "book_sale_load", save: "book_sale_save" },
+    bill: { options: "book_bill_options", partners: "book_bill_suppliers", check: "book_bill_check",
+            totals: "book_bill_totals", save: "book_bill_save" },
 };
 
 /**
@@ -53,7 +55,7 @@ export class PurchaseDialog extends Component {
         lineId: { type: [Number, Boolean], optional: true },
         // Items to start with, from a shortage.
         items: { type: Array, optional: true },
-        // "purchase" or "sale": the same window, and Odoo's own documents for each.
+        // "purchase", "sale" or "bill": the same window, and Odoo's own documents for each.
         kind: { type: String, optional: true },
         // What to start from when it is no longer a draft: an undone purchase.
         loaded: { type: Object, optional: true },
@@ -66,7 +68,9 @@ export class PurchaseDialog extends Component {
         this.dialogService = useService("dialog");
         this.root = useRef("root");
         this.isSale = this.props.kind === "sale";
-        this.server = SERVER[this.isSale ? "sale" : "purchase"];
+        // Asks for the partner's KRA PIN, kept on the partner.
+        this.asksPin = this.isSale;
+        this.server = SERVER[this.props.kind] || SERVER.purchase;
         this.words = this.isSale ? {
             partner: _t("Customer"), partnerHint: _t("Type to find the customer"), noPartner: _t("No customer matches."),
             ref: _t("Invoice no."), date: _t("Date delivered"), paid: _t("Paid into"), cost: _t("Unit price"),
@@ -85,7 +89,7 @@ export class PurchaseDialog extends Component {
             // Sales: the customer's KRA PIN and terms, filled in from the customer
             // and kept there when typed; the CU invoice number the invoice prints.
             pin: "", terms: "", cu: "", due: "",
-            lines: [blankLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
+            lines: [this.newLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
             edit: false, replaceIds: [],
         });
         this.totalsSeq = 0;
@@ -194,12 +198,21 @@ export class PurchaseDialog extends Component {
     }
 
     // ------------------------------------------------------------ what is entered
+    newLine() {
+        return blankLine();
+    }
+
     isBlank(line) {
         return isBlank(line);
     }
 
+    /** The cell a line starts in. */
+    firstLineCell(line) {
+        return `product-${line?.key}`;
+    }
+
     get items() {
-        return this.state.lines.filter((line) => !isBlank(line));
+        return this.state.lines.filter((line) => !this.isBlank(line));
     }
 
     get fingerprint() {
@@ -273,7 +286,7 @@ export class PurchaseDialog extends Component {
         const firstProblemLine = this.items.find((line) => this.lineProblem(line));
         if (!firstProblemLine && !this.hasStock) {
             return [`product-${this.state.lines[0].key}`, this.isSale ? _t("Add at least one item kept in stock. A sale with no stock in it is an invoice: enter it in Accounting.")
-                : _t("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter it in Accounting.")];
+                : _t("Add at least one item kept in stock. A purchase with no stock in it is a bill: enter it with Add bill.")];
         }
         for (const [index, line] of this.items.entries()) {
             const what = this.lineProblem(line);
@@ -293,14 +306,14 @@ export class PurchaseDialog extends Component {
     /** A PIN typed must be a KRA PIN; the one the customer has stays as it is (a foreign tax ID, say). */
     get pinProblem() {
         const pin = compactPin(this.state.pin);
-        if (!this.isSale || !pin || pin === compactPin(this.state.supplier?.vat) || KRA_PIN.test(pin)) {
+        if (!this.asksPin || !pin || pin === compactPin(this.state.supplier?.vat) || KRA_PIN.test(pin)) {
             return "";
         }
         return _t("%s is not a KRA PIN: A or P, nine digits and a letter, e.g. P052112729P.", this.state.pin.trim());
     }
 
     missing(line, field) {
-        return this.state.tried && !isBlank(line) && this.lineProblem(line) === field;
+        return this.state.tried && !this.isBlank(line) && this.lineProblem(line) === field;
     }
 
     // ------------------------------------------------------------ supplier
@@ -308,7 +321,7 @@ export class PurchaseDialog extends Component {
         this.anchor = ev.target;
         const text = ev.target.value;
         this.state.supplierQuery = text;
-        if (this.isSale && this.state.supplier) {
+        if (this.asksPin && this.state.supplier) {
             // Another customer: the PIN and terms were the last one's.
             this.state.pin = "";
             this.state.terms = "";
@@ -358,15 +371,17 @@ export class PurchaseDialog extends Component {
             : { id: item.id, name: item.name, vat: item.vat || "", payment_term_id: item.payment_term_id || false };
         this.state.supplierQuery = this.state.supplier.name;
         this.state.suggest = null;
-        if (this.isSale) {
-            // What the customer has, to keep or to fill in where it is missing.
+        if (this.asksPin) {
+            // What the partner has, to keep or to fill in where it is missing.
             this.state.pin = this.state.supplier.vat || "";
+        }
+        if (this.isSale) {
             this.state.terms = this.state.supplier.payment_term_id ? String(this.state.supplier.payment_term_id) : "";
             this.loadDue();
         }
         this.refreshDefaults();
         this.checkRef();
-        this.focus(this.state.ref ? `product-${this.state.lines[0].key}` : "ref");
+        this.focus(this.state.ref ? this.firstLineCell(this.state.lines[0]) : "ref");
     }
 
     /** VAT and last cost depend on the supplier; VAT chosen by hand stays. */
@@ -478,7 +493,7 @@ export class PurchaseDialog extends Component {
         if (ev.key === "Enter") {
             ev.preventDefault();
             ev.target.blur();
-            this.focus(`product-${this.state.lines[0].key}`);
+            this.focus(this.firstLineCell(this.state.lines[0]));
         }
     }
 
@@ -557,8 +572,8 @@ export class PurchaseDialog extends Component {
 
     ensureBlankLine() {
         const last = this.state.lines[this.state.lines.length - 1];
-        if (!isBlank(last)) {
-            this.state.lines.push(blankLine());
+        if (!this.isBlank(last)) {
+            this.state.lines.push(this.newLine());
         }
     }
 
@@ -580,7 +595,7 @@ export class PurchaseDialog extends Component {
     removeLine(line) {
         this.state.lines = this.state.lines.filter((other) => other.key !== line.key);
         if (!this.state.lines.length) {
-            this.state.lines.push(blankLine());
+            this.state.lines.push(this.newLine());
         }
         this.ensureBlankLine();
         this.scheduleTotals();
@@ -597,7 +612,7 @@ export class PurchaseDialog extends Component {
         } else {
             this.ensureBlankLine();
             const index = this.state.lines.findIndex((other) => other.key === line.key);
-            this.focus(`product-${this.state.lines[index + 1]?.key}`);
+            this.focus(this.firstLineCell(this.state.lines[index + 1]));
         }
     }
 
@@ -724,17 +739,8 @@ export class PurchaseDialog extends Component {
         }
         this.state.saving = true;
         try {
-            const result = await this.orm.call("odin.stock.book", this.server.save, [{
-                warehouse_id: this.props.warehouseId || false,
-                partner_id: this.state.supplier.id, partner_name: this.state.supplier.name,
-                purchase_ref: this.state.ref.trim(), date: this.state.date,
-                pay_journal_id: this.state.paid === "none" ? false : Number(this.state.paid),
-                lines: this.items.map((line) => this.linePayload(line)),
-                ...(this.isSale ? {
-                    partner_vat: compactPin(this.state.pin), payment_term_id: Number(this.state.terms) || false,
-                    cu_invoice_no: this.state.cu.trim(),
-                } : {}),
-            }], { replace_ids: this.state.replaceIds });
+            const result = await this.orm.call("odin.stock.book", this.server.save, [this.savePayload()],
+                this.saveKwargs());
             this.props.onSaved(result);
             this.props.close();
         } catch (error) {
@@ -747,6 +753,24 @@ export class PurchaseDialog extends Component {
         } finally {
             this.state.saving = false;
         }
+    }
+
+    savePayload() {
+        return {
+            warehouse_id: this.props.warehouseId || false,
+            partner_id: this.state.supplier.id, partner_name: this.state.supplier.name,
+            purchase_ref: this.state.ref.trim(), date: this.state.date,
+            pay_journal_id: this.state.paid === "none" ? false : Number(this.state.paid),
+            lines: this.items.map((line) => this.linePayload(line)),
+            ...(this.isSale ? {
+                partner_vat: compactPin(this.state.pin), payment_term_id: Number(this.state.terms) || false,
+                cu_invoice_no: this.state.cu.trim(),
+            } : {}),
+        };
+    }
+
+    saveKwargs() {
+        return { replace_ids: this.state.replaceIds };
     }
 
     async discard() {
