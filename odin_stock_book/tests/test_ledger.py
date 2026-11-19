@@ -153,6 +153,63 @@ class TestStockBookLedger(TestStockBookPurchase):
         self.assertEqual(self.Line.search_count([("sale_line_id", "=", order.order_line.id)]), 1,
                          "the book's own delivery is not logged twice")
 
+    # ------------------------------------------------------------ sales: what is on hand for each line
+    def _item(self, name, code, onhand):
+        product = self.env["product.product"].create({
+            "name": name, "default_code": code, "is_storable": True, "type": "consu",
+            "categ_id": self.fg.categ_id.id, "standard_price": 100})
+        self.env["stock.quant"]._update_available_quantity(product, self.stock, onhand)
+        return product
+
+    def _with_lines(self, values, *rows):
+        tax = values["lines"][0]["tax_id"]
+        values["lines"] += [{"product_id": product.id, "qty": qty, "cost": 285.0, "tax_id": tax}
+                            for product, qty in rows]
+        return values
+
+    def test_every_line_of_a_sale_is_checked_against_the_stock_it_starts_from(self):
+        """The sale's one delivery takes all its items when its first line
+        posts: the lines after it were checked against what was left, so
+        7 on hand was short for 6 (Rinz, invoice 5436)."""
+        shampoo = self._item("Hair Shampoo Neem & Amla 500 Ml", "FIN-PAK-044", 7)
+        conditioner = self._item("Hair Conditioner Neem & Amla 500 Ml", "FIN-PAK-119", 11)
+        values = self._with_lines(self._sale_values(), (shampoo, 6), (conditioner, 6))
+        result = self.Book.book_sale_save(values)
+        self.assertTrue(result["posted"])
+        lines = self.Line.browse(result["ids"])
+        self.assertEqual(set(lines.mapped("state")), {"posted"})
+        self.assertEqual(len(lines.picking_id), 1, "one delivery for the invoice")
+        self.assertEqual((self.onhand(shampoo), self.onhand(conditioner)), (1, 5))
+
+    def test_an_item_on_two_lines_of_a_sale_counts_both_and_nothing_moves(self):
+        shampoo = self._item("Hair Shampoo Avocado & Grapeseed 500 Ml", "FIN-PAK-040", 11)
+        values = self._with_lines(self._sale_values(), (shampoo, 6), (shampoo, 6))
+        with self.assertRaises(UserError) as caught:
+            self.Book.book_sale_save(values)
+        message = caught.exception.args[0]
+        self.assertIn("Short", message)
+        self.assertIn("(6 needed, 5 left)", message, "the second line finds what the first leaves")
+        self.assertIn("on 2 lines of invoice INV-1 (6 + 6)", message, "a wrong pick is the likely cause")
+        self.assertEqual(self.onhand(shampoo), 11, "checked before anything is delivered")
+        self.assertFalse(self.env["sale.order"].search([("client_order_ref", "=", "INV-1")]))
+
+    def test_a_draft_sale_posted_from_the_book_posts_whole_or_is_reported_once(self):
+        shampoo = self._item("Hair Shampoo Neem & Amla 500 Ml", "FIN-PAK-044", 7)
+        good = self.Book.book_sale_save(self._with_lines(self._sale_values(), (shampoo, 6)), post=False)
+        result = self.Book.book_post(good["ids"])
+        self.assertEqual(result["count"], 2, "7 on hand is enough for 6 on the second line too")
+        self.assertFalse(result["skipped"] or result["failed"])
+        conditioner = self._item("Hair Conditioner Neem & Amla 500 Ml", "FIN-PAK-119", 10)
+        bad = self.Book.book_sale_save(self._with_lines(self._sale_values(purchase_ref="INV-2"),
+                                                        (conditioner, 6), (conditioner, 6)), post=False)
+        result = self.Book.book_post(bad["ids"])
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(sorted(f["id"] for f in result["failed"]), sorted(bad["ids"]),
+                         "each line of the sale once, not once per line tried")
+        self.assertIn("(6 needed, 4 left)", result["failed"][0]["why"])
+        self.assertEqual(set(self.Line.browse(bad["ids"]).mapped("state")), {"draft"})
+        self.assertEqual(self.onhand(conditioner), 10)
+
     def test_a_price_typed_over_the_pricelist_is_what_the_customer_is_invoiced(self):
         self.env.user.group_ids += self.env.ref("product.group_product_pricelist")
         pricelist = self.env["product.pricelist"].create({"name": "Chandarana", "item_ids": [
