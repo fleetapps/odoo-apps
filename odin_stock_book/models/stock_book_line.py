@@ -72,6 +72,12 @@ def _like(value):
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _number(qty):
+    """A quantity as people write it: 6, not 6.0; 2.5 as it is."""
+    qty = round(qty, 4) + 0.0  # + 0.0: no "-0"
+    return str(int(qty)) if qty.is_integer() else f"{qty:.4f}".rstrip("0")
+
+
 class StockBookLine(models.Model):
     """One line of the movement log."""
 
@@ -275,22 +281,50 @@ class StockBookLine(models.Model):
                                                   self.date.strftime("%d %b %Y"))
         available = available if available is not None else self._available(
             self.product_id | self.component_ids.product_id, self.warehouse_id)
-        short = []
-        if self.qty_out and float_compare(self.qty_out, available.get(self.product_id.id, 0.0),
-                                          precision_digits=4) > 0:
-            short.append(self.product_id)
+        # What the line takes of each item, all of it: a component on two
+        # recipe lines is taken twice from the same shelf.
+        needed = {}
+        if self.qty_out:
+            needed[self.product_id] = self.qty_out
         for comp in self.component_ids:
-            if self._unlimited(comp.product_id):
-                continue
-            if float_compare(comp.qty, available.get(comp.product_id.id, 0.0), precision_digits=4) > 0:
-                short.append(comp.product_id)
+            if not self._unlimited(comp.product_id):
+                needed[comp.product_id] = needed.get(comp.product_id, 0.0) + comp.qty
+        short = [(product, qty) for product, qty in needed.items()
+                 if float_compare(qty, available.get(product.id, 0.0), precision_digits=4) > 0]
         if short:
-            # The count fits the status column; the names are in the detail.
+            # The count fits the status column; the names and numbers are in the detail.
             label = _("Short · 1 item") if len(short) == 1 else _("Short · %s items", len(short))
             return "short", label, "danger", _(
                 "More than is on hand: %s. Count them, receive the delivery, or change the quantity.",
-                ", ".join(p.name for p in short))
+                # self.env._: plain _() finds no language inside a generator.
+                ", ".join(self.env._("%(item)s (%(needed)s needed, %(left)s left)", item=product.name,
+                                     needed=_number(qty), left=_number(available.get(product.id, 0.0)))
+                          for product, qty in short))
         return "ready", *STATUS["ready"], ""
+
+    def _projected(self):
+        """Each draft's status, and what is on hand right after it, as if the
+        lines before it had posted: in posting order (date, then entry) on
+        top of what is on hand now, warehouse by warehouse. A line that would
+        post (ready, or short and posted anyway) moves the running balance;
+        one that cannot leaves it as it was. The book shows its drafts this
+        way and posting checks them this way, before anything moves: a sale
+        from the window is delivered whole when its first line posts, so a
+        line checked on its own turn would find its own items already gone.
+        {line id: (status, on hand after, {component id: on hand after})}"""
+        balances = {wh.id: self._available(lines.product_id | lines.component_ids.product_id, wh)
+                    for wh, lines in self.grouped("warehouse_id").items()}
+        result = {}
+        for line in self.sorted(lambda l: (l.date, l.id)):
+            balance = balances.setdefault(line.warehouse_id.id, {})
+            status = line._status(balance)
+            if status[0] in ("ready", "short"):
+                balance[line.product_id.id] = balance.get(line.product_id.id, 0.0) + line.qty_in - line.qty_out
+                for comp in line.component_ids:
+                    balance[comp.product_id.id] = balance.get(comp.product_id.id, 0.0) - comp.qty
+            result[line.id] = (status, balance.get(line.product_id.id, 0.0),
+                               {c.id: balance.get(c.product_id.id, 0.0) for c in line.component_ids})
+        return result
 
     # ------------------------------------------------------------ create / write
     def _check_system_fields(self, vals, creating=False):
@@ -368,6 +402,20 @@ class StockBookLine(models.Model):
                               reason=REASONS[self.reason][1], code=code))
         self.ref = ref
 
+    def _refusal(self, label, detail, short=False):
+        """Why the line cannot post, as posting says it. An item short on a
+        sale that has it on more than one line was often picked in place of
+        another (the shampoo for the conditioner of the same range): say so."""
+        self.ensure_one()
+        message = _("%(item)s: %(why)s. %(detail)s", item=self.product_id.display_name or _("Line"),
+                    why=label, detail=detail)
+        rows = self.stock_sale_id.line_ids.filtered(lambda l: l.state == "draft" and l.product_id == self.product_id)
+        if short and len(rows) > 1:
+            message += " " + _("It is on %(count)s lines of invoice %(ref)s (%(qtys)s): check each line is this item.",
+                               count=len(rows), ref=self.stock_sale_id.sale_ref,
+                               qtys=" + ".join(_number(qty) for qty in rows.mapped("qty_out")))
+        return message
+
     def action_post(self, allow_short=False):
         if not self.env.user.has_group("odin_stock_book.group_stock_book_supervisor"):
             raise UserError(_("Only a Stock Book supervisor can post. Ask a supervisor to post it."))
@@ -382,21 +430,15 @@ class StockBookLine(models.Model):
         for line in drafts.filtered(lambda l: l.reason == "received"):
             key = line._purchase_key()
             purchases[key] = purchases.get(key, self.browse()) | line
-        # An invoice's goods leave in one delivery, made with its first line:
-        # each line is checked against what was on hand before that delivery,
-        # less what the lines before it on the invoice take.
-        on_hand = {}
+        # Every line is checked before the first one posts, against the stock
+        # the lines before it leave (_projected), and none is checked again on
+        # its turn: by then a sale from the window has delivered all its items.
+        projected = drafts._projected()
         for line in drafts:
-            sale = line.stock_sale_id
-            if sale and sale not in on_hand:
-                on_hand[sale] = line._available(
-                    drafts.filtered(lambda l: l.stock_sale_id == sale).product_id, line.warehouse_id)
-            key, label, _tone, detail = line._status(on_hand.get(sale))
-            if sale:
-                on_hand[sale][line.product_id.id] -= line.qty_out
+            key, label, _tone, detail = projected[line.id][0]
             if key != "ready" and not (key == "short" and allow_short):
-                raise UserError(_("%(item)s: %(why)s. %(detail)s", item=line.product_id.display_name or _("Line"),
-                                  why=label, detail=detail))
+                raise UserError(line._refusal(label, detail, short=key == "short"))
+        for line in drafts:
             context = {"odin_stock_book_posting": True}
             if line.date < today:
                 # Journal entries of a back-dated line go on its day too.

@@ -50,6 +50,10 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * **On hand after** each line is the running balance: drafts are projected in
   date order on top of what is on hand now, so a line is **Short** before it is
   posted, not after. Short lines are blocked; a supervisor can *Post anyway*.
+  Posting checks the lines it posts the same way, all of them before the first
+  one moves stock: a sale from *Add sale* is one delivery, so 7 on hand is
+  enough for 6 on any line of it, and an item on two lines counts both. A short
+  item says how many are needed and how many are left ("6 needed, 1 left").
 * Each line says what it still needs: item, reason, quantity, the right column,
   a recipe, a customer.
 * **Posting** (supervisors) creates the real Odoo document and locks the line;
