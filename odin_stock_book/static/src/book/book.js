@@ -1259,6 +1259,10 @@ export class StockBook extends Component {
         if (this.state.view === "log") {
             this.flashRows(result.ids, true);
         }
+        if (!result.posted && this.state.book?.can_post) {
+            this.draftSaved(result);
+            return;
+        }
         const buttons = result.posted ? await this.printButtons(result.ids[0]) : [];
         if (result.kind === "sale") {
             const lines = few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length));
@@ -1283,6 +1287,24 @@ export class StockBook extends Component {
             })
             : _t("%(ref)s: waiting for a supervisor to post", { ref: result.purchase_ref });
         this.notification.add(text, { type: "success", buttons, sticky: buttons.length > 0 });
+        if (!result.date.startsWith(this.monthPrefix)) {
+            this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
+        }
+    }
+
+    /** Kept as a draft by a supervisor (Save draft): on the book, to open again and finish. */
+    draftSaved(result) {
+        const sale = result.kind === "sale";
+        const lines = few(result.ids.length, _t("1 line"), _t("%s lines", result.ids.length));
+        this.notification.add(sale
+            ? _t("%(ref)s kept as a draft, %(lines)s. Open it from the book to finish and deliver it.", { ref: result.purchase_ref, lines })
+            : _t("%(ref)s kept as a draft, %(lines)s. Open it from the book to finish and receive it.", { ref: result.purchase_ref, lines }), {
+            type: "success",
+            buttons: [{
+                name: sale ? _t("Open sale") : _t("Open purchase"), primary: true,
+                onClick: () => this.openPurchaseFor({ id: result.ids[0], reason: sale ? "sale" : "received" }),
+            }],
+        });
         if (!result.date.startsWith(this.monthPrefix)) {
             this.notification.add(_t("Saved in %s: open its tab to see it.", this.shortDate(result.date)), { type: "info" });
         }

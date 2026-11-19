@@ -382,8 +382,18 @@ class StockBookLine(models.Model):
         for line in drafts.filtered(lambda l: l.reason == "received"):
             key = line._purchase_key()
             purchases[key] = purchases.get(key, self.browse()) | line
+        # An invoice's goods leave in one delivery, made with its first line:
+        # each line is checked against what was on hand before that delivery,
+        # less what the lines before it on the invoice take.
+        on_hand = {}
         for line in drafts:
-            key, label, _tone, detail = line._status()
+            sale = line.stock_sale_id
+            if sale and sale not in on_hand:
+                on_hand[sale] = line._available(
+                    drafts.filtered(lambda l: l.stock_sale_id == sale).product_id, line.warehouse_id)
+            key, label, _tone, detail = line._status(on_hand.get(sale))
+            if sale:
+                on_hand[sale][line.product_id.id] -= line.qty_out
             if key != "ready" and not (key == "short" and allow_short):
                 raise UserError(_("%(item)s: %(why)s. %(detail)s", item=line.product_id.display_name or _("Line"),
                                   why=label, detail=detail))
