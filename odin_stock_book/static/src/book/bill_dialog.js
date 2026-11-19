@@ -295,6 +295,11 @@ export class BillDialog extends PurchaseDialog {
         return _t("Posts the bill with its scan and pays it in full. Final once saved. Ctrl+Enter saves.");
     }
 
+    /** A bill is posted and paid when saved: it has no draft. */
+    get offersDraft() {
+        return false;
+    }
+
     // ------------------------------------------------------------ the scan
     openFiles() {
         this.root.el?.querySelector(".o_sb_bd_file_input")?.click();
