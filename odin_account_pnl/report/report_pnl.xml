@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The PDF of the P&L: landscape, the period and filters under the title,
-     rows as on screen (indented, totals ruled), notes as numbered footnotes.
-     Rendered by odin.pnl.export through ir.actions.report._render_qweb_pdf.
+<!-- The PDF of the P&L: landscape, a header with the period and filters, the
+     headline figures, then the rows as on screen (indented, subtotals banded,
+     the result ruled twice), changes coloured as on screen and signed, notes
+     as numbered footnotes. Rendered by odin.pnl.export through
+     ir.actions.report._render_qweb_pdf.
      https://www.odoo.com/documentation/19.0/developer/reference/backend/reports.html -->
 <odoo>
     <record id="paperformat_pnl" model="report.paperformat">
@@ -33,27 +35,60 @@
                 <t t-set="p" t-value="payload"/>
                 <div class="page o_odin_pnl_pdf">
                     <style>
-                        .o_odin_pnl_pdf { font-size: 10px; }
-                        .o_odin_pnl_pdf table { width: 100%; border-collapse: collapse; }
-                        .o_odin_pnl_pdf th { border-bottom: 1.5px solid #222; padding: 3px 6px; text-align: right; }
-                        .o_odin_pnl_pdf th:first-child { text-align: left; }
-                        .o_odin_pnl_pdf td { padding: 2px 6px; border-bottom: 0.5px solid #ddd; }
+                        .o_odin_pnl_pdf { font-size: 10px; color: #1f2937; }
+                        .o_odin_pnl_pdf .muted { color: #6b7280; }
+                        .o_odin_pnl_pdf .eyebrow { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+                        .o_odin_pnl_pdf h2 { font-size: 20px; font-weight: 700; margin: 2px 0 2px; }
+                        .o_odin_pnl_pdf .filters { margin-bottom: 12px; }
+                        .o_odin_pnl_pdf .warning { border: 1px solid #f3d28c; background: #fff8e6; padding: 4px 8px; margin-bottom: 8px; border-radius: 4px; }
+                        .o_odin_pnl_pdf table.kpis { width: 100%; border-collapse: separate; border-spacing: 6px 0; margin: 0 -6px 14px; }
+                        .o_odin_pnl_pdf table.kpis td { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; vertical-align: top; }
+                        .o_odin_pnl_pdf .kpi_name { font-size: 9px; color: #6b7280; }
+                        .o_odin_pnl_pdf .kpi_value { font-size: 15px; font-weight: 700; white-space: nowrap; }
+                        .o_odin_pnl_pdf .kpi_meta { font-size: 8.5px; color: #6b7280; }
+                        .o_odin_pnl_pdf table.lines { width: 100%; border-collapse: collapse; }
+                        .o_odin_pnl_pdf table.lines th { border-bottom: 1.5px solid #1f2937; padding: 4px 6px; text-align: right; font-size: 9px; color: #374151; }
+                        .o_odin_pnl_pdf table.lines th:first-child { text-align: left; }
+                        .o_odin_pnl_pdf table.lines td { padding: 3px 6px; border-bottom: 0.5px solid #e5e7eb; }
                         .o_odin_pnl_pdf td.num { text-align: right; white-space: nowrap; }
-                        .o_odin_pnl_pdf tr.bold td { font-weight: bold; }
-                        .o_odin_pnl_pdf tr.formula td { border-top: 1px solid #222; }
-                        .o_odin_pnl_pdf tr.result td { border-top: 1.5px solid #222; border-bottom: 3px double #222; }
-                        .o_odin_pnl_pdf tr.heading td { font-weight: bold; text-transform: uppercase; color: #666; }
-                        .o_odin_pnl_pdf tr.entry td { color: #444; font-size: 9px; background: #fafafa; }
-                        .o_odin_pnl_pdf tr.total td.num { border-top: 1px solid #222; }
                         .o_odin_pnl_pdf th.text, .o_odin_pnl_pdf td.text { text-align: left; }
-                        .o_odin_pnl_pdf .muted { color: #6c757d; }
-                        .o_odin_pnl_pdf sup { color: #6c757d; }
+                        .o_odin_pnl_pdf tr.line td { font-weight: 600; }
+                        .o_odin_pnl_pdf tr.bold td { font-weight: 700; }
+                        .o_odin_pnl_pdf tr.formula td { background: #f6f7f9; border-top: 1px solid #1f2937; }
+                        .o_odin_pnl_pdf tr.result td { border-top: 1.5px solid #1f2937; border-bottom: 3px double #1f2937; }
+                        .o_odin_pnl_pdf tr.heading td { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; font-size: 9px; padding-top: 8px; }
+                        .o_odin_pnl_pdf tr.account td { font-weight: 400; }
+                        .o_odin_pnl_pdf tr.entry td { color: #4b5563; font-size: 9px; }
+                        .o_odin_pnl_pdf tr.total td.num { border-top: 1px solid #1f2937; }
+                        .o_odin_pnl_pdf td.good { color: #047857; }
+                        .o_odin_pnl_pdf td.bad { color: #b91c1c; }
+                        .o_odin_pnl_pdf .flag { color: #b91c1c; font-weight: 700; }
+                        .o_odin_pnl_pdf sup { color: #6b7280; }
+                        .o_odin_pnl_pdf .notes { margin-top: 14px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
                     </style>
+                    <div class="eyebrow" t-esc="p['company']"/>
                     <h2 t-esc="p['title']"/>
-                    <div class="muted"><t t-esc="p['company']"/> · <t t-esc="p['period']"/></div>
-                    <div class="muted mb-3" t-esc="p['filters']"/>
-                    <div t-foreach="p['warnings']" t-as="warning" class="alert alert-warning py-1" t-esc="warning"/>
-                    <table>
+                    <div><strong t-esc="p['period']"/></div>
+                    <div class="muted filters" t-esc="p['filters']"/>
+                    <div t-foreach="p['warnings']" t-as="warning" class="warning" t-esc="warning"/>
+                    <!-- The headline figures, as above the report on screen. -->
+                    <table t-if="p.get('kpis')" class="kpis">
+                        <tr>
+                            <td t-foreach="p['kpis']" t-as="kpi">
+                                <div class="kpi_name" t-esc="kpi['name']"/>
+                                <div class="kpi_value" t-esc="kpi['text']"/>
+                                <div class="kpi_meta">
+                                    <t t-if="kpi.get('previous_label')">
+                                        <span t-att-style="'color: %s; font-weight: 600' % ('#047857' if kpi.get('growth_good') else ('#b91c1c' if kpi.get('growth_good') is False else '#6b7280'))"
+                                              t-esc="kpi.get('growth_text') or kpi.get('variance_text') or '0%'"/>
+                                        vs <t t-esc="kpi['previous_label']"/>
+                                    </t>
+                                    <t t-if="kpi.get('margin_text')"> · <t t-esc="kpi['margin_text']"/> margin</t>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="lines">
                         <thead>
                             <tr>
                                 <th><t t-esc="p['currency']"/></th>
@@ -72,6 +107,7 @@
                                 <tr t-att-class="row['css']">
                                     <td t-attf-style="padding-left: {{6 + (row.get('level') or 0) * 12}}px;">
                                         <t t-esc="row['label']"/>
+                                        <span t-if="row.get('material')" class="flag"> !</span>
                                         <sup t-foreach="row.get('note_refs') or []" t-as="ref" t-esc="ref"/>
                                     </td>
                                     <t t-if="p.get('items')">
@@ -82,12 +118,18 @@
                                         </t>
                                         <t t-else=""><td/><td/><td/></t>
                                     </t>
-                                    <td t-foreach="row.get('cells') or []" t-as="cell" class="num" t-esc="cell['text']"/>
+                                    <t t-foreach="row.get('cells') or []" t-as="cell">
+                                        <td t-att-class="'num ' + (('good' if row.get('growth_good') else 'bad') if cell['kind'] in ('variance', 'growth') and cell['text'] and row.get('growth_good') is not None else '')"
+                                            t-esc="cell['text']"/>
+                                    </t>
                                 </tr>
                             </t>
                         </tbody>
                     </table>
-                    <div t-if="p['notes']" class="mt-3">
+                    <div t-if="p.get('materiality')" class="muted mt-2">
+                        <span class="flag">!</span> Material change: <t t-esc="p['materiality']"/>
+                    </div>
+                    <div t-if="p['notes']" class="notes">
                         <div t-foreach="p['notes']" t-as="note" class="muted">
                             <sup t-esc="note['number']"/> <strong t-esc="note['line']"/>: <t t-esc="note['text']"/>
                         </div>

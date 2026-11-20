@@ -1,21 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <!-- One control per choice, read as "label | value": the value says what
+         the report shows now, highlighted when it is not the default. -->
+    <t t-name="odin_account_pnl.PnlSegValue">
+        <span t-if="label" class="o_odin_pnl_seg_label" t-esc="label"/>
+        <span class="o_odin_pnl_seg_value">
+            <i t-if="icon" t-attf-class="fa {{icon}} me-1" aria-hidden="true"/>
+            <t t-esc="value"/>
+            <span t-if="count" class="o_odin_pnl_seg_count" t-esc="count"/>
+            <i class="fa fa-angle-down o_odin_pnl_seg_chevron" aria-hidden="true"/>
+        </span>
+    </t>
+
     <t t-name="odin_account_pnl.PnlFilterBar">
         <div class="o_odin_pnl_filters">
             <div class="o_odin_pnl_chips">
                 <!-- Period, with Enterprise's arrows to step back and forth. -->
-                <div class="btn-group o_odin_pnl_period">
-                    <button class="btn btn-secondary" data-tooltip="Previous period" aria-label="Previous period"
-                            t-on-click="() => this.step(-1)"><i class="fa fa-caret-left"/></button>
+                <div class="o_odin_pnl_seg_group o_odin_pnl_period">
+                    <button type="button" class="o_odin_pnl_seg_step" data-tooltip="Previous period" aria-label="Previous period"
+                            t-on-click="() => this.step(-1)"><i class="fa fa-angle-left"/></button>
                     <Dropdown menuClass="'o_odin_pnl_menu p-2'">
-                        <button class="btn btn-secondary o_odin_pnl_chip">
-                            <i class="fa fa-calendar me-1"/><t t-esc="periodLabel"/>
+                        <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_seg_inner"
+                                data-tooltip="Period">
+                            <t t-call="odin_account_pnl.PnlSegValue">
+                                <t t-set="label" t-value="false"/>
+                                <t t-set="value" t-value="periodLabel"/>
+                                <t t-set="icon" t-value="'fa-calendar'"/>
+                            </t>
                         </button>
                         <t t-set-slot="content">
+                            <h6 class="dropdown-header">Period</h6>
                             <DropdownItem t-foreach="presets" t-as="preset" t-key="preset[0]"
                                           class="{ 'selected': options.date.filter === preset[0] }"
                                           onSelected="() => this.setPreset(preset[0])">
+                                <i class="fa fa-fw me-1" t-att-class="{ 'fa-check': options.date.filter === preset[0] }"/>
                                 <t t-esc="preset[1]"/>
                             </DropdownItem>
                             <div class="dropdown-divider"/>
@@ -32,27 +51,31 @@
                             <div class="dropdown-divider"/>
                             <div class="px-3 py-1">
                                 <div class="text-muted small mb-1">Divide into</div>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn" t-att-class="options.divide === 'none' ? 'btn-primary' : 'btn-outline-secondary'"
+                                <div class="o_odin_pnl_segmented" role="group">
+                                    <button type="button" t-att-class="{ active: options.divide === 'none' }"
                                             t-on-click="() => this.setDivide('none')">None</button>
-                                    <button class="btn" t-att-class="options.divide === 'month' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    <button type="button" t-att-class="{ active: options.divide === 'month' }"
                                             t-on-click="() => this.setDivide('month')">Months</button>
-                                    <button class="btn" t-att-class="options.divide === 'quarter' ? 'btn-primary' : 'btn-outline-secondary'"
+                                    <button type="button" t-att-class="{ active: options.divide === 'quarter' }"
                                             t-on-click="() => this.setDivide('quarter')">Quarters</button>
                                 </div>
                             </div>
                         </t>
                     </Dropdown>
-                    <button class="btn btn-secondary" data-tooltip="Next period" aria-label="Next period"
-                            t-on-click="() => this.step(1)"><i class="fa fa-caret-right"/></button>
+                    <button type="button" class="o_odin_pnl_seg_step" data-tooltip="Next period" aria-label="Next period"
+                            t-on-click="() => this.step(1)"><i class="fa fa-angle-right"/></button>
                 </div>
 
                 <Dropdown menuClass="'o_odin_pnl_menu p-2'">
-                    <button class="btn btn-secondary o_odin_pnl_chip o_odin_pnl_comparison"
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_comparison"
                             t-att-class="{ 'o_odin_pnl_chip_active': options.comparison.mode !== 'none' or options.ytd or options.by_company }">
-                        <i class="fa fa-percent me-1"/><t t-esc="comparisonLabel"/>
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.compare"/>
+                            <t t-set="value" t-value="comparisonLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
+                        <h6 class="dropdown-header">Compare with</h6>
                         <DropdownItem class="{ 'selected': options.comparison.mode === 'none' }"
                                       onSelected="() => this.setComparison('none')">No Comparison</DropdownItem>
                         <DropdownItem class="{ 'selected': options.comparison.mode === 'previous_period' }"
@@ -83,9 +106,12 @@
                 </Dropdown>
 
                 <Dropdown menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip"
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip"
                             t-att-class="{ 'o_odin_pnl_chip_active': options.journal_ids.length }">
-                        <i class="fa fa-book me-1"/><t t-esc="journalLabel"/>
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.journals"/>
+                            <t t-set="value" t-value="journalLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
                         <DropdownItem class="{ 'selected': !options.journal_ids.length }"
@@ -99,54 +125,50 @@
                     </t>
                 </Dropdown>
 
-                <button class="btn btn-secondary o_odin_pnl_chip"
+                <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip"
                         t-att-class="{ 'o_odin_pnl_chip_active': options.analytic_account_ids.length, 'active': state.drawer === 'analytic' }"
                         t-on-click="() => this.toggleDrawer('analytic')">
-                    <i class="fa fa-cubes me-1"/>Analytic
-                    <span t-if="options.analytic_account_ids.length" class="badge text-bg-primary ms-1"
-                          t-esc="options.analytic_account_ids.length"/>
+                    <t t-call="odin_account_pnl.PnlSegValue">
+                        <t t-set="label" t-value="labels.analytic"/>
+                        <t t-set="value" t-value="analyticLabel"/>
+                    </t>
                 </button>
 
-                <button class="btn btn-secondary o_odin_pnl_chip"
+                <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip"
                         t-att-class="{ 'o_odin_pnl_chip_active': options.partner_ids.length, 'active': state.drawer === 'partners' }"
                         t-on-click="() => this.toggleDrawer('partners')">
-                    <i class="fa fa-users me-1"/>Partners
-                    <span t-if="options.partner_ids.length" class="badge text-bg-primary ms-1"
-                          t-esc="options.partner_ids.length"/>
+                    <t t-call="odin_account_pnl.PnlSegValue">
+                        <t t-set="label" t-value="labels.partners"/>
+                        <t t-set="value" t-value="partnerLabel"/>
+                    </t>
                 </button>
 
                 <Dropdown menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip">
-                        <i class="fa fa-sliders me-1"/><t t-esc="entriesLabel"/>
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_entries"
+                            t-att-class="{ 'o_odin_pnl_chip_active': options.include_draft }">
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.entries"/>
+                            <t t-set="value" t-value="entriesLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
-                        <DropdownItem class="{ 'selected': !options.include_draft }" closingMode="'none'"
+                        <DropdownItem class="{ 'selected': !options.include_draft }"
                                       onSelected="() => this.props.onChange({ include_draft: false })">Posted Entries Only</DropdownItem>
-                        <DropdownItem class="{ 'selected': options.include_draft }" closingMode="'none'"
+                        <DropdownItem class="{ 'selected': options.include_draft }"
                                       onSelected="() => this.props.onChange({ include_draft: true })">Include Draft Entries</DropdownItem>
-                        <div class="dropdown-divider"/>
-                        <CheckboxItem checked="options.hide_zero" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('hide_zero')">Hide lines at 0</CheckboxItem>
-                        <CheckboxItem checked="options.show_codes" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('show_codes')">Account codes</CheckboxItem>
-                        <CheckboxItem checked="options.account_groups" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('account_groups')">Account groups</CheckboxItem>
-                        <CheckboxItem checked="options.percent_of_base" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('percent_of_base')">% of revenue</CheckboxItem>
-                        <CheckboxItem checked="options.trend" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('trend')">12-month trend</CheckboxItem>
-                        <CheckboxItem checked="options.negative_parentheses" closingMode="'none'"
-                                      onSelected="() => this.toggleOption('negative_parentheses')">Negatives in (brackets)</CheckboxItem>
                     </t>
                 </Dropdown>
 
                 <!-- How far the report unfolds, on screen and in the PDF and
                      Excel: the lines, every account, or every journal item. -->
                 <Dropdown menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip o_odin_pnl_detail"
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_detail"
                             t-att-class="{ 'o_odin_pnl_chip_active': options.detail !== 'lines' }"
                             data-tooltip="How much detail the report shows and exports">
-                        <i class="fa fa-list-ul me-1"/><t t-esc="detailLabel"/>
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.detail"/>
+                            <t t-set="value" t-value="detailLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
                         <h6 class="dropdown-header">Show and export</h6>
@@ -160,9 +182,12 @@
                 </Dropdown>
 
                 <Dropdown menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip"
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_budget"
                             t-att-class="{ 'o_odin_pnl_chip_active': options.budget_id }">
-                        <i class="fa fa-bullseye me-1"/><t t-esc="budgetLabel"/>
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.budget"/>
+                            <t t-set="value" t-value="budgetLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
                         <DropdownItem class="{ 'selected': !options.budget_id }"
@@ -184,8 +209,11 @@
                 </Dropdown>
 
                 <Dropdown t-if="props.data.layouts.length > 1" menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip">
-                        <i class="fa fa-file-text-o me-1"/>Report: <t t-esc="layoutLabel"/>
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip">
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="labels.layout"/>
+                            <t t-set="value" t-value="layoutLabel"/>
+                        </t>
                     </button>
                     <t t-set-slot="content">
                         <DropdownItem t-foreach="props.data.layouts" t-as="layout" t-key="layout.id"
@@ -196,21 +224,47 @@
                     </t>
                 </Dropdown>
 
+                <!-- How figures read: amounts, and what each line shows beside its name. -->
                 <Dropdown menuClass="'o_odin_pnl_menu'">
-                    <button class="btn btn-secondary o_odin_pnl_chip"><t t-esc="scaleLabel"/></button>
+                    <button type="button" class="o_odin_pnl_seg o_odin_pnl_chip o_odin_pnl_display"
+                            data-tooltip="Amounts and what each line shows">
+                        <t t-call="odin_account_pnl.PnlSegValue">
+                            <t t-set="label" t-value="false"/>
+                            <t t-set="value" t-value="scaleLabel"/>
+                            <t t-set="icon" t-value="'fa-sliders'"/>
+                        </t>
+                    </button>
                     <t t-set-slot="content">
+                        <h6 class="dropdown-header">Amounts</h6>
                         <DropdownItem t-foreach="scales" t-as="item" t-key="item_index"
-                                      class="{ 'selected': isScale(item) }"
+                                      class="{ 'selected': isScale(item) }" closingMode="'none'"
                                       onSelected="() => this.setScale(item)">
+                            <i class="fa fa-fw me-1" t-att-class="{ 'fa-check': isScale(item) }"/>
                             <t t-esc="item.label(props.data.currency.symbol)"/>
                         </DropdownItem>
+                        <CheckboxItem checked="options.negative_parentheses" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('negative_parentheses')">Negatives in (brackets)</CheckboxItem>
+                        <div class="dropdown-divider"/>
+                        <h6 class="dropdown-header">Lines</h6>
+                        <CheckboxItem checked="options.hide_zero" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('hide_zero')">Hide lines at 0</CheckboxItem>
+                        <CheckboxItem checked="options.show_codes" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('show_codes')">Account codes</CheckboxItem>
+                        <CheckboxItem checked="options.account_groups" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('account_groups')">Account groups</CheckboxItem>
+                        <CheckboxItem checked="options.percent_of_base" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('percent_of_base')">% of revenue</CheckboxItem>
+                        <CheckboxItem checked="options.trend" closingMode="'none'"
+                                      onSelected="() => this.toggleOption('trend')">12-month trend</CheckboxItem>
                     </t>
                 </Dropdown>
 
-                <div class="o_odin_pnl_search ms-auto">
-                    <i class="fa fa-search"/>
+                <div class="o_odin_pnl_search">
+                    <i class="fa fa-search" aria-hidden="true"/>
                     <input type="search" class="form-control form-control-sm" placeholder="Find an account"
+                           aria-label="Find an account"
                            t-att-value="props.search" t-on-input="(ev) => props.onSearch(ev.target.value)"/>
+                    <kbd class="o_odin_pnl_search_key" aria-hidden="true">/</kbd>
                 </div>
             </div>
 

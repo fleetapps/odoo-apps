@@ -64,3 +64,24 @@ class TestTour(PnlCase, HttpCase):
             "odin_account_pnl_views_tour",
             login="admin",
         )
+
+    def test_flux_review_explain_and_materiality(self):
+        self._sign_in_admin()
+        self.start_tour(
+            "/odoo/action-odin_account_pnl.odin_pnl_report_action?debug=",
+            "odin_account_pnl_flux_tour",
+            login="admin",
+        )
+
+    def test_schedule_dialog_tests_and_saves(self):
+        self._sign_in_admin()
+        self.env.ref("base.user_admin").email = "admin@example.com"
+        self.start_tour(
+            "/odoo/action-odin_account_pnl.odin_pnl_report_action?debug=",
+            "odin_account_pnl_schedule_tour",
+            login="admin",
+        )
+        view = self.env["odin.pnl.view"].sudo().search([("user_id", "=", self.env.ref("base.user_admin").id)])
+        self.assertEqual(len(view), 1)
+        self.assertEqual((view.schedule, view.subject), ("weekly", "Results for {period}"))
+        self.assertEqual(view.log_ids.kind, "test")

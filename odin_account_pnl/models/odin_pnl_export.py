@@ -106,6 +106,16 @@ class OdinPnlExport(models.AbstractModel):
             )
             for kpi in report.get("kpis") or []
         ]
+        # What the "!" of a material change means, when one is printed.
+        materiality = ""
+        comparison = next((column for column in report["columns"] if column["group"] == "comparison"), None)
+        if comparison and any(row.get("material") for row in rows):
+            thresholds = report.get("materiality") or {}
+            materiality = _(
+                "a change of at least %(percent)s%% and %(amount)s against %(period)s",
+                percent=formatLang(self.env, thresholds.get("percent") or 0.0, digits=0),
+                amount=self._format(thresholds.get("amount") or 0.0, "balance", dict(options, decimals=False), currency),
+                period=comparison["label"])
         return {
             "title": layout.name or _("Profit & Loss"),
             "company": ", ".join(self.env.companies.mapped("name")),
@@ -121,6 +131,7 @@ class OdinPnlExport(models.AbstractModel):
             "items": items,
             "rows": rows,
             "kpis": kpis,
+            "materiality": materiality,
             "statement": self._statement(rows),
             "notes": notes,
             "warnings": warnings,
@@ -145,7 +156,7 @@ class OdinPnlExport(models.AbstractModel):
             close_until(row["key"])
             if row.get("unfolded") and row["type"] in ("line", "group", "account", "breakdown"):
                 printed.append(dict(
-                    row, css=f"{row['css']} header bold",
+                    row, css=f"{row['css']} header bold", material=False,
                     cells=[dict(cell, value=None, text="") for cell in row["cells"]]))
                 open_rows.append(row)
             else:

@@ -2,10 +2,10 @@
 <templates xml:space="preserve">
 
     <t t-name="odin_account_pnl.PnlViewsMenu">
-        <div class="d-flex gap-1">
+        <div class="o_odin_pnl_views">
             <Dropdown menuClass="'o_odin_pnl_menu o_odin_pnl_views_menu'" onOpened.bind="refresh">
                 <button class="btn btn-secondary o_odin_pnl_views_button">
-                    <i class="fa fa-star me-1"/>
+                    <i class="fa fa-star me-1" t-att-class="{ 'text-warning': current }"/>
                     <t t-if="current" t-esc="current.name"/>
                     <t t-else="">Views</t>
                     <span t-if="changed" class="o_odin_pnl_view_changed ms-1" aria-label="Changed since saved"
@@ -17,42 +17,50 @@
                         <!-- Inline, not a t-call: the item's slot would keep the
                              loop's last view for every row. -->
                         <DropdownItem t-foreach="section.views" t-as="view" t-key="view.id"
-                                      class="{ 'selected': current and current.id === view.id }"
+                                      class="{ 'selected': current and current.id === view.id, 'o_odin_pnl_view_item': true }"
                                       onSelected="() => this.apply(view)">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="flex-grow-1">
-                                    <t t-esc="view.name"/>
-                                    <span class="text-muted small ms-1" t-esc="view.period"/>
-                                    <span t-if="!view.mine" class="text-muted small ms-1">· <t t-esc="view.owner"/></span>
-                                    <i t-if="view.shared and view.mine" class="fa fa-users text-muted ms-1" data-tooltip="Shared with the team"/>
-                                    <i t-if="view.schedule" class="fa fa-envelope-o text-muted ms-1"
-                                       t-att-data-tooltip="view.schedule"/>
+                                <i class="fa fa-fw" t-att-class="current and current.id === view.id ? 'fa-check text-primary' : ''" aria-hidden="true"/>
+                                <span class="flex-grow-1 o_odin_pnl_view_text">
+                                    <span class="o_odin_pnl_view_name" t-esc="view.name"/>
+                                    <span class="o_odin_pnl_view_meta">
+                                        <t t-esc="view.period"/>
+                                        <t t-if="!view.mine"> · <t t-esc="view.owner"/></t>
+                                    </span>
                                 </span>
+                                <i t-if="view.shared and view.mine" class="fa fa-users text-muted" data-tooltip="Shared with the team"/>
+                                <i t-if="view.failed" class="fa fa-exclamation-triangle text-danger"
+                                   t-att-data-tooltip="view.status"/>
+                                <i t-elif="view.paused" class="fa fa-pause-circle-o text-muted" t-att-data-tooltip="view.schedule"/>
+                                <i t-elif="view.schedule" class="fa fa-envelope-o text-muted" t-att-data-tooltip="view.schedule"/>
                                 <button class="btn btn-link btn-sm p-0" t-att-aria-label="view.is_default ? 'Default view' : 'Make default'"
                                         t-att-data-tooltip="view.is_default ? 'Opens by default' : 'Open this by default'"
                                         t-on-click="(ev) => this.toggleDefault(view, ev)">
                                     <i class="fa" t-att-class="view.is_default ? 'fa-star text-warning' : 'fa-star-o text-muted'"/>
                                 </button>
-                                <button t-if="view.mine" class="btn btn-link btn-sm p-0 text-muted" aria-label="Delete"
+                                <button t-if="view.mine" class="btn btn-link btn-sm p-0 text-muted o_odin_pnl_view_delete" aria-label="Delete"
                                         data-tooltip="Delete" t-on-click="(ev) => this.remove(view, ev)">
                                     <i class="fa fa-trash-o"/>
                                 </button>
                             </div>
                         </DropdownItem>
                     </t>
+                    <div t-if="!state.views.length" class="px-3 py-2 text-muted small">
+                        No saved views yet. Save this page to come back to it, share it or email it.
+                    </div>
                     <div t-if="state.views.length" class="dropdown-divider"/>
                     <DropdownItem t-if="current and current.mine" onSelected="() => this.update()">
-                        <i class="fa fa-floppy-o me-1"/>
+                        <i class="fa fa-fw fa-floppy-o me-1"/>
                         <t t-if="changed">Save the changes to “<t t-esc="current.name"/>”</t>
                         <t t-else="">Update “<t t-esc="current.name"/>”</t>
                     </DropdownItem>
                     <DropdownItem t-if="changed" onSelected="() => this.revert()">
-                        <i class="fa fa-undo me-1"/>Revert to the view as saved
+                        <i class="fa fa-fw fa-undo me-1"/>Revert to the view as saved
                     </DropdownItem>
                     <DropdownItem t-if="current" onSelected="() => this.resetView()">
-                        <i class="fa fa-times me-1"/>Back to the default P&amp;L
+                        <i class="fa fa-fw fa-times me-1"/>Back to the default P&amp;L
                     </DropdownItem>
-                    <div class="px-3 py-2">
+                    <div class="o_odin_pnl_views_save">
                         <div class="text-muted small mb-1">
                             <t t-if="current">Save the page as a new view</t>
                             <t t-else="">Save the page as a view</t>
@@ -69,9 +77,22 @@
                     </div>
                 </t>
             </Dropdown>
-            <button t-if="canSchedule" class="btn btn-secondary o_odin_pnl_schedule" t-on-click="() => this.scheduleSend()"
-                    t-att-data-tooltip="current and current.mine ? 'Email “' + current.name + '” on a schedule' : 'Email this page on a schedule'">
-                <i class="fa fa-envelope-o me-1"/>Schedule Send
+            <button t-if="canSchedule" class="btn btn-secondary o_odin_pnl_schedule"
+                    t-att-class="{ o_odin_pnl_schedule_on: schedule and !schedule.paused and !schedule.failed,
+                                   o_odin_pnl_schedule_failed: schedule and schedule.failed }"
+                    t-on-click="() => this.scheduleSend()" t-att-data-tooltip="scheduleTooltip">
+                <t t-if="schedule and schedule.failed">
+                    <i class="fa fa-exclamation-triangle me-1"/>Schedule failing
+                </t>
+                <t t-elif="schedule and schedule.paused">
+                    <i class="fa fa-pause-circle-o me-1"/>Paused
+                </t>
+                <t t-elif="schedule">
+                    <i class="fa fa-clock-o me-1"/>Scheduled
+                </t>
+                <t t-else="">
+                    <i class="fa fa-envelope-o me-1"/>Schedule
+                </t>
             </button>
         </div>
     </t>

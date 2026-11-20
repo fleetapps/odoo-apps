@@ -1,4 +1,5 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
+import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
 import { _t } from "@web/core/l10n/translation";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
@@ -21,9 +22,10 @@ export function viewSignature(options) {
  * marks it once the page has changed since the view was saved; the menu then
  * offers to save the change or go back to the view as saved.
  *
- * "Schedule Send", the button beside the menu, opens the current view's
- * schedule; on a page that is not one of the user's own views it opens a new
- * scheduled view made of the page as it is.
+ * "Schedule", the button beside the menu, opens the current view's schedule
+ * (odin.pnl.report.action_schedule); on a page that is not one of the user's
+ * own views it opens a new scheduled view made of the page as it is. The
+ * button says when the view on screen is emailed, paused or failing.
  */
 export class PnlViewsMenu extends Component {
     static template = "odin_account_pnl.PnlViewsMenu";
@@ -34,6 +36,7 @@ export class PnlViewsMenu extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.notification = useService("notification");
+        this.dialog = useService("dialog");
         this.state = useState({ views: [], name: "", shared: false });
         // The report's state, observed by this menu too. Read through the
         // report's own proxy, a change of view re-rendered the report only:
@@ -67,6 +70,25 @@ export class PnlViewsMenu extends Component {
 
     get canSchedule() {
         return Boolean(this.reportState.data?.can_schedule);
+    }
+
+    /** The schedule of the view on screen, when it is the user's and emailed. */
+    get schedule() {
+        const view = this.current;
+        if (!view || !view.mine || !view.schedule) {
+            return null;
+        }
+        return { summary: view.schedule, paused: view.paused, failed: view.failed, status: view.status };
+    }
+
+    get scheduleTooltip() {
+        const schedule = this.schedule;
+        if (!schedule) {
+            return this.current?.mine
+                ? _t("Email “%s” on a schedule", this.current.name)
+                : _t("Email this page on a schedule");
+        }
+        return schedule.failed ? `${schedule.summary}. ${schedule.status}` : schedule.summary;
     }
 
     async refresh() {
@@ -130,13 +152,26 @@ export class PnlViewsMenu extends Component {
         ]);
     }
 
-    async remove(view, ev) {
+    remove(view, ev) {
         ev.stopPropagation();
-        this.state.views = await this.orm.call("odin.pnl.report", "delete_view", [view.id]);
-        if (this.report.state.viewId === view.id) {
-            this.report.state.viewId = false;
-            this.report.state.viewSnapshot = null;
-        }
+        this.dialog.add(ConfirmationDialog, {
+            title: _t("Delete “%s”?", view.name),
+            body: [
+                view.schedule ? _t("Its emails stop (%s).", view.schedule) : "",
+                view.shared ? _t("Everyone it is shared with loses it too.") : "",
+                _t("This cannot be undone."),
+            ].filter(Boolean).join(" "),
+            confirmLabel: _t("Delete"),
+            confirmClass: "btn-danger",
+            confirm: async () => {
+                this.state.views = await this.orm.call("odin.pnl.report", "delete_view", [view.id]);
+                if (this.report.state.viewId === view.id) {
+                    this.report.state.viewId = false;
+                    this.report.state.viewSnapshot = null;
+                }
+            },
+            cancel: () => {},
+        });
     }
 
     onNameKey(ev) {
@@ -145,51 +180,32 @@ export class PnlViewsMenu extends Component {
         }
     }
 
-    scheduleSend() {
+    async scheduleSend() {
         const view = this.current;
-        if (view && view.mine) {
-            if (this.changed) {
-                this.notification.add(
-                    _t("The email sends “%s” as saved. Update the view to send the page as it is now.", view.name),
-                    { type: "warning" }
-                );
-            }
-            this.action.doAction(
-                {
-                    type: "ir.actions.act_window",
-                    name: _t("Schedule Send"),
-                    res_model: "odin.pnl.view",
-                    res_id: view.id,
-                    views: [[false, "form"]],
-                    target: "new",
-                },
-                { onClose: () => this.refresh() }
-            );
-            return;
-        }
-        // Not one of the user's views: schedule the page as it is, as a new
-        // view of their own (a shared view is copied, never changed).
-        if (this.reportState.options.date.filter === "custom") {
+        if (view && view.mine && this.changed) {
             this.notification.add(
-                _t("This page shows fixed dates, so every email would send these same dates. " +
-                    "Pick a period that moves with the calendar (Last month, This quarter…) first."),
-                { type: "warning", sticky: true }
+                _t("The email sends “%s” as saved. Update the view to send the page as it is now.", view.name),
+                { type: "warning" }
             );
         }
-        this.action.doAction(
-            {
-                type: "ir.actions.act_window",
-                name: _t("Schedule Send"),
-                res_model: "odin.pnl.view",
-                views: [[false, "form"]],
-                target: "new",
-                context: {
-                    default_name: view ? view.name : _t("Profit & Loss"),
-                    default_options: JSON.parse(JSON.stringify(this.reportState.options)),
-                    default_schedule: "monthly",
-                },
+        // The dialog: the view's own schedule, or a new view of the page as
+        // it is (fixed dates are flagged in the dialog itself).
+        const action = await this.orm.call("odin.pnl.report", "action_schedule", [
+            JSON.parse(JSON.stringify(this.reportState.options)),
+            view ? view.id : false,
+        ]);
+        const before = new Set(this.state.views.map((item) => item.id));
+        await this.action.doAction(action, {
+            onClose: async () => {
+                await this.refresh();
+                // Saved from the page as it is: the new view is the one on
+                // screen now, so the button names it and shows its schedule.
+                const created = this.state.views.filter((item) => item.mine && !before.has(item.id));
+                if (created.length === 1) {
+                    this.report.state.viewId = created[0].id;
+                    this.report.markViewSaved();
+                }
             },
-            { onClose: () => this.refresh() }
-        );
+        });
     }
 }

@@ -468,13 +468,16 @@ class OdinPnlReport(models.AbstractModel):
         if not self.env.user.has_group("account.group_account_user"):
             raise AccessError(_("Only accountants can email the P&L on a schedule."))
         view = self.env["odin.pnl.view"].browse(_int(view_id)).exists() if view_id else None
+        if view and not view.has_access("read"):
+            view = None
         action = {
             "type": "ir.actions.act_window",
             "name": _("Schedule email"),
             "res_model": "odin.pnl.view",
             "views": [(self.env.ref("odin_account_pnl.odin_pnl_view_schedule_form").id, "form")],
             "target": "new",
-            "context": {"dialog_size": "large"},
+            # The dialog's buttons open it again with their outcome (odin.pnl.view._notify).
+            "context": {"dialog_size": "large", "odin_pnl_schedule_dialog": True},
         }
         if view and view.user_id == self.env.user:
             action["res_id"] = view.id
@@ -844,12 +847,13 @@ class OdinPnlReport(models.AbstractModel):
             current, previous = (values.get(key) for key in ctx.growth_pair)
             if current is not None and previous:
                 row["growth"] = (current - previous) / abs(previous) * 100
-                row["growth_good"] = (row["growth"] >= 0) == bool(row["green_on_positive"])
+            change = (current or 0.0) - (previous or 0.0)
+            if abs(change) >= ctx.currency.rounding:
+                # Good or bad by the direction of the change; no change is
+                # neither (from nothing too: new income is good).
+                row["growth_good"] = (change > 0) == bool(row["green_on_positive"])
             if row["type"] in MATERIAL_TYPES and (current is not None or previous is not None):
-                row["variance"] = (current or 0.0) - (previous or 0.0)
-                if row["growth_good"] is None and abs(row["variance"]) >= ctx.currency.rounding:
-                    # From nothing: the direction alone says good or bad.
-                    row["growth_good"] = (row["variance"] > 0) == bool(row["green_on_positive"])
+                row["variance"] = change
                 row["material"] = ctx.is_material(row["variance"], row["growth"])
         if ctx.options["percent_of_base"] and ctx.base_values:
             for key, value in values.items():
@@ -898,6 +902,8 @@ class OdinPnlReport(models.AbstractModel):
                 "is_base": bool(line.is_base),
                 "is_result": bool(line.is_result),
                 "column_label": column["label"],
+                # Divided or side by side: the figure is their total.
+                "total": column["group"] == "total",
                 "previous": previous,
                 "previous_label": previous_column["label"] if previous_column else False,
                 "variance": None,

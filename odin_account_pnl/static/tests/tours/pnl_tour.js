@@ -123,3 +123,62 @@ registry.category("web_tour.tours").add("odin_account_pnl_views_tour", {
         },
     ],
 });
+
+/**
+ * Flux review: compare with the previous period from the table's call to
+ * action, filter the material changes, explain one in place, raise the
+ * materiality until nothing is material, and go to a headline figure's line.
+ */
+registry.category("web_tour.tours").add("odin_account_pnl_flux_tour", {
+    steps: () => [
+        { trigger: ".o_odin_pnl_kpi:contains(Revenue)" },
+        { trigger: ".o_odin_pnl_tab_cta", run: "click" },
+        { trigger: ".o_odin_pnl_table th.o_odin_pnl_flux_col:contains(Variance)" },
+        { trigger: ".o_odin_pnl_kpi:contains(Revenue) .o_odin_pnl_pill_good" },
+        { trigger: ".o_odin_pnl_tab[data-quick=material]", run: "click" },
+        { trigger: ".o_odin_pnl_detail:contains(Accounts)" },
+        {
+            trigger: ".o_odin_pnl_table tr.o_odin_pnl_material[data-key^='L:REV/A:'] .o_odin_pnl_explain_add",
+            run: "click",
+        },
+        { trigger: ".o_odin_pnl_panel textarea", run: "edit A new client this month" },
+        { trigger: ".o_odin_pnl_panel .btn-primary:contains(Add note)", run: "click" },
+        { trigger: ".o_odin_pnl_panel .o_odin_pnl_note:contains(A new client)" },
+        { trigger: ".o_odin_pnl_panel button[aria-label=Close]", run: "click" },
+        { trigger: ".o_odin_pnl_table tr[data-key^='L:REV/A:'] .o_odin_pnl_explain:contains(A new client)" },
+        // Above the change, nothing is material any more.
+        { trigger: ".o_odin_pnl_materiality_btn", run: "click" },
+        { trigger: "#odin_pnl_material_amount", run: "edit 5000" },
+        { trigger: ".o_odin_pnl_materiality_form .btn-primary:contains(Apply)", run: "click" },
+        { trigger: ".o_odin_pnl_materiality_value:contains(5,000)" },
+        { trigger: ".o_odin_pnl_empty:contains(No material change)" },
+        { trigger: ".o_odin_pnl_empty button:contains(Show all lines)", run: "click" },
+        { trigger: ".o_odin_pnl_tab.active[data-quick=all]" },
+        { trigger: ".o_odin_pnl_kpi:contains(Net Profit)", run: "click" },
+        { trigger: ".o_odin_pnl_table tr.o_odin_pnl_focus[data-key='L:NET']" },
+    ],
+});
+
+/**
+ * Schedule: the dialog opens on a monthly schedule of the page, a test goes
+ * to oneself and shows in the history without closing the dialog, and the
+ * saved schedule is the view on screen, its button saying so.
+ */
+registry.category("web_tour.tours").add("odin_account_pnl_schedule_tour", {
+    steps: () => [
+        { trigger: ".o_odin_pnl_table" },
+        { trigger: ".o_odin_pnl_schedule:contains(Schedule)", run: "click" },
+        { trigger: ".modal .o_odin_pnl_schedule_summary:contains(Every month on day 2)" },
+        { trigger: ".modal .o_field_widget[name=schedule] input[data-value=weekly]", run: "click" },
+        { trigger: ".modal .o_odin_pnl_schedule_summary:contains(Every Monday)" },
+        { trigger: ".modal .o_field_widget[name=recipient_emails] input", run: "edit board@example.com" },
+        { trigger: ".modal .o_field_widget[name=subject] input", run: "edit Results for {period}" },
+        { trigger: ".modal button[name=action_send_test]", run: "click" },
+        { trigger: ".o_notification:contains(Test:)" },
+        { trigger: ".modal .o_field_widget[name=log_ids] .o_data_row:contains(Test)" },
+        { trigger: ".modal .modal-footer button.btn-primary:contains(Save)", run: "click" },
+        { trigger: "body:not(:has(.modal))" },
+        { trigger: ".o_odin_pnl_schedule:contains(Scheduled)" },
+        { trigger: ".o_odin_pnl_views_button:contains(Profit & Loss)" },
+    ],
+});

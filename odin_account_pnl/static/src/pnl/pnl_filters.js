@@ -18,10 +18,12 @@ export const PRESETS = [
 ];
 
 export const SCALES = [
-    { scale: 1, decimals: true, label: (symbol) => _t("In .%s", symbol) },
-    { scale: 1, decimals: false, label: (symbol) => _t("In %s", symbol) },
-    { scale: 1000, decimals: false, label: (symbol) => _t("In K%s", symbol) },
-    { scale: 1000000, decimals: false, label: (symbol) => _t("In M%s", symbol) },
+    { scale: 1, decimals: true, label: (symbol) => _t("%s, with decimals", symbol), short: (symbol) => symbol },
+    { scale: 1, decimals: false, label: (symbol) => _t("%s, whole amounts", symbol), short: (symbol) => symbol },
+    { scale: 1000, decimals: false, label: (symbol) => _t("Thousands of %s (K)", symbol),
+      short: (symbol) => _t("K%s", symbol) },
+    { scale: 1000000, decimals: false, label: (symbol) => _t("Millions of %s (M)", symbol),
+      short: (symbol) => _t("M%s", symbol) },
 ];
 
 /**
@@ -65,13 +67,29 @@ export class PnlFilterBar extends Component {
         return this.props.data.period_label;
     }
 
+    /** The name of each control, before its value. */
+    get labels() {
+        return {
+            period: _t("Period"),
+            compare: _t("Compare"),
+            journals: _t("Journals"),
+            analytic: _t("Analytic"),
+            partners: _t("Partners"),
+            entries: _t("Entries"),
+            detail: _t("Detail"),
+            budget: _t("Budget"),
+            layout: _t("Layout"),
+            display: _t("Display"),
+        };
+    }
+
     get comparisonLabel() {
         if (this.options.by_company) {
             return _t("Companies side by side");
         }
         const comparison = this.options.comparison;
         const labels = {
-            none: _t("Comparison"),
+            none: _t("None"),
             previous_period: _t("Previous period"),
             previous_year: _t("Same period last year"),
             custom: _t("Custom comparison"),
@@ -86,7 +104,7 @@ export class PnlFilterBar extends Component {
     get journalLabel() {
         const ids = this.options.journal_ids;
         if (!ids.length) {
-            return _t("All Journals");
+            return _t("All");
         }
         if (ids.length === 1) {
             const journal = this.props.journals.find((j) => j.id === ids[0]);
@@ -96,7 +114,17 @@ export class PnlFilterBar extends Component {
     }
 
     get entriesLabel() {
-        return this.options.include_draft ? _t("Posted and draft entries") : _t("Posted entries");
+        return this.options.include_draft ? _t("Posted and draft") : _t("Posted");
+    }
+
+    get analyticLabel() {
+        const count = this.options.analytic_account_ids.length;
+        return count ? _t("%s selected", count) : _t("Any");
+    }
+
+    get partnerLabel() {
+        const count = this.options.partner_ids.length;
+        return count ? _t("%s selected", count) : _t("Any");
     }
 
     /** [level, label, what it shows]: see DETAIL_LEVELS in odin_pnl_report.py. */
@@ -114,7 +142,7 @@ export class PnlFilterBar extends Component {
 
     get budgetLabel() {
         const budget = this.props.data.budgets.find((b) => b.id === this.options.budget_id);
-        return budget ? budget.name : _t("Budget");
+        return budget ? budget.name : _t("None");
     }
 
     get layoutLabel() {
@@ -128,7 +156,7 @@ export class PnlFilterBar extends Component {
             this.scales.find((s) => s.scale === this.options.scale && s.decimals === this.options.decimals) ||
             this.scales.find((s) => s.scale === this.options.scale) ||
             this.scales[0];
-        return found.label(symbol);
+        return found.short(symbol);
     }
 
     isScale(item) {

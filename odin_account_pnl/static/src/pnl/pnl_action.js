@@ -1,5 +1,6 @@
 import { Component, onMounted, onWillStart, useEffect, useExternalListener, useRef, useState } from "@odoo/owl";
 import { browser } from "@web/core/browser/browser";
+import { router } from "@web/core/browser/router";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
@@ -7,12 +8,14 @@ import { Layout } from "@web/search/layout";
 import { useSetupAction } from "@web/search/action_hook";
 import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 import { PnlFilterBar } from "./pnl_filters";
+import { PnlKpis, PnlMaterialityMenu } from "./pnl_flux";
 import { PnlShortcutsDialog } from "./pnl_shortcuts_dialog";
 import { PnlSidePanel } from "./pnl_side_panel";
 import { PnlViewsMenu, viewSignature } from "./pnl_views_menu";
 import { download } from "@web/core/network/download";
 import { Dropdown } from "@web/core/dropdown/dropdown";
 import { DropdownItem } from "@web/core/dropdown/dropdown_item";
+import { parseFloat as parseLocalizedFloat } from "@web/views/fields/parsers";
 import { formatAmount, formatGrowth, formatPercent, sparkPoints } from "./pnl_format";
 import { lineActionRegistry, sidePanelRegistry } from "./pnl_registries";
 
@@ -22,15 +25,30 @@ import { lineActionRegistry, sidePanelRegistry } from "./pnl_registries";
 // told apart from a choice; the trend is now off unless turned on.
 const PREFS_KEY = "odin_account_pnl.display.v2";
 const REMEMBERED = ["layout_id", "scale", "decimals", "show_codes", "trend", "percent_of_base",
-    "hide_zero", "account_groups", "negative_parentheses"];
+    "hide_zero", "account_groups", "negative_parentheses", "materiality"];
 // The one-time tip about clicks and shortcuts, once dismissed in this browser.
 const TIP_KEY = "odin_account_pnl.tip_dismissed";
+// Comfortable or compact rows, per browser.
+const DENSITY_KEY = "odin_account_pnl.density";
+// The rows that carry figures: what the quick filters count and keep.
+const FIGURE_TYPES = ["line", "formula", "group", "account", "breakdown"];
+// What a row unfolds into below its accounts: shown under a row a quick
+// filter keeps, whatever their own figures.
+const DETAIL_TYPES = ["breakdown", "others", "entry", "more"];
 
 function readPrefs() {
     try {
         return JSON.parse(browser.localStorage.getItem(PREFS_KEY)) || {};
     } catch {
         return {};
+    }
+}
+
+function readDensity() {
+    try {
+        return browser.localStorage.getItem(DENSITY_KEY) === "compact" ? "compact" : "comfortable";
+    } catch {
+        return "comfortable";
     }
 }
 
@@ -79,7 +97,9 @@ function modesFor(row, splitMenu) {
  */
 export class PnlAction extends Component {
     static template = "odin_account_pnl.PnlAction";
-    static components = { Layout, PnlFilterBar, PnlSidePanel, PnlViewsMenu, Dropdown, DropdownItem };
+    static components = {
+        Layout, PnlFilterBar, PnlKpis, PnlMaterialityMenu, PnlSidePanel, PnlViewsMenu, Dropdown, DropdownItem,
+    };
     static props = { ...standardActionServiceProps };
 
     setup() {
@@ -111,6 +131,12 @@ export class PnlAction extends Component {
             viewSnapshot: restored?.viewSnapshot || null,
             exporting: false,
             tipDismissed: readTipDismissed(),
+            // Quick filter of the rows: all, material changes, material
+            // changes with no explanation yet, rows with notes.
+            quick: restored?.quick || "all",
+            density: readDensity(),
+            // A row to bring into view once rendered (a headline figure's line).
+            reveal: null,
         });
         this.journals = [];
         this.rootRef = useRef("root");
@@ -125,6 +151,7 @@ export class PnlAction extends Component {
                     sort: this.state.sort,
                     viewId: this.state.viewId,
                     viewSnapshot: this.state.viewSnapshot,
+                    quick: this.state.quick,
                     scrollTop: this.scrollerRef.el?.scrollTop || 0,
                 },
             }),
@@ -132,12 +159,22 @@ export class PnlAction extends Component {
         useExternalListener(window, "click", this.onWindowClick.bind(this), { capture: true });
         onWillStart(async () => {
             if (!restored && !this.props.action.params?.options) {
-                // The user's default saved view, its period computed from today,
-                // named on the Views button like a view picked from the menu.
-                const view = await this.orm.call("odin.pnl.report", "get_default_view", []);
-                if (view) {
-                    this.state.options = view.options;
-                    this.state.viewId = view.id;
+                // A view named by the link that opened the page (the emailed
+                // P&L's "Open in Odoo": ?pnl_view=<id>, read as Odoo's mail
+                // reads ?highlight_message_id) or by the opening action;
+                // else the user's default saved view. Its period is computed
+                // from today, and the Views button names it.
+                const linked = parseInt(this.props.action.params?.view_id || router.current.pnl_view) || 0;
+                const options = linked && (await this.orm.call("odin.pnl.report", "get_view_options", [linked]));
+                if (options) {
+                    this.state.options = options;
+                    this.state.viewId = linked;
+                } else {
+                    const view = await this.orm.call("odin.pnl.report", "get_default_view", []);
+                    if (view) {
+                        this.state.options = view.options;
+                        this.state.viewId = view.id;
+                    }
                 }
             }
             const [journals] = await Promise.all([
@@ -165,6 +202,15 @@ export class PnlAction extends Component {
                 }
             },
             () => [this.state.editing]
+        );
+        useEffect(
+            (reveal) => {
+                if (reveal) {
+                    this.scrollIntoView(reveal, "center");
+                    this.state.reveal = null;
+                }
+            },
+            () => [this.state.reveal]
         );
         // A menu opened from the keyboard (B) takes the focus, so its items
         // are reached with the arrows and chosen with Enter.
@@ -231,11 +277,19 @@ export class PnlAction extends Component {
     }
 
     async export(fmt) {
-        this.state.exporting = true;
+        if (this.state.exporting) {
+            return;
+        }
+        this.state.exporting = fmt;
         try {
             await download({
                 url: "/odin_account_pnl/export",
                 data: { options: JSON.stringify(this.state.options), fmt },
+            });
+        } catch (error) {
+            this.notification.add(error.data?.message || error.message || _t("The export failed."), {
+                title: _t("Export"),
+                type: "danger",
             });
         } finally {
             this.state.exporting = false;
@@ -261,6 +315,24 @@ export class PnlAction extends Component {
 
     get hasGrowth() {
         return this.columns.some((column) => column.group === "comparison");
+    }
+
+    /** The comparison column the variance and % are against. */
+    get comparisonColumn() {
+        return this.columns.find((column) => column.group === "comparison");
+    }
+
+    /** The explanation column: with a comparison, while the side panel is shut. */
+    get showNotesColumn() {
+        return this.hasGrowth && !this.state.panel;
+    }
+
+    get kpis() {
+        return this.state.data?.kpis || [];
+    }
+
+    get materiality() {
+        return this.state.data?.materiality || { percent: 10, amount: 0, auto: true };
     }
 
     /** A Balance column while an account shows its ledger (running balance). */
@@ -347,6 +419,9 @@ export class PnlAction extends Component {
 
     async loadMore(moreRow) {
         const parent = this.rowByKey(moreRow.parent);
+        if (!parent) {
+            return;
+        }
         this.state.busy = true;
         try {
             const result = await this.orm.call("odin.pnl.report", "get_children", [
@@ -359,6 +434,8 @@ export class PnlAction extends Component {
             ]);
             const index = this.state.rows.findIndex((r) => r.key === moreRow.key);
             this.state.rows.splice(index, 1, ...result.rows);
+        } catch (error) {
+            this.notification.add(error.data?.message || String(error), { type: "danger" });
         } finally {
             this.state.busy = false;
         }
@@ -383,22 +460,142 @@ export class PnlAction extends Component {
         if (this.state.sort) {
             rows = this.sortRows(rows);
         }
+        const quick = this.quickPredicate;
+        if (quick) {
+            // The rows that match, under the lines they belong to, and what a
+            // matching row was unfolded into (its journal items, its split):
+            // opening a material account shows what is in it.
+            const kept = new Set(this.keepWithParents(rows, quick, []).map((row) => row.key));
+            for (const row of rows) {
+                if (!kept.has(row.key) && DETAIL_TYPES.includes(row.type) && kept.has(row.parent)) {
+                    kept.add(row.key);
+                }
+            }
+            rows = rows.filter((row) => kept.has(row.key));
+        }
         const search = this.state.search.trim().toLowerCase();
         if (!search) {
             return rows;
         }
+        return this.keepWithParents(
+            rows,
+            (row) => `${row.code || ""} ${row.name || ""}`.toLowerCase().includes(search),
+            ["formula", "heading"]
+        );
+    }
+
+    /** ``rows`` matching ``predicate``, their parents, and rows of ``alwaysTypes``. */
+    keepWithParents(rows, predicate, alwaysTypes) {
         const keep = new Set();
         for (const row of rows) {
-            const text = `${row.code || ""} ${row.name || ""}`.toLowerCase();
-            if (text.includes(search)) {
+            if (predicate(row)) {
                 let key = row.key;
-                while (key) {
+                while (key && !keep.has(key)) {
                     keep.add(key);
                     key = this.rowByKey(key)?.parent;
                 }
             }
         }
-        return rows.filter((row) => keep.has(row.key) || ["formula", "heading"].includes(row.type));
+        return rows.filter((row) => keep.has(row.key) || alwaysTypes.includes(row.type));
+    }
+
+    // ------------------------------------------------------------------
+    // Quick filters: material changes, explanations
+    // ------------------------------------------------------------------
+
+    canAnnotate(row) {
+        return sidePanelRegistry.contains("notes") && sidePanelRegistry.get("notes").isAvailable(row);
+    }
+
+    needsExplanation(row) {
+        return Boolean(row.material && !row.annotations && this.canAnnotate(row));
+    }
+
+    get quickPredicate() {
+        const quick = this.state.quick;
+        if (quick === "notes") {
+            return (row) => row.annotations > 0;
+        }
+        if (!this.hasGrowth) {
+            return null;
+        }
+        if (quick === "material") {
+            return (row) => row.material;
+        }
+        if (quick === "unexplained") {
+            return (row) => this.needsExplanation(row);
+        }
+        return null;
+    }
+
+    get quickTabs() {
+        const figures = this.state.rows.filter((row) => FIGURE_TYPES.includes(row.type));
+        const tabs = [{ key: "all", label: _t("All lines"), count: figures.length }];
+        if (this.hasGrowth) {
+            tabs.push(
+                {
+                    key: "material",
+                    label: _t("Material changes"),
+                    count: figures.filter((row) => row.material).length,
+                    tone: "danger",
+                },
+                {
+                    key: "unexplained",
+                    label: _t("Needs explanation"),
+                    count: figures.filter((row) => this.needsExplanation(row)).length,
+                    tone: "warning",
+                }
+            );
+        }
+        tabs.push({
+            key: "notes",
+            label: _t("With notes"),
+            count: figures.filter((row) => row.annotations > 0).length,
+        });
+        return tabs;
+    }
+
+    get activeQuick() {
+        return this.quickTabs.some((tab) => tab.key === this.state.quick) ? this.state.quick : "all";
+    }
+
+    setQuick(key) {
+        this.state.quick = key;
+        // Material changes are mostly in the accounts: show them.
+        if (["material", "unexplained", "notes"].includes(key) && this.state.options.detail === "lines") {
+            this.changeOptions({ detail: "accounts" });
+        }
+    }
+
+    async setMateriality(percent, amount) {
+        await this.changeOptions({ materiality: { percent, amount } });
+    }
+
+    setDensity(density) {
+        this.state.density = density;
+        try {
+            browser.localStorage.setItem(DENSITY_KEY, density);
+        } catch {
+            // Storage blocked: the choice lasts for this page.
+        }
+    }
+
+    /** Show a headline figure's line in the table, out of any filter that hides it. */
+    focusLine(key) {
+        if (!this.rowByKey(key)) {
+            return;
+        }
+        if (!this.visibleRows.some((row) => row.key === key)) {
+            this.state.quick = "all";
+            this.state.search = "";
+        }
+        this.state.focusKey = key;
+        this.state.reveal = key;
+    }
+
+    compareWithPrevious() {
+        this.changeOptions({ comparison: { ...this.state.options.comparison, mode: "previous_period" },
+            divide: "none", by_company: false });
     }
 
     sortRows(rows) {
@@ -415,7 +612,7 @@ export class PnlAction extends Component {
         const flatten = (parent) => {
             let list = children.get(parent) || [];
             if (sortable(list)) {
-                list = [...list].sort((a, b) => direction * ((b.values[key] || 0) - (a.values[key] || 0)));
+                list = [...list].sort((a, b) => direction * (this.sortValue(b, key) - this.sortValue(a, key)));
             }
             const out = [];
             for (const row of list) {
@@ -425,6 +622,14 @@ export class PnlAction extends Component {
             return out;
         };
         return flatten("");
+    }
+
+    sortValue(row, key) {
+        if (key === "variance" || key === "growth") {
+            // By how much it moved, whichever way.
+            return Math.abs(row[key] || 0);
+        }
+        return row.values[key] || 0;
     }
 
     toggleSort(column) {
@@ -465,6 +670,7 @@ export class PnlAction extends Component {
             o_odin_pnl_focus: row.key === this.state.focusKey,
             o_odin_pnl_peeked: this.state.panel?.row?.key === row.key,
             o_odin_pnl_draft: row.draft,
+            o_odin_pnl_material: row.material,
             // Split by something else than its accounts or items: the "By"
             // chip stays visible, so the split reads without hovering.
             o_odin_pnl_split: Boolean(row.unfolded && row.mode && !["accounts", "entries"].includes(row.mode)),
@@ -480,6 +686,57 @@ export class PnlAction extends Component {
             return "text-muted";
         }
         return row.growth_good ? "o_odin_pnl_good" : "o_odin_pnl_bad";
+    }
+
+    cellClass(row, column) {
+        return `o_odin_pnl_col_${column.group}${this.canAudit(row) ? " o_odin_pnl_auditable" : ""}`;
+    }
+
+    get fluxTooltips() {
+        const label = this.comparisonColumn?.label || "";
+        return {
+            variance: _t("Change against %s", label),
+            growth: _t("Change against %s, in %%", label),
+            material: _t("Material: %s", this.materialityLabel),
+        };
+    }
+
+    /** A change as a pill: green when it helps the profit, red when not. */
+    pillClass(row, value) {
+        if (!value || row.growth_good === null || row.growth_good === undefined) {
+            return "o_odin_pnl_pill_neutral";
+        }
+        return row.growth_good ? "o_odin_pnl_pill_good" : "o_odin_pnl_pill_bad";
+    }
+
+    /** Up or down, whatever is good or bad about it. */
+    arrow(value) {
+        if (!value) {
+            return "";
+        }
+        return value > 0 ? "fa-caret-up" : "fa-caret-down";
+    }
+
+    fmtVariance(value) {
+        if (value === null || value === undefined) {
+            return "";
+        }
+        const text = this.fmt(value);
+        return value > 0 && text !== this.fmt(0) ? `+${text}` : text;
+    }
+
+    get materialityLabel() {
+        const { percent, amount } = this.materiality;
+        return _t("≥ %(percent)s and ≥ %(amount)s", {
+            percent: formatPercent(percent),
+            amount: formatAmount(amount, { currencyDecimals: this.currencyDecimals, decimals: false }),
+        });
+    }
+
+    openNotes(row) {
+        if (this.canAnnotate(row)) {
+            this.openPanel("notes", row);
+        }
     }
 
     budgetPctClass(row, column) {
@@ -701,7 +958,14 @@ export class PnlAction extends Component {
             return;
         }
         this.state.editing = null;
-        const amount = parseFloat(String(text).replace(/[^0-9.\-]/g, "")) || 0;
+        let amount = 0;
+        try {
+            // In the user's own number format (1.234,5 or 1,234.5).
+            amount = String(text).trim() ? parseLocalizedFloat(String(text).trim()) : 0;
+        } catch {
+            this.notification.add(_t("“%s” is not an amount.", text), { type: "danger" });
+            return;
+        }
         try {
             await this.orm.call("odin.pnl.report", "set_budget_amount", [
                 this.state.options,

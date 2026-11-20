@@ -150,6 +150,8 @@ sidePanelRegistry.add("notes", {
     icon: "fa-sticky-note-o",
     sequence: 20,
     Component: AnnotationsPanel,
-    isAvailable: (row) => ["line", "account"].includes(row.type) && !row.key.includes("/B:"),
+    // Lines, subtotals and accounts (not a split's rows): what
+    // odin.pnl.report._annotation_target accepts.
+    isAvailable: (row) => ["line", "formula", "account"].includes(row.type) && !row.key.includes("/B:"),
 });
 

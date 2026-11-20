@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Headline figures: one card per line, clicked to show it in the table. -->
+    <t t-name="odin_account_pnl.PnlKpis">
+        <div class="o_odin_pnl_kpis" role="list" aria-label="Headline figures">
+            <button t-foreach="props.kpis" t-as="kpi" t-key="kpi.key" type="button" role="listitem"
+                    class="o_odin_pnl_kpi"
+                    t-att-class="{ o_odin_pnl_kpi_result: kpi.is_result, o_odin_pnl_kpi_active: props.focusKey === kpi.key }"
+                    data-tooltip="Show this line in the table"
+                    t-on-click="() => props.onSelect(kpi.key)">
+                <div class="o_odin_pnl_kpi_head">
+                    <span class="o_odin_pnl_kpi_name" t-esc="kpi.name"/>
+                    <span t-if="kpi.margin !== null and kpi.margin !== undefined" class="o_odin_pnl_kpi_margin"
+                          data-tooltip="Margin on revenue">
+                        <t t-esc="formatPercent(kpi.margin)"/> margin
+                    </span>
+                    <span t-elif="kpi.total" class="o_odin_pnl_kpi_period" t-esc="kpi.column_label"/>
+                </div>
+                <div class="o_odin_pnl_kpi_value" t-esc="props.fmt(kpi.value)"/>
+                <div class="o_odin_pnl_kpi_meta">
+                    <t t-if="kpi.previous_label">
+                        <span class="o_odin_pnl_pill" t-att-class="tone(kpi)">
+                            <i t-attf-class="fa {{arrow(kpi)}}" aria-hidden="true"/>
+                            <t t-esc="change(kpi) || '0%'"/>
+                        </span>
+                        <span class="o_odin_pnl_kpi_vs">vs <t t-esc="kpi.previous_label"/></span>
+                    </t>
+                    <span t-elif="!kpi.total" class="o_odin_pnl_kpi_vs" t-esc="kpi.column_label"/>
+                    <span t-if="kpi.budget_pct !== null and kpi.budget_pct !== undefined" class="o_odin_pnl_kpi_vs">
+                        <t t-esc="formatPercent(kpi.budget_pct)"/> of budget
+                    </span>
+                </div>
+                <svg t-if="kpi.trend and kpi.trend.length > 1" class="o_odin_pnl_kpi_spark" viewBox="0 0 120 28"
+                     preserveAspectRatio="none" aria-hidden="true">
+                    <polyline t-att-points="sparkPoints(kpi.trend, 120, 28)" fill="none" stroke="currentColor"
+                              stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+                </svg>
+            </button>
+        </div>
+    </t>
+
+    <!-- What makes a change material. -->
+    <t t-name="odin_account_pnl.PnlMaterialityMenu">
+        <Dropdown state="dropdown" menuClass="'o_odin_pnl_menu o_odin_pnl_materiality_menu p-3'" position="'bottom-end'">
+            <button type="button" class="o_odin_pnl_materiality_btn"
+                    data-tooltip="What makes a change material">
+                <i class="fa fa-exclamation-circle me-1" aria-hidden="true"/>
+                <span class="o_odin_pnl_materiality_caption">Material</span>
+                <span class="o_odin_pnl_materiality_value" t-esc="props.label"/>
+            </button>
+            <t t-set-slot="content">
+                <div class="o_odin_pnl_materiality_form">
+                    <h6 class="mb-1">Materiality</h6>
+                    <p class="text-muted small mb-3">
+                        A change against the comparison is material when it reaches both thresholds.
+                    </p>
+                    <label class="form-label small mb-1" for="odin_pnl_material_percent">Change of at least</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <input id="odin_pnl_material_percent" class="form-control text-end" inputmode="decimal"
+                               t-model="state.percent" t-on-keydown="onKeydown"/>
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <label class="form-label small mb-1" for="odin_pnl_material_amount">and of at least</label>
+                    <div class="input-group input-group-sm mb-1">
+                        <span class="input-group-text" t-esc="props.currencySymbol"/>
+                        <input id="odin_pnl_material_amount" class="form-control text-end" inputmode="decimal"
+                               placeholder="1% of revenue"
+                               t-model="state.amount" t-on-keydown="onKeydown"/>
+                    </div>
+                    <div class="text-muted small mb-2">
+                        Empty: 1% of the period's revenue<t t-if="autoAmount">, now <t t-esc="props.currencySymbol"/> <t t-esc="autoAmount"/></t>.
+                    </div>
+                    <div t-if="state.error" class="text-danger small mb-2" t-esc="state.error"/>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-link" t-on-click="reset">Reset</button>
+                        <button type="button" class="btn btn-sm btn-primary" t-on-click="apply">Apply</button>
+                    </div>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+</templates>

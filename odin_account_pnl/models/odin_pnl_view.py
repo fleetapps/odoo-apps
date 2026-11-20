@@ -655,11 +655,38 @@ class OdinPnlView(models.Model):
     # Buttons
     # ------------------------------------------------------------------
 
+    def _schedule_dialog_action(self):
+        """The Schedule dialog on this view (odin.pnl.report.action_schedule)."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Schedule email"),
+            "res_model": self._name,
+            "res_id": self.id,
+            "views": [(self.env.ref("odin_account_pnl.odin_pnl_view_schedule_form").id, "form")],
+            "target": "new",
+            "context": {"dialog_size": "large", "odin_pnl_schedule_dialog": True},
+        }
+
     def _notify(self, message, failed=False):
+        """The outcome as a notification, then the view shown again with it:
+        a notification alone does not reload the form it came from. In the
+        Schedule dialog, the dialog opens again on the view (it replaces
+        itself, web/static/src/webclient/actions/action_service.js); on the
+        full form, the page reloads (soft_reload)."""
+        if self.env.context.get("odin_pnl_schedule_dialog"):
+            next_action = self._schedule_dialog_action()
+        else:
+            next_action = {"type": "ir.actions.client", "tag": "soft_reload"}
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
-            "params": {"message": message, "type": "warning" if failed else "success", "sticky": failed},
+            "params": {
+                "message": message,
+                "type": "warning" if failed else "success",
+                "sticky": failed,
+                "next": next_action,
+            },
         }
 
     def action_send_now(self):

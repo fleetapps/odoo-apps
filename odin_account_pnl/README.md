@@ -11,21 +11,51 @@ Odoo 19 Community. Depends on `account` and `mail`; no external Python.
 
 *Accounting → Reporting → Statement Reports → Profit & Loss*
 
-The top bar follows Enterprise's order:
+The page reads top down: the filters, the headline figures, then the report
+in a card. **Headline figures** are the layout's base line (Revenue), its bold
+subtotals and its net result, each with its change against the comparison
+(green when it helps the profit), its margin on revenue, its budget and, with
+the 12-month trend on, a sparkline; a card shows its line in the table.
+
+The filters read as *label | value* (Compare | Previous period, Journals |
+All…), the value highlighted when it is not the default. They follow
+Enterprise's order:
 
 | Chip | What it does |
 |---|---|
 | 📅 Period | Last month by default, as Enterprise. This/last month, quarter, fiscal year (the company's fiscal year end), fiscal year to date or any dates. ◀ ▶ step to the previous or next period. *Divide into* months or quarters shows one column per period plus a total. |
 | % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). *Columns*: a **Year to date** column beside the period (from the fiscal year start, with its own budget), and, with several companies selected, **Companies side by side**: one column per company and their total, as Odoo's horizontal groups for a group's P&L. |
 | Journals, Analytic, Partners | Narrow the journal items. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
-| Entries | Posted only or with drafts, hide lines at 0, account codes, account groups, and a 12-month trend sparkline (off by default). |
+| Entries | Posted only, or with drafts. |
 | Detail | How far the whole report unfolds, on screen and in the PDF, the Excel and the scheduled emails: *Lines* (the summary), *Accounts* (every account under its line) or *Every transaction* (every journal item under its account, with totals: the "P&L detail" accountants ask for). |
 | Budget | Adds Budget, Variance (actual minus budget, green when it helps the profit) and % achieved columns; amounts are typed into the report. |
-| Scale | Units, thousands or millions. |
+| Display (⚙) | Units with or without decimals, thousands or millions, negatives in brackets; hide lines at 0, account codes, account groups, % of revenue, 12-month trend. |
 
 Unfolding happens in place: a line opens on its accounts, an account on its
 journal items, and every journal item opens its document (invoice, bill,
-payment or entry) in the side panel.
+payment or entry) in the side panel. Rows are comfortable or compact (the
+toggle above the table, remembered per browser).
+
+**Flux analysis.** With a comparison, every line, subtotal, account and split
+gets a **Variance** (current minus the first comparison) and a **% Change**,
+as pills that are green when the change helps the profit and red when not,
+with their arrow and sign; both sort, by the size of the move. A change is
+**material** when it is at least a percent *and* at least an amount: 10% and
+1% of the period's revenue unless set otherwise (*Material ≥ …* above the
+table; kept in saved views and their emails). Each row says whether it is
+material, and the **Explanation** column shows its latest note, or
+*+ Explain* on a material row that has none. The tabs above the table filter
+the rows (with the lines they belong to, and whatever a kept row was unfolded
+into):
+
+| Tab | Rows |
+|---|---|
+| All lines | Everything, with its count |
+| Material changes | The material ones |
+| Needs explanation | Material, and no note yet: the month-end review's to-do list |
+| With notes | The ones with notes |
+
+Without a comparison, *Compare with the previous period* sits there instead.
 
 **What's in this number.** Any line or account can be split, and a split row
 split again (a partner by day, an order by product):
@@ -76,19 +106,22 @@ keyboard button (or `?`) lists the shortcuts:
 Shortcuts work while the report has the focus; Ctrl, Cmd and Alt combinations
 are left to the browser and to Odoo (Ctrl+K stays the command palette).
 
-**Notes.** *⋯ → Annotate* on a line or account. Notes show as a flag on the
-row and as numbered footnotes in the PDF.
+**Notes.** *⋯ → Annotate* (or *+ Explain*) on a line, a subtotal or an
+account. Notes show as a flag on the row, as the row's explanation with a
+comparison, and as numbered footnotes in the PDF.
 
 **Budget.** Pick or name a budget with the Budget chip: a Budget and a % column
 appear, and an accountant types an account's budget straight into its cell. A
 figure typed in a quarter or year column is spread evenly over its months.
 
-**Exports.** *PDF* (▾ *XLSX*) next to the title exports exactly what is
+**Exports.** *PDF* (▾ *Excel*) at the top right exports exactly what is
 unfolded, at the chosen *Detail*, laid out as accountants read a detailed P&L
 (Xero's and QuickBooks' detail reports): an unfolded account heads its
 journal items, each with its date, contact and description, and its figure
 moves to a *Total* row below them; journal items are all exported, not the
-page on screen. The workbook holds real numbers and dates with a number
+page on screen. The PDF opens on the headline figures, colours the
+variance and % as on screen and marks material changes with "!" (the
+thresholds in a legend below). The workbook holds real numbers and dates with a number
 format, so it adds up (thousands and millions are a format, not a rounding);
 its rows are grouped by level, so it folds back to the lines or the accounts
 in Excel; and with journal items a second sheet, *Transactions*, lists them
@@ -100,18 +133,42 @@ table or a filter.
 The button names the view on the page (the default view included) and marks it
 ● once the page changes; the menu then offers to save the changes, revert to
 the view as saved, or go back to the default P&L. Views are listed as *My
-views* and *Shared with me*.
-A view can be shared with the team and made one's default. From *Schedule
-Send*, beside *★ Views*, an accountant has it emailed daily, weekly or monthly
-(on a page that is not one of their views, it schedules the page as it is, as
-a new view)
-at an hour of their time zone, as PDF and/or Excel, with the key lines in the
-email body. It is sent from the instance's own sending address, named after
-the company, with the view's owner as Reply-To; an address on the instance's
-host name (noreply@elora.odin.ist) is sent from the parent domain instead
+views* and *Shared with me*, each marked when it is emailed, paused or
+failing; deleting one asks first.
+A view can be shared with the team and made one's default.
+
+**Schedule.** *Schedule*, beside *★ Views*, opens the schedule of the view on
+screen (on a page that is not one of the user's views, a new view of the page
+as it is, monthly to begin with). An accountant picks:
+
+* when: every day, every weekday (Monday to Friday), every week on a day,
+  every month or every quarter (January, April, July, October) on a day, at
+  an hour of the owner's time zone; the dialog says it in words and gives the
+  next sending time;
+* to whom: contacts and other addresses, each once;
+* what: a subject (empty: "Profit & Loss · Oct 2026"; `{title}`, `{period}`
+  and `{company}` are replaced), a note, the PDF and/or the Excel file, and
+  the key figures in the email body (headline figures and the lines with
+  their change, readable on a phone) or the attachments only.
+
+*Send me a test* sends the email to oneself, marked [Test], without touching
+the schedule; *Send now* sends it to the recipients; *Pause* keeps the
+schedule as set up without sending. Every send is kept in the view's
+**History** (when, scheduled / sent now / test, the outcome). Three scheduled
+sends failing in a row pause the schedule, and the Schedule button and the
+views list say so, rather than failing silently every period. The button
+reads *Scheduled*, *Paused* or *Schedule failing* for the view on screen.
+
+The email's *Open the P&L in Odoo* opens the view itself (`/odoo/pnl?pnl_view=<id>`;
+someone who may not see that view gets the default P&L). It is sent from the
+instance's own sending address, named after the company, with the view's
+owner as Reply-To; an address on the instance's host name
+(noreply@elora.odin.ist) is sent from the parent domain instead
 (noreply@odin.ist), the one the mail relay accepts.
 The period is worked out at sending time, and the report is computed as the
 view's owner: recipients never get more than the owner can see.
+*Accounting → Configuration → Saved P&L Views* lists every view with its
+schedule, next email and last outcome (filters: emailed, paused, failing).
 
 **Year-end review.** When only posted entries are counted, the report says how
 many draft journal items of the period it leaves out, with *Include drafts* and

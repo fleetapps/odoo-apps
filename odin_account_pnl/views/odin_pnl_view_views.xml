@@ -32,6 +32,9 @@
         <field name="arch" type="xml">
             <form string="Schedule email" class="o_odin_pnl_schedule_form">
                 <field name="id" invisible="1"/>
+                <!-- The owner's time zone is the schedule's: needed while the
+                     dialog previews a new view's next email. -->
+                <field name="user_id" invisible="1"/>
                 <field name="period_is_fixed" invisible="1"/>
                 <field name="last_failed" invisible="1"/>
                 <field name="schedule_paused" invisible="1"/>
