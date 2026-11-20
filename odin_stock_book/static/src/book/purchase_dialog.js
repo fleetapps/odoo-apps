@@ -90,8 +90,10 @@ export class PurchaseDialog extends Component {
             // Sales: the customer's KRA PIN and terms, filled in from the customer
             // and kept there when typed; the CU invoice number the invoice prints.
             pin: "", terms: "", cu: "", due: "",
+            // saving: "post" or "draft" while it is being saved. offerDraft: delivering
+            // failed, and what was typed can be kept as a draft instead.
             lines: [this.newLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
-            edit: false, replaceIds: [],
+            offerDraft: false, edit: false, replaceIds: [],
         });
         this.totalsSeq = 0;
         this.refSeq = 0;
@@ -818,6 +820,22 @@ export class PurchaseDialog extends Component {
         return this.state.totals ? _t("Save and receive · %s", this.money(this.state.totals.total)) : _t("Save and receive");
     }
 
+    /** A supervisor can also keep it as a draft; anyone else's saving already is one. */
+    get offersDraft() {
+        return this.state.options.can_post;
+    }
+
+    get draftHelp() {
+        return this.isSale
+            ? _t("Keeps it on the book as a draft, as typed, to finish and deliver later. Nothing is delivered or invoiced yet.")
+            : _t("Keeps it on the book as a draft, as typed, to finish and receive later. Nothing is received or billed yet.");
+    }
+
+    get keepDraftHelp() {
+        return this.isSale ? _t("Saves what you typed on the book, to fix and deliver later.")
+            : _t("Saves what you typed on the book, to fix and receive later.");
+    }
+
     get saveHelp() {
         if (this.isSale) {
             return this.state.options.can_post
@@ -834,12 +852,17 @@ export class PurchaseDialog extends Component {
     }
 
     // ------------------------------------------------------------ save
-    async save() {
+    /**
+     * ``post``: false keeps it as a draft (Save draft). Clicked, the button
+     * passes its event: that saves and posts, as before.
+     */
+    async save({ post = true } = {}) {
         if (this.state.saving) {
             return;
         }
         this.state.tried = true;
         this.state.error = "";
+        this.state.offerDraft = false;
         const problem = this.problem;
         if (problem) {
             this.focus(problem[0]);
@@ -861,10 +884,10 @@ export class PurchaseDialog extends Component {
                 this.settling = false;
             }
         }
-        this.state.saving = true;
+        this.state.saving = post ? "post" : "draft";
         try {
             const result = await this.orm.call("odin.stock.book", this.server.save, [this.savePayload()],
-                this.saveKwargs());
+                this.saveKwargs({ post }));
             this.props.onSaved(result);
             this.props.close();
         } catch (error) {
@@ -874,9 +897,16 @@ export class PurchaseDialog extends Component {
                 throw error;
             }
             this.state.error = error.data?.message || error.message || _t("It could not be saved.");
+            // Delivering failed, an item short say: the work can still be kept.
+            this.state.offerDraft = post && this.offersDraft;
         } finally {
             this.state.saving = false;
         }
+    }
+
+    /** What was typed, kept on the book as a draft: nothing delivered or invoiced yet. */
+    saveDraft() {
+        return this.save({ post: false });
     }
 
     savePayload() {
@@ -896,8 +926,8 @@ export class PurchaseDialog extends Component {
         };
     }
 
-    saveKwargs() {
-        return { replace_ids: this.state.replaceIds };
+    saveKwargs({ post = true } = {}) {
+        return { replace_ids: this.state.replaceIds, post };
     }
 
     async discard() {

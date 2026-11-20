@@ -195,6 +195,14 @@
     }
 }
 
+.o_sb_pd_keep {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.4rem;
+}
+
 .o_sb_pd_totals {
     margin-left: auto;
 

@@ -337,6 +337,29 @@ class TestStockBookPurchase(TestStockBook):
         self.assertEqual(result["total"], 116)
         self.assertTrue(Book.get_book()["rows"])
 
+    def test_supervisor_keeps_an_lpo_as_a_draft_and_it_opens_again_in_its_order(self):
+        result = self.Book.book_purchase_save({
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-650", "warehouse_id": self.wh.id,
+            "date": fields.Date.to_string(fields.Date.context_today(self.Line)), "pay_journal_id": False,
+            "lines": [{"product_id": product.id, "qty": n, "cost": 10, "tax_id": self.vat_net.id}
+                      for n, product in enumerate((self.carton, self.bottle, self.sticker), 1)],
+        }, post=False)
+        lines = self.Line.browse(result["ids"])
+        self.assertFalse(result["posted"])
+        self.assertEqual(set(lines.mapped("state")), {"draft"})
+        self.assertFalse(lines.purchase_id or lines.stock_purchase_id.bill_id)
+        data = self.Book.book_purchase_load(lines[0].id)
+        self.assertEqual([r["product"]["id"] for r in data["lines"]], [self.carton.id, self.bottle.id, self.sticker.id])
+        self.assertFalse(self.Book.book_purchase_check(self.supplier.id, "LPO-650", data["replace_ids"]))
+        again = self.Book.book_purchase_save({
+            "partner_id": self.supplier.id, "purchase_ref": "LPO-650", "warehouse_id": self.wh.id,
+            "date": data["date"], "pay_journal_id": False,
+            "lines": [{"product_id": r["product"]["id"], "qty": r["qty"], "cost": r["cost"], "tax_id": r["tax_id"]}
+                      for r in data["lines"]],
+        }, replace_ids=data["replace_ids"])
+        self.assertTrue(again["posted"])
+        self.assertEqual(self.env["purchase.order"].browse(again["order_id"]).partner_ref, "LPO-650")
+
     def test_receipt_from_purchases_carries_its_number(self):
         order = self._order()
         order.partner_ref = "LPO-700"
