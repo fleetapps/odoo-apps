@@ -36,6 +36,15 @@ class TestLlm(AiCase):
         run = self.env["odin.ai.run"].search([], limit=1)
         self.assertEqual((run.feature, run.status, run.total_tokens), ("explain", "ok", 120))
 
+    def test_a_caller_sets_the_effort_and_output_limit_of_its_call(self):
+        """Another module's feature (the Stock Book photo) picks the effort
+        of each step and room for a long answer; the defaults stay."""
+        requests = self.mock_api(message({"a": "b"}), message({"a": "b"}))
+        self.call(feature="ask", effort="low", max_tokens=12000)
+        self.call(feature="ask")
+        self.assertEqual((requests[0]["output_config"]["effort"], requests[0]["max_tokens"]), ("low", 12000))
+        self.assertEqual((requests[1]["output_config"]["effort"], requests[1]["max_tokens"]), ("medium", 8000))
+
     def test_the_key_in_settings_comes_before_the_servers(self):
         """A client's own key wins; the server's (Odin's) is the fallback."""
         llm = self.env["odin.ai.llm"]

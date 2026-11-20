@@ -1,0 +1,199 @@
+// Upload photo in Add sale. The window's own layout (odin_stock_book's
+// purchase_dialog.scss); Bootstrap's variables written with #{$prefix} as
+// there, and its *-subtle and *-text-emphasis colours, which have light and
+// dark values.
+
+.o_sb_ph {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px dashed var(--#{$prefix}border-color);
+    border-radius: 0.4rem;
+
+    &.o_sb_ph_drop {
+        border-color: var(--#{$prefix}primary);
+        background: var(--#{$prefix}primary-bg-subtle);
+    }
+}
+
+.o_sb_ph_bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+}
+
+.o_sb_ph_hint,
+.o_sb_ph_busy {
+    flex: 1 1 16rem;
+    font-size: 0.85rem;
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_sb_ph_pages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+        position: relative;
+    }
+
+    a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3.75rem;
+        overflow: hidden;
+        border: 1px solid var(--#{$prefix}border-color);
+        border-radius: 0.25rem;
+        background: var(--#{$prefix}tertiary-bg);
+        color: var(--#{$prefix}secondary-color);
+        font-size: 1.4rem;
+    }
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.o_sb_ph_remove {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.6rem;
+    padding: 0 0.25rem;
+    border-radius: 50%;
+    background: var(--#{$prefix}body-bg);
+    color: var(--#{$prefix}secondary-color);
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.o_sb_ph_alert {
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+}
+
+.o_sb_ph_flags {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.o_sb_ph_flag {
+    font-size: 0.85rem;
+}
+
+.o_sb_ph_warn {
+    color: var(--#{$prefix}warning-text-emphasis);
+}
+
+.o_sb_ph_info {
+    color: var(--#{$prefix}secondary-color);
+}
+
+.o_sb_ph_ok {
+    color: var(--#{$prefix}success-text-emphasis);
+}
+
+.o_sb_ph_choose {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+// A line read from the photo: what the invoice says, under the line and
+// across it, its flags, the other items it may be and Looks right.
+.o_sb_ph_line {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem 0.75rem;
+    margin-top: -0.2rem;
+    font-size: 0.8rem;
+
+    > .o_sb_ph_printed,
+    > .o_sb_ph_line_flags {
+        flex-basis: 100%;
+    }
+}
+
+.o_sb_ph_printed {
+    color: var(--#{$prefix}secondary-color);
+    overflow-wrap: anywhere;
+}
+
+.o_sb_ph_numbers {
+    margin-left: 0.4rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.o_sb_ph_badge {
+    margin-left: 0.4rem;
+    padding: 0 0.35rem;
+    border-radius: 0.6rem;
+    background: var(--#{$prefix}info-bg-subtle);
+    color: var(--#{$prefix}info-text-emphasis);
+    white-space: nowrap;
+}
+
+.o_sb_ph_line_flags {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--#{$prefix}warning-text-emphasis);
+}
+
+.o_sb_ph_alts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    align-items: baseline;
+
+    .btn {
+        font-size: 0.8rem;
+        text-align: left;
+    }
+}
+
+.o_sb_ph_looks.btn {
+    padding: 0.1rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+// The rows: a stripe for a line to check, a lighter one for the AI's choice.
+.o_sb_pd_row {
+    &.o_sb_ph_check,
+    &.o_sb_ph_likely {
+        margin-left: -0.5rem;
+        padding-left: 0.375rem;
+        border-left: 0.125rem solid transparent;
+    }
+
+    &.o_sb_ph_check {
+        border-left-color: var(--#{$prefix}warning);
+        background: var(--#{$prefix}warning-bg-subtle);
+    }
+
+    &.o_sb_ph_likely {
+        border-left-color: var(--#{$prefix}info);
+    }
+
+    // Looked at: its notes stay, quieter.
+    &.o_sb_ph_seen .o_sb_ph_line_flags {
+        color: var(--#{$prefix}secondary-color);
+    }
+}
