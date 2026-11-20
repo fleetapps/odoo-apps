@@ -1153,6 +1153,13 @@ export class StockBook extends Component {
         });
     }
 
+    /** The panel's next step: posting, the whole invoice or LPO, or its printouts. */
+    hasNextActs(row) {
+        return Boolean((this.state.book?.can_post && ["ready", "short"].includes(row.status_key))
+            || (row.state === "draft" && ["sale", "received"].includes(row.reason))
+            || this.state.documents[row.id]?.length);
+    }
+
     // ------------------------------------------------------------ what each status asks for
     /** Draft lines whose status says what to do next are buttons. */
     pillActs(row) {

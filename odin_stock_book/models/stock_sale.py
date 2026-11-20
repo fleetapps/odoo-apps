@@ -533,6 +533,14 @@ class StockBook(models.AbstractModel):
                 "pricelist": pricelist.name or ""}
 
     @api.model
+    def book_sale_onhand(self, product_ids, warehouse_id=False):
+        """On hand now, by item, in the warehouse the sale leaves from: the
+        window warns on a line that asks for more, before it is saved."""
+        products = self.env["product.product"].browse(product_ids or []).exists().filtered("is_storable")
+        available = self.env["odin.stock.line"]._available(products, self._warehouse(warehouse_id))
+        return {str(product_id): qty for product_id, qty in available.items()}
+
+    @api.model
     def _sale_pricelist(self, partner):
         """The pricelist a sales order for this customer takes; for a customer
         not created yet, the one a new customer gets: the first one."""
