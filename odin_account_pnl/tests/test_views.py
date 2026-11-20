@@ -73,7 +73,7 @@ class TestViews(PnlCase):
         self.accountant.tz = "Africa/Nairobi"
         view = self.env["odin.pnl.view"].with_user(self.accountant).create({
             "name": "Monthly", "options": self.options(), "schedule": "monthly", "send_day": 2,
-            "send_hour": 7, "recipient_emails": "boss@example.com"})
+            "send_hour": "7", "recipient_emails": "boss@example.com"})
         # 2 October 07:00 in Nairobi (UTC+3) is 04:00 UTC; from 8 October, next is 2 November.
         self.assertEqual(view._next_send_after(datetime(2026, 10, 8, 12, 0)), datetime(2026, 11, 2, 4, 0))
         self.assertEqual(view._next_send_after(datetime(2026, 10, 1, 12, 0)), datetime(2026, 10, 2, 4, 0))
@@ -81,7 +81,7 @@ class TestViews(PnlCase):
     def test_the_cron_emails_the_view_as_its_owner(self):
         view = self.env["odin.pnl.view"].with_user(self.accountant).create({
             "name": "Monthly", "options": self.options(), "schedule": "daily",
-            "send_hour": 0, "recipient_emails": "boss@example.com", "send_xlsx": True,
+            "send_hour": "0", "recipient_emails": "boss@example.com", "send_xlsx": True,
             "message": "Here is the month."})
         view.sudo().next_send = fields.Datetime.now() - timedelta(hours=1)
         # As the scheduler runs it, in its own cursor (tied to the test's).
@@ -115,7 +115,7 @@ class TestViews(PnlCase):
         with patch.object(type(self.env["mail.mail"]), "send",
                           lambda mails, **kwargs: sent.append(mails) or mails.write({"state": "sent"})):
             action = view.with_user(self.accountant).action_send_now()
-        self.assertEqual(action["params"]["type"], "info", view.last_status)
+        self.assertEqual(action["params"]["type"], "success", view.last_status)
         self.assertEqual(len(sent), 1, "the default P&L was rendered and sent")
 
     def _schedule(self):
@@ -214,3 +214,124 @@ class TestViews(PnlCase):
         status = view.sudo()._send_and_record()
         self.assertEqual(self._mails().email_to, '"Boss" <boss@example.com>, cfo@example.com')
         self.assertEqual(status, "Queued for 2 recipient(s)")
+
+    # ---- the schedule ------------------------------------------------------
+
+    def test_every_weekday_skips_the_weekend(self):
+        view = self._schedule()
+        view.write({"schedule": "weekdays", "send_hour": "7"})
+        # Friday 9 October 2026 at noon UTC: Saturday and Sunday are skipped.
+        self.assertEqual(view._next_send_after(datetime(2026, 10, 9, 12, 0)), datetime(2026, 10, 12, 7, 0))
+        self.assertEqual(view._next_send_after(datetime(2026, 10, 7, 6, 0)), datetime(2026, 10, 7, 7, 0))
+
+    def test_every_quarter_sends_after_each_quarter(self):
+        view = self._schedule()
+        view.write({"schedule": "quarterly", "send_day": 5, "send_hour": "8"})
+        self.assertEqual(view._next_send_after(datetime(2026, 10, 8, 12, 0)), datetime(2027, 1, 5, 8, 0))
+        self.assertEqual(view._next_send_after(datetime(2026, 9, 1, 0, 0)), datetime(2026, 10, 5, 8, 0))
+        self.assertEqual(view._next_send_after(datetime(2026, 4, 5, 7, 0)), datetime(2026, 4, 5, 8, 0))
+        self.assertIn("Every quarter on day 5", view.schedule_summary)
+
+    def test_the_schedule_reads_in_words(self):
+        self.accountant.tz = "Africa/Nairobi"
+        view = self._schedule()
+        view.write({"schedule": "weekly", "send_weekday": "4", "send_hour": "9"})
+        self.assertEqual(view.schedule_summary, "Every Friday at 09:00 (Africa/Nairobi)")
+        view.with_user(self.accountant).action_toggle_pause()
+        self.assertTrue(view.schedule_paused)
+        self.assertTrue(view.schedule_summary.startswith("Paused: "))
+
+    def test_a_paused_view_is_not_sent_and_resumes_afresh(self):
+        view = self._schedule()
+        view.sudo().write({"failure_count": 2})
+        view.with_user(self.accountant).action_toggle_pause()
+        self.assertFalse(view.next_send, "nothing planned while paused")
+        view.sudo().write({"next_send": fields.Datetime.now() - timedelta(hours=1)})
+        with self.enter_registry_test_mode():
+            self.env.ref("odin_account_pnl.ir_cron_send_pnl_views").method_direct_trigger()
+        self.assertFalse(self._mails(), "the cron leaves a paused view alone")
+        view.with_user(self.accountant).action_toggle_pause()
+        self.assertFalse(view.schedule_paused)
+        self.assertEqual(view.failure_count, 0, "a fresh start")
+        self.assertTrue(view.next_send)
+
+    def test_a_test_goes_to_oneself_and_leaves_the_schedule_alone(self):
+        view = self._schedule()
+        action = view.with_user(self.accountant).action_send_test()
+        mail = self.env["mail.mail"].search([("email_to", "ilike", "accountant@example.com")])
+        self.assertEqual(len(mail), 1)
+        self.assertTrue(mail.subject.startswith("[Test] "))
+        self.assertFalse(self._mails(), "the recipients get nothing")
+        self.assertFalse(view.last_sent, "the schedule did not run")
+        self.assertEqual(view.log_ids.kind, "test")
+        self.assertIn("Test:", action["params"]["message"])
+
+    def test_three_failed_sends_in_a_row_pause_the_schedule(self):
+        def refused(mails, **kwargs):
+            mails.write({"state": "exception", "failure_reason": "SMTPDataError: (550, b'no')"})
+        view = self._schedule()
+        with patch.object(type(self.env["mail.mail"]), "send", refused):
+            for _attempt in range(3):
+                view.sudo()._send_and_record()
+        self.assertTrue(view.schedule_paused)
+        self.assertTrue(view.last_failed)
+        self.assertIn("Paused after 3 failed sends", view.last_status)
+        self.assertEqual(len(view.log_ids), 3)
+        self.assertTrue(all(view.log_ids.mapped("failed")))
+        # Sent again by hand, and it goes: the failure is cleared.
+        with patch.object(type(self.env["mail.mail"]), "send", lambda mails, **kw: mails.write({"state": "sent"})):
+            view.with_user(self.accountant).action_send_now()
+        self.assertFalse(view.last_failed)
+        self.assertEqual(view.failure_count, 0)
+
+    def test_the_subject_takes_the_period(self):
+        view = self._schedule()
+        view.write({"subject": "{company} results for {period}"})
+        view.sudo()._send_and_record()
+        self.assertEqual(self._mails().subject, f"{self.env.company.name} results for Sep 2026")
+
+    def test_the_email_shows_the_figures_or_only_the_note(self):
+        view = self._schedule()
+        view.write({"options": self.options(comparison={"mode": "previous_period", "periods": 1}),
+                    "message": "Month closed."})
+        view.sudo()._send_and_record()
+        body = self._mails().body_html
+        self.assertIn("1,000.00", body)
+        self.assertIn("vs Aug 2026", body, "the headline figures and their change")
+        self.assertIn(f"/odoo/pnl?pnl_view={view.id}", body, "a link to the view itself")
+        self._mails().sudo().unlink()
+        view.write({"include_summary": False})
+        view.sudo()._send_and_record()
+        body = self._mails().body_html
+        self.assertNotIn("1,000.00", body, "figures in the attachments only")
+        self.assertIn("Month closed.", body)
+
+    def test_the_schedule_dialog_opens_ones_own_view_or_a_new_one(self):
+        report = self.report_as(self.accountant)
+        saved = report.save_view(self.options(), "Board")
+        action = report.action_schedule(self.options(), saved["id"])
+        self.assertEqual(action["res_id"], saved["id"])
+        self.assertEqual(action["target"], "new")
+        # Someone else's shared view: a new view of one's own, monthly.
+        shared = self.report_as(self.colleague).save_view(self.options(), "Team", shared=True)
+        action = report.action_schedule({"date": {"filter": "previous_month"}}, shared["id"])
+        self.assertNotIn("res_id", action)
+        self.assertEqual(action["context"]["default_name"], "Team")
+        self.assertEqual(action["context"]["default_schedule"], "monthly")
+        self.assertEqual(action["context"]["default_options"]["date"]["filter"], "previous_month")
+        with self.assertRaises(AccessError):
+            self.report_as(self.colleague).action_schedule(self.options(), shared["id"])
+
+    def test_a_private_view_of_someone_else_opens_the_default_report(self):
+        private = self.report_as(self.accountant).save_view(self.options(), "Mine")
+        self.assertFalse(self.report_as(self.colleague).get_view_options(private["id"]))
+        self.assertTrue(self.report_as(self.accountant).get_view_options(private["id"]))
+
+    def test_the_list_marks_paused_and_failing_schedules(self):
+        view = self._schedule()
+        view.sudo().write({"last_failed": True, "last_status": "Not sent: nope"})
+        listed = next(item for item in self.report_as(self.accountant).list_views() if item["id"] == view.id)
+        self.assertTrue(listed["failed"])
+        self.assertFalse(listed["paused"])
+        self.assertEqual(listed["status"], "Not sent: nope")
+        self.assertTrue(listed["schedule"].startswith("Every day"))

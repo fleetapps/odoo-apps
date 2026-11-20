@@ -33,6 +33,7 @@ items behind a row all use the same code.
 """
 
 import json
+import math
 from collections import defaultdict
 from datetime import date
 
@@ -82,6 +83,17 @@ UNFOLDED_AT = {
 }
 # An export lists the journal items of a row up to this many, not by page.
 EXPORT_ITEMS = 20000
+# Materiality of a change against the comparison ("flux analysis"): a change
+# is material when it is at least this many percent AND at least an amount.
+# The amount, unless typed, is this share of the base line (revenue) of the
+# period: 1% of revenue, a common review threshold that scales with the books.
+DEFAULT_MATERIALITY_PERCENT = 10.0
+AUTO_MATERIALITY_SHARE = 0.01
+# The rows a materiality flag reads on: figures, not journal items.
+MATERIAL_TYPES = ("line", "formula", "group", "account", "breakdown")
+# The headline figures above the table: the base line, the bold subtotals and
+# the result, at most this many.
+MAX_KPIS = 4
 
 
 class OdinPnlReport(models.AbstractModel):
@@ -111,6 +123,8 @@ class OdinPnlReport(models.AbstractModel):
             "options": ctx.options,
             "columns": ctx.public_columns(),
             "rows": result,
+            "kpis": self._kpis(ctx),
+            "materiality": ctx.materiality,
             "warnings": ctx.warnings,
             "currency": {
                 "symbol": ctx.currency.symbol,
@@ -426,7 +440,6 @@ class OdinPnlReport(models.AbstractModel):
         views = self.env["odin.pnl.view"].search([
             "|", ("user_id", "=", self.env.uid), ("shared", "=", True),
         ])
-        schedules = dict(self.env["odin.pnl.view"]._fields["schedule"]._description_selection(self.env))
         return [
             {
                 "id": view.id,
@@ -436,10 +449,44 @@ class OdinPnlReport(models.AbstractModel):
                 "shared": view.shared,
                 "is_default": view.is_default and view.user_id == self.env.user,
                 "period": view.period_rule,
-                "schedule": schedules.get(view.schedule) if view.schedule != "none" else False,
+                # The schedule in words ("Every month on day 2 at 07:00"),
+                # paused, or failing: the menu marks each.
+                "schedule": view.schedule_summary if view.schedule != "none" else False,
+                "paused": view.schedule != "none" and view.schedule_paused,
+                "failed": view.schedule != "none" and view.last_failed,
+                "status": view.last_status or "",
             }
             for view in views
         ]
+
+    @api.model
+    def action_schedule(self, options, view_id=False):
+        """The schedule dialog: of the view on screen when it is the user's
+        own, else of the page as it is, as a new view of theirs (a shared
+        view is copied, never changed), monthly to begin with."""
+        self._check_access()
+        if not self.env.user.has_group("account.group_account_user"):
+            raise AccessError(_("Only accountants can email the P&L on a schedule."))
+        view = self.env["odin.pnl.view"].browse(_int(view_id)).exists() if view_id else None
+        action = {
+            "type": "ir.actions.act_window",
+            "name": _("Schedule email"),
+            "res_model": "odin.pnl.view",
+            "views": [(self.env.ref("odin_account_pnl.odin_pnl_view_schedule_form").id, "form")],
+            "target": "new",
+            "context": {"dialog_size": "large"},
+        }
+        if view and view.user_id == self.env.user:
+            action["res_id"] = view.id
+            return action
+        normalized = self._normalize_options(options)
+        action["context"].update({
+            "default_name": view.name if view else _("Profit & Loss"),
+            "default_options": normalized,
+            "default_schedule": "monthly",
+            "default_shared": False,
+        })
+        return action
 
     @api.model
     def save_view(self, options, name, shared=False, view_id=False):
@@ -516,10 +563,12 @@ class OdinPnlReport(models.AbstractModel):
         self._check_access()
         Views = self.env["odin.pnl.view"]
         if view_id:
-            view = Views.browse(int(view_id)).exists()
+            view = Views.browse(_int(view_id)).exists()
         else:
             view = Views.search([("user_id", "=", self.env.uid), ("is_default", "=", True)], limit=1)
-        if not view:
+        # A link to someone else's private view (an emailed P&L forwarded)
+        # opens the default P&L rather than an access error.
+        if not view or not view.has_access("read"):
             return False
         return self._normalize_options(view._live_options())
 
@@ -626,6 +675,9 @@ class OdinPnlReport(models.AbstractModel):
             if isinstance(key, str) and isinstance(mode_value, str) and key in unfolded
         }
         scale = _int(options.get("scale")) if _int(options.get("scale")) in (1, 1000, 1000000) else 1
+        materiality = options.get("materiality") if isinstance(options.get("materiality"), dict) else {}
+        material_percent = _float(materiality.get("percent"))
+        material_amount = _float(materiality.get("amount"))
         detail = options.get("detail")
         if detail not in DETAIL_LEVELS:
             # Views saved before the levels had "Unfold all": the accounts.
@@ -666,6 +718,13 @@ class OdinPnlReport(models.AbstractModel):
             "scale": scale,
             "decimals": options.get("decimals", True) is not False,
             "negative_parentheses": bool(options.get("negative_parentheses")),
+            # A change is material from this percent and this amount; no
+            # amount means 1% of the base line (see AUTO_MATERIALITY_SHARE).
+            "materiality": {
+                "percent": min(max(material_percent, 0.0), 1000.0)
+                if material_percent is not None else DEFAULT_MATERIALITY_PERCENT,
+                "amount": max(material_amount, 0.0) if material_amount is not None else None,
+            },
             "unfolded": unfolded,
             "modes": modes,
         }
@@ -741,6 +800,10 @@ class OdinPnlReport(models.AbstractModel):
             "pct": {},
             "growth": None,
             "growth_good": None,
+            # Against the first comparison: current minus previous, and
+            # whether that change is material (options["materiality"]).
+            "variance": None,
+            "material": False,
             "bold": bool(line and (line.bold or line.kind == "formula")),
             "is_result": bool(line and line.is_result),
             "unfoldable": False,
@@ -750,6 +813,8 @@ class OdinPnlReport(models.AbstractModel):
             "green_on_positive": line.green_on_positive if line else ctx.green_for_key(key),
             "trend": trend or [],
             "annotations": ctx.annotation_count(key),
+            # The latest note, shown as the line's explanation.
+            "note": ctx.annotation_preview(key),
         }
         if row_type == "heading":
             return row
@@ -780,10 +845,82 @@ class OdinPnlReport(models.AbstractModel):
             if current is not None and previous:
                 row["growth"] = (current - previous) / abs(previous) * 100
                 row["growth_good"] = (row["growth"] >= 0) == bool(row["green_on_positive"])
+            if row["type"] in MATERIAL_TYPES and (current is not None or previous is not None):
+                row["variance"] = (current or 0.0) - (previous or 0.0)
+                if row["growth_good"] is None and abs(row["variance"]) >= ctx.currency.rounding:
+                    # From nothing: the direction alone says good or bad.
+                    row["growth_good"] = (row["variance"] > 0) == bool(row["green_on_positive"])
+                row["material"] = ctx.is_material(row["variance"], row["growth"])
         if ctx.options["percent_of_base"] and ctx.base_values:
             for key, value in values.items():
                 base = ctx.base_values.get(key)
                 row["pct"][key] = value / base * 100 if base and value is not None else None
+
+    # ------------------------------------------------------------------
+    # Headline figures
+    # ------------------------------------------------------------------
+
+    def _kpis(self, ctx):
+        """The figures above the table: the base line (revenue), the bold
+        subtotals and the net result, as the layout names them, for the
+        period (its total when divided or side by side), with the change
+        against the first comparison, the margin on the base line and the
+        budget. Read from the line values, so a line hidden at zero still
+        counts."""
+        candidates = [
+            entry["line"] for entry in ctx.parsed_lines
+            if entry["line"].kind in ("accounts", "formula") and not entry["line"].appropriation
+            and not entry["error"]
+            and (entry["line"].is_base or entry["line"].is_result
+                 or (entry["line"].kind == "formula" and entry["line"].bold))
+        ]
+        if len(candidates) > MAX_KPIS:
+            must = [line for line in candidates if line.is_base or line.is_result]
+            rest = [line for line in candidates if line not in must]
+            keep = set(must + rest[:max(MAX_KPIS - len(must), 0)])
+            candidates = [line for line in candidates if line in keep][:MAX_KPIS]
+        column = next((c for c in ctx.balance_columns if c["group"] == "total"), ctx.balance_columns[0])
+        key = column["key"]
+        previous_key = ctx.growth_pair[1] if ctx.growth_pair else None
+        previous_column = ctx.columns_by_key.get(previous_key) if previous_key else None
+        base = ctx.base_values.get(key)
+        budget_on = column in ctx.budget_columns
+        kpis = []
+        for line in candidates:
+            values = ctx.line_values.get(line.code) or {}
+            value = values.get(key)
+            previous = values.get(previous_key) if previous_key else None
+            kpi = {
+                "key": f"L:{line.code}",
+                "code": line.code,
+                "name": line.name,
+                "value": value,
+                "is_base": bool(line.is_base),
+                "is_result": bool(line.is_result),
+                "column_label": column["label"],
+                "previous": previous,
+                "previous_label": previous_column["label"] if previous_column else False,
+                "variance": None,
+                "growth": None,
+                "growth_good": None,
+                "margin": value / base * 100 if base and value is not None and not line.is_base else None,
+                "budget": None,
+                "budget_pct": None,
+                "trend": ctx.line_trends.get(line.code) or [],
+            }
+            if previous_key and (value is not None or previous is not None):
+                kpi["variance"] = (value or 0.0) - (previous or 0.0)
+                if previous:
+                    kpi["growth"] = kpi["variance"] / abs(previous) * 100
+                if abs(kpi["variance"]) >= ctx.currency.rounding:
+                    kpi["growth_good"] = (kpi["variance"] > 0) == bool(line.green_on_positive)
+            if budget_on:
+                planned = (ctx.line_budgets.get(line.code) or {}).get(key)
+                kpi["budget"] = planned
+                kpi["budget_pct"] = (
+                    value / planned * 100 if planned and value is not None and value * planned >= 0 else None)
+            kpis.append(kpi)
+        return kpis
 
     # ------------------------------------------------------------------
     # Unfolding
@@ -1133,6 +1270,7 @@ class OdinPnlReport(models.AbstractModel):
                 "running": running if mode == "ledger" else None,
                 "draft": line.parent_state == "draft",
                 "annotations": 0,
+                "note": None,
             })
             rows.append(row)
         if has_more:
@@ -1447,6 +1585,7 @@ class _ReportContext:
         self.analytic_sets = [options["analytic_account_ids"]] if options["analytic_account_ids"] else []
         self._load_accounts()
         self._load_values()
+        self._resolve_materiality()
         self._load_annotations()
 
     # ---- columns -------------------------------------------------------
@@ -1788,6 +1927,28 @@ class _ReportContext:
                     values[line.account_id.id][column["key"]] += line.balance
         return values
 
+    # ---- materiality ---------------------------------------------------
+
+    def _resolve_materiality(self):
+        """The thresholds in force: the amount typed, or 1% of the base
+        line of the period (``auto``)."""
+        setting = self.options["materiality"]
+        amount = setting["amount"]
+        auto = amount is None
+        if auto:
+            base = self.base_values.get(self.balance_columns[0]["key"]) or 0.0
+            amount = self.currency.round(abs(base) * AUTO_MATERIALITY_SHARE)
+        self.materiality = {"percent": setting["percent"], "amount": amount, "auto": auto}
+
+    def is_material(self, variance, growth):
+        """A change is material when it reaches both thresholds. A figure
+        that was nil before has no percentage: its amount decides."""
+        if variance is None or abs(variance) < self.currency.rounding:
+            return False
+        if abs(variance) < self.materiality["amount"]:
+            return False
+        return growth is None or abs(growth) >= self.materiality["percent"]
+
     # ---- annotations ---------------------------------------------------
 
     def _load_annotations(self):
@@ -1799,21 +1960,40 @@ class _ReportContext:
             "&", ("date", ">=", current["date_from"]), ("date", "<=", self.date_max),
         ])
         counts = defaultdict(int)
+        latest = {}
+        # Newest first (the model's order): the first note of a target is
+        # its latest.
         for note in notes:
-            counts[(note.line_code, note.account_id.id or False)] += 1
+            target = (note.line_code, note.account_id.id or False)
+            counts[target] += 1
+            latest.setdefault(target, note)
         self._annotation_counts = counts
+        self._annotation_latest = latest
 
-    def annotation_count(self, key):
+    def _annotation_target(self, key):
+        """``(line code, account id or False)`` a row's notes hang off, or
+        None for a row that takes no notes (a split, a journal item)."""
         segments = (key or "").split("/")
         if not segments or not segments[0].startswith("L:"):
-            return 0
+            return None
         code = segments[0][2:]
         account_id = False
         if len(segments) > 1:
             if not segments[-1].startswith("A:"):
-                return 0
+                return None
             account_id = _int(segments[-1][2:])
-        return self._annotation_counts.get((code, account_id), 0)
+        return code, account_id
+
+    def annotation_count(self, key):
+        target = self._annotation_target(key)
+        return self._annotation_counts.get(target, 0) if target else 0
+
+    def annotation_preview(self, key):
+        target = self._annotation_target(key)
+        note = target and self._annotation_latest.get(target)
+        if not note:
+            return None
+        return {"text": (note.note or "")[:280], "author": note.author_id.name or ""}
 
 
 # ----------------------------------------------------------------------
@@ -1847,6 +2027,17 @@ def _int(value):
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _float(value):
+    """A finite number from the client, else None."""
+    if value is None or value is False or value == "":
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
 
 
 def _parse_date(value):

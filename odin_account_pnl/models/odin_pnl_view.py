@@ -11,11 +11,16 @@ Sending renders the report **as the view's owner**, in the view's company, so
 recipients never receive more than the owner may see. Mail goes through the
 standard queue (``mail.mail``), processed by Odoo's mail cron.
 https://www.odoo.com/documentation/19.0/developer/reference/backend/actions.html#automated-actions-ir-cron
+
+A schedule runs every day, every weekday, every week, every month or every
+quarter, at an hour of the owner's time zone. It can be paused, tested on
+oneself first, and keeps a history of what was sent; three scheduled sends
+failing in a row pause it, rather than fail silently every period.
 """
 
 import base64
 import logging
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import urlsplit
 
 import pytz
@@ -24,7 +29,7 @@ from markupsafe import Markup, escape
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools import email_normalize, email_split, formataddr
+from odoo.tools import email_normalize, email_split, format_datetime, formataddr
 
 from . import odin_pnl_periods as periods
 
@@ -57,18 +62,38 @@ def _server_reply(reason):
     lines = [line.strip() for line in reason.splitlines() if line.strip()]
     return lines[-1] if lines else ""
 
+
 SCHEDULES = [
-    ("none", "Not emailed"),
+    ("none", "Off"),
     ("daily", "Every day"),
+    ("weekdays", "Every weekday"),
     ("weekly", "Every week"),
     ("monthly", "Every month"),
+    ("quarterly", "Every quarter"),
 ]
 WEEKDAYS = [
     ("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"), ("3", "Thursday"),
     ("4", "Friday"), ("5", "Saturday"), ("6", "Sunday"),
 ]
+# The sending hour, as a time to pick rather than a number to type. Stored as
+# its hour ("7"), which is what the integer column it replaces converts to.
+HOURS = [(str(hour), f"{hour:02d}:00") for hour in range(24)]
+DEFAULT_HOUR = 7
+# A quarterly schedule sends in the month after each calendar quarter, as the
+# "Last quarter" period counts them.
+QUARTER_MONTHS = (1, 4, 7, 10)
+# Scheduled sends failing this many times in a row pause the schedule.
+MAX_FAILURES = 3
+# Sends remembered per view.
+HISTORY_SIZE = 30
 # Options that only make sense for the click that produced them.
 TRANSIENT_OPTIONS = ("step",)
+# Email colours: neutral greys, and a green and a red that read on white.
+GOOD = ("#047857", "#ecfdf5")
+BAD = ("#b91c1c", "#fef2f2")
+MUTED = "#6b7280"
+INK = "#111827"
+RULE = "#e5e7eb"
 
 
 class OdinPnlView(models.Model):
@@ -104,20 +129,37 @@ class OdinPnlView(models.Model):
     # goes through `self.options or {}`, and _normalize_options fills in each
     # default, so a view with no stored options is simply the default P&L.
     options = fields.Json(default=lambda self: {})
-    period_rule = fields.Char(compute="_compute_period_rule")
+    period_rule = fields.Char(string="Period", compute="_compute_period_rule")
+    period_is_fixed = fields.Boolean(
+        compute="_compute_period_rule",
+        help="The view shows dates typed by hand, so every email carries the same dates.")
 
-    schedule = fields.Selection(SCHEDULES, required=True, default="none")
+    schedule = fields.Selection(SCHEDULES, string="Send", required=True, default="none")
+    schedule_paused = fields.Boolean(string="Paused", help="Kept as set up, but not sent until resumed.")
     send_weekday = fields.Selection(WEEKDAYS, string="On", default="0")
     send_day = fields.Integer(string="Day of the month", default=2, help="1 to 28.")
-    send_hour = fields.Integer(string="At (hour)", default=7, help="In the owner's time zone, 0 to 23.")
+    send_hour = fields.Selection(
+        HOURS, string="At", required=True, default=str(DEFAULT_HOUR),
+        help="In the owner's time zone.")
+    schedule_summary = fields.Char(compute="_compute_schedule_summary")
     recipient_ids = fields.Many2many("res.partner", string="Recipients")
     recipient_emails = fields.Char(string="Other emails", help="Comma-separated addresses.")
+    subject = fields.Char(
+        help="Leave empty for the report's name and period, as “Profit & Loss · Oct 2026”. "
+             "{title}, {period} and {company} are replaced.")
+    message = fields.Text(help="A short note above the figures in the email.")
     send_pdf = fields.Boolean(string="PDF", default=True)
     send_xlsx = fields.Boolean(string="Excel")
-    message = fields.Text(help="A short note above the figures in the email.")
+    include_summary = fields.Boolean(
+        string="Key figures in the email", default=True,
+        help="The headline figures and the lines of the P&L in the email itself, readable on a phone. "
+             "Untick to keep the figures in the attachments only.")
     next_send = fields.Datetime(compute="_compute_next_send", store=True, readonly=True)
     last_sent = fields.Datetime(readonly=True)
     last_status = fields.Char(readonly=True)
+    last_failed = fields.Boolean(readonly=True)
+    failure_count = fields.Integer(readonly=True, help="Sends failed in a row.")
+    log_ids = fields.One2many("odin.pnl.view.log", "view_id", string="History", readonly=True)
 
     @api.depends("options")
     def _compute_period_rule(self):
@@ -138,24 +180,46 @@ class OdinPnlView(models.Model):
             preset = date_opt.get("filter") or (periods.DEFAULT_PRESET if not date_opt else None)
             view.period_rule = labels.get(preset) or _(
                 "%(start)s to %(end)s", start=date_opt.get("date_from"), end=date_opt.get("date_to"))
+            view.period_is_fixed = preset not in labels
 
-    @api.depends("schedule", "send_weekday", "send_day", "send_hour", "user_id.tz", "last_sent")
+    @api.depends("schedule", "schedule_paused", "send_weekday", "send_day", "send_hour", "user_id.tz", "last_sent")
     def _compute_next_send(self):
         now = fields.Datetime.now()
         for view in self:
-            view.next_send = view._next_send_after(now) if view.schedule != "none" else False
+            active = view.schedule != "none" and not view.schedule_paused
+            view.next_send = view._next_send_after(now) if active else False
 
-    @api.constrains("send_day", "send_hour", "schedule", "recipient_ids", "recipient_emails", "send_pdf", "send_xlsx")
+    @api.depends("schedule", "schedule_paused", "send_weekday", "send_day", "send_hour", "user_id.tz")
+    def _compute_schedule_summary(self):
+        weekdays = dict(self._fields["send_weekday"]._description_selection(self.env))
+        for view in self:
+            if view.schedule == "none":
+                view.schedule_summary = _("Not emailed")
+                continue
+            time = f"{view._hour():02d}:00"
+            day = min(max(view.send_day or 1, 1), 28)
+            summary = {
+                "daily": _("Every day at %(time)s", time=time),
+                "weekdays": _("Every weekday, Monday to Friday, at %(time)s", time=time),
+                "weekly": _("Every %(weekday)s at %(time)s",
+                            weekday=weekdays.get(view.send_weekday or "0", ""), time=time),
+                "monthly": _("Every month on day %(day)s at %(time)s", day=day, time=time),
+                "quarterly": _("Every quarter on day %(day)s of January, April, July and October at %(time)s",
+                               day=day, time=time),
+            }[view.schedule]
+            summary = f"{summary} ({view.user_id.tz or 'UTC'})"
+            view.schedule_summary = _("Paused: %(summary)s", summary=summary) if view.schedule_paused else summary
+
+    @api.constrains("send_day", "schedule", "recipient_ids", "recipient_emails", "send_pdf", "send_xlsx",
+                    "include_summary")
     def _check_schedule(self):
         for view in self.filtered(lambda view: view.schedule != "none"):
-            if not 1 <= view.send_day <= 28:
+            if view.schedule in ("monthly", "quarterly") and not 1 <= view.send_day <= 28:
                 raise ValidationError(_("Pick a day of the month from 1 to 28."))
-            if not 0 <= view.send_hour <= 23:
-                raise ValidationError(_("Pick an hour from 0 to 23."))
             if not view._recipient_emails():
                 raise ValidationError(_("Add at least one recipient with an email address."))
-            if not (view.send_pdf or view.send_xlsx):
-                raise ValidationError(_("Attach the PDF, the Excel file or both."))
+            if not (view.send_pdf or view.send_xlsx or view.include_summary):
+                raise ValidationError(_("Attach the PDF or the Excel file, or put the key figures in the email."))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -172,6 +236,9 @@ class OdinPnlView(models.Model):
     def write(self, vals):
         if vals.get("schedule", "none") != "none" or {"recipient_ids", "recipient_emails"} & set(vals):
             self._check_can_schedule()
+        if vals.get("schedule_paused") is False:
+            # Resumed: a fresh start, not one failure away from pausing again.
+            vals = dict(vals, failure_count=0)
         result = super().write(vals)
         if vals.get("is_default"):
             self._unset_other_defaults()
@@ -181,6 +248,12 @@ class OdinPnlView(models.Model):
         # Emailing ledger figures out of Odoo is an accountant's decision.
         if not self.env.su and not self.env.user.has_group("account.group_account_user"):
             raise AccessError(_("Only accountants can email the P&L on a schedule."))
+
+    def _check_owner(self):
+        """Sending, testing and pausing are the owner's (or an administrator's)."""
+        for view in self:
+            if view.user_id != self.env.user and not self.env.user.has_group("account.group_account_manager"):
+                raise AccessError(_("Only the owner of “%(view)s” can do this.", view=view.name))
 
     def _unset_other_defaults(self):
         for view in self:
@@ -192,32 +265,42 @@ class OdinPnlView(models.Model):
     # Scheduling
     # ------------------------------------------------------------------
 
+    def _hour(self):
+        try:
+            return min(max(int(self.send_hour), 0), 23)
+        except (TypeError, ValueError):
+            return DEFAULT_HOUR
+
     def _next_send_after(self, moment):
         """The next sending time after ``moment`` (naive UTC), at the chosen
         hour in the owner's time zone."""
         self.ensure_one()
         tz = pytz.timezone(self.user_id.tz or "UTC")
         local = pytz.utc.localize(moment).astimezone(tz)
-        hour = min(max(self.send_hour, 0), 23)
+        hour = self._hour()
+        today = local.date()
 
         def at(day):
             return tz.localize(datetime(day.year, day.month, day.day, hour))
 
-        if self.schedule == "daily":
-            candidate = at(local.date())
-            if candidate <= local:
-                candidate = at(local.date() + timedelta(days=1))
+        if self.schedule in ("daily", "weekdays"):
+            day = today
+            while at(day) <= local or (self.schedule == "weekdays" and day.weekday() >= 5):
+                day += timedelta(days=1)
         elif self.schedule == "weekly":
-            ahead = (int(self.send_weekday or 0) - local.weekday()) % 7
-            candidate = at(local.date() + timedelta(days=ahead))
-            if candidate <= local:
-                candidate = at(local.date() + timedelta(days=ahead + 7))
+            day = today + timedelta(days=(int(self.send_weekday or 0) - today.weekday()) % 7)
+            if at(day) <= local:
+                day += timedelta(days=7)
+        elif self.schedule == "quarterly":
+            month_day = min(max(self.send_day, 1), 28)
+            day = date(today.year, QUARTER_MONTHS[(today.month - 1) // 3], month_day)
+            while at(day) <= local:
+                day += relativedelta(months=3)
         else:
-            day = min(max(self.send_day, 1), 28)
-            candidate = at(local.date().replace(day=day))
-            if candidate <= local:
-                candidate = at(local.date().replace(day=day) + relativedelta(months=1))
-        return candidate.astimezone(pytz.utc).replace(tzinfo=None)
+            day = today.replace(day=min(max(self.send_day, 1), 28))
+            if at(day) <= local:
+                day += relativedelta(months=1)
+        return at(day).astimezone(pytz.utc).replace(tzinfo=None)
 
     def _recipient_emails(self):
         """Each address once. A recipient picked as a contact and also typed
@@ -239,8 +322,10 @@ class OdinPnlView(models.Model):
         # The cron's user (OdooBot) lives in one company; the views are in
         # every company. They are found without record rules here, and each
         # one is rendered as its owner in ``_send``.
-        due = self.sudo().search(
-            [("schedule", "!=", "none"), ("next_send", "<=", fields.Datetime.now())], limit=50)
+        due = self.sudo().search([
+            ("schedule", "!=", "none"), ("schedule_paused", "=", False),
+            ("next_send", "<=", fields.Datetime.now()),
+        ], limit=50)
         cron = self.env["ir.cron"]
         cron._commit_progress(remaining=len(due))
         for view in due:
@@ -250,14 +335,16 @@ class OdinPnlView(models.Model):
     def _send_and_record(self):
         return self._send_and_record_result()[0]
 
-    def _send_and_record_result(self):
-        """Send now, write the outcome on the view: ``(status, failed)``."""
+    def _send_and_record_result(self, kind="scheduled", emails=None):
+        """Send now and write the outcome on the view and in its history:
+        ``(status, failed)``. ``kind``: ``scheduled`` (the cron), ``manual``
+        (Send now) or ``test`` (to ``emails`` only, the schedule untouched)."""
         self.ensure_one()
         failed = False
+        emails = emails or self._recipient_emails()
         try:
             with self.env.cr.savepoint():
-                state, reason = self._send()
-            count = len(self._recipient_emails())
+                state, reason = self._send(emails, test=kind == "test")
             if state == "exception":
                 failed = True
                 # The address goes in the status: which sender a relay refused
@@ -268,23 +355,56 @@ class OdinPnlView(models.Model):
                 status = _("Not sent from %(sender)s: %(error)s", sender=sender,
                            error=(reason or _("the mail server refused it"))[:300])
             elif state == "outgoing":
-                status = _("Queued for %(count)s recipient(s)", count=count)
+                status = _("Queued for %(count)s recipient(s)", count=len(emails))
             else:
-                status = _("Sent to %(count)s recipient(s)", count=count)
+                status = _("Sent to %(count)s recipient(s)", count=len(emails))
         except Exception as error:  # noqa: BLE001 (record any failure on the view, keep going)
             _logger.warning("odin_account_pnl: view %s could not be sent: %s", self.id, error)
             failed = True
             status = _("Not sent: %(error)s", error=str(error)[:200])
-        self.sudo().write({"last_sent": fields.Datetime.now(), "last_status": status})
+        if kind != "test":
+            values = {
+                "last_sent": fields.Datetime.now(),
+                "last_failed": failed,
+                "failure_count": self.failure_count + 1 if failed else 0,
+            }
+            if failed and kind == "scheduled" and values["failure_count"] >= MAX_FAILURES:
+                values["schedule_paused"] = True
+                status = _("%(status)s Paused after %(count)s failed sends in a row: fix it, then resume.",
+                           status=status, count=values["failure_count"])
+            values["last_status"] = status
+            self.sudo().write(values)
+        Log = self.env["odin.pnl.view.log"].sudo()
+        Log.create({
+            "view_id": self.id,
+            "kind": kind,
+            "status": status,
+            "failed": failed,
+            "recipients": ", ".join(emails)[:1000],
+        })
+        Log.search([("view_id", "=", self.id)], offset=HISTORY_SIZE).unlink()
         return status, failed
 
-    def _send(self):
+    def _subject(self, payload):
+        template = (self.subject or "").strip()
+        if not template:
+            return f"{payload['title']} · {payload['period']}"
+        # Plain replacements, never str.format: a subject is typed text.
+        for token, value in (("{title}", payload["title"]), ("{period}", payload["period"]),
+                             ("{company}", payload["company"])):
+            template = template.replace(token, value or "")
+        return template
+
+    def _send(self, emails=None, test=False):
         """Render as the owner, in the view's company, and send the email:
         ``(state, failure reason)`` of the mail, see ``_deliver``."""
         self.ensure_one()
         owner = self.user_id
         if not owner.active or not owner.has_group("account.group_account_readonly"):
             raise UserError(_("%(owner)s can no longer see the P&L.", owner=owner.name))
+        emails = emails or self._recipient_emails()
+        if not emails:
+            raise UserError(_("Add at least one recipient with an email address."))
         companies = [self.company_id.id] + [cid for cid in self.company_ids.ids if cid != self.company_id.id]
         env = self.with_user(owner).with_context(
             allowed_company_ids=companies, lang=owner.lang, tz=owner.tz).env
@@ -317,8 +437,11 @@ class OdinPnlView(models.Model):
         # from_filter does not name this address -- the host-name address the
         # relay refuses.
         relay = self.env["ir.mail_server"].sudo()._find_mail_server(sender)[0]
+        subject = self._subject(payload)
+        if test:
+            subject = _("[Test] %(subject)s", subject=subject)
         mail = self.env["mail.mail"].sudo().create({
-            "subject": f"{payload['title']} · {payload['period']}",
+            "subject": subject,
             # NOT the owner's own address. An ODIN instance sends through one
             # verified identity (ir.mail_server.from_filter), so a personal
             # address is refused outright -- Resend answered 550 "This API key
@@ -332,8 +455,8 @@ class OdinPnlView(models.Model):
             "reply_to": owner.email_formatted or self.company_id.email_formatted,
             # The owner, not the cron's user: Odoo names the Reply-To after the author.
             "author_id": owner.partner_id.id,
-            "email_to": ", ".join(self._recipient_emails()),
-            "body_html": self._email_body(payload),
+            "email_to": ", ".join(emails),
+            "body_html": self._email_body(payload, attached=[filename for _content, filename, _type in files]),
             "attachment_ids": [(6, 0, attachments.ids)],
             "auto_delete": False,
         })
@@ -383,51 +506,214 @@ class OdinPnlView(models.Model):
             options["date"] = {k: v for k, v in options["date"].items() if k != "step"}
         return options
 
-    def _email_body(self, payload):
-        """The key lines in the email itself, so the figures read on a phone
-        without opening the attachment."""
-        rows = [row for row in payload["rows"] if row["type"] in ("line", "formula") and not row.get("parent")]
-        balance_columns = [index for index, column in enumerate(payload["columns"]) if column["kind"] == "balance"]
-        growth_column = next(
-            (index for index, column in enumerate(payload["columns"]) if column["kind"] == "growth"), None)
-        lines = []
-        for row in rows:
-            first = row["cells"][balance_columns[0]]["text"] if balance_columns else ""
-            growth = row["cells"][growth_column]["text"] if growth_column is not None else ""
-            weight = "bold" if row.get("bold") else "normal"
-            lines.append(Markup(
-                '<tr><td style="padding:3px 12px 3px 0;font-weight:{w}">{name}</td>'
-                '<td style="padding:3px 0;text-align:right;font-weight:{w}">{value}</td>'
-                '<td style="padding:3px 0 3px 12px;text-align:right;color:#6c757d">{growth}</td></tr>'
-            ).format(w=weight, name=row["name"], value=first, growth=growth))
-        url = self.get_base_url() + "/odoo/pnl"
+    # ------------------------------------------------------------------
+    # The email
+    # ------------------------------------------------------------------
+
+    def _report_url(self):
+        """The P&L opened on this view (``pnl_view``, read by the page)."""
+        return f"{self.get_base_url()}/odoo/pnl?pnl_view={self.id}"
+
+    def _email_body(self, payload, attached=()):
+        """An email laid out for every mail client (tables, inline styles):
+        the headline figures as tiles, then the lines of the P&L with the
+        change against the comparison, and a button to the report. The
+        figures read on a phone without opening the attachment."""
         message = escape(self.message or "").replace("\n", Markup("<br/>"))
+        columns = payload["columns"]
+        balance = [index for index, column in enumerate(columns) if column["kind"] == "balance"]
+        current = next((index for index in balance if columns[index].get("group") == "total"),
+                       balance[0] if balance else None)
+        previous = next((index for index in balance if columns[index].get("group") == "comparison"), None)
+        variance = next((index for index, column in enumerate(columns) if column["kind"] == "variance"), None)
+        growth = next((index for index, column in enumerate(columns) if column["kind"] == "growth"), None)
+        comparison_label = columns[previous]["label"] if previous is not None else ""
+        figures = Markup("")
+        if self.include_summary:
+            figures = self._email_kpis(payload["kpis"], comparison_label) + self._email_lines(
+                payload, current, previous, variance, growth)
+        button = (self.company_id.primary_color or "").strip() or INK
+        notes = Markup("")
+        if attached:
+            notes = Markup('<p style="margin:0 0 6px;color:{muted};font-size:12px">{text}</p>').format(
+                muted=MUTED, text=_("Attached: %(files)s", files=", ".join(attached)))
         return Markup(
-            '<div style="font-family:sans-serif;font-size:14px">'
-            "<p>{message}</p>"
-            '<p style="color:#6c757d">{company} · {period}</p>'
-            '<table style="border-collapse:collapse">{lines}</table>'
-            '<p><a href="{url}">{open}</a></p>'
-            "</div>"
+            '<div style="margin:0;padding:24px 12px;background:#f3f4f6;'
+            'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Helvetica,Arial,sans-serif;'
+            'color:{ink};font-size:14px;line-height:1.45">'
+            '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" '
+            'style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid {rule};border-radius:12px">'
+            '<tr><td style="padding:24px 28px 4px">'
+            '<div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:{muted}">{company}</div>'
+            '<div style="font-size:22px;font-weight:700;margin-top:4px">{title}</div>'
+            '<div style="color:{muted};margin-top:2px">{period}{versus}</div>'
+            "</td></tr>"
+            '<tr><td style="padding:12px 28px 0">{message}</td></tr>'
+            "{figures}"
+            '<tr><td style="padding:20px 28px 8px">'
+            '<a href="{url}" style="display:inline-block;padding:10px 18px;border-radius:8px;background:{button};'
+            'color:#ffffff;text-decoration:none;font-weight:600">{open}</a>'
+            "</td></tr>"
+            '<tr><td style="padding:8px 28px 24px">{notes}'
+            '<p style="margin:0;color:{muted};font-size:12px">{footer}</p>'
+            "</td></tr>"
+            "</table></div>"
         ).format(
-            message=message,
+            ink=INK, rule=RULE, muted=MUTED, button=button,
             company=payload["company"],
+            title=payload["title"],
             period=payload["period"],
-            lines=Markup("").join(lines),
-            url=url,
+            versus=_(" · compared with %(period)s", period=comparison_label) if comparison_label else "",
+            message=Markup('<p style="margin:0 0 4px">{}</p>').format(message) if self.message else "",
+            figures=figures,
+            url=self._report_url(),
             open=_("Open the P&L in Odoo"),
+            notes=notes,
+            footer=_("Sent on behalf of %(owner)s: %(schedule)s.",
+                     owner=self.user_id.name, schedule=self.schedule_summary)
+            if self.schedule != "none" else _("Sent on behalf of %(owner)s.", owner=self.user_id.name),
         )
 
-    def action_send_now(self):
-        self.ensure_one()
-        if self.user_id != self.env.user and not self.env.user.has_group("account.group_account_manager"):
-            raise AccessError(_("Only the owner sends this view."))
-        self._check_can_schedule()
-        if not self._recipient_emails():
-            raise UserError(_("Add at least one recipient with an email address."))
-        status, failed = self._send_and_record_result()
+    def _pill(self, text, good):
+        if not text:
+            return Markup("")
+        if good is None:
+            color, background = MUTED, "#f3f4f6"
+        else:
+            color, background = GOOD if good else BAD
+        return Markup(
+            '<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;'
+            'font-weight:600;color:{color};background:{background};white-space:nowrap">{text}</span>'
+        ).format(color=color, background=background, text=text)
+
+    def _email_kpis(self, kpis, comparison_label):
+        if not kpis:
+            return Markup("")
+        width = 100 // len(kpis)
+        cells = []
+        for kpi in kpis:
+            change = Markup("")
+            if kpi.get("growth_text") or kpi.get("variance_text"):
+                change = Markup('<div style="margin-top:6px">{pill} <span style="color:{muted};font-size:12px">'
+                                "{versus}</span></div>").format(
+                    pill=self._pill(kpi.get("growth_text") or kpi.get("variance_text"), kpi.get("growth_good")),
+                    muted=MUTED, versus=_("vs %(period)s", period=comparison_label))
+            margin = Markup("")
+            if kpi.get("margin_text"):
+                margin = Markup('<div style="color:{muted};font-size:12px;margin-top:4px">{text}</div>').format(
+                    muted=MUTED, text=_("Margin %(margin)s", margin=kpi["margin_text"]))
+            cells.append(Markup(
+                '<td width="{width}%" valign="top" style="padding:6px">'
+                '<div style="border:1px solid {rule};border-radius:10px;padding:12px 14px">'
+                '<div style="color:{muted};font-size:12px">{name}</div>'
+                '<div style="font-size:18px;font-weight:700;margin-top:2px;white-space:nowrap">{value}</div>'
+                "{change}{margin}</div></td>"
+            ).format(width=width, rule=RULE, muted=MUTED, name=kpi["name"], value=kpi.get("text") or "-",
+                     change=change, margin=margin))
+        return Markup(
+            '<tr><td style="padding:12px 22px 0"><table role="presentation" cellpadding="0" cellspacing="0" '
+            'width="100%"><tr>{cells}</tr></table></td></tr>').format(cells=Markup("").join(cells))
+
+    def _email_lines(self, payload, current, previous, variance, growth):
+        rows = [row for row in payload["rows"] if row["type"] in ("line", "formula") and not row.get("parent")]
+        if not rows or current is None:
+            return Markup("")
+        columns = payload["columns"]
+        cell = 'padding:7px 8px;border-bottom:1px solid {rule};text-align:right;white-space:nowrap'.format(rule=RULE)
+        head = Markup('<th style="{style};font-size:12px;color:{muted};font-weight:600">{label}</th>')
+        header = [Markup('<th style="padding:7px 8px;border-bottom:1px solid {rule};text-align:left;font-size:12px;'
+                         'color:{muted};font-weight:600">{label}</th>').format(
+            rule=RULE, muted=MUTED, label=payload["currency"])]
+        header.append(head.format(style=cell, muted=MUTED, label=columns[current]["label"]))
+        if previous is not None:
+            header.append(head.format(style=cell, muted=MUTED, label=columns[previous]["label"]))
+        if growth is not None:
+            header.append(head.format(style=cell, muted=MUTED, label=_("Change")))
+        lines = []
+        for row in rows:
+            weight = "700" if row.get("bold") else "400"
+            top = f"border-top:2px solid {INK};" if row.get("is_result") else ""
+            cells = [Markup('<td style="padding:7px 8px;border-bottom:1px solid {rule};{top}font-weight:{w}">'
+                            "{name}</td>").format(rule=RULE, top=top, w=weight, name=row["name"])]
+            for index in (current, previous):
+                if index is None:
+                    continue
+                cells.append(Markup('<td style="{style};{top}font-weight:{w}">{value}</td>').format(
+                    style=cell, top=top, w=weight, value=row["cells"][index]["text"]))
+            if growth is not None:
+                text = row["cells"][growth]["text"] or (row["cells"][variance]["text"] if variance is not None else "")
+                cells.append(Markup('<td style="{style};{top}">{pill}</td>').format(
+                    style=cell, top=top, pill=self._pill(text, row.get("growth_good"))))
+            lines.append(Markup("<tr>{}</tr>").format(Markup("").join(cells)))
+        return Markup(
+            '<tr><td style="padding:16px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" '
+            'width="100%" style="border-collapse:collapse;font-size:13px"><thead><tr>{header}</tr></thead>'
+            "<tbody>{lines}</tbody></table></td></tr>"
+        ).format(header=Markup("").join(header), lines=Markup("").join(lines))
+
+    # ------------------------------------------------------------------
+    # Buttons
+    # ------------------------------------------------------------------
+
+    def _notify(self, message, failed=False):
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
-            "params": {"message": status, "type": "warning" if failed else "info", "sticky": failed},
+            "params": {"message": message, "type": "warning" if failed else "success", "sticky": failed},
         }
+
+    def action_send_now(self):
+        self.ensure_one()
+        self._check_owner()
+        self._check_can_schedule()
+        if not self._recipient_emails():
+            raise UserError(_("Add at least one recipient with an email address."))
+        status, failed = self._send_and_record_result("manual")
+        return self._notify(status, failed)
+
+    def action_send_test(self):
+        """The email as the recipients will get it, to oneself only."""
+        self.ensure_one()
+        self._check_owner()
+        self._check_can_schedule()
+        email = self.env.user.email_formatted if self.env.user.email else False
+        if not email:
+            raise UserError(_("Your user has no email address. Add one in your preferences to receive the test."))
+        status, failed = self._send_and_record_result("test", [email])
+        return self._notify(_("Test: %(status)s", status=status), failed)
+
+    def action_toggle_pause(self):
+        self.ensure_one()
+        self._check_owner()
+        paused = not self.schedule_paused
+        self.write({"schedule_paused": paused})
+        return self._notify(
+            _("“%(view)s” is paused.", view=self.name) if paused
+            else _("“%(view)s” is resumed: next on %(when)s.", view=self.name,
+                   when=format_datetime(self.env, self.next_send, dt_format="medium") if self.next_send else "-"))
+
+    def action_open_report(self):
+        """The P&L opened on this view."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.client",
+            "tag": "odin_account_pnl.report",
+            "name": _("Profit & Loss"),
+            "params": {"view_id": self.id},
+        }
+
+
+class OdinPnlViewLog(models.Model):
+    """What a saved view sent, and how it went: the history of its emails."""
+
+    _name = "odin.pnl.view.log"
+    _description = "Saved P&L view: email sent"
+    _order = "id desc"
+
+    view_id = fields.Many2one("odin.pnl.view", required=True, ondelete="cascade", index=True)
+    kind = fields.Selection(
+        [("scheduled", "Scheduled"), ("manual", "Sent now"), ("test", "Test")], required=True)
+    status = fields.Char()
+    failed = fields.Boolean()
+    recipients = fields.Char()
+    user_id = fields.Many2one("res.users", string="By", default=lambda self: self.env.user)

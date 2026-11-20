@@ -93,6 +93,19 @@ class OdinPnlExport(models.AbstractModel):
                 name for name, on in (
                     (row["type"], True), ("bold", row.get("bold")), ("result", row.get("is_result"))) if on)
         layout = self.env["odin.pnl.layout"].browse(options["layout_id"])
+        # The headline figures, as text for the PDF band and the email.
+        kpis = [
+            dict(
+                kpi,
+                text=self._format(kpi["value"], "balance", options, currency),
+                previous_text=self._format(kpi["previous"], "balance", options, currency),
+                variance_text=self._format(kpi["variance"], "variance", options, currency),
+                growth_text=self._format(kpi["growth"], "growth", options, currency),
+                margin_text=self._format(kpi["margin"], "pct", options, currency),
+                budget_pct_text=self._format(kpi["budget_pct"], "budget_pct", options, currency),
+            )
+            for kpi in report.get("kpis") or []
+        ]
         return {
             "title": layout.name or _("Profit & Loss"),
             "company": ", ".join(self.env.companies.mapped("name")),
@@ -107,6 +120,7 @@ class OdinPnlExport(models.AbstractModel):
             "columns": columns,
             "items": items,
             "rows": rows,
+            "kpis": kpis,
             "statement": self._statement(rows),
             "notes": notes,
             "warnings": warnings,
@@ -143,7 +157,8 @@ class OdinPnlExport(models.AbstractModel):
         options = report["options"]
         columns = []
         for column in report["columns"]:
-            columns.append({"key": column["key"], "kind": "balance", "label": column["label"]})
+            columns.append({
+                "key": column["key"], "kind": "balance", "label": column["label"], "group": column["group"]})
             if options["percent_of_base"] and column["group"] == "current":
                 columns.append({"key": column["key"], "kind": "pct", "label": _("% of revenue")})
             if column["budget"]:
@@ -153,6 +168,8 @@ class OdinPnlExport(models.AbstractModel):
         if running:
             columns.append({"key": "running", "kind": "running", "label": _("Balance")})
         if any(column["group"] == "comparison" for column in report["columns"]):
+            # Against the first comparison: by how much, then by how many percent.
+            columns.append({"key": "variance", "kind": "variance", "label": _("Variance")})
             columns.append({"key": "growth", "kind": "growth", "label": "%"})
         return columns
 
@@ -170,6 +187,8 @@ class OdinPnlExport(models.AbstractModel):
             value = row.get("budget_pct", {}).get(column["key"])
         elif kind == "running":
             value = row.get("running")
+        elif kind == "variance":
+            value = row.get("variance")
         else:
             value = row.get("growth")
         return {"value": value, "kind": kind, "text": self._format(value, kind, options, currency)}
@@ -185,7 +204,8 @@ class OdinPnlExport(models.AbstractModel):
         text = formatLang(self.env, abs(value) / scale, digits=digits)
         if value < 0:
             return f"({text})" if options["negative_parentheses"] else f"-{text}"
-        return text
+        # A change reads with its sign either way: +1,200 / -1,200.
+        return f"+{text}" if kind == "variance" and abs(value) / scale >= 0.5 * 10 ** -digits else text
 
     def _label(self, row, options):
         if row["type"] == "entry":
