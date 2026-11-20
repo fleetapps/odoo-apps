@@ -653,13 +653,15 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_sale_load(self, line_id):
         """A draft sale line for the sale window: all of its invoice if it came
-        from the window, only itself otherwise. Saving replaces what is loaded."""
+        from the window, only itself otherwise, a draft kept with Save draft
+        included. Saving replaces what is loaded."""
         Line = self.env["odin.stock.line"]
         line = Line.browse(line_id).exists()
         if not line or line.state != "draft" or line.reason != "sale":
             raise UserError(_("Only a sale not yet posted can be opened here."))
         window = line.stock_sale_id
-        lines = window.line_ids.filtered(lambda l: l.state == "draft") if window else line
+        # In the order typed: the book lists the newest first.
+        lines = window.line_ids.filtered(lambda l: l.state == "draft").sorted("id") if window else line
         partner = window.partner_id or line.partner_id
         name = (line.partner_name or "").strip()
         if not partner and name:
@@ -694,7 +696,7 @@ class StockBook(models.AbstractModel):
         window = line.stock_sale_id
         if not window:
             raise UserError(_("Only a sale made with Add sale can be undone here."))
-        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        posted = window.line_ids.filtered(lambda l: l.state == "posted").sorted("id")
         rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_out,
                  "cost": l.unit_price, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
@@ -732,7 +734,10 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_sale_save(self, values, post=True, replace_ids=None):
         """One invoice from the sale window, as Stock Book lines: posted at once
-        by a supervisor, left for one otherwise. All of it or none."""
+        by a supervisor, left for one otherwise. All of it or none.
+        ``post=False``: kept as a draft, as typed, to finish and deliver
+        later (Save draft). Nothing is delivered or invoiced yet.
+        ``replace_ids``: the draft being saved again, which this replaces."""
         Line = self.env["odin.stock.line"]
         company = self.env.company
         self._sale_replace(replace_ids)
