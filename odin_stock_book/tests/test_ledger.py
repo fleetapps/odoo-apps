@@ -484,6 +484,16 @@ class TestStockBookLedger(TestStockBookPurchase):
         made = self.Line.browse(self.Book.book_sale_save(values)["ids"]).stock_sale_id.partner_id
         self.assertEqual((made.parent_id, made.property_product_pricelist.name), (Partner, "Retail"))
 
+    def test_the_sale_window_is_told_what_is_on_hand(self):
+        """So a line asking for more warns while it is typed, not only when delivering is refused."""
+        service = self.env["product.product"].create({"name": "Delivery Test", "type": "service", "sale_ok": True})
+        onhand = self.Book.book_sale_onhand([self.fg.id, self.carton.id, service.id], self.wh.id)
+        self.assertEqual(onhand, {str(self.fg.id): self.onhand(self.fg), str(self.carton.id): self.onhand(self.carton)},
+                         "stock only: a charge is never short")
+        self.Line.create({"product_id": self.fg.id, "reason": "sale", "qty_out": 5, "partner_name": "Naivas Test"})
+        self.assertEqual(self.Book.book_sale_onhand([self.fg.id], self.wh.id)[str(self.fg.id)], self.onhand(self.fg),
+                         "on hand now, as posting checks it: a draft elsewhere takes nothing yet")
+
     # ------------------------------------------------------------ Save draft
     def _typed_sale(self):
         """An invoice typed in full: three items with a delivery charge between

@@ -743,6 +743,21 @@ select.o_sb_cell {
     }
 }
 
+// Pinned to the top of the panel as it scrolls: the panel's own padding is
+// scrolled past, so it sticks at -1rem, on its own background.
+.o_sb_panel_next {
+    position: sticky;
+    top: -1rem;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: -0.35rem -1rem;
+    padding: 0.35rem 1rem;
+    background: var(--sb-surface);
+    border-bottom: 1px solid var(--sb-line);
+}
+
 .o_sb_panel_actions {
     display: flex;
     flex-wrap: wrap;
@@ -1202,13 +1217,25 @@ select.o_sb_cell {
 }
 
 @media (max-width: 1599.98px) {
-    .o_sb_with_panel .o_sb_log .o_sb_c_onhand {
-        @include o-sb-column-off;
+    // On hand after stays beside the panel: it is what a short line is
+    // about. The reason, customer and status give it the room.
+    .o_sb_with_panel .o_sb_log {
+        .o_sb_c_onhand { width: 5rem; min-width: 5rem; }
+        // "On hand", so the heading stays on one line in the narrow column.
+        .o_sb_onhand_long { display: none; }
+        .o_sb_onhand_short { display: inline; }
+        .o_sb_c_reason { width: 8.5rem; min-width: 8.5rem; }
+        .o_sb_c_partner { width: 9.5rem; min-width: 9.5rem; }
+        .o_sb_c_status { width: 8.4rem; min-width: 8.4rem; }
     }
 
     .o_sb_panel {
         flex-basis: 20rem;
     }
+}
+
+.o_sb_onhand_short {
+    display: none;
 }
 
 // The whole status: short labels that fit, the detail on hover and, for

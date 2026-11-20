@@ -94,6 +94,8 @@ export class PurchaseDialog extends Component {
             // failed, and what was typed can be kept as a draft instead.
             lines: [this.newLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
             offerDraft: false, edit: false, replaceIds: [],
+            // Sales: on hand now by item id, to warn on a line that asks for more.
+            onhand: {},
         });
         this.totalsSeq = 0;
         this.refSeq = 0;
@@ -153,7 +155,7 @@ export class PurchaseDialog extends Component {
         if (this.state.ref && this.state.supplier?.id && !this.state.replaceIds.length) {
             await this.checkRef();
         }
-        await this.loadTotals();
+        await Promise.all([this.loadTotals(), this.refreshOnhand()]);
     }
 
     /** Where typing should start: the first thing still missing at the top. */
@@ -674,6 +676,9 @@ export class PurchaseDialog extends Component {
         }
         line.product = item;
         line.query = item.display_name;
+        if (item.stock && item.onhand !== undefined) {
+            this.state.onhand[item.id] = item.onhand;
+        }
         this.state.suggest = null;
         this.loadDefaults(line);
         this.ensureBlankLine();
@@ -767,6 +772,53 @@ export class PurchaseDialog extends Component {
         }, 120);
     }
 
+    // ------------------------------------------------------------ stock on hand (sales)
+    /** On hand now for the sale's items: on opening a saved sale, and after delivering was refused. */
+    async refreshOnhand() {
+        const ids = [...new Set(this.items.filter((line) => line.product?.stock).map((line) => line.product.id))];
+        if (!this.isSale || !ids.length) {
+            return;
+        }
+        const found = await this.orm.call("odin.stock.book", "book_sale_onhand", [ids],
+            { warehouse_id: this.props.warehouseId || false });
+        Object.assign(this.state.onhand, found);
+    }
+
+    /**
+     * A sale line asking for more of its item than is on hand, the item's
+     * other lines counted with it, as posting counts them: what the warning
+     * under it says, or "".
+     */
+    shortNote(line) {
+        if (!this.isSale || !line.product?.stock) {
+            return "";
+        }
+        // As fetched, else as the item came (the item list, a photo read).
+        const fetched = this.state.onhand[line.product.id];
+        const onhand = fetched !== undefined ? fetched : line.product.onhand;
+        if (onhand === undefined || onhand === null) {
+            return "";
+        }
+        const same = this.items.filter((other) => other.product?.id === line.product.id);
+        const needed = same.reduce((sum, other) => sum + parseAmount(other.qty), 0);
+        if (needed <= onhand + 1e-6) {
+            return "";
+        }
+        const left = { onhand: this.amount(onhand), uom: line.product.uom || "" };
+        return same.length > 1
+            ? _t("%(needed)s on this invoice, only %(onhand)s %(uom)s on hand", { ...left, needed: this.amount(needed) })
+            : _t("Only %(onhand)s %(uom)s on hand", left);
+    }
+
+    /** After delivering was refused: the stock as it is now, and the first line short of it in sight. */
+    async showShortLine() {
+        await this.refreshOnhand();
+        const line = this.items.find((other) => this.shortNote(other));
+        if (line) {
+            this.focus(`qty-${line.key}`);
+        }
+    }
+
     // ------------------------------------------------------------ totals
     scheduleTotals() {
         clearTimeout(this.totalsTimer);
@@ -808,6 +860,12 @@ export class PurchaseDialog extends Component {
 
     money(value) {
         return (value || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    /** How many lines are typed, beside the totals: to check against the paper. */
+    get itemsLabel() {
+        const count = this.items.length;
+        return count === 1 ? _t("1 item") : _t("%s items", count);
     }
 
     get saveLabel() {
@@ -899,6 +957,9 @@ export class PurchaseDialog extends Component {
             this.state.error = error.data?.message || error.message || _t("It could not be saved.");
             // Delivering failed, an item short say: the work can still be kept.
             this.state.offerDraft = post && this.offersDraft;
+            if (post && this.isSale) {
+                this.showShortLine();
+            }
         } finally {
             this.state.saving = false;
         }
