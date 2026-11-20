@@ -132,7 +132,7 @@ class OdinAiLlm(models.AbstractModel):
 
     @api.model
     def call(self, feature, *, system, messages, schema=None, tools=None, step_key=None, interactive=True,
-             cache_conversation=False, progress_updates=False):
+             cache_conversation=False, progress_updates=False, effort=None, max_tokens=None):
         """Send one request and return the response as a dict (``content``,
         ``stop_reason``, ``model``, ``usage``).
 
@@ -147,6 +147,10 @@ class OdinAiLlm(models.AbstractModel):
             as readable thinking blocks, on the models that write them. It must
             be the same on every request of a conversation: a change of
             thinking settings invalidates the cached messages.
+        :param effort: the effort for this call, for a feature of another
+            module whose steps need different ones; else the feature's own.
+        :param max_tokens: the output limit, for an answer longer than the
+            interactive default; adaptive thinking counts against it too.
         :raises UserError: with a message for the user when the AI cannot
             answer (not configured, budget, refusal, timeout, API error).
         """
@@ -162,10 +166,10 @@ class OdinAiLlm(models.AbstractModel):
         model = self._model_for(feature)
         params = {
             "model": model,
-            "max_tokens": settings["max_tokens"],
+            "max_tokens": max_tokens or settings["max_tokens"],
             "system": [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
             "messages": messages,
-            "output_config": {"effort": EFFORT.get(feature, "medium")},
+            "output_config": {"effort": effort or EFFORT.get(feature, "medium")},
         }
         if schema:
             params["output_config"]["format"] = {"type": "json_schema", "schema": schema}

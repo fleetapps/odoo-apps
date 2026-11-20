@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Photos read in a window that was closed without saving: kept a while,
+         in case it is opened again, then deleted with their files. -->
+    <record id="ir_cron_odin_stock_photo_purge" model="ir.cron">
+        <field name="name">Stock Book: delete photos of sales never saved</field>
+        <field name="model_id" ref="model_odin_stock_photo"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_purge()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

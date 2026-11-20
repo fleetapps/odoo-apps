@@ -12,7 +12,7 @@ draft bills, approved by an accountant), Anomalies (scheduled checks with an
 inbox) and Draft Entry (a journal entry from a sentence, validated before it
 is created). The AI never posts or changes anything on its own. See README.md.
 """,
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Accounting/Accounting",
     "author": "Fleet Apps",
     "license": "GPL-3",
