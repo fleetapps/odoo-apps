@@ -255,7 +255,8 @@ patch(PurchaseDialog.prototype, {
         const state = this.state;
         Object.assign(state, { tried: false, error: "", refProblem: "" });
         state.supplier = prefill.supplier || null;
-        state.supplierQuery = prefill.supplier ? prefill.supplier.name : prefill.supplier_query || "";
+        state.supplierQuery = prefill.supplier
+            ? prefill.supplier.display_name || prefill.supplier.name : prefill.supplier_query || "";
         if (prefill.purchase_ref) {
             state.ref = prefill.purchase_ref;
         }

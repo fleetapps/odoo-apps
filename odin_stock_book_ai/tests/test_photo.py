@@ -24,7 +24,8 @@ class TestPhoto(PhotoCase):
         result, requests = self.read()
         prefill = result["prefill"]
         self.assertEqual(prefill["supplier"]["id"], self.brookside.id, "the branch, a contact under Chandarana")
-        self.assertIn("Brookside Grove", prefill["supplier"]["name"])
+        self.assertEqual(prefill["supplier"]["display_name"], "Chandarana Supermarket, Hookwood Square - Brookside Grove",
+                         "shown as the window's own search shows a branch")
         self.assertEqual((prefill["purchase_ref"], prefill["date"]), ("T5436", self.day.isoformat()))
         self.assertEqual(prefill["payment_term_id"], self.net60.id, "Net 60, which dates it due as printed")
         self.assertEqual(prefill["cu_invoice_no"], "KRACU0100TEST436/1")

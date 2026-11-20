@@ -39,8 +39,9 @@ Accounting AI*); the calls show there as *Stock Book photo*.
 6. *Add a page* reads all the pages again together; *Read again* reads them
    afresh. A page can be taken off with its ×.
 
-Saving works as before: *Save and deliver* (supervisors) or *Save for
-posting*. The photos go with the sale, and a copy is posted in its customer
+Saving works as before: *Save and deliver*, *Save draft* (supervisors) or
+*Save for posting*. A draft is saved once its highlighted lines are looked at,
+as a posted sale is: their notes are not kept with the draft. The photos go with the sale, and a copy is posted in its customer
 invoice's chatter, beside it in Accounting. A draft keeps them: opened again,
 the window shows them, and when the sale is posted the photos reach its
 invoice. *Undo* on a sale opens it again with its photos, and the sale
@@ -112,9 +113,9 @@ The PIN the customer has on file stays (a different one on the invoice is
 said). A PIN or terms the customer lacks are saved on it when the sale is
 saved, as typed ones are.
 
-The window's own customer search (`book_sale_customers`) still lists
-companies only; finding branch contacts there is a separate change to Stock
-Book.
+The window's own customer search finds branches the same way, and a
+customer typed in rather than picked is asked about before it is created
+(Stock Book's own Add sale).
 
 ## The data sent to Anthropic
 

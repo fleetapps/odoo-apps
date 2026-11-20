@@ -54,7 +54,7 @@
                     <li t-if="photo.choices.length and !state.supplier" class="o_sb_ph_flag o_sb_ph_choose">
                         <span class="me-1">Pick the customer:</span>
                         <button t-foreach="photo.choices" t-as="choice" t-key="choice.id" type="button"
-                                class="btn btn-light border btn-sm" t-on-click="() => this.pickPhotoCustomer(choice)" t-esc="choice.name"/>
+                                class="btn btn-light border btn-sm" t-on-click="() => this.pickPhotoCustomer(choice)" t-esc="choice.display_name or choice.name"/>
                     </li>
                 </ul>
             </div>

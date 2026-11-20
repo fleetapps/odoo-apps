@@ -354,8 +354,8 @@ class StockBook(models.AbstractModel):
         flags = []
 
         def window(entry):
-            partner = Partner.browse(entry["partner"]["id"])
-            return {**self._sale_customer(partner), "name": partner.display_name}
+            # As the window's own search gives it: a branch with its company's name.
+            return self._sale_customer(Partner.browse(entry["partner"]["id"]))
 
         choices = [window(entry) for entry in ([found["best"]] if found["best"] else []) + found["alternatives"]]
         if found["confidence"] == matching.NONE:
