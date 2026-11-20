@@ -793,8 +793,10 @@ export class PurchaseDialog extends Component {
         if (!this.isSale || !line.product?.stock) {
             return "";
         }
-        const onhand = this.state.onhand[line.product.id];
-        if (onhand === undefined) {
+        // As fetched, else as the item came (the item list, a photo read).
+        const fetched = this.state.onhand[line.product.id];
+        const onhand = fetched !== undefined ? fetched : line.product.onhand;
+        if (onhand === undefined || onhand === null) {
             return "";
         }
         const same = this.items.filter((other) => other.product?.id === line.product.id);
