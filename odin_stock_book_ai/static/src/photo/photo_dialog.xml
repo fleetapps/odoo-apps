@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- Upload photo in Add sale: the photos above the window, what the photo
+         says beside each line, and the window's total against the invoice's. -->
+    <t t-inherit="odin_stock_book.PurchaseDialog" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_sb_pd')]" position="attributes">
+            <attribute name="t-on-dragover">onPhotoDragOver</attribute>
+            <attribute name="t-on-dragleave">onPhotoDragLeave</attribute>
+            <attribute name="t-on-drop">onPhotoDrop</attribute>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_sb_pd_head')]" position="before">
+            <div t-if="photoOptions" class="o_sb_ph" t-att-class="{ o_sb_ph_drop: photo.dragging }">
+                <input type="file" class="o_sb_ph_input d-none" multiple="multiple" t-att-accept="photoAccept"
+                       t-on-change="onPhotoInput"/>
+                <div class="o_sb_ph_bar">
+                    <button type="button" class="btn btn-secondary btn-sm o_sb_ph_upload"
+                            t-att-disabled="photo.busy or photoBlocker" t-att-title="photoBlocker or 'A photo of each page of the invoice'"
+                            t-on-click="openPhotoPicker">
+                        <i class="fa fa-camera me-1"/><t t-if="photoPages.length">Add a page</t><t t-else="">Upload photo</t>
+                    </button>
+                    <button t-if="photo.files.length and !photo.busy" type="button" class="btn btn-link btn-sm o_sb_ph_again"
+                            title="Read the photos afresh" t-on-click="() => this.readPhoto([], { again: true })">
+                        <i class="fa fa-refresh me-1"/>Read again
+                    </button>
+                    <span t-if="photo.busy" class="o_sb_ph_busy" role="status" aria-live="polite">
+                        <i class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="photo.busy"/>
+                        <button type="button" class="btn btn-link btn-sm p-0 ms-2" t-on-click="stopPhoto">Stop</button>
+                    </span>
+                    <span t-elif="photoBlocker" class="o_sb_ph_hint" t-esc="photoBlocker"/>
+                    <span t-elif="photo.read" class="o_sb_ph_hint" aria-live="polite" t-esc="photoSummary"/>
+                    <span t-elif="!photoPages.length" class="o_sb_ph_hint">A photo of each page of the signed invoice, or drop them here. The window fills in, for you to check before saving; nothing is saved until you save.</span>
+                    <ul t-if="photoPages.length" class="o_sb_ph_pages" aria-label="Photos">
+                        <li t-foreach="photoPages" t-as="file" t-key="file.key">
+                            <a t-att-href="file.url" target="_blank" rel="noopener" t-att-title="file.name">
+                                <img t-if="thumbnail(file)" t-att-src="thumbnail(file)" t-att-alt="file.name"/>
+                                <i t-else="" class="fa fa-file-pdf-o" t-att-aria-label="file.name"/>
+                            </a>
+                            <button type="button" class="btn btn-link btn-sm o_sb_ph_remove" t-att-disabled="photo.busy"
+                                    t-att-aria-label="'Remove ' + file.name" t-on-click="() => this.removePhoto(file)"><i class="fa fa-times"/></button>
+                        </li>
+                    </ul>
+                </div>
+                <div t-if="photo.error" class="alert alert-danger o_sb_ph_alert" role="alert">
+                    <t t-esc="photo.error"/>
+                    <button t-if="photo.unsent.length and !photoBlocker" type="button" class="btn btn-link btn-sm p-0 ms-2"
+                            t-on-click="() => this.readPhoto(photo.unsent)">Try again</button>
+                </div>
+                <div t-if="photo.note" class="o_sb_ph_flag o_sb_ph_warn"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="photo.note"/></div>
+                <ul t-if="photo.read and (photo.flags.length or (photo.choices.length and !state.supplier))" class="o_sb_ph_flags">
+                    <li t-foreach="photo.flags" t-as="flag" t-key="flag_index" class="o_sb_ph_flag" t-att-class="'o_sb_ph_' + flag.level">
+                        <i t-att-class="flag.level === 'warn' ? 'fa fa-exclamation-triangle me-1' : 'fa fa-info-circle me-1'"/><t t-esc="flag.text"/>
+                    </li>
+                    <li t-if="photo.choices.length and !state.supplier" class="o_sb_ph_flag o_sb_ph_choose">
+                        <span class="me-1">Pick the customer:</span>
+                        <button t-foreach="photo.choices" t-as="choice" t-key="choice.id" type="button"
+                                class="btn btn-light border btn-sm" t-on-click="() => this.pickPhotoCustomer(choice)" t-esc="choice.name"/>
+                    </li>
+                </ul>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_sb_pd_row') and @t-foreach]" position="attributes">
+            <attribute name="t-att-class">photoRowClass(line)</attribute>
+        </xpath>
+
+        <!-- Under the line, across it: what the invoice says, and what to look at. -->
+        <xpath expr="//div[hasclass('o_sb_pd_row') and @t-foreach]" position="inside">
+            <div t-if="line.photo" class="o_sb_ph_line">
+                <div class="o_sb_ph_printed" t-att-title="photoNotes(line) or 'As printed on the invoice'">
+                    <i class="fa fa-camera me-1" aria-hidden="true"/>
+                    <span class="visually-hidden">On the invoice:</span>
+                    <span t-esc="line.photo.printed"/>
+                    <span class="o_sb_ph_numbers" t-esc="photoNumbers(line)"/>
+                    <span t-if="line.photo.level === 'likely' and !line.photo.ok" class="o_sb_ph_badge" t-att-title="photoNotes(line)">AI chose</span>
+                </div>
+                <ul t-if="photoWarnings(line).length" class="o_sb_ph_line_flags">
+                    <li t-foreach="photoWarnings(line)" t-as="flag" t-key="flag_index"><i class="fa fa-exclamation-triangle me-1" aria-hidden="true"/><t t-esc="flag.text"/></li>
+                </ul>
+                <div t-if="line.photo.choices.length and photoToCheck(line)" class="o_sb_ph_alts">
+                    <span>Or:</span>
+                    <button t-foreach="line.photo.choices" t-as="item" t-key="item.id" type="button" class="btn btn-link btn-sm p-0"
+                            t-att-disabled="item.tracked" t-on-click="() => this.pickItem(line, item)" t-esc="item.display_name"/>
+                </div>
+                <button t-if="photoToCheck(line)" type="button" class="btn btn-sm btn-outline-secondary o_sb_ph_looks"
+                        t-att-data-pd="'photo-' + line.key" t-on-click="() => this.photoOk(line)">
+                    <i class="fa fa-check me-1"/>Looks right
+                </button>
+            </div>
+        </xpath>
+
+        <xpath expr="//div[hasclass('o_sb_pd_msgs')]" position="inside">
+            <div t-if="photoTotalNote" class="o_sb_ph_flag mt-1" t-att-class="'o_sb_ph_' + photoTotalNote.level">
+                <i t-att-class="photoTotalNote.level === 'ok' ? 'fa fa-check me-1' : 'fa fa-exclamation-triangle me-1'"/><t t-esc="photoTotalNote.text"/>
+            </div>
+        </xpath>
+    </t>
+</templates>
