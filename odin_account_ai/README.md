@@ -68,6 +68,10 @@ the bill stays a draft. Every booking leaves a note in the document's chatter.
 
 * **Consent first.** Nothing is sent until an administrator ticks *Send
   accounting data to Anthropic* for the company (*Settings → Accounting AI*).
+* **Stock Book photos:** with *Stock Book: invoice photos*
+  ([`odin_stock_book_ai`](../odin_stock_book_ai/README.md)) installed, the
+  same consent, key, budget and log cover the photos of customer invoices
+  read in the Stock Book's Add sale; that README says what is sent.
 * **What is sent:** the question or the item, and what the tools read for it
   (P&L figures, journal items, account and partner names), as JSON data. The
   system prompt tells the model that text from the books is data, never

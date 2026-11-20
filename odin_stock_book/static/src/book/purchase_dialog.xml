@@ -10,6 +10,10 @@
                                t-att-class="{ 'is-invalid': state.tried and !state.supplier }" t-att-value="state.supplierQuery"
                                t-att-placeholder="words.partnerHint" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
                                t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickSupplier(item))"/>
+                        <div t-if="pricesLabel" class="o_sb_pd_prices" t-att-class="{ o_sb_pd_prices_new: !state.supplier.id and !state.supplier.parentId }"
+                             aria-live="polite" title="The pricelist the lines are priced at: the customer's own (Sales > Customers)">
+                            <i class="fa fa-tag me-1"/><t t-esc="pricesLabel"/>
+                        </div>
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_ref" t-esc="words.ref"/>
@@ -37,7 +41,8 @@
                             <input id="o_sb_pd_pin" data-pd="pin" class="form-control text-uppercase" autocomplete="off"
                                    t-att-class="{ 'is-invalid': state.tried and pinProblem }" t-att-value="state.pin"
                                    placeholder="e.g. P051234567X" title="Saved on the customer for the next sale"
-                                   t-on-input="(ev) => this.state.pin = ev.target.value" t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
+                                   t-on-input="(ev) => this.state.pin = ev.target.value" t-on-change="onPinChange"
+                                   t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
                         </div>
                         <div class="o_sb_pd_field">
                             <label for="o_sb_pd_cu" t-esc="words.cu"/>
@@ -73,6 +78,7 @@
                         <span/>
                     </div>
                     <div t-foreach="state.lines" t-as="line" t-key="line.key" class="o_sb_pd_row" role="row">
+                        <t t-set="short" t-value="shortNote(line)"/>
                         <div class="o_sb_pd_item" data-label="Item">
                             <input class="form-control form-control-sm" autocomplete="off" t-att-data-pd="'product-' + line.key" t-att-value="line.query" t-att-title="line.query"
                                    t-att-class="{ 'is-invalid': missing(line, 'product') }" t-att-placeholder="words.itemHint" aria-label="Item"
@@ -80,9 +86,11 @@
                                    t-on-keydown="(ev) => this.onItemKey(line, ev)"/>
                             <input t-if="line.product and !line.product.stock" class="form-control form-control-sm o_sb_pd_note" t-att-value="line.note" t-att-placeholder="words.noteHint" aria-label="Description"
                                    t-on-input="(ev) => line.note = ev.target.value"/>
+                            <div t-if="short" class="o_sb_pd_short"><i class="fa fa-exclamation-triangle me-1"/><t t-esc="short"/></div>
                         </div>
                         <div data-label="Quantity"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'qty-' + line.key" t-att-value="line.qty"
-                               t-att-class="{ 'is-invalid': missing(line, 'qty') }" aria-label="Quantity" t-on-input="(ev) => this.onNumber(line, 'qty', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'qty', ev)"/></div>
+                               t-att-class="{ 'is-invalid': missing(line, 'qty'), o_sb_pd_short_qty: short }" t-att-title="short or false"
+                               aria-label="Quantity" t-on-input="(ev) => this.onNumber(line, 'qty', ev)" t-on-keydown="(ev) => this.onCellKey(line, 'qty', ev)"/></div>
                         <div class="o_sb_pd_unit" data-label="Unit" t-esc="line.product ? line.product.uom : ''"/>
                         <div t-att-data-label="words.cost"><input class="form-control form-control-sm o_sb_pd_num" inputmode="decimal" t-att-data-pd="'cost-' + line.key" t-att-value="line.cost"
                                t-att-class="{ 'is-invalid': missing(line, 'cost') }" t-att-placeholder="line.lastCost ? 'Last ' + amount(line.lastCost) : ''" t-att-aria-label="words.cost"
@@ -104,7 +112,8 @@
                     <li t-if="state.suggest.empty" class="o_sb_pd_none" t-esc="words.noPartner"/>
                     <t t-if="state.suggest.kind === 'supplier'">
                         <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
-                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
+                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/>
+                            <small t-if="item.hint" t-esc="item.hint"/></li>
                     </t>
                     <t t-else="">
                         <t t-set="suggestLine" t-value="state.lines.find((l) => l.key === state.suggest.key)"/>
@@ -118,26 +127,37 @@
                     </t>
                 </ul>
 
-                <div class="o_sb_pd_foot">
-                    <div class="o_sb_pd_msgs" aria-live="polite">
-                        <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
-                        <div t-elif="state.tried and problem and problem[1] !== state.refProblem" class="alert alert-warning" role="alert"><t t-esc="problem[1]"/></div>
+                <!-- Under the lines, outside their scroll: always in sight, the lines make room. -->
+                <div class="o_sb_pd_msgs" aria-live="polite">
+                    <div t-if="state.error" class="alert alert-danger" role="alert">
+                        <t t-esc="state.error"/>
+                        <div t-if="state.offerDraft" class="o_sb_pd_keep">
+                            <button type="button" class="btn btn-sm btn-secondary" t-att-disabled="state.saving" t-on-click="saveDraft">
+                                <i t-if="state.saving === 'draft'" class="fa fa-circle-o-notch fa-spin me-1"/>Keep as draft
+                            </button>
+                            <small t-esc="keepDraftHelp"/>
+                        </div>
                     </div>
-                    <div class="o_sb_pd_totals" aria-live="polite">
-                        <dl>
-                            <dt>Before VAT</dt><dd t-esc="state.totals ? money(state.totals.subtotal) : '—'"/>
-                            <dt>VAT</dt><dd t-esc="state.totals ? money(state.totals.vat) : '—'"/>
-                            <dt class="o_sb_pd_total">Total <t t-esc="state.options.currency"/></dt><dd class="o_sb_pd_total" t-esc="state.totals ? money(state.totals.total) : '—'"/>
-                        </dl>
-                    </div>
+                    <div t-elif="state.tried and problem and problem[1] !== state.refProblem" class="alert alert-warning" role="alert"><t t-esc="problem[1]"/></div>
                 </div>
             </div>
             <t t-set-slot="footer">
-                <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="save">
-                    <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
+                <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="() => this.save()">
+                    <i t-if="state.saving === 'post'" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
+                </button>
+                <button t-if="offersDraft" class="btn btn-secondary o_sb_pd_draft" t-att-disabled="state.saving" t-att-title="draftHelp" t-on-click="saveDraft">
+                    <i t-if="state.saving === 'draft'" class="fa fa-circle-o-notch fa-spin me-1"/>Save draft
                 </button>
                 <button class="btn btn-secondary" t-att-disabled="state.saving" t-on-click="discard">Cancel</button>
                 <small class="o_sb_pd_help" t-esc="saveHelp"/>
+                <!-- On the Save row, not above it: the lines get the room. -->
+                <div class="o_sb_pd_ftotals" aria-live="polite">
+                    <div class="o_sb_pd_fsub">
+                        <span t-esc="itemsLabel"/> · Before VAT <b t-esc="state.totals ? money(state.totals.subtotal) : '—'"/>
+                        · VAT <b t-esc="state.totals ? money(state.totals.vat) : '—'"/>
+                    </div>
+                    <div class="o_sb_pd_total">Total <t t-esc="state.options.currency"/> <t t-esc="state.totals ? money(state.totals.total) : '—'"/></div>
+                </div>
             </t>
         </Dialog>
     </t>

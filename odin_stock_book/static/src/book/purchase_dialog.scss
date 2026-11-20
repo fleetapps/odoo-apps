@@ -27,6 +27,36 @@
     }
 }
 
+// A sale's pricelist, under the customer: Retail where the customer's own was
+// meant is caught here. A customer not created yet stands out.
+.o_sb_pd_prices {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--#{$prefix}secondary-color);
+
+    &.o_sb_pd_prices_new {
+        color: var(--#{$prefix}warning-text-emphasis);
+        font-weight: 600;
+    }
+}
+
+// Asked before a customer typed in is created: who it may already be.
+.o_sb_cc {
+    .list-group-item small {
+        display: block;
+        color: var(--#{$prefix}secondary-color);
+    }
+
+    .o_sb_cc_name {
+        display: block;
+        font-weight: 600;
+    }
+
+    .o_sb_cc_new {
+        border-top-width: 2px;
+    }
+}
+
 // A sale's due date: worked out from the terms and the date, not typed.
 .o_sb_pd_due {
     padding: 0.375rem 0;
@@ -39,14 +69,64 @@
     padding: 0.5rem 0.75rem;
 }
 
-// The lines scroll by themselves, so the totals and Save stay in sight.
 .o_sb_pd_lines {
-    // Two properties, not max(): Odoo compiles with libsass, which takes max()
-    // for its own function and fails the whole bundle on rem and calc.
-    min-height: 14rem;
-    max-height: calc(100vh - 27rem);
-    overflow-y: auto;
     overflow-x: hidden;
+}
+
+// On a laptop the window is as tall as the screen allows and no taller: the
+// lines take what the fields, a message and the Save row leave, and scroll by
+// themselves. The window body scrolls only on a screen too short for even a
+// few lines. A phone keeps one column that scrolls as a whole (below).
+@media (min-width: 992px) {
+    .modal-body:has(> .o_sb_pd) {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .o_sb_pd {
+        flex: 1 1 auto;
+        min-height: 0;
+
+        > :not(.o_sb_pd_lines) {
+            flex: none;
+        }
+    }
+
+    .o_sb_pd_lines {
+        flex: 1 1 auto;
+        min-height: 9rem;
+        overflow-y: auto;
+    }
+
+    // What sits around the lines kept tight, so more lines fit on a laptop:
+    // less margin above and below the window (Odoo's is 1.75rem), a lower
+    // title bar, lower fields at the top.
+    .o_dialog .modal .modal-dialog:has(.o_sb_pd) {
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .o_dialog .modal-content:has(.o_sb_pd) > .modal-header {
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+
+    .o_sb_pd_head {
+        row-gap: 0.5rem;
+
+        label, .o_sb_pd_label {
+            margin-bottom: 0.15rem;
+        }
+
+        .form-control, .form-select {
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+        }
+    }
+
+    .o_sb_pd_due {
+        padding: 0.25rem 0;
+    }
 }
 
 .o_sb_pd_row {
@@ -103,6 +183,19 @@
     margin-top: 0.25rem;
 }
 
+// A sale line asking for more than is on hand: said under the item while it
+// is typed, not only when delivering is refused.
+.o_sb_pd_short {
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--#{$prefix}warning-text-emphasis);
+}
+
+.o_sb_pd_short_qty {
+    border-color: var(--#{$prefix}warning);
+    background-color: var(--#{$prefix}warning-bg-subtle);
+}
+
 // Fixed, placed from its input: the scrolling lines would clip it otherwise.
 .o_sb_pd_suggest.dropdown-menu {
     position: fixed;
@@ -132,6 +225,10 @@
             border-top: 1px solid var(--#{$prefix}border-color);
             border-radius: 0;
             font-weight: 600;
+
+            small {
+                font-weight: 400;
+            }
         }
 
         &.o_sb_pd_none {
@@ -155,10 +252,24 @@
     flex: 1 1 18rem;
     min-width: 0;
 
+    // Nothing to say: no gap left for it. (The template keeps whitespace,
+    // which :empty would count.)
+    &:not(:has(*)) {
+        display: none;
+    }
+
     .alert {
         margin: 0;
         padding: 0.45rem 0.75rem;
     }
+}
+
+.o_sb_pd_keep {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.4rem;
 }
 
 .o_sb_pd_totals {
@@ -189,6 +300,29 @@
     }
 }
 
+// The totals on the Save row: the item count and the figures, then the total.
+.o_sb_pd_ftotals {
+    margin-left: auto;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    .o_sb_pd_fsub {
+        font-size: 0.85rem;
+        color: var(--#{$prefix}secondary-color);
+
+        b {
+            font-weight: 600;
+            color: var(--#{$prefix}body-color);
+        }
+    }
+
+    .o_sb_pd_total {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+}
+
 .o_sb_pd_help {
     flex: 1 1 18rem;
     align-self: center;
@@ -202,6 +336,16 @@
 @media (max-width: 991.98px) {
     .o_sb_pd_head {
         grid-template-columns: 1fr;
+    }
+
+    // A phone's Save row stays low: the Save button shows the total already,
+    // so only the count and the figures are added, wrapping if they must.
+    .o_sb_pd_ftotals {
+        white-space: normal;
+
+        .o_sb_pd_total {
+            display: none;
+        }
     }
 
     .o_sb_pd_lines {

@@ -50,6 +50,14 @@ with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
 * **On hand after** each line is the running balance: drafts are projected in
   date order on top of what is on hand now, so a line is **Short** before it is
   posted, not after. Short lines are blocked; a supervisor can *Post anyway*.
+  Posting checks the lines it posts the same way, all of them before the first
+  one moves stock: a sale from *Add sale* is one delivery, so 7 on hand is
+  enough for 6 on any line of it, and an item on two lines counts both. A short
+  item says how many are needed and how many are left ("6 needed, 1 left").
+* A line's **panel** (the arrow at the end of its row) starts with what to do
+  next: *Post*, *Post anyway*, *Edit sale* or *Complete sale* (*Edit* or
+  *Complete purchase*), or a posted line's printouts. That row stays at the top
+  while the panel scrolls, and *On hand after* stays in the grid beside it.
 * Each line says what it still needs: item, reason, quantity, the right column,
   a recipe, a customer.
 * **Posting** (supervisors) creates the real Odoo document and locks the line;
@@ -112,7 +120,9 @@ and VAT, with the subtotal, VAT and total as Odoo will compute them. *Save and
 receive* makes one purchase order with the number as its Vendor Reference, and
 adds one posted line per item here. A number already used for that supplier is
 refused, so a delivery cannot go in twice. Storekeepers *Save for posting*: the
-lines wait, carrying the same number, and post together as one order.
+lines wait, carrying the same number, and post together as one order. A
+supervisor can keep it as a draft the same way with *Save draft*, and finish it
+later: see *Save draft* under *Stock in the accounts*.
 
 The window also does the accounting, in the same step and the same transaction,
 so either all of it happens or none of it: a posted vendor bill in Vendor Bills,
@@ -287,8 +297,14 @@ reference two lines still share.
 
 - **Add purchase** and **Add sale** make Odoo's own documents in one step: order, receipt or delivery, bill or invoice, and payment. The customer invoice posts the cost of sales.
 - **Print**: with Business Documents installed, a posted line's panel has a button for each document of what it posted (delivery note, GRN, sales invoice, purchase order), and saving a sale or purchase offers them in its notice.
+- **Save draft** (*Add sale* and *Add purchase*, for a supervisor, beside *Save and deliver* or *Save and receive*) keeps the invoice or LPO on the book as typed, without delivering or receiving anything: no order, delivery, invoice or payment yet. Everything typed is kept: the customer or supplier, the number, the date, *Paid into* or *Paid from*, the items in the order typed, the charges (after the items), and for a sale its KRA PIN, CU invoice no. and payment terms. A draft needs what *Save and deliver* needs, every line complete, because a supervisor can post it from the book as it is: its lines show *Ready to post* (or *Short*), one per item. Select any of them and click **Edit sale** (*Edit purchase*) to open the whole window again, change it, and save it again as a draft or deliver it; its own number and CU number are not refused as duplicates. Storekeepers have no *Save draft*: their *Save for posting* already leaves a draft.
+- When **Save and deliver** (or *Save and receive*) is refused, an item *Short* say, nothing is saved and the window stays open with the reason and **Keep as draft**, which saves what was typed as a draft instead, to fix and deliver later.
+- **Add sale** warns while the invoice is typed: a line that asks for more than is on hand says so under the item ("Only 11 Units on hand"; an item on two lines counts both, as posting does). When delivering is refused, the window takes the stock as it is then and goes to the first such line. The totals, with the number of items to check against the paper, sit on the Save row, so on a laptop the lines get the rest of the window and scroll by themselves.
 - **Add sale** prices each line as a sales order would: the customer's pricelist (*Sales > Customers*, Sales & Purchase tab), at the line's quantity, so minimum-quantity prices apply, and on the delivery date. A customer not created yet gets the first pricelist. The price can be typed over and then stays; until it is, a new quantity, customer or date prices it again. Hover the price to see which pricelist it came from.
+- **Add sale** finds a customer's **branches** as well as the companies: every word typed, in any order, in the branch's name or its company's, so *chandarana brookside* finds *Chandarana Supermarket Ltd, Hookwood Square-Brookside Grove*; words such as *branch* or *ltd* that are in no name are let go when nothing else matches. A branch is shown with its company's name, and each customer in the list with its pricelist and terms. A branch is priced at its own pricelist and takes its company's PIN and terms, which Odoo keeps the same on the company and its branches. Under the customer, **Prices:** says which pricelist the lines are at, *a new customer* when it is one, so Retail where a supermarket's own pricelist was meant shows before saving.
+- **Add sale** asks before it creates a customer typed in by name. Customers with the words of the name are offered first. A KRA PIN typed that is already a customer's is the same taxpayer: the window offers that customer and its branches, or adds the name as a **new branch** of it (a contact of the kind its other branches are, an invoice address for Chandarana's), on its pricelist and terms; it does not make a customer of its own with that PIN. Saving refuses the same, whatever sends it.
 - **Add sale** numbers the invoice with what is typed in *Invoice no.*, QuickBooks's number, not by Odoo's sequence; a number another invoice already has is refused. An undone sale gives its number back: its credited invoice is renamed *<number> (undone)*.
+- **Add sale** from a photo of the signed invoice: with Accounting AI installed, *Stock Book: invoice photos* ([`odin_stock_book_ai`](../odin_stock_book_ai/README.md)) adds *Upload photo* to the window, which fills it in for the person to check and save.
 - **Add sale** also shows the customer's **KRA PIN** and **Payment terms**, filled in from the customer. Either can be typed in where it is missing, or corrected, and is saved on the customer for the next sale; an empty box takes nothing off the customer. A PIN typed must be a KRA PIN (A or P, nine digits and a letter); one the customer already has, a foreign tax ID say, stays as it is. **Due date** shows the day the invoice falls due, as Odoo dates it from the terms and the delivery date; with no terms it is due on that date. **CU invoice no.** is the number KRA's eTIMS gave the QuickBooks invoice: with Business Documents installed it prints on the invoice, under the invoice number, which is the one typed in *Invoice no.*. A CU number already used is refused, except one on a sale that was undone: that signed invoice is entered again, corrected, and the window Undo opens again keeps its PIN, terms and CU number.
 - Scrap and corrections post to `500106 Stock Losses & Adjustments`, through the account on the Inventory adjustment location.
 - On the first of each month, a scheduled task runs Odoo's Stock Closing for the month before, bringing the Stock account to the value of the stock. Odoo's own monthly schedule does not fire: it filters on two periods at once at month end.

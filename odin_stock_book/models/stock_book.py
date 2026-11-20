@@ -147,21 +147,10 @@ class StockBook(models.AbstractModel):
         lines = Line.search([("warehouse_id", "=", wh.id), ("date", ">=", start), ("date", "<", end)],
                             order="date, id")
         all_drafts = Line.search([("warehouse_id", "=", wh.id), ("state", "=", "draft")], order="date, id")
-        products = (lines | all_drafts).product_id | (lines | all_drafts).component_ids.product_id
-        available = Line._available(products, wh)
-
         # Drafts are projected in date order on top of what is on hand now,
-        # so "on hand after" and "short" read like the sheet's running balance.
-        projected = dict(available)
-        draft_view = {}
-        for line in all_drafts:
-            line_status = line._status(projected)
-            if line_status[0] in ("ready", "short"):
-                projected[line.product_id.id] = projected.get(line.product_id.id, 0.0) + line.qty_in - line.qty_out
-                for comp in line.component_ids:
-                    projected[comp.product_id.id] = projected.get(comp.product_id.id, 0.0) - comp.qty
-            draft_view[line.id] = (line_status, projected.get(line.product_id.id, 0.0),
-                                   {c.id: projected.get(c.product_id.id, 0.0) for c in line.component_ids})
+        # so "on hand after" and "short" read like the sheet's running balance,
+        # as posting checks them.
+        draft_view = all_drafts._projected()
 
         reversals = Line.search([("reverses_id", "in", lines.ids), ("state", "!=", "cancelled")])
         reversed_by = {r.reverses_id.id: r.ref or _("a draft line") for r in reversals}
@@ -403,20 +392,25 @@ class StockBook(models.AbstractModel):
         lines = self.env["odin.stock.line"].browse(ids).exists().filtered(lambda l: l.state == "draft")
         lines |= lines._purchase_siblings() | lines.stock_sale_id.line_ids.filtered(lambda l: l.state == "draft")
         skipped, failed = [], []
+        tried = self.env["odin.stock.line"]
         for line in lines.sorted(lambda l: (l.date, l.id)):
-            if line.state != "draft":
-                continue  # went with its order
-            key, label, _tone, detail = line._status()
-            if key != "ready" and not (key == "short" and allow_short):
-                skipped.append({"id": line.id, "item": line.product_id.name or _("Line"), "why": label})
-                continue
+            if line.state != "draft" or line in tried:
+                continue  # went with its order, or failed with it
             batch = line
-            if line.reason == "received":
-                purchase = line._purchase_key()
-                batch = lines.filtered(lambda l: l.state == "draft" and l.reason == "received"
-                                       and l._purchase_key() == purchase and l._status()[0] == "ready") | line
-            elif line.stock_sale_id:
+            if line.stock_sale_id:
+                # A sale from the window posts whole: action_post checks all
+                # its lines together, before its one delivery takes them all.
                 batch = lines.filtered(lambda l: l.state == "draft" and l.stock_sale_id == line.stock_sale_id)
+            else:
+                key, label, _tone, detail = line._status()
+                if key != "ready" and not (key == "short" and allow_short):
+                    skipped.append({"id": line.id, "item": line.product_id.name or _("Line"), "why": label})
+                    continue
+                if line.reason == "received":
+                    purchase = line._purchase_key()
+                    batch = lines.filtered(lambda l: l.state == "draft" and l.reason == "received"
+                                           and l._purchase_key() == purchase and l._status()[0] == "ready") | line
+            tried |= batch
             try:
                 with self.env.cr.savepoint():
                     batch.action_post(allow_short=allow_short)
@@ -569,7 +563,8 @@ class StockBook(models.AbstractModel):
         if not line or line.state != "draft" or line.reason != "received":
             raise UserError(_("Only a received line not yet posted can be opened as a purchase."))
         window = line.stock_purchase_id
-        lines = window.line_ids.filtered(lambda l: l.state == "draft") if window else line
+        # In the order typed: the book lists the newest first.
+        lines = window.line_ids.filtered(lambda l: l.state == "draft").sorted("id") if window else line
         partner = window.partner_id or line.partner_id
         name = (line.partner_name or "").strip()
         if not partner and name:
@@ -605,7 +600,9 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_purchase_save(self, values, post=True, replace_ids=None):
         """One LPO from the purchase window, as Stock Book lines: posted at
-        once by a supervisor, left for one otherwise. All of it or none."""
+        once by a supervisor, left for one otherwise. All of it or none.
+        ``post=False``: kept as a draft, as typed, to finish and receive later
+        (Save draft). ``replace_ids``: the draft being saved again."""
         Line = self.env["odin.stock.line"]
         company = self.env.company
         self._purchase_replace(replace_ids)
@@ -1068,7 +1065,7 @@ class StockBook(models.AbstractModel):
         window = line.stock_purchase_id
         if not window:
             raise UserError(_("Only a purchase made with Add purchase can be undone here."))
-        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        posted = window.line_ids.filtered(lambda l: l.state == "posted").sorted("id")
         rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_in,
                  "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
