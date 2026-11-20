@@ -3,6 +3,7 @@ import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_d
 import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
 import { useService } from "@web/core/utils/hooks";
+import { CustomerChoiceDialog } from "./customer_choice_dialog";
 import { parseAmount } from "./utils";
 
 /** Asks first when closing would lose what was typed (the X and Escape). */
@@ -84,13 +85,15 @@ export class PurchaseDialog extends Component {
             noteHint: _t("What for? Shows on the bill"), itemHint: _t("Code or name, e.g. salt or transport"),
         };
         this.state = useState({
-            options: { taxes: [], journals: [], payment_terms: [], today: "", can_post: false, currency: "" },
+            options: { taxes: [], journals: [], payment_terms: [], today: "", can_post: false, currency: "", new_pricelist: "" },
             supplier: null, supplierQuery: "", ref: "", date: "", refProblem: "", paid: "",
             // Sales: the customer's KRA PIN and terms, filled in from the customer
             // and kept there when typed; the CU invoice number the invoice prints.
             pin: "", terms: "", cu: "", due: "",
+            // saving: "post" or "draft" while it is being saved. offerDraft: delivering
+            // failed, and what was typed can be kept as a draft instead.
             lines: [this.newLine()], suggest: null, totals: null, saving: false, error: "", tried: false,
-            edit: false, replaceIds: [],
+            offerDraft: false, edit: false, replaceIds: [],
         });
         this.totalsSeq = 0;
         this.refSeq = 0;
@@ -337,9 +340,14 @@ export class PurchaseDialog extends Component {
         if (this.state.supplierQuery !== text) {
             return;
         }
-        const options = items.map((item) => ({ ...item, label: item.name }));
+        // A branch by its company's name too, and with its prices and terms:
+        // a wrong customer, Retail where the company's own was meant, shows here.
+        const options = items.map((item) => ({ ...item, label: item.display_name || item.name, hint: this.customerHint(item) }));
         if (can_create) {
-            options.push({ create: text.trim(), label: this.isSale ? _t("Create “%s” as a new customer", text.trim()) : _t("Create “%s” as a new supplier", text.trim()) });
+            options.push({
+                create: text.trim(), label: this.isSale ? _t("Create “%s” as a new customer", text.trim()) : _t("Create “%s” as a new supplier", text.trim()),
+                hint: this.isSale && this.state.options.new_pricelist ? _t("Prices: %s, as for every new customer", this.state.options.new_pricelist) : "",
+            });
         }
         // A new supplier is chosen on purpose, never by typing a name wrong
         // and pressing Enter: with no match, nothing starts selected.
@@ -366,22 +374,124 @@ export class PurchaseDialog extends Component {
         return Number(value || 0).toLocaleString("en-KE", { maximumFractionDigits: 2 });
     }
 
+    /** A sale customer's prices and terms, under its name in the list. */
+    customerHint(item) {
+        if (!this.isSale) {
+            return "";
+        }
+        const prices = item.pricelist ? _t("Prices: %s", item.pricelist) : "";
+        return [prices, item.payment_term].filter(Boolean).join(" · ");
+    }
+
     pickSupplier(item) {
-        this.state.supplier = item.create ? { id: false, name: item.create }
-            : { id: item.id, name: item.name, vat: item.vat || "", payment_term_id: item.payment_term_id || false };
-        this.state.supplierQuery = this.state.supplier.name;
+        if (item.create && this.isSale) {
+            // A customer typed in is asked about before it is made.
+            this.state.suggest = null;
+            this.state.supplierQuery = item.create;
+            this.settleNewCustomer({ id: false, name: item.create }).then((settled) => settled || this.focus("supplier"));
+            return;
+        }
+        const { label, hint, create, ...supplier } = item;
+        this.setSupplier(create ? { id: false, name: create } : { ...supplier, vat: supplier.vat || "" });
+    }
+
+    /**
+     * ``keepTyped``: the PIN and terms typed stay where the customer has none
+     * (a customer settled on at saving). ``next``: the cell to go to, false
+     * for none.
+     */
+    setSupplier(supplier, { keepTyped = false, next = null } = {}) {
+        this.state.supplier = supplier;
+        this.state.supplierQuery = supplier.display_name || supplier.name;
         this.state.suggest = null;
         if (this.asksPin) {
             // What the partner has, to keep or to fill in where it is missing.
-            this.state.pin = this.state.supplier.vat || "";
+            this.state.pin = supplier.vat || (keepTyped ? this.state.pin : "");
         }
         if (this.isSale) {
-            this.state.terms = this.state.supplier.payment_term_id ? String(this.state.supplier.payment_term_id) : "";
+            this.state.terms = supplier.payment_term_id ? String(supplier.payment_term_id) : (keepTyped ? this.state.terms : "");
             this.loadDue();
         }
         this.refreshDefaults();
         this.checkRef();
-        this.focus(this.state.ref ? this.firstLineCell(this.state.lines[0]) : "ref");
+        if (next !== false) {
+            this.focus(next || (this.state.ref ? this.firstLineCell(this.state.lines[0]) : "ref"));
+        }
+    }
+
+    /**
+     * A customer typed in rather than picked, asked about before it is
+     * created: the customers with the words of its name, and the one the KRA
+     * PIN typed is already on, whose branch it most likely is. Picked from
+     * them, the sale is priced at that customer's pricelist; added as a new
+     * branch, at its company's. True once it is settled; the customer then in
+     * the window may be another one, to look at before saving.
+     */
+    async settleNewCustomer(candidate, { next = null } = {}) {
+        const current = () => this.state.supplier === candidate
+            || (!this.state.supplier && this.state.supplierQuery === candidate.name);
+        const pin = compactPin(this.state.pin);
+        const found = await this.orm.call("odin.stock.book", "book_sale_customer_matches", [candidate.name], { pin });
+        if (!current()) {
+            return false;
+        }
+        const owner = found.owner;
+        const settled = owner ? candidate.parentId === owner.id
+            : Boolean(candidate.parentId || candidate.decided || !found.matches.length);
+        if (settled) {
+            if (candidate !== this.state.supplier) {
+                this.setSupplier({ ...candidate, decided: true, pricelist: this.state.options.new_pricelist }, { next });
+            }
+            return true;
+        }
+        const choice = await new Promise((resolve) => {
+            this.dialogService.add(CustomerChoiceDialog, {
+                name: candidate.name, matches: found.matches, owner, branches: found.branches, pin: found.pin,
+                newPricelist: this.state.options.new_pricelist, choose: resolve,
+            }, { onClose: () => resolve(null) });
+        });
+        if (!choice || !current()) {
+            return false;
+        }
+        const keep = { keepTyped: true, next };
+        if (choice.kind === "pick") {
+            this.setSupplier({ ...choice.customer }, keep);
+        } else if (choice.kind === "branch") {
+            this.setSupplier({
+                id: false, name: candidate.name, display_name: `${owner.display_name}, ${candidate.name}`,
+                parentId: owner.id, parentName: owner.display_name, vat: owner.vat, decided: true,
+                payment_term_id: owner.payment_term_id, payment_term: owner.payment_term, pricelist: owner.pricelist,
+            }, keep);
+        } else {
+            this.setSupplier({ id: false, name: candidate.name, decided: true, pricelist: this.state.options.new_pricelist }, keep);
+        }
+        return true;
+    }
+
+    /** The PIN of a customer still to be created may be a customer's already. */
+    onPinChange() {
+        const supplier = this.state.supplier;
+        if (this.isSale && supplier && !supplier.id && KRA_PIN.test(compactPin(this.state.pin))) {
+            this.settleNewCustomer(supplier, { next: false });
+        }
+    }
+
+    /** Whose prices the sale is at: a new branch is priced as its company. */
+    get pricingPartnerId() {
+        return this.state.supplier?.id || this.state.supplier?.parentId || false;
+    }
+
+    /** Which prices the lines are at, said plainly, so a wrong customer shows before saving. */
+    get pricesLabel() {
+        const supplier = this.state.supplier;
+        if (!this.isSale || !supplier) {
+            return "";
+        }
+        const pricelist = supplier.pricelist || _t("each item's Sales Price");
+        if (supplier.parentId) {
+            return _t("Prices: %(pricelist)s · a new branch of %(company)s", { pricelist, company: supplier.parentName });
+        }
+        return supplier.id ? _t("Prices: %s", pricelist) : _t("Prices: %s · a new customer", pricelist);
     }
 
     /** VAT and last cost depend on the supplier; VAT chosen by hand stays. */
@@ -396,7 +506,7 @@ export class PurchaseDialog extends Component {
     async loadDefaults(line) {
         const product = line.product;
         const seq = ++line.priceSeq;
-        const kwargs = { partner_id: this.state.supplier?.id || false };
+        const kwargs = { partner_id: this.pricingPartnerId };
         if (this.isSale) {
             Object.assign(kwargs, { qty: parseAmount(line.qty) || 1, date: this.state.date || false });
         }
@@ -688,7 +798,7 @@ export class PurchaseDialog extends Component {
             return;
         }
         const totals = await this.orm.call("odin.stock.book", this.server.totals,
-            [lines.map((line) => this.linePayload(line))], { partner_id: this.state.supplier?.id || false });
+            [lines.map((line) => this.linePayload(line))], { partner_id: this.pricingPartnerId });
         if (seq !== this.totalsSeq) {
             return;
         }
@@ -710,6 +820,22 @@ export class PurchaseDialog extends Component {
         return this.state.totals ? _t("Save and receive · %s", this.money(this.state.totals.total)) : _t("Save and receive");
     }
 
+    /** A supervisor can also keep it as a draft; anyone else's saving already is one. */
+    get offersDraft() {
+        return this.state.options.can_post;
+    }
+
+    get draftHelp() {
+        return this.isSale
+            ? _t("Keeps it on the book as a draft, as typed, to finish and deliver later. Nothing is delivered or invoiced yet.")
+            : _t("Keeps it on the book as a draft, as typed, to finish and receive later. Nothing is received or billed yet.");
+    }
+
+    get keepDraftHelp() {
+        return this.isSale ? _t("Saves what you typed on the book, to fix and deliver later.")
+            : _t("Saves what you typed on the book, to fix and receive later.");
+    }
+
     get saveHelp() {
         if (this.isSale) {
             return this.state.options.can_post
@@ -726,21 +852,42 @@ export class PurchaseDialog extends Component {
     }
 
     // ------------------------------------------------------------ save
-    async save() {
+    /**
+     * ``post``: false keeps it as a draft (Save draft). Clicked, the button
+     * passes its event: that saves and posts, as before.
+     */
+    async save({ post = true } = {}) {
         if (this.state.saving) {
             return;
         }
         this.state.tried = true;
         this.state.error = "";
+        this.state.offerDraft = false;
         const problem = this.problem;
         if (problem) {
             this.focus(problem[0]);
             return;
         }
-        this.state.saving = true;
+        const supplier = this.state.supplier;
+        if (this.isSale && !supplier.id) {
+            // Asked once more with the PIN as it is now. Another customer
+            // chosen prices the lines again: they are looked at before saving.
+            if (this.settling) {
+                return;
+            }
+            this.settling = true;
+            try {
+                if (!(await this.settleNewCustomer(supplier, { next: false })) || this.state.supplier !== supplier) {
+                    return;
+                }
+            } finally {
+                this.settling = false;
+            }
+        }
+        this.state.saving = post ? "post" : "draft";
         try {
             const result = await this.orm.call("odin.stock.book", this.server.save, [this.savePayload()],
-                this.saveKwargs());
+                this.saveKwargs({ post }));
             this.props.onSaved(result);
             this.props.close();
         } catch (error) {
@@ -750,9 +897,16 @@ export class PurchaseDialog extends Component {
                 throw error;
             }
             this.state.error = error.data?.message || error.message || _t("It could not be saved.");
+            // Delivering failed, an item short say: the work can still be kept.
+            this.state.offerDraft = post && this.offersDraft;
         } finally {
             this.state.saving = false;
         }
+    }
+
+    /** What was typed, kept on the book as a draft: nothing delivered or invoiced yet. */
+    saveDraft() {
+        return this.save({ post: false });
     }
 
     savePayload() {
@@ -765,12 +919,15 @@ export class PurchaseDialog extends Component {
             ...(this.isSale ? {
                 partner_vat: compactPin(this.state.pin), payment_term_id: Number(this.state.terms) || false,
                 cu_invoice_no: this.state.cu.trim(),
+                // A customer typed in: as a branch of this one, or a new customer all the same.
+                partner_parent_id: this.state.supplier.parentId || false,
+                partner_new: Boolean(this.state.supplier.decided),
             } : {}),
         };
     }
 
-    saveKwargs() {
-        return { replace_ids: this.state.replaceIds };
+    saveKwargs({ post = true } = {}) {
+        return { replace_ids: this.state.replaceIds, post };
     }
 
     async discard() {

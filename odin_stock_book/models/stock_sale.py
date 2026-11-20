@@ -9,6 +9,27 @@ from .stock_book import _escape_like
 # A KRA PIN: A (an individual) or P (anyone else), nine digits and a letter.
 KRA_PIN = re.compile(r"[AP][0-9]{9}[A-Z]")
 
+# Words in customers' names that do not tell one customer from another:
+# "Chandarana Redhill Branch" is the Redhill branch, typed with or without them.
+GENERIC_WORDS = frozenset({
+    "and", "branch", "branches", "co", "company", "inc", "limited", "ltd", "of", "plc", "shop", "store", "stores",
+    "supermarket", "supermarkets", "the",
+})
+
+
+def _words(text):
+    """A name's words as the customer search takes them: "Mall-Thigiri" is two."""
+    return re.findall(r"[^\W_]+", (text or "").casefold())
+
+
+def _telling(words):
+    """The words that tell customers apart; all of them when none does."""
+    return [w for w in words if w not in GENERIC_WORDS] or words
+
+
+def _compact_pin(text):
+    return "".join((text or "").split()).upper()
+
 
 class StockBookSale(models.Model):
     """One customer invoice entered in the sale window: the documents its
@@ -266,6 +287,8 @@ class StockBook(models.AbstractModel):
             "taxes": [{"id": t.id, "label": _("%s (incl.)", t.name) if t.price_include and t.amount else t.name}
                       for t in self._sale_taxes()],
             "payment_terms": [{"id": t.id, "label": t.name} for t in self._sale_payment_terms()],
+            # What a customer created here is priced at: the window says so.
+            "new_pricelist": self.sudo()._sale_pricelist(self.env["res.partner"]).name or "",
             "today": fields.Date.to_string(fields.Date.context_today(self)),
             "can_post": self._is_supervisor(), "currency": self.env.company.currency_id.name,
         }
@@ -279,18 +302,24 @@ class StockBook(models.AbstractModel):
 
     @api.model
     def _sale_customer(self, partner):
-        """The customer as the sale window shows it: its KRA PIN and terms, to fill in where missing."""
+        """The customer as the sale window shows it: its name with its
+        company's for a branch ("Chandarana Supermarket Ltd, Rosslyn
+        Rivera"), its KRA PIN and terms to fill in where missing (the
+        company's: Odoo keeps them there for its branches), and the pricelist
+        its sale is priced at, so a wrong customer shows before saving."""
         commercial = partner.sudo().commercial_partner_id.with_company(self.env.company)
-        return {"id": partner.id, "name": partner.name, "vat": commercial.vat or "",
-                "payment_term_id": commercial.property_payment_term_id.id or False}
+        terms = commercial.property_payment_term_id
+        return {"id": partner.id, "name": partner.name, "display_name": partner.display_name,
+                "vat": commercial.vat or "", "payment_term_id": terms.id or False, "payment_term": terms.name or "",
+                "pricelist": self.sudo()._sale_pricelist(partner.sudo()).name or ""}
 
     @api.model
     def _sale_pin(self, text, partner=None):
         """The KRA PIN typed, as KRA writes it: P052112729P. One the customer
         already has is kept as it is, a foreign tax ID say; a new one must be
         a KRA PIN. Empty: nothing typed."""
-        pin = "".join((text or "").split()).upper()
-        known = "".join((partner.sudo().commercial_partner_id.vat or "").split()).upper() if partner else ""
+        pin = _compact_pin(text)
+        known = _compact_pin(partner.sudo().commercial_partner_id.vat) if partner else ""
         if pin and pin != known and not KRA_PIN.fullmatch(pin):
             raise UserError(_("%s is not a KRA PIN: A or P, nine digits and a letter, e.g. P052112729P. A customer "
                               "outside Kenya keeps its tax ID in Sales > Customers.", text.strip()))
@@ -328,15 +357,148 @@ class StockBook(models.AbstractModel):
         due = max((line._get_due_date(day) for line in terms.line_ids), default=day)
         return fields.Date.to_string(due)
 
+    # ------------------------------------------------------------ finding the customer
+    @api.model
+    def _sale_customer_domain(self, words):
+        """Every word in the customer's own name or its company's, in any
+        order: complete_name is "<company>, <name>" for a branch or a person
+        of a company, the name alone otherwise. A word that is a KRA PIN
+        may be the customer's PIN instead."""
+        domain = []
+        for word in words:
+            term = [("complete_name", "ilike", word)]
+            if KRA_PIN.fullmatch(word.upper()):
+                term = ["|", *term, ("vat", "=ilike", word)]
+            domain += term
+        return domain
+
+    @api.model
+    def _sale_search_customers(self, words, limit=8):
+        """Companies, their branches and people with these words, the likeliest
+        first: the name exactly, then the more words in its own name (for
+        "chandarana", Chandarana before each of its branches), then the
+        customers sold to most."""
+        Partner = self.env["res.partner"]
+        if not words:
+            return Partner
+        found = Partner.search(self._sale_customer_domain(words), order="customer_rank desc, complete_name", limit=50)
+        typed = " ".join(words)
+
+        def rank(partner):
+            own = (partner.name or "").casefold()
+            exact = typed in (" ".join(_words(partner.name)), " ".join(_words(partner.complete_name)))
+            return (not exact, -sum(word in own for word in words), -partner.customer_rank,
+                    partner.complete_name or "")
+        return found.sorted(rank)[:limit]
+
     @api.model
     def book_sale_customers(self, text):
         name = " ".join((text or "").split())
-        if not name:
+        words = _words(name)
+        if not words:
             return {"items": [], "can_create": False}
-        partners = self.env["res.partner"].search([("name", "ilike", name), ("parent_id", "=", False)],
-                                                  order="customer_rank desc, name", limit=8)
-        exact = partners.filtered(lambda p: p.name.casefold() == name.casefold())
-        return {"items": [self._sale_customer(p) for p in partners], "can_create": not exact}
+        Partner = self.env["res.partner"]
+        # "Chandarana Redhill Branch" is the Redhill branch of Chandarana,
+        # though "branch" is not in its name.
+        partners = self._sale_search_customers(words) or self._sale_search_customers(_telling(words))
+        same = Partner.search([("complete_name", "=ilike", _escape_like(name))], limit=1)
+        partners = (same | partners)[:8]
+        return {"items": [self._sale_customer(p) for p in partners], "can_create": not same}
+
+    @api.model
+    def _sale_pin_owner(self, pin):
+        """The customer this KRA PIN is already on, as a whole (the company,
+        for a branch's PIN). Where several are, the one that is a company
+        with the most branches: Chandarana Supermarket Ltd, not one of its
+        branches typed in as a customer of its own."""
+        Partner = self.env["res.partner"]
+        if not pin or not KRA_PIN.fullmatch(pin):
+            return Partner
+        owners = Partner.search([("vat", "=ilike", pin)]).commercial_partner_id
+        return owners.sorted(lambda p: (not p.is_company, -len(p.child_ids), -p.customer_rank, p.id))[:1]
+
+    @api.model
+    def _sale_branches(self, owner, words, limit=6):
+        """The customer's branches with a word of the name typed in their own
+        name, its own name's words aside: "Chandarana Rosslyn" finds
+        Chandarana's Rosslyn Rivera, not every branch named Chandarana."""
+        Partner = self.env["res.partner"]
+        if not owner:
+            return Partner
+        theirs = set(_words(owner.name))
+        wanted = [w for w in _telling(words) if w not in theirs and w not in GENERIC_WORDS]
+        if not wanted:
+            return Partner
+        branches = Partner.search([("id", "child_of", owner.id), ("id", "!=", owner.id)]
+                                  + ["|"] * (len(wanted) - 1) + [("name", "ilike", w) for w in wanted])
+        return branches.sorted(lambda b: (-sum(w in (b.name or "").casefold() for w in wanted),
+                                          b.complete_name or ""))[:limit]
+
+    @api.model
+    def book_sale_customer_matches(self, name, pin=""):
+        """Who a customer about to be created by name may already be, asked
+        before it is: the customers with the words of its name that tell
+        customers apart, in their own name or their company's; and the
+        customer the KRA PIN typed is already on, with its branches that have
+        a word of the name. A PIN on a customer is the strongest hint: the
+        same taxpayer, so that customer or a branch of it."""
+        words = _words(name)
+        owner = self._sale_pin_owner(_compact_pin(pin))
+        return {
+            "matches": [self._sale_customer(p) for p in self._sale_search_customers(_telling(words))],
+            "owner": self._sale_customer(owner) if owner else False,
+            "branches": [self._sale_customer(b) for b in self._sale_branches(owner, words)],
+            "pin": owner.vat if owner else "",
+        }
+
+    @api.model
+    def _sale_new_customer(self, name, pin, values):
+        """The customer typed in by name rather than picked: the one of that
+        name, else a new one, but not a second of a customer already there,
+        priced at the first pricelist instead of its own. Customers with the
+        words of the name, and the one the PIN typed is on, are asked about
+        first (book_sale_customer_matches), and the window says what was
+        chosen: a branch to add under a customer (partner_parent_id), or a
+        new customer all the same (partner_new)."""
+        Partner = self.env["res.partner"]
+        pattern = _escape_like(name)
+        same = Partner.search(["|", ("complete_name", "=ilike", pattern),
+                               "&", ("name", "=ilike", pattern), ("parent_id", "=", False)], limit=1)
+        if same:
+            return same
+        parent = Partner.browse(values.get("partner_parent_id") or []).exists()
+        if parent:
+            company = parent.sudo().commercial_partner_id
+            if pin and pin != _compact_pin(company.vat):
+                raise UserError(_("%(pin)s is not the KRA PIN of %(company)s, and a branch has its company's PIN. "
+                                  "Nothing was saved.", pin=pin, company=company.display_name))
+            return self._sale_add_branch(parent, name)
+        owner = self._sale_pin_owner(pin)
+        if owner:
+            raise UserError(_("%(pin)s is the KRA PIN of %(customer)s. Pick it or its branch as the customer, or add "
+                              "%(name)s as a new branch of it, so the sale takes its prices and terms. Nothing was "
+                              "saved.", pin=pin, customer=owner.display_name, name=name))
+        if not values.get("partner_new"):
+            near = self._sale_search_customers(_telling(_words(name)), limit=3)
+            if near:
+                raise UserError(_("%(customers)s: already a customer. Pick the one this sale is for, or say that "
+                                  "%(name)s is a new customer. Nothing was saved.",
+                                  customers="; ".join(near.mapped("display_name")), name=name))
+        return Partner.sudo().create({"name": name, "company_id": False, "customer_rank": 1}).sudo(False)
+
+    @api.model
+    def _sale_add_branch(self, parent, name):
+        """A new branch of a customer: a contact under it, of the kind its
+        other branches are. An invoice address, as Rinz's Chandarana branches
+        are, makes the invoice the branch's own; a delivery address would
+        send it to the company's first invoice address. Odoo gives it the
+        company's PIN, terms and pricelist."""
+        kinds = parent.sudo().child_ids.filtered(lambda c: c.type in ("invoice", "delivery", "other")).mapped("type")
+        kind = max(sorted(set(kinds)), key=kinds.count) if kinds else "invoice"
+        return self.env["res.partner"].sudo().create({
+            "name": name, "parent_id": parent.id, "type": kind, "company_id": parent.company_id.id,
+            "customer_rank": 1,
+        }).sudo(False)
 
     @api.model
     def book_sale_products(self, text, warehouse_id=False):
@@ -491,13 +653,15 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_sale_load(self, line_id):
         """A draft sale line for the sale window: all of its invoice if it came
-        from the window, only itself otherwise. Saving replaces what is loaded."""
+        from the window, only itself otherwise, a draft kept with Save draft
+        included. Saving replaces what is loaded."""
         Line = self.env["odin.stock.line"]
         line = Line.browse(line_id).exists()
         if not line or line.state != "draft" or line.reason != "sale":
             raise UserError(_("Only a sale not yet posted can be opened here."))
         window = line.stock_sale_id
-        lines = window.line_ids.filtered(lambda l: l.state == "draft") if window else line
+        # In the order typed: the book lists the newest first.
+        lines = window.line_ids.filtered(lambda l: l.state == "draft").sorted("id") if window else line
         partner = window.partner_id or line.partner_id
         name = (line.partner_name or "").strip()
         if not partner and name:
@@ -512,7 +676,7 @@ class StockBook(models.AbstractModel):
         customer = self._sale_customer(partner) if partner else {}
         return {
             "supplier": customer or False,
-            "supplier_query": partner.name if partner else name.title(),
+            "supplier_query": partner.display_name if partner else name.title(),
             "purchase_ref": line.purchase_ref or "", "date": fields.Date.to_string(line.date),
             "paid": (str(window.pay_journal_id.id) if window.pay_journal_id else "none") if window else "",
             "lines": rows, "replace_ids": lines.ids, "edit": bool(window),
@@ -532,7 +696,7 @@ class StockBook(models.AbstractModel):
         window = line.stock_sale_id
         if not window:
             raise UserError(_("Only a sale made with Add sale can be undone here."))
-        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        posted = window.line_ids.filtered(lambda l: l.state == "posted").sorted("id")
         rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_out,
                  "cost": l.unit_price, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,
@@ -541,7 +705,7 @@ class StockBook(models.AbstractModel):
         customer = self._sale_customer(window.partner_id)
         again = {
             "supplier": customer,
-            "supplier_query": window.partner_id.name, "purchase_ref": window.sale_ref,
+            "supplier_query": window.partner_id.display_name, "purchase_ref": window.sale_ref,
             "date": fields.Date.to_string(window.date),
             "paid": str(window.pay_journal_id.id) if window.pay_journal_id else "none",
             "lines": rows, "replace_ids": [], "edit": False, "keep_prices": True,
@@ -570,7 +734,10 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_sale_save(self, values, post=True, replace_ids=None):
         """One invoice from the sale window, as Stock Book lines: posted at once
-        by a supervisor, left for one otherwise. All of it or none."""
+        by a supervisor, left for one otherwise. All of it or none.
+        ``post=False``: kept as a draft, as typed, to finish and deliver
+        later (Save draft). Nothing is delivered or invoiced yet.
+        ``replace_ids``: the draft being saved again, which this replaces."""
         Line = self.env["odin.stock.line"]
         company = self.env.company
         self._sale_replace(replace_ids)
@@ -628,9 +795,7 @@ class StockBook(models.AbstractModel):
             raise UserError(_("Add at least one item kept in stock. A sale with no stock in it is an invoice: enter "
                               "it in Accounting."))
         if not partner:
-            Partner = self.env["res.partner"]
-            partner = Partner.search([("name", "=ilike", _escape_like(name)), ("parent_id", "=", False)], limit=1) \
-                or Partner.sudo().create({"name": name, "company_id": False, "customer_rank": 1}).sudo(False)
+            partner = self._sale_new_customer(name, pin, values)
             # Found by name rather than picked: a PIN it already has is not new.
             pin = self._sale_pin(values.get("partner_vat"), partner)
         Line._lock_purchase_supplier(partner)

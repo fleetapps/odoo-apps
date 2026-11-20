@@ -384,6 +384,229 @@ class TestStockBookLedger(TestStockBookPurchase):
         if "doc_cu_invoice_no" in invoice._fields:
             self.assertEqual(invoice.doc_cu_invoice_no, "CU-9")
 
+    # ------------------------------------------------------------ a customer's branches
+    def _chandarana(self):
+        """A supermarket chain as Rinz has Chandarana: the company with its
+        KRA PIN, terms and pricelist, and its branches as invoice addresses
+        under it, which Odoo gives the company's. Retail is the first
+        pricelist, a new customer's. The live database's Chandarana contacts,
+        on a copy of it, are set aside."""
+        self.env.user.group_ids += self.env.ref("product.group_product_pricelist")
+        Pricelist = self.env["product.pricelist"]
+        Pricelist.search([]).active = False
+        template = self.fg.product_tmpl_id
+        Pricelist.create({"name": "Retail", "sequence": 1, "item_ids": [Command.create(
+            {"applied_on": "1_product", "product_tmpl_id": template.id, "compute_price": "fixed", "fixed_price": 199})]})
+        pricelist = Pricelist.create({"name": "Chandarana", "sequence": 25, "item_ids": [Command.create(
+            {"applied_on": "1_product", "product_tmpl_id": template.id, "compute_price": "fixed", "fixed_price": 120})]})
+        terms = self.env.ref("account.account_payment_term_30days")
+        Partner = self.env["res.partner"]
+        live = Partner.search([("complete_name", "ilike", "chandarana")])
+        (live - self.env["res.company"].search([]).partner_id).filtered(lambda p: not p.user_ids).active = False
+        company = Partner.create({"name": "Chandarana Supermarket Ltd", "is_company": True, "vat": "P051111111A",
+                                  "property_product_pricelist": pricelist.id, "property_payment_term_id": terms.id})
+        branches = Partner.create([{"name": name, "parent_id": company.id, "type": "invoice"} for name in (
+            "Hookwood Square-Brookside Grove", "ROSSLYN RIVERA", "REDHILL CHANDARANA, ASTROL SQUARE",
+            "NEW MUTHAIGA MALL - THIGIRI RIDGE")])
+        return company, branches, pricelist, terms
+
+    def test_a_branch_is_found_by_a_word_of_its_company_and_one_of_its_own(self):
+        company, branches, pricelist, terms = self._chandarana()
+        brookside, rosslyn, redhill, muthaiga = branches
+        Book = self.Book.with_user(new_test_user(self.env, "branch_storekeeper",
+                                                 groups="odin_stock_book.group_stock_book_user"))
+        found = Book.book_sale_customers("chandarana brookside")
+        self.assertEqual([c["id"] for c in found["items"]], brookside.ids)
+        customer = found["items"][0]
+        self.assertEqual(customer["display_name"], "Chandarana Supermarket Ltd, Hookwood Square-Brookside Grove",
+                         "told apart from the other branches by its company's name with its own")
+        self.assertEqual((customer["vat"], customer["payment_term_id"], customer["pricelist"]),
+                         ("P051111111A", terms.id, "Chandarana"), "the company's PIN and terms, its pricelist")
+        self.assertEqual(Book.book_sale_customers("thigiri muthaiga")["items"][0]["id"], muthaiga.id, "in any order")
+        self.assertEqual(Book.book_sale_customers("chandarana redhill branch")["items"][0]["id"], redhill.id,
+                         "'branch' is in no name: the words that tell branches apart find it")
+        everyone = [c["id"] for c in Book.book_sale_customers("chandarana")["items"]]
+        self.assertEqual(everyone[0], company.id, "the company before its branches")
+        self.assertEqual(set(everyone), set((company | branches).ids))
+        self.assertEqual(Book.book_sale_customers("p051111111a")["items"][0]["id"], company.id, "by its PIN too")
+
+    def test_a_branch_picked_is_priced_at_its_pricelist_with_its_companys_pin_and_terms(self):
+        company, branches, pricelist, terms = self._chandarana()
+        rosslyn = branches[1]
+        self.assertEqual(rosslyn.property_product_pricelist, pricelist, "Odoo gives a branch its company's pricelist")
+        storekeeper = new_test_user(self.env, "branch_storekeeper", groups="odin_stock_book.group_stock_book_user")
+        item = self.Book.with_user(storekeeper).book_sale_item(self.fg.id, rosslyn.id, 10)
+        self.assertEqual((item["price"], item["pricelist"]), (120.0, "Chandarana"), "not Retail's 199")
+        customer = self.Book.book_sale_customers("chandarana rosslyn")["items"][0]
+        self.assertEqual((customer["id"], customer["vat"], customer["payment_term_id"]),
+                         (rosslyn.id, "P051111111A", terms.id), "the window fills in its PIN and terms")
+        values = self._sale_values(partner_id=rosslyn.id, partner_vat=customer["vat"],
+                                   payment_term_id=customer["payment_term_id"])
+        values["lines"][0]["cost"] = item["price"]
+        sale = self.Line.browse(self.Book.book_sale_save(values)["ids"]).stock_sale_id
+        order, invoice = sale.order_id, sale.invoice_id
+        self.assertEqual((order.partner_id, order.pricelist_id, order.payment_term_id), (rosslyn, pricelist, terms))
+        self.assertEqual(invoice.partner_id, rosslyn, "the branch's own invoice")
+        self.assertEqual(invoice.commercial_partner_id, company, "owed by the company, as its other branches' are")
+        self.assertEqual(invoice.invoice_payment_term_id, terms)
+        self.assertEqual(invoice.invoice_line_ids.price_unit, 120.0)
+        self.assertEqual((company.vat, company.property_payment_term_id), ("P051111111A", terms))
+
+    def test_a_name_typed_for_a_branch_does_not_make_a_second_customer(self):
+        company, branches, pricelist, terms = self._chandarana()
+        rosslyn = branches[1]
+        Partner = self.env["res.partner"]
+        values = self._sale_values(partner_id=False, partner_name="chandarana rosslyn rivera")
+        before = Partner.search_count([])
+        found = self.Book.book_sale_customer_matches("chandarana rosslyn rivera")
+        self.assertEqual([c["id"] for c in found["matches"]], rosslyn.ids, "asked about before it is made")
+        self.assertFalse(found["owner"])
+        with self.assertRaisesRegex(UserError, "Chandarana Supermarket Ltd, ROSSLYN RIVERA: already a customer"):
+            self.Book.book_sale_save(values)
+        # Typed with the company's PIN: the same taxpayer, so one of its
+        # branches or a new branch of it, not a customer of its own at Retail.
+        values.update(partner_name="chandarana windsor branch", partner_vat="P051111111A")
+        found = self.Book.book_sale_customer_matches("Chandarana Rosslyn branch", " p051111111a ")
+        self.assertEqual((found["owner"]["id"], [b["id"] for b in found["branches"]]), (company.id, rosslyn.ids))
+        with self.assertRaisesRegex(UserError, "P051111111A is the KRA PIN of Chandarana Supermarket Ltd"):
+            self.Book.book_sale_save(dict(values, partner_new=True))
+        self.assertEqual(Partner.search_count([]), before, "no customer was made")
+        sale = self.Line.browse(self.Book.book_sale_save(dict(values, partner_parent_id=company.id))["ids"]).stock_sale_id
+        windsor = sale.partner_id
+        self.assertEqual((windsor.name, windsor.parent_id, windsor.type), ("chandarana windsor branch", company, "invoice"),
+                         "a new branch, of the kind its other branches are")
+        self.assertEqual((sale.order_id.pricelist_id, sale.invoice_id.invoice_payment_term_id), (pricelist, terms),
+                         "priced at Chandarana's pricelist, on its terms")
+        self.assertEqual(sale.invoice_id.commercial_partner_id, company)
+        # A customer that is new after all, said to be: made, at the first pricelist.
+        values = self._sale_values(partner_id=False, partner_name="Chandarana Rosslyn Rivera", purchase_ref="INV-2",
+                                   partner_new=True)
+        made = self.Line.browse(self.Book.book_sale_save(values)["ids"]).stock_sale_id.partner_id
+        self.assertEqual((made.parent_id, made.property_product_pricelist.name), (Partner, "Retail"))
+
+    # ------------------------------------------------------------ Save draft
+    def _typed_sale(self):
+        """An invoice typed in full: three items with a delivery charge between
+        them, the customer's PIN and terms, the CU number, paid into the bank."""
+        self.pay_journal.inbound_payment_method_line_ids[:1].payment_account_id = self.outstanding
+        terms = self.env.ref("account.account_payment_term_30days")
+        values = self._sale_values(purchase_ref="INV-77", partner_vat="P052112729P", payment_term_id=terms.id,
+                                   cu_invoice_no="CU-77", pay_journal_id=self.pay_journal.id,
+                                   date=fields.Date.to_string(fields.Date.today() - timedelta(days=2)))
+        tax = values["lines"][0]["tax_id"]
+        delivery = self.env["product.product"].create({"name": "Delivery Test", "type": "service", "sale_ok": True})
+        values["lines"] = [
+            {"product_id": self.carton.id, "qty": 5, "cost": 60.0, "tax_id": tax, "note": ""},
+            {"product_id": self.fg.id, "qty": 2, "cost": 500.0, "tax_id": tax, "note": ""},
+            {"product_id": delivery.id, "qty": 1, "cost": 300.0, "tax_id": tax, "note": "To Westlands"},
+            {"product_id": self.sticker.id, "qty": 10, "cost": 0.0, "tax_id": tax, "note": ""},
+        ]
+        return values
+
+    def test_a_supervisor_keeps_a_sale_as_a_draft_and_nothing_is_made_until_it_is_posted(self):
+        supervisor = new_test_user(self.env, "draft_supervisor", groups="odin_stock_book.group_stock_book_supervisor")
+        Book = self.Book.with_user(supervisor)
+        self.assertTrue(Book.book_sale_options()["can_post"], "a supervisor is offered Save draft")
+        before = self.onhand(self.fg)
+        counts = {model: self.env[model].search_count([])
+                  for model in ("sale.order", "stock.picking", "account.move", "account.payment")}
+        result = Book.book_sale_save(self._typed_sale(), post=False)
+        self.assertFalse(result["posted"])
+        self.assertEqual((result["order"], result["invoice"], result["refs"]), ("", "", []))
+        lines = self.Line.browse(result["ids"])
+        self.assertEqual(lines.mapped("state"), ["draft"] * 3, "one draft per item kept in stock")
+        self.assertFalse(lines.picking_id or lines.sale_line_id or lines.move_ids or any(lines.mapped("ref")))
+        sale = lines.stock_sale_id
+        self.assertEqual(len(sale), 1)
+        self.assertFalse(sale.order_id or sale.invoice_id or sale.payment_id)
+        self.assertEqual(sale.charge_ids.name, "To Westlands")
+        self.assertEqual({model: self.env[model].search_count([]) for model in counts}, counts,
+                         "no order, delivery, invoice or payment")
+        self.assertEqual(self.onhand(self.fg), before, "nothing has left the store")
+        rows = [self._row(line) for line in lines]
+        self.assertEqual({(r["state"], r["status_key"], r["window"]) for r in rows}, {("draft", "ready", True)},
+                         "on the book, waiting to be posted")
+        posted = Book.book_post(lines[:1].ids)
+        self.assertEqual(posted["count"], 3, f"posted whole, from any of its lines: {posted}")
+        self.assertEqual(sale.order_id.client_order_ref, "INV-77")
+        self.assertEqual((sale.invoice_id.name, sale.invoice_id.state), ("INV-77", "posted"))
+        self.assertTrue(sale.payment_id)
+        self.assertEqual(self.onhand(self.fg), before - 2)
+
+    def test_a_draft_sale_opens_again_as_it_was_typed(self):
+        values = self._typed_sale()
+        result = self.Book.book_sale_save(values, post=False)
+        lines = self.Line.browse(result["ids"])
+        for line in lines:
+            data = self.Book.book_sale_load(line.id)
+            self.assertTrue(data["edit"], "opens as Edit sale")
+            self.assertEqual(sorted(data["replace_ids"]), sorted(lines.ids), "the whole invoice, from any line")
+        self.assertEqual(data["supplier"]["id"], values["partner_id"])
+        self.assertEqual((data["purchase_ref"], data["date"], data["paid"]),
+                         ("INV-77", values["date"], str(self.pay_journal.id)))
+        self.assertEqual((data["partner_vat"], data["payment_term_id"], data["cu_invoice_no"]),
+                         ("P052112729P", values["payment_term_id"], "CU-77"))
+        typed = values["lines"]
+        self.assertEqual(
+            [(r["product"]["id"], r["qty"], r["cost"], r["tax_id"], r["note"], r["product"]["stock"])
+             for r in data["lines"]],
+            [(t["product_id"], t["qty"], t["cost"], t["tax_id"], t["note"], t["product_id"] != typed[2]["product_id"])
+             for t in (typed[0], typed[1], typed[3], typed[2])],
+            "the items in the order typed, not the book's newest first; the charge after them")
+
+    def test_a_draft_sale_is_saved_again_and_delivered_under_its_own_number(self):
+        values = self._typed_sale()
+        partner = values["partner_id"]
+        first = self.Book.book_sale_save(values, post=False)
+        self.assertIn("waiting to be posted", self.Book.book_sale_check(partner, "inv-77"),
+                      "another sale under its number is refused")
+        self.assertFalse(self.Book.book_sale_check(partner, "INV-77", first["ids"]), "its own number is not")
+        values["lines"][1]["qty"] = 3
+        second = self.Book.book_sale_save(values, post=False, replace_ids=first["ids"])
+        self.assertFalse(self.Line.browse(first["ids"]).exists(), "replaced, not doubled")
+        self.assertEqual(self.env["odin.stock.sale"].search_count([("sale_ref", "=", "INV-77")]), 1)
+        self.assertEqual(self.Line.browse(second["ids"]).filtered(lambda l: l.product_id == self.fg).qty_out, 3)
+        before = self.onhand(self.fg)
+        result = self.Book.book_sale_save(values, replace_ids=second["ids"])
+        self.assertTrue(result["posted"], "its number and CU number are its own, not a duplicate")
+        sale = self.Line.browse(result["ids"]).stock_sale_id
+        self.assertEqual(set(sale.line_ids.mapped("state")), {"posted"})
+        self.assertEqual((sale.invoice_id.name, sale.cu_invoice_no), ("INV-77", "CU-77"))
+        self.assertEqual(self.onhand(self.fg), before - 3)
+        self.assertEqual(self.env["odin.stock.sale"].search_count([("sale_ref", "=", "INV-77")]), 1)
+
+    def test_a_sale_that_cannot_be_delivered_leaves_nothing_and_can_be_kept_as_a_draft(self):
+        values = self._typed_sale()
+        values["lines"][1]["qty"] = self.onhand(self.fg) + 1
+        count = self.Line.search_count([])
+        with self.assertRaises(UserError) as caught:
+            self.Book.book_sale_save(values)
+        self.assertIn("Short", str(caught.exception))
+        self.assertEqual(self.Line.search_count([]), count, "nothing was saved")
+        # Keep as draft: the same window, saved without posting.
+        result = self.Book.book_sale_save(values, post=False)
+        lines = self.Line.browse(result["ids"])
+        self.assertEqual(len(lines), 3)
+        self.assertIn("short", {self._row(line)["status_key"] for line in lines}, "the book says what holds it")
+
+    def test_an_item_after_the_first_is_not_short_for_the_stock_its_own_delivery_took(self):
+        """The invoice's delivery leaves with its first line: the lines after
+        it are checked against what was on hand before it, not after."""
+        values = self._sale_values()
+        tax = values["lines"][0]["tax_id"]
+        onhand = self.onhand(self.carton)
+        values["lines"] = [{"product_id": self.fg.id, "qty": 1, "cost": 500.0, "tax_id": tax},
+                           {"product_id": self.carton.id, "qty": onhand - 1, "cost": 60.0, "tax_id": tax}]
+        result = self.Book.book_sale_save(values)
+        self.assertTrue(result["posted"])
+        self.assertEqual(self.onhand(self.carton), 1)
+        # Still short when the invoice as a whole takes more than is on hand.
+        values = self._sale_values(purchase_ref="INV-2")
+        values["lines"] = [{"product_id": self.carton.id, "qty": 1, "cost": 60.0, "tax_id": tax},
+                           {"product_id": self.carton.id, "qty": 1, "cost": 60.0, "tax_id": tax}]
+        with self.assertRaisesRegex(UserError, "Short"):
+            self.Book.book_sale_save(values)
+
     # ------------------------------------------------------------ moves outside the book
     def _lines_for(self, product):
         return self.Line.search([("product_id", "=", product.id), ("state", "=", "posted")])

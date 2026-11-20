@@ -27,6 +27,36 @@
     }
 }
 
+// A sale's pricelist, under the customer: Retail where the customer's own was
+// meant is caught here. A customer not created yet stands out.
+.o_sb_pd_prices {
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--#{$prefix}secondary-color);
+
+    &.o_sb_pd_prices_new {
+        color: var(--#{$prefix}warning-text-emphasis);
+        font-weight: 600;
+    }
+}
+
+// Asked before a customer typed in is created: who it may already be.
+.o_sb_cc {
+    .list-group-item small {
+        display: block;
+        color: var(--#{$prefix}secondary-color);
+    }
+
+    .o_sb_cc_name {
+        display: block;
+        font-weight: 600;
+    }
+
+    .o_sb_cc_new {
+        border-top-width: 2px;
+    }
+}
+
 // A sale's due date: worked out from the terms and the date, not typed.
 .o_sb_pd_due {
     padding: 0.375rem 0;
@@ -132,6 +162,10 @@
             border-top: 1px solid var(--#{$prefix}border-color);
             border-radius: 0;
             font-weight: 600;
+
+            small {
+                font-weight: 400;
+            }
         }
 
         &.o_sb_pd_none {
@@ -159,6 +193,14 @@
         margin: 0;
         padding: 0.45rem 0.75rem;
     }
+}
+
+.o_sb_pd_keep {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.4rem;
 }
 
 .o_sb_pd_totals {
