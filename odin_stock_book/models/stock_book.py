@@ -563,7 +563,8 @@ class StockBook(models.AbstractModel):
         if not line or line.state != "draft" or line.reason != "received":
             raise UserError(_("Only a received line not yet posted can be opened as a purchase."))
         window = line.stock_purchase_id
-        lines = window.line_ids.filtered(lambda l: l.state == "draft") if window else line
+        # In the order typed: the book lists the newest first.
+        lines = window.line_ids.filtered(lambda l: l.state == "draft").sorted("id") if window else line
         partner = window.partner_id or line.partner_id
         name = (line.partner_name or "").strip()
         if not partner and name:
@@ -599,7 +600,9 @@ class StockBook(models.AbstractModel):
     @api.model
     def book_purchase_save(self, values, post=True, replace_ids=None):
         """One LPO from the purchase window, as Stock Book lines: posted at
-        once by a supervisor, left for one otherwise. All of it or none."""
+        once by a supervisor, left for one otherwise. All of it or none.
+        ``post=False``: kept as a draft, as typed, to finish and receive later
+        (Save draft). ``replace_ids``: the draft being saved again."""
         Line = self.env["odin.stock.line"]
         company = self.env.company
         self._purchase_replace(replace_ids)
@@ -1062,7 +1065,7 @@ class StockBook(models.AbstractModel):
         window = line.stock_purchase_id
         if not window:
             raise UserError(_("Only a purchase made with Add purchase can be undone here."))
-        posted = window.line_ids.filtered(lambda l: l.state == "posted")
+        posted = window.line_ids.filtered(lambda l: l.state == "posted").sorted("id")
         rows = [{"product": {**self._product(l.product_id), "stock": True, "tracked": False}, "qty": l.qty_in,
                  "cost": l.unit_cost, "tax_id": l.tax_id.id or False, "note": l.note or ""} for l in posted]
         rows += [{"product": {**self._product(c.product_id), "stock": False, "tracked": False}, "qty": c.qty,

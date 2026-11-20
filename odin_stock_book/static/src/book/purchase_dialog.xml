@@ -126,7 +126,15 @@
 
                 <div class="o_sb_pd_foot">
                     <div class="o_sb_pd_msgs" aria-live="polite">
-                        <div t-if="state.error" class="alert alert-danger" role="alert"><t t-esc="state.error"/></div>
+                        <div t-if="state.error" class="alert alert-danger" role="alert">
+                            <t t-esc="state.error"/>
+                            <div t-if="state.offerDraft" class="o_sb_pd_keep">
+                                <button type="button" class="btn btn-sm btn-secondary" t-att-disabled="state.saving" t-on-click="saveDraft">
+                                    <i t-if="state.saving === 'draft'" class="fa fa-circle-o-notch fa-spin me-1"/>Keep as draft
+                                </button>
+                                <small t-esc="keepDraftHelp"/>
+                            </div>
+                        </div>
                         <div t-elif="state.tried and problem and problem[1] !== state.refProblem" class="alert alert-warning" role="alert"><t t-esc="problem[1]"/></div>
                     </div>
                     <div class="o_sb_pd_totals" aria-live="polite">
@@ -139,8 +147,11 @@
                 </div>
             </div>
             <t t-set-slot="footer">
-                <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="save">
-                    <i t-if="state.saving" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
+                <button class="btn btn-primary o_sb_pd_save" t-att-disabled="state.saving" t-on-click="() => this.save()">
+                    <i t-if="state.saving === 'post'" class="fa fa-circle-o-notch fa-spin me-1"/><t t-esc="saveLabel"/>
+                </button>
+                <button t-if="offersDraft" class="btn btn-secondary o_sb_pd_draft" t-att-disabled="state.saving" t-att-title="draftHelp" t-on-click="saveDraft">
+                    <i t-if="state.saving === 'draft'" class="fa fa-circle-o-notch fa-spin me-1"/>Save draft
                 </button>
                 <button class="btn btn-secondary" t-att-disabled="state.saving" t-on-click="discard">Cancel</button>
                 <small class="o_sb_pd_help" t-esc="saveHelp"/>
