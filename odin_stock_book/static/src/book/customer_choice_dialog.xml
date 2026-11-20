@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="odin_stock_book.CustomerChoiceDialog">
+        <Dialog title="title" size="'md'">
+            <div class="o_sb_cc">
+                <p t-if="props.owner">
+                    <strong t-esc="props.pin"/> is the KRA PIN of <strong t-esc="props.owner.display_name"/>.
+                    Pick the branch this sale is for, or add “<t t-esc="props.name"/>” as a new branch of it,
+                    so the sale takes its prices and terms.
+                </p>
+                <p t-else="">
+                    These customers have the words of “<t t-esc="props.name"/>”. Pick the one this sale is for,
+                    so it takes their prices and terms.
+                </p>
+                <div class="list-group">
+                    <button t-foreach="customers" t-as="customer" t-key="customer.id" type="button"
+                            class="list-group-item list-group-item-action" t-on-click="() => this.choose({ kind: 'pick', customer })">
+                        <span class="o_sb_cc_name" t-esc="customer.display_name"/>
+                        <small t-if="hint(customer)" t-esc="hint(customer)"/>
+                    </button>
+                    <button t-if="props.owner" type="button" class="list-group-item list-group-item-action o_sb_cc_new"
+                            t-on-click="() => this.choose({ kind: 'branch' })">
+                        <span class="o_sb_cc_name"><i class="fa fa-plus me-1"/>Add “<t t-esc="props.name"/>” as a new branch of <t t-esc="props.owner.display_name"/></span>
+                        <small t-if="hint(props.owner)" t-esc="hint(props.owner)"/>
+                    </button>
+                    <button t-else="" type="button" class="list-group-item list-group-item-action o_sb_cc_new"
+                            t-on-click="() => this.choose({ kind: 'new' })">
+                        <span class="o_sb_cc_name"><i class="fa fa-plus me-1"/>Create “<t t-esc="props.name"/>” as a new customer</span>
+                        <small t-if="props.newPricelist">Prices: <t t-esc="props.newPricelist"/>, as for every new customer</small>
+                    </button>
+                </div>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-secondary" t-on-click="() => this.props.close()">Back</button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

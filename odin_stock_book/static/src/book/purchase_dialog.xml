@@ -10,6 +10,10 @@
                                t-att-class="{ 'is-invalid': state.tried and !state.supplier }" t-att-value="state.supplierQuery"
                                t-att-placeholder="words.partnerHint" t-on-input="onSupplierInput" t-on-blur="onBlurSuggest"
                                t-on-keydown="(ev) => this.onSuggestKey(ev, (item) => this.pickSupplier(item))"/>
+                        <div t-if="pricesLabel" class="o_sb_pd_prices" t-att-class="{ o_sb_pd_prices_new: !state.supplier.id and !state.supplier.parentId }"
+                             aria-live="polite" title="The pricelist the lines are priced at: the customer's own (Sales > Customers)">
+                            <i class="fa fa-tag me-1"/><t t-esc="pricesLabel"/>
+                        </div>
                     </div>
                     <div class="o_sb_pd_field">
                         <label for="o_sb_pd_ref" t-esc="words.ref"/>
@@ -37,7 +41,8 @@
                             <input id="o_sb_pd_pin" data-pd="pin" class="form-control text-uppercase" autocomplete="off"
                                    t-att-class="{ 'is-invalid': state.tried and pinProblem }" t-att-value="state.pin"
                                    placeholder="e.g. P051234567X" title="Saved on the customer for the next sale"
-                                   t-on-input="(ev) => this.state.pin = ev.target.value" t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
+                                   t-on-input="(ev) => this.state.pin = ev.target.value" t-on-change="onPinChange"
+                                   t-on-keydown="(ev) => this.onHeadKey('cu', ev)"/>
                         </div>
                         <div class="o_sb_pd_field">
                             <label for="o_sb_pd_cu" t-esc="words.cu"/>
@@ -104,7 +109,8 @@
                     <li t-if="state.suggest.empty" class="o_sb_pd_none" t-esc="words.noPartner"/>
                     <t t-if="state.suggest.kind === 'supplier'">
                         <li t-foreach="state.suggest.items" t-as="item" t-key="item_index" class="dropdown-item" role="option" t-att-class="{ active: item_index === state.suggest.index, o_sb_pd_create: item.create }"
-                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/></li>
+                            t-on-mousedown.prevent="() => this.pickSupplier(item)"><i t-if="item.create" class="fa fa-plus me-1"/><t t-esc="item.label"/>
+                            <small t-if="item.hint" t-esc="item.hint"/></li>
                     </t>
                     <t t-else="">
                         <t t-set="suggestLine" t-value="state.lines.find((l) => l.key === state.suggest.key)"/>
