@@ -28,7 +28,7 @@ const REMEMBERED = ["layout_id", "scale", "decimals", "show_codes", "trend", "pe
     "hide_zero", "account_groups", "negative_parentheses", "materiality"];
 // The one-time tip about clicks and shortcuts, once dismissed in this browser.
 const TIP_KEY = "odin_account_pnl.tip_dismissed";
-// Comfortable or compact rows, per browser.
+// Compact rows unless this browser chose comfortable ones.
 const DENSITY_KEY = "odin_account_pnl.density";
 // The rows that carry figures: what the quick filters count and keep.
 const FIGURE_TYPES = ["line", "formula", "group", "account", "breakdown"];
@@ -46,9 +46,9 @@ function readPrefs() {
 
 function readDensity() {
     try {
-        return browser.localStorage.getItem(DENSITY_KEY) === "compact" ? "compact" : "comfortable";
+        return browser.localStorage.getItem(DENSITY_KEY) === "comfortable" ? "comfortable" : "compact";
     } catch {
-        return "comfortable";
+        return "compact";
     }
 }
 
