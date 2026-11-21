@@ -11,7 +11,9 @@ import { useService } from "@web/core/utils/hooks";
  * The server returns options in one key order, so their JSON compares.
  */
 export function viewSignature(options) {
-    const { unfolded, modes, ...rest } = options || {};
+    const rest = { ...(options || {}) };
+    delete rest.unfolded;
+    delete rest.modes;
     return JSON.stringify(rest);
 }
 

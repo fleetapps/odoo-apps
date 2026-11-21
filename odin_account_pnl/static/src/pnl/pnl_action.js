@@ -178,10 +178,17 @@ export class PnlAction extends Component {
                 }
             }
             const [journals] = await Promise.all([
-                this.orm.searchRead("account.journal", [], ["name", "code"], { order: "sequence, name" }),
+                this.orm.searchRead("account.journal", [], ["name", "code", "company_id"], { order: "sequence, name" }),
                 this.load(),
             ]);
-            this.journals = journals;
+            // Several companies' journals share names ("Sales"): their label
+            // names the company too. ``name`` stays the journal's own (the AI
+            // module passes it to its tools).
+            const companies = new Set(journals.map((journal) => journal.company_id?.[0]));
+            this.journals = journals.map((journal) => ({
+                ...journal,
+                label: companies.size > 1 ? `${journal.name} · ${journal.company_id[1]}` : journal.name,
+            }));
             if (this.state.viewId && !this.state.viewSnapshot) {
                 this.markViewSaved();
             }
@@ -486,13 +493,15 @@ export class PnlAction extends Component {
 
     /** ``rows`` matching ``predicate``, their parents, and rows of ``alwaysTypes``. */
     keepWithParents(rows, predicate, alwaysTypes) {
+        // A map, not rowByKey: "Every transaction" can list 20,000 rows.
+        const parents = new Map(this.state.rows.map((row) => [row.key, row.parent]));
         const keep = new Set();
         for (const row of rows) {
             if (predicate(row)) {
                 let key = row.key;
                 while (key && !keep.has(key)) {
                     keep.add(key);
-                    key = this.rowByKey(key)?.parent;
+                    key = parents.get(key);
                 }
             }
         }
@@ -555,8 +564,14 @@ export class PnlAction extends Component {
         return tabs;
     }
 
+    /** The tab in force: the material ones need a comparison. Cheap: the
+     * template reads it for every tab, and the counts go through every row. */
     get activeQuick() {
-        return this.quickTabs.some((tab) => tab.key === this.state.quick) ? this.state.quick : "all";
+        const quick = this.state.quick;
+        if (quick === "notes" || (this.hasGrowth && ["material", "unexplained"].includes(quick))) {
+            return quick;
+        }
+        return "all";
     }
 
     setQuick(key) {
@@ -757,7 +772,22 @@ export class PnlAction extends Component {
         return (variance > 0) === Boolean(row.green_on_positive) ? "o_odin_pnl_good" : "o_odin_pnl_bad";
     }
 
-    /** The draft journal items the figures leave out, to post or fix. */
+    /** "2 draft entries are not in the figures" and what they would change. */
+    get draftNotice() {
+        const count = this.state.data?.draft_count || 0;
+        const impact = this.state.data?.draft_impact || 0;
+        const title = count === 1
+            ? _t("1 draft entry in this period is not in the figures.")
+            : _t("%s draft entries in this period are not in the figures.", count);
+        return {
+            title,
+            impact: impact
+                ? _t("Posted, they would change the net profit by %s.", this.fmtVariance(impact))
+                : "",
+        };
+    }
+
+    /** The draft entries the figures leave out, to review and post. */
     async openDrafts() {
         const action = await this.orm.call("odin.pnl.report", "action_open_drafts", [this.state.options]);
         this.action.doAction(action);

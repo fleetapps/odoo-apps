@@ -2,6 +2,8 @@
 of a group side by side, the budget variance; and what the year-end review
 asks of the figures: drafts left out, the profit's appropriation below it."""
 
+import json
+
 from unittest.mock import patch
 
 from odoo.exceptions import UserError
@@ -146,13 +148,41 @@ class TestColumns(PnlCase):
     # ---- the year-end review ---------------------------------------------
 
     def test_drafts_left_out_are_counted_and_listed(self):
-        self.post("2026-09-20", [(self.revenue, -70.0)], state="draft")
+        draft = self.post("2026-09-20", [(self.revenue, -70.0)], state="draft")
         result = self.run_report()
         self.assertEqual(result["draft_count"], 1)
+        self.assertEqual(result["draft_impact"], 70.0, "posted, the draft income adds to the profit")
         action = self.report.action_open_drafts(self.options())
-        drafts = self.env["account.move.line"].search(action["domain"])
-        self.assertEqual(drafts.mapped("balance"), [-70.0])
+        self.assertEqual(action["res_model"], "account.move", "entries, which can be posted from the list")
+        self.assertEqual(action["display_name"], "Draft entries", "what the breadcrumb says")
+        self.assertEqual(self.env["account.move"].search(action["domain"]), draft)
+        self.assertNotIn("search_default_posted", str(action["context"]),
+                         "the Journal Entries list's Posted filter would hide every draft")
         self.assertEqual(self.run_report(include_draft=True)["draft_count"], 0, "counted, so nothing to say")
+
+    def test_drafts_are_counted_by_entry_not_by_line(self):
+        self.post("2026-09-20", [(self.revenue, -70.0), (self.opex, 30.0), (self.cos, 10.0)], state="draft")
+        result = self.run_report()
+        self.assertEqual(result["draft_count"], 1, "one draft bill of three lines is one entry")
+        self.assertAlmostEqual(result["draft_impact"], 30.0)
+
+    def test_drill_downs_work_with_an_analytic_filter(self):
+        """The analytic share is SQL of the module's own, which cannot travel
+        to the browser: the lists behind a figure and the drafts used to
+        fail on it (RecursionError while serialising the domain)."""
+        sales = {str(self.sales_dept.id): 100}
+        self.post("2026-09-10", [(self.opex, 40.0, {"analytic": sales})])
+        self.post("2026-09-11", [(self.opex, 60.0)])
+        self.post("2026-09-12", [(self.opex, 5.0, {"analytic": sales})], state="draft")
+        options = self.options(analytic_account_ids=[self.sales_dept.id])
+        items = self.report.action_open_items(options, "L:OPEX")
+        json.dumps(items["domain"])
+        self.assertEqual(self.env["account.move.line"].search(items["domain"]).mapped("balance"), [40.0])
+        result = self.run_report(analytic_account_ids=[self.sales_dept.id])
+        self.assertEqual((result["draft_count"], result["draft_impact"]), (1, -5.0))
+        drafts = self.report.action_open_drafts(options)
+        json.dumps(drafts["domain"])
+        self.assertEqual(len(self.env["account.move"].search(drafts["domain"])), 1)
 
     def test_the_appropriation_shows_below_the_profit_without_changing_it(self):
         appropriation = self.env["account.account"].create({

@@ -24,7 +24,9 @@
         </field>
     </record>
 
-    <!-- The Schedule dialog. -->
+    <!-- The Schedule dialog: what state the schedule is in, then when, what,
+         to whom and with which words, each in its own section; the actions
+         in the footer, Save first. -->
     <record id="odin_pnl_view_schedule_form" model="ir.ui.view">
         <field name="name">odin.pnl.view.schedule.form</field>
         <field name="model">odin.pnl.view</field>
@@ -32,185 +34,220 @@
         <field name="arch" type="xml">
             <form string="Schedule email" class="o_odin_pnl_schedule_form">
                 <field name="id" invisible="1"/>
-                <!-- The owner's time zone is the schedule's: needed while the
-                     dialog previews a new view's next email. -->
+                <!-- The owner and company decide the time zone and the sender,
+                     shown while a new schedule is set up. -->
                 <field name="user_id" invisible="1"/>
-                <field name="period_is_fixed" invisible="1"/>
-                <field name="last_failed" invisible="1"/>
+                <field name="company_id" invisible="1"/>
+                <field name="schedule_state" invisible="1"/>
                 <field name="schedule_paused" invisible="1"/>
-                <div class="alert alert-warning mb-3" role="alert" invisible="not period_is_fixed">
-                    <i class="fa fa-calendar-times-o me-1" title="Fixed dates"/>
-                    This view shows dates typed by hand, so every email would carry these same dates.
-                    For a report that moves with the calendar, pick a period such as
-                    <strong>Last month</strong> on the P&amp;L first.
+                <field name="period_is_fixed" invisible="1"/>
+
+                <!-- Where the schedule stands. -->
+                <div class="o_odin_pnl_sf_status o_odin_pnl_sf_status_active" invisible="schedule_state != 'active'">
+                    <span class="o_odin_pnl_sf_dot" aria-hidden="true"/>
+                    <div class="o_odin_pnl_sf_status_text">
+                        <strong>Scheduled.</strong> Next email on <field name="next_send_label" class="d-inline"/>.
+                    </div>
+                    <button name="action_toggle_pause" type="object" class="btn btn-sm btn-link" string="Pause"/>
                 </div>
-                <div class="alert alert-danger mb-3" role="alert" invisible="not last_failed">
-                    <i class="fa fa-exclamation-triangle me-1" title="Last send failed"/>
-                    <field name="last_status" class="d-inline"/>
+                <div class="o_odin_pnl_sf_status o_odin_pnl_sf_status_paused" invisible="schedule_state != 'paused'">
+                    <i class="fa fa-pause-circle-o" title="Paused"/>
+                    <div class="o_odin_pnl_sf_status_text">
+                        <strong>Paused.</strong> Nothing is sent until you resume.
+                    </div>
+                    <button name="action_toggle_pause" type="object" class="btn btn-sm btn-link" string="Resume"/>
                 </div>
-                <div class="oe_title mb-2">
-                    <label for="name" string="Report"/>
-                    <h2><field name="name" placeholder="Monthly board P&amp;L"/></h2>
-                    <div class="text-muted">
-                        <field name="period_rule" class="d-inline"/>
+                <div class="o_odin_pnl_sf_status o_odin_pnl_sf_status_failing" invisible="schedule_state != 'failing'">
+                    <i class="fa fa-exclamation-triangle" title="Last send failed"/>
+                    <div class="o_odin_pnl_sf_status_text">
+                        <strong>The last email failed.</strong> <field name="last_status" class="d-inline"/>
                     </div>
                 </div>
-                <div class="o_odin_pnl_schedule_section">
-                    <h6 class="o_odin_pnl_schedule_heading">When</h6>
-                    <field name="schedule" widget="radio" options="{'horizontal': true}" nolabel="1"/>
-                    <group invisible="schedule == 'none'" class="mt-1">
-                        <group>
-                            <field name="send_weekday" invisible="schedule != 'weekly'" required="schedule == 'weekly'"/>
-                            <field name="send_day" invisible="schedule not in ('monthly', 'quarterly')"/>
-                            <field name="send_hour"/>
-                        </group>
-                        <group>
-                            <field name="next_send" string="Next email" invisible="schedule_paused"/>
-                            <field name="last_sent" invisible="not last_sent"/>
-                        </group>
-                    </group>
-                    <div class="o_odin_pnl_schedule_summary" invisible="schedule == 'none'">
-                        <i class="fa fa-clock-o me-1" title="Schedule"/>
+
+                <div class="o_odin_pnl_sf_title">
+                    <field name="name" placeholder="Name this email, e.g. Monthly board P&amp;L" class="o_odin_pnl_sf_name"/>
+                    <div class="o_odin_pnl_sf_subtitle" invisible="not report_summary">
+                        <i class="fa fa-file-text-o" title="The report"/>
+                        <field name="report_summary" class="d-inline"/>
+                    </div>
+                </div>
+
+                <section class="o_odin_pnl_sf_section">
+                    <h3 class="o_odin_pnl_sf_heading"><span class="o_odin_pnl_sf_step">1</span>When</h3>
+                    <field name="schedule" widget="radio" options="{'horizontal': true}" nolabel="1"
+                           class="o_odin_pnl_sf_segmented"/>
+                    <div class="o_odin_pnl_sf_when" invisible="schedule == 'none'">
+                        <div class="o_odin_pnl_sf_inline" invisible="schedule != 'weekly'">
+                            <label for="send_weekday" string="On"/>
+                            <div class="o_odin_pnl_sf_box o_odin_pnl_sf_box_md">
+                                <field name="send_weekday" required="schedule == 'weekly'"/>
+                            </div>
+                        </div>
+                        <div class="o_odin_pnl_sf_inline" invisible="schedule not in ('monthly', 'quarterly')">
+                            <label for="send_day" string="On day"/>
+                            <div class="o_odin_pnl_sf_box o_odin_pnl_sf_box_sm"><field name="send_day"/></div>
+                        </div>
+                        <div class="o_odin_pnl_sf_inline">
+                            <label for="send_hour" string="At"/>
+                            <div class="o_odin_pnl_sf_box o_odin_pnl_sf_box_sm"><field name="send_hour"/></div>
+                            <span class="o_odin_pnl_sf_muted"><field name="owner_tz" class="d-inline"/> time</span>
+                        </div>
+                    </div>
+                    <div class="o_odin_pnl_sf_note o_odin_pnl_schedule_summary" invisible="schedule == 'none'">
+                        <i class="fa fa-clock-o" title="Schedule"/>
                         <field name="schedule_summary" class="d-inline"/>
                     </div>
-                    <div class="text-muted small" invisible="schedule != 'none'">
-                        Pick how often to email this report. It is computed afresh for each email,
-                        as its owner sees it.
+                    <div class="o_odin_pnl_sf_muted" invisible="schedule != 'none'">
+                        Pick how often to send it. The report is computed again for every email, as you see it.
                     </div>
-                </div>
-                <div class="o_odin_pnl_schedule_section" invisible="schedule == 'none'">
-                    <h6 class="o_odin_pnl_schedule_heading">To</h6>
-                    <group>
-                        <field name="recipient_ids" widget="many2many_tags_email"
-                               placeholder="Contacts…"/>
-                        <field name="recipient_emails" placeholder="cfo@example.com, board@example.com"/>
-                    </group>
-                </div>
-                <div class="o_odin_pnl_schedule_section" invisible="schedule == 'none'">
-                    <h6 class="o_odin_pnl_schedule_heading">Email</h6>
-                    <group>
-                        <field name="subject" placeholder="Profit &amp; Loss · {period}"/>
-                        <field name="message" placeholder="Here is last month's P&amp;L."/>
-                    </group>
-                    <group>
-                        <group string="Attach">
-                            <field name="send_pdf"/>
-                            <field name="send_xlsx"/>
-                        </group>
-                        <group string="In the email">
-                            <field name="include_summary"/>
-                        </group>
-                    </group>
-                </div>
-                <div class="o_odin_pnl_schedule_section" invisible="not log_ids">
-                    <h6 class="o_odin_pnl_schedule_heading">History</h6>
-                    <field name="log_ids" nolabel="1" readonly="1">
+                </section>
+
+                <section class="o_odin_pnl_sf_section">
+                    <h3 class="o_odin_pnl_sf_heading"><span class="o_odin_pnl_sf_step">2</span>Report</h3>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="period_preset"/>
+                        <div class="o_odin_pnl_sf_box"><field name="period_preset"/></div>
+                    </div>
+                    <div class="o_odin_pnl_sf_callout o_odin_pnl_sf_callout_warning" invisible="not period_is_fixed">
+                        <i class="fa fa-calendar-times-o" title="Fixed dates"/>
+                        <span>These dates were typed by hand, so every email sends the same ones. Pick a period
+                            above to move with the calendar.</span>
+                    </div>
+                    <div class="o_odin_pnl_sf_callout" invisible="not schedule_hint">
+                        <i class="fa fa-lightbulb-o" title="Tip"/>
+                        <field name="schedule_hint" class="d-inline"/>
+                    </div>
+                    <div class="o_odin_pnl_sf_row">
+                        <span class="o_form_label">Include</span>
+                        <div class="o_odin_pnl_sf_toggles">
+                            <div class="o_odin_pnl_sf_toggle">
+                                <field name="send_pdf" widget="boolean_toggle" nolabel="1"/>
+                                <label for="send_pdf" string="PDF report"/>
+                            </div>
+                            <div class="o_odin_pnl_sf_toggle">
+                                <field name="send_xlsx" widget="boolean_toggle" nolabel="1"/>
+                                <label for="send_xlsx" string="Excel workbook"/>
+                            </div>
+                            <div class="o_odin_pnl_sf_toggle">
+                                <field name="include_summary" widget="boolean_toggle" nolabel="1"/>
+                                <label for="include_summary" string="Key figures in the email"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="o_odin_pnl_sf_section">
+                    <h3 class="o_odin_pnl_sf_heading"><span class="o_odin_pnl_sf_step">3</span>Recipients</h3>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="recipient_ids" string="To"/>
+                        <div class="o_odin_pnl_sf_box">
+                            <field name="recipient_ids" widget="many2many_tags_email" placeholder="Add contacts…"/>
+                        </div>
+                    </div>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="recipient_emails" string="Also to"/>
+                        <div class="o_odin_pnl_sf_box">
+                            <field name="recipient_emails" placeholder="cfo@example.com, board@example.com"/>
+                        </div>
+                    </div>
+                    <div class="o_odin_pnl_sf_row" invisible="not sender_note">
+                        <span/>
+                        <div class="o_odin_pnl_sf_muted"><field name="sender_note" class="d-inline"/></div>
+                    </div>
+                </section>
+
+                <section class="o_odin_pnl_sf_section">
+                    <h3 class="o_odin_pnl_sf_heading"><span class="o_odin_pnl_sf_step">4</span>Message</h3>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="subject"/>
+                        <div class="o_odin_pnl_sf_box"><field name="subject" placeholder="Profit &amp; Loss · {period}"/></div>
+                    </div>
+                    <div class="o_odin_pnl_sf_row o_odin_pnl_sf_row_hint">
+                        <span/>
+                        <div class="o_odin_pnl_sf_muted">
+                            Empty, it is the report's name and period. {period}, {title} and {company} are filled in.
+                        </div>
+                    </div>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="message" string="Note"/>
+                        <div class="o_odin_pnl_sf_box">
+                            <field name="message" placeholder="A line for the readers, above the figures."/>
+                        </div>
+                    </div>
+                    <div class="o_odin_pnl_sf_row">
+                        <span/>
+                        <widget name="odin_pnl_email_preview"/>
+                    </div>
+                </section>
+
+                <section class="o_odin_pnl_sf_section" invisible="not log_ids">
+                    <h3 class="o_odin_pnl_sf_heading">History</h3>
+                    <field name="log_ids" nolabel="1" readonly="1" class="o_odin_pnl_sf_history">
                         <list create="0" edit="0" delete="0" decoration-danger="failed" decoration-muted="kind == 'test'">
                             <field name="create_date" string="When"/>
                             <field name="kind" widget="badge" decoration-info="kind == 'test'"
                                    decoration-success="kind == 'scheduled'"/>
                             <field name="status"/>
-                            <field name="recipients" optional="hide"/>
                             <field name="failed" column_invisible="1"/>
                         </list>
                     </field>
-                </div>
+                </section>
+
                 <footer>
                     <button string="Save" special="save" class="btn-primary" data-hotkey="q"/>
-                    <button name="action_send_now" type="object" string="Send now" class="btn-secondary"
-                            invisible="schedule == 'none'" data-hotkey="s"/>
                     <button name="action_send_test" type="object" string="Send me a test" class="btn-secondary"
                             data-hotkey="t"/>
-                    <button name="action_toggle_pause" type="object" string="Pause" class="btn-secondary"
-                            invisible="schedule == 'none' or schedule_paused or not id"/>
-                    <button name="action_toggle_pause" type="object" string="Resume" class="btn-secondary"
-                            invisible="schedule == 'none' or not schedule_paused or not id"/>
+                    <button name="action_send_now" type="object" string="Send now" class="btn-secondary"
+                            invisible="schedule == 'none'" data-hotkey="s"
+                            confirm="Email the report to every recipient now?"/>
                     <button string="Discard" special="cancel" class="btn-link" data-hotkey="x"/>
                 </footer>
             </form>
         </field>
     </record>
 
-    <!-- Configuration > Saved P&L Views: the full form. -->
+    <!-- Configuration > Saved P&L Views: the same form, on a page of its own,
+         with its actions in the header (footers only show in dialogs) and who
+         the view is for. -->
     <record id="odin_pnl_view_view_form" model="ir.ui.view">
         <field name="name">odin.pnl.view.form</field>
         <field name="model">odin.pnl.view</field>
+        <field name="inherit_id" ref="odin_pnl_view_schedule_form"/>
+        <field name="mode">primary</field>
+        <field name="priority">16</field>
         <field name="arch" type="xml">
-            <form string="Saved P&amp;L view" class="o_odin_pnl_schedule_form">
-                <field name="schedule_paused" invisible="1"/>
-                <field name="last_failed" invisible="1"/>
+            <xpath expr="//form" position="attributes">
+                <attribute name="string">Saved P&amp;L view</attribute>
+            </xpath>
+            <xpath expr="//form/*[1]" position="before">
                 <header>
                     <button name="action_open_report" type="object" string="Open in the P&amp;L" class="btn-primary"/>
-                    <button name="action_send_now" type="object" string="Send now" invisible="schedule == 'none'"/>
                     <button name="action_send_test" type="object" string="Send me a test"/>
-                    <button name="action_toggle_pause" type="object" string="Pause"
-                            invisible="schedule == 'none' or schedule_paused"/>
-                    <button name="action_toggle_pause" type="object" string="Resume"
-                            invisible="schedule == 'none' or not schedule_paused"/>
+                    <button name="action_send_now" type="object" string="Send now" invisible="schedule == 'none'"
+                            confirm="Email the report to every recipient now?"/>
                 </header>
-                <sheet>
-                    <widget name="web_ribbon" title="Paused" bg_color="text-bg-warning"
-                            invisible="schedule == 'none' or not schedule_paused"/>
-                    <div class="alert alert-danger" role="alert" invisible="not last_failed">
-                        <field name="last_status" class="d-inline"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_odin_pnl_sf_title')]" position="after">
+                <section class="o_odin_pnl_sf_section">
+                    <h3 class="o_odin_pnl_sf_heading">View</h3>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="shared"/>
+                        <field name="shared"/>
                     </div>
-                    <div class="oe_title">
-                        <h1><field name="name"/></h1>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="is_default"/>
+                        <field name="is_default"/>
                     </div>
-                    <group>
-                        <group>
-                            <field name="period_rule"/>
-                            <field name="shared"/>
-                            <field name="is_default"/>
-                        </group>
-                        <group>
-                            <field name="user_id" readonly="1"/>
-                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
-                            <field name="company_ids" groups="base.group_multi_company" widget="many2many_tags"
-                                   readonly="1" invisible="not company_ids"/>
-                        </group>
-                    </group>
-                    <notebook>
-                        <page string="Email schedule" name="schedule">
-                            <group>
-                                <group>
-                                    <field name="schedule"/>
-                                    <field name="send_weekday" invisible="schedule != 'weekly'"/>
-                                    <field name="send_day" invisible="schedule not in ('monthly', 'quarterly')"/>
-                                    <field name="send_hour" invisible="schedule == 'none'"/>
-                                    <field name="schedule_summary" invisible="schedule == 'none'"/>
-                                </group>
-                                <group invisible="schedule == 'none'">
-                                    <field name="next_send"/>
-                                    <field name="last_sent"/>
-                                    <field name="last_status"/>
-                                </group>
-                            </group>
-                            <group invisible="schedule == 'none'">
-                                <field name="recipient_ids" widget="many2many_tags_email"/>
-                                <field name="recipient_emails" placeholder="cfo@example.com, board@example.com"/>
-                                <field name="subject" placeholder="Profit &amp; Loss · {period}"/>
-                                <field name="message" placeholder="Here is last month's P&amp;L."/>
-                                <field name="send_pdf"/>
-                                <field name="send_xlsx"/>
-                                <field name="include_summary"/>
-                            </group>
-                        </page>
-                        <page string="History" name="history">
-                            <field name="log_ids" readonly="1">
-                                <list create="0" edit="0" delete="0" decoration-danger="failed" decoration-muted="kind == 'test'">
-                                    <field name="create_date" string="When"/>
-                                    <field name="kind" widget="badge" decoration-info="kind == 'test'"
-                                           decoration-success="kind == 'scheduled'"/>
-                                    <field name="status"/>
-                                    <field name="recipients" optional="hide"/>
-                                    <field name="failed" column_invisible="1"/>
-                                </list>
-                            </field>
-                        </page>
-                    </notebook>
-                </sheet>
-            </form>
+                    <div class="o_odin_pnl_sf_row">
+                        <label for="user_id"/>
+                        <field name="user_id" readonly="1" widget="many2one_avatar_user"/>
+                    </div>
+                    <div class="o_odin_pnl_sf_row" groups="base.group_multi_company" invisible="not company_ids">
+                        <label for="company_ids"/>
+                        <field name="company_ids" widget="many2many_tags" readonly="1"/>
+                    </div>
+                </section>
+            </xpath>
         </field>
     </record>
 

@@ -288,7 +288,7 @@ export class PnlFilterBar extends Component {
         const filters = [];
         if (options.journal_ids.length) {
             const names = options.journal_ids.map(
-                (id) => this.props.journals.find((journal) => journal.id === id)?.name || "…");
+                (id) => this.props.journals.find((journal) => journal.id === id)?.label || "…");
             filters.push({ key: "journals", label: _t("Journals"), value: this.namesLabel(names),
                 clear: () => this.props.onChange({ journal_ids: [] }) });
         }

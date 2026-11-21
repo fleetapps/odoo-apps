@@ -148,8 +148,9 @@ class OdinPnlReport(models.AbstractModel):
             "split_menu": self._split_menu(),
             "companies": [{"id": company.id, "name": company.name} for company in ctx.companies],
             "period_label": ctx.period_label,
-            # Year-end checklist: draft entries in the period are not counted.
-            "draft_count": ctx.draft_count(),
+            # Year-end checklist: the draft entries the figures leave out, and
+            # what counting them would do to the profit.
+            **ctx.draft_summary(),
         }
 
     @api.model
@@ -186,39 +187,60 @@ class OdinPnlReport(models.AbstractModel):
             column = ctx.column(column_key)
             date_from, date_to = column["date_from"], column["date_to"]
             company_id = column.get("company_id")
+        # The same items as the row's figures: its analytic share (an analytic
+        # filter or split, and a split's "Not assigned"), as when it unfolds.
+        analytic = bool(filt["sets"] or filt.get("plan"))
         domain = (
             ctx.base_domain
             & Domain("account_id", "in", filt["account_ids"])
             & Domain("date", ">=", date_from)
             & Domain("date", "<=", date_to)
             & filt["domain"]
-            & self._analytic_domain(filt["sets"])
+            & self._analytic_domain(filt["sets"], filt.get("plan"))
         )
         if company_id:
             domain &= Domain("company_id", "=", company_id)
         action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_moves_all_a")
         action.update({
             "name": _("Journal Items"),
-            "domain": list(domain),
+            "domain": self._client_domain(domain, analytic),
             "context": {"create": False, "search_default_group_by_account": 0},
             "target": "current",
         })
-        return action
+        return self._drill_action(action)
 
     @api.model
     def action_open_drafts(self, options):
-        """The draft journal items the figures leave out ("N draft journal
-        items in this period are not counted")."""
+        """The draft entries the figures leave out, to review and post: the
+        Journal Entries list, without its default Posted filter, which would
+        hide every one of them."""
         self._check_access()
         ctx = self._context(options)
-        action = self.env["ir.actions.actions"]._for_xml_id("account.action_account_moves_all_a")
+        moves = self.env["account.move.line"].search(ctx.draft_domain()).move_id
+        action = self.env["ir.actions.actions"]._for_xml_id("account.action_move_journal_line")
         action.update({
-            "name": _("Draft journal items"),
-            "domain": list(ctx.draft_domain()),
-            "context": {"create": False, "search_default_group_by_account": 0},
+            "name": _("Draft entries"),
+            "domain": [("id", "in", moves.ids)],
+            "context": {"create": False},
             "target": "current",
         })
+        return self._drill_action(action)
+
+    def _drill_action(self, action):
+        """A standard list action narrowed to the figures, named as it is
+        here: the breadcrumb reads display_name, which _for_xml_id fills
+        with the action's own name ("Journal Entries")."""
+        action["display_name"] = action["name"]
         return action
+
+    def _client_domain(self, domain, analytic):
+        """``domain`` as the web client can carry it. The analytic share is
+        SQL of this module's own (Domain.custom, see _analytic_domain), which
+        only the server can apply and which cannot be sent: with one, the
+        items are found here and sent by id."""
+        if analytic:
+            return [("id", "in", self.env["account.move.line"].search(domain).ids)]
+        return list(domain)
 
     @api.model
     def action_open_move(self, move_line_id):
@@ -767,7 +789,7 @@ class OdinPnlReport(models.AbstractModel):
             row["unfoldable"] = line.kind == "accounts" and bool(ctx.line_accounts.get(line.code))
             row["mode"] = ctx.options["modes"].get(row["key"], "accounts")
             row["error"] = entry["error"]
-            if line.hide_if_zero and _all_zero(row) or (
+            if (line.hide_if_zero and _all_zero(row)) or (
                 ctx.options["hide_zero"] and line.kind == "accounts" and _all_zero(row)
             ):
                 continue
@@ -1020,7 +1042,7 @@ class OdinPnlReport(models.AbstractModel):
     def _known_mode(self, mode):
         dim = mode.split(":", 1)[0]
         return (mode in ("accounts",) + ENTRY_MODES or mode.startswith("audit:")
-                or dim in DIMENSIONS and self._dimension_available(dim))
+                or (dim in DIMENSIONS and self._dimension_available(dim)))
 
     def _dimension_available(self, dim):
         field = ORDER_FIELDS.get(dim)
@@ -1713,13 +1735,23 @@ class _ReportContext:
             domain &= Domain("partner_id", "in", options["partner_ids"])
         return domain
 
-    def draft_count(self):
-        """Draft journal items of the P&L in the period on screen, when only
-        posted entries are counted: what a year-end review asks to post
-        first. Not counted for an export, which never shows it."""
+    def draft_summary(self):
+        """The draft entries on P&L accounts in the period on screen, when
+        only posted entries are counted: ``{"draft_count": entries,
+        "draft_impact": their effect on the profit}``, the effect with the
+        analytic share as the figures have it. What a year-end review asks
+        to post first; nothing for an export, which never shows it."""
         if self.options["include_draft"] or self.env.context.get("odin_pnl_export"):
-            return 0
-        return self.env["account.move.line"].search_count(self.draft_domain())
+            return {"draft_count": 0, "draft_impact": 0.0}
+        AML = self.env["account.move.line"]
+        query = AML._search(self.draft_domain())
+        share = self.report._share_sql(AML, query.table, query, self.analytic_sets)
+        balance = AML._field_to_sql(query.table, "balance", query)
+        move = AML._field_to_sql(query.table, "move_id", query)
+        count, total = self.env.execute_query(query.select(
+            SQL("COUNT(DISTINCT %s)", move), SQL("COALESCE(SUM(%s * %s), 0)", balance, share)))[0]
+        # The profit is income minus expenses: minus the sum of the balances.
+        return {"draft_count": count, "draft_impact": self.currency.round(-float(total or 0.0))}
 
     def draft_domain(self):
         """The filters of the figures, drafts instead of posted entries, over

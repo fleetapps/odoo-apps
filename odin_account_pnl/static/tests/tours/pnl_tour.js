@@ -134,7 +134,7 @@ registry.category("web_tour.tours").add("odin_account_pnl_flux_tour", {
         { trigger: ".o_odin_pnl_kpi:contains(Revenue)" },
         { trigger: ".o_odin_pnl_tab_cta", run: "click" },
         { trigger: ".o_odin_pnl_table th.o_odin_pnl_flux_col:contains(Variance)" },
-        { trigger: ".o_odin_pnl_kpi:contains(Revenue) .o_odin_pnl_pill_good" },
+        { trigger: ".o_odin_pnl_kpi:contains(Revenue) .o_odin_pnl_kpi_change.o_odin_pnl_good" },
         { trigger: ".o_odin_pnl_tab[data-quick=material]", run: "click" },
         { trigger: ".o_odin_pnl_detail:contains(Accounts)" },
         {
@@ -156,6 +156,21 @@ registry.category("web_tour.tours").add("odin_account_pnl_flux_tour", {
         { trigger: ".o_odin_pnl_tab.active[data-quick=all]" },
         { trigger: ".o_odin_pnl_kpi:contains(Net Profit)", run: "click" },
         { trigger: ".o_odin_pnl_table tr.o_odin_pnl_focus[data-key='L:NET']" },
+        // The × beside Compare takes the comparison off again.
+        { trigger: ".o_odin_pnl_clear_comparison", run: "click" },
+        { trigger: ".o_odin_pnl_table:not(:has(th.o_odin_pnl_flux_col))" },
+        { trigger: ".o_odin_pnl_comparison:contains(None)" },
+        // Filters: a journal picked in the panel shows at once, in the panel
+        // and as a chip under the bar, and the chip's × takes it off.
+        { trigger: ".o_odin_pnl_filter_btn", run: "click" },
+        { trigger: ".o_odin_pnl_fp_pill:first", run: "click" },
+        { trigger: ".o_odin_pnl_fp_pill.active" },
+        { trigger: ".o_odin_pnl_active_chip[data-filter=journals]" },
+        { trigger: ".o_odin_pnl_fp_pill.active", run: "click" },
+        { trigger: ".o_odin_pnl_fp:not(:has(.o_odin_pnl_fp_pill.active))" },
+        { trigger: ".o_odin_pnl_fp_pill:first", run: "click" },
+        { trigger: ".o_odin_pnl_active_chip[data-filter=journals] button", run: "click" },
+        { trigger: ".o_odin_pnl_filters:not(:has(.o_odin_pnl_active_chip))" },
     ],
 });
 
@@ -169,10 +184,24 @@ registry.category("web_tour.tours").add("odin_account_pnl_schedule_tour", {
         { trigger: ".o_odin_pnl_table" },
         { trigger: ".o_odin_pnl_schedule:contains(Schedule)", run: "click" },
         { trigger: ".modal .o_odin_pnl_schedule_summary:contains(Every month on day 2)" },
-        { trigger: ".modal .o_field_widget[name=schedule] input[data-value=weekly]", run: "click" },
+        // The frequency is a segmented control: its labels are what is clicked.
+        { trigger: ".modal .o_field_widget[name=schedule] input[data-value=weekly] + label", run: "click" },
         { trigger: ".modal .o_odin_pnl_schedule_summary:contains(Every Monday)" },
+        // Weekly with Last month: the dialog says the figures would repeat.
+        { trigger: ".modal .o_odin_pnl_sf_callout:contains(stays the same)" },
+        { trigger: ".modal .o_field_widget[name=period_preset] .o_select_menu_toggler", run: "click" },
+        { trigger: ".o_select_menu_item:contains(This month)", run: "click" },
+        { trigger: '.modal .o_field_widget[name=period_preset] input:value("This month")' },
+        { trigger: ".modal:not(:has(.o_odin_pnl_sf_callout:contains(stays the same)))" },
         { trigger: ".modal .o_field_widget[name=recipient_emails] input", run: "edit board@example.com" },
         { trigger: ".modal .o_field_widget[name=subject] input", run: "edit Results for {period}" },
+        // The email as it would go, over the dialog, which stays behind it.
+        { trigger: ".modal .o_odin_pnl_preview_btn", run: "click" },
+        { trigger: ".o_odin_pnl_preview_dialog .o_odin_pnl_mail_subject:contains(Results for)" },
+        { trigger: ".o_odin_pnl_preview_dialog .o_odin_pnl_mail_head:contains(board@example.com)" },
+        { trigger: ".o_odin_pnl_preview_dialog .modal-footer button:contains(Close)", run: "click" },
+        { trigger: "body:not(:has(.o_odin_pnl_preview_dialog))" },
+        { trigger: ".modal .o_odin_pnl_schedule_form" },
         { trigger: ".modal button[name=action_send_test]", run: "click" },
         { trigger: ".o_notification:contains(Test:)" },
         { trigger: ".modal .o_field_widget[name=log_ids] .o_data_row:contains(Test)" },

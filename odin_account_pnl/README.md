@@ -11,29 +11,33 @@ Odoo 19 Community. Depends on `account` and `mail`; no external Python.
 
 *Accounting → Reporting → Statement Reports → Profit & Loss*
 
-The page reads top down: the filters, the headline figures, then the report
-in a card. **Headline figures** are the layout's base line (Revenue), its bold
-subtotals and its net result, each with its change against the comparison
-(green when it helps the profit), its margin on revenue, its budget and, with
-the 12-month trend on, a sparkline; a card shows its line in the table.
+The page reads top down on white: the filters, the headline figures, then
+the report in a card. **Headline figures** are the layout's base line
+(Revenue), its bold subtotals and its net result, each as its name, its amount
+and its change against the comparison (↗ green when it helps the profit, ↘ red
+when not), with its margin on revenue, its budget and, with the 12-month trend
+on, a sparkline; a card shows its line in the table.
 
-The filters read as *label | value* (Compare | Previous period, Journals |
-All…), the value highlighted when it is not the default. They follow
-Enterprise's order:
+The bar is one row: the period, then *label | value* controls (Compare |
+Previous period, Budget | None, Detail | Lines), the value highlighted when it
+is not the default. Compare and Budget carry an **×** that takes them off
+again. **Filters** opens one panel for what narrows the journal items:
+journals as toggles, partners and analytic accounts as pickers, posted or
+draft entries. The filters in force show under the bar as chips, each with its
+×, and *Clear all*.
 
-| Chip | What it does |
+| Control | What it does |
 |---|---|
 | 📅 Period | Last month by default, as Enterprise. This/last month, quarter, fiscal year (the company's fiscal year end), fiscal year to date or any dates. ◀ ▶ step to the previous or next period. *Divide into* months or quarters shows one column per period plus a total. |
 | % Comparison | No comparison, previous period(s), same period last year(s), or custom, up to 12 periods. A growth % column turns green when the change is good for that line (more revenue, fewer costs). *Columns*: a **Year to date** column beside the period (from the fiscal year start, with its own budget), and, with several companies selected, **Companies side by side**: one column per company and their total, as Odoo's horizontal groups for a group's P&L. |
-| Journals, Analytic, Partners | Narrow the journal items. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
-| Entries | Posted only, or with drafts. |
+| Filters | Journals, partners, analytic accounts, and posted only or with drafts. The analytic filter **prorates**: a bill split 60/40 between two departments counts 60% in the first. |
 | Detail | How far the whole report unfolds, on screen and in the PDF, the Excel and the scheduled emails: *Lines* (the summary), *Accounts* (every account under its line) or *Every transaction* (every journal item under its account, with totals: the "P&L detail" accountants ask for). |
 | Budget | Adds Budget, Variance (actual minus budget, green when it helps the profit) and % achieved columns; amounts are typed into the report. |
-| Display (⚙) | Units with or without decimals, thousands or millions, negatives in brackets; hide lines at 0, account codes, account groups, % of revenue, 12-month trend. |
+| Display (⚙) | The layout (with more than one), units with or without decimals, thousands or millions, negatives in brackets; hide lines at 0, account codes, account groups, % of revenue, 12-month trend. |
 
 Unfolding happens in place: a line opens on its accounts, an account on its
 journal items, and every journal item opens its document (invoice, bill,
-payment or entry) in the side panel. Rows are comfortable or compact (the
+payment or entry) in the side panel. Rows are compact, or comfortable (the
 toggle above the table, remembered per browser).
 
 **Flux analysis.** With a comparison, every line, subtotal, account and split
@@ -139,21 +143,31 @@ A view can be shared with the team and made one's default.
 
 **Schedule.** *Schedule*, beside *★ Views*, opens the schedule of the view on
 screen (on a page that is not one of the user's views, a new view of the page
-as it is, monthly to begin with). An accountant picks:
+as it is, monthly to begin with). The dialog opens on where the schedule
+stands (*Scheduled*, with the next email in the schedule's own time zone and
+*Pause*; *Paused*, with *Resume*; or the last failure), then the name and what
+the report shows, then four steps:
 
-* when: every day, every weekday (Monday to Friday), every week on a day,
-  every month or every quarter (January, April, July, October) on a day, at
-  an hour of the owner's time zone; the dialog says it in words and gives the
-  next sending time;
-* to whom: contacts and other addresses, each once;
-* what: a subject (empty: "Profit & Loss · Oct 2026"; `{title}`, `{period}`
-  and `{company}` are replaced), a note, the PDF and/or the Excel file, and
-  the key figures in the email body (headline figures and the lines with
-  their change, readable on a phone) or the attachments only.
+1. **When**: daily, weekdays (Monday to Friday), weekly on a day, monthly or
+   quarterly (January, April, July, October) on a day, at an hour of the
+   owner's time zone, said back in words.
+2. **Report**: the period, worked out again for each email (Last month,
+   This quarter…). Fixed dates are flagged, and a period that does not fit the
+   frequency gets a tip: a weekly email of Last month sends the same month
+   four times, a quarterly one of Last month leaves two months out.
+   Attach the PDF and/or the Excel file, and the key figures in the email
+   body (headline figures and the lines with their change, readable on a
+   phone) or not.
+3. **Recipients**: contacts and other addresses, each once; the dialog says
+   who the email is from and where replies go.
+4. **Message**: a subject (empty: "Profit & Loss · Oct 2026"; `{title}`,
+   `{period}` and `{company}` are filled in) and a note. *Preview the email*
+   shows it as the recipients will get it (from, to, subject, attachments,
+   body) over the dialog, sending nothing.
 
-*Send me a test* sends the email to oneself, marked [Test], without touching
-the schedule; *Send now* sends it to the recipients; *Pause* keeps the
-schedule as set up without sending. Every send is kept in the view's
+*Save*; *Send me a test* sends the email to oneself, marked [Test], without
+touching the schedule; *Send now* asks first, then sends it to the
+recipients; *Pause* keeps the schedule as set up without sending. Every send is kept in the view's
 **History** (when, scheduled / sent now / test, the outcome). Three scheduled
 sends failing in a row pause the schedule, and the Schedule button and the
 views list say so, rather than failing silently every period. The button
@@ -171,8 +185,10 @@ view's owner: recipients never get more than the owner can see.
 schedule, next email and last outcome (filters: emailed, paused, failing).
 
 **Year-end review.** When only posted entries are counted, the report says how
-many draft journal items of the period it leaves out, with *Include drafts* and
-*Review them*. Appropriation of the profit (current year earnings accounts:
+many draft entries of the period it leaves out and what posting them would do
+to the net profit (with the analytic share, under an analytic filter), with
+*Review and post* (those entries, in the Journal Entries list, to post) and
+*Include in the figures*. Appropriation of the profit (current year earnings accounts:
 reserves, dividends) shows below Net Profit, as Odoo 19 presents it, without
 changing it; only a layout line that names that account type reports them.
 

@@ -9,4 +9,5 @@ from . import test_panel
 from . import test_export
 from . import test_flux
 from . import test_views
+from . import test_assets
 from . import test_tour

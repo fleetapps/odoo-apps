@@ -63,14 +63,36 @@ def _server_reply(reason):
     return lines[-1] if lines else ""
 
 
+# Short: they are the segments of the dialog's frequency control. The
+# schedule reads in full in schedule_summary.
 SCHEDULES = [
     ("none", "Off"),
-    ("daily", "Every day"),
-    ("weekdays", "Every weekday"),
-    ("weekly", "Every week"),
-    ("monthly", "Every month"),
-    ("quarterly", "Every quarter"),
+    ("daily", "Daily"),
+    ("weekdays", "Weekdays"),
+    ("weekly", "Weekly"),
+    ("monthly", "Monthly"),
+    ("quarterly", "Quarterly"),
 ]
+# The report periods a view can email, as the P&L's period menu names them.
+PERIODS = [
+    ("previous_month", "Last month"),
+    ("this_month", "This month"),
+    ("previous_quarter", "Last quarter"),
+    ("this_quarter", "This quarter"),
+    ("previous_year", "Last financial year"),
+    ("this_year", "This financial year"),
+    ("year_to_date", "Financial year to date"),
+    ("custom", "Fixed dates, as saved"),
+]
+# Closed periods and their length in months: emailed more often than that,
+# the same figures go out again; less often, periods are missed.
+CLOSED_PERIODS = {"previous_month": 1, "previous_quarter": 3, "previous_year": 12}
+SCHEDULE_MONTHS = {"daily": 0, "weekdays": 0, "weekly": 0, "monthly": 1, "quarterly": 3}
+# What suits each frequency, for the hint.
+SUITED_PERIOD = {
+    "daily": "this_month", "weekdays": "this_month", "weekly": "this_month",
+    "monthly": "previous_month", "quarterly": "previous_quarter",
+}
 WEEKDAYS = [
     ("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"), ("3", "Thursday"),
     ("4", "Friday"), ("5", "Saturday"), ("6", "Sunday"),
@@ -130,9 +152,13 @@ class OdinPnlView(models.Model):
     # default, so a view with no stored options is simply the default P&L.
     options = fields.Json(default=lambda self: {})
     period_rule = fields.Char(string="Period", compute="_compute_period_rule")
+    period_preset = fields.Selection(
+        PERIODS, string="Report period", compute="_compute_period_preset", inverse="_inverse_period_preset",
+        help="Worked out again for every email: Last month is always the month just closed.")
     period_is_fixed = fields.Boolean(
-        compute="_compute_period_rule",
+        compute="_compute_period_is_fixed",
         help="The view shows dates typed by hand, so every email carries the same dates.")
+    report_summary = fields.Char(compute="_compute_report_summary", help="What else the report shows.")
 
     schedule = fields.Selection(SCHEDULES, string="Send", required=True, default="none")
     schedule_paused = fields.Boolean(string="Paused", help="Kept as set up, but not sent until resumed.")
@@ -142,6 +168,13 @@ class OdinPnlView(models.Model):
         HOURS, string="At", required=True, default=str(DEFAULT_HOUR),
         help="In the owner's time zone.")
     schedule_summary = fields.Char(compute="_compute_schedule_summary")
+    schedule_state = fields.Selection(
+        [("none", "Not scheduled"), ("active", "Scheduled"), ("paused", "Paused"), ("failing", "Failing")],
+        compute="_compute_schedule_state")
+    schedule_hint = fields.Char(compute="_compute_schedule_hint")
+    owner_tz = fields.Char(string="Time zone", compute="_compute_owner_tz")
+    next_send_label = fields.Char(string="Next email", compute="_compute_next_send_label")
+    sender_note = fields.Char(compute="_compute_sender_note")
     recipient_ids = fields.Many2many("res.partner", string="Recipients")
     recipient_emails = fields.Char(string="Other emails", help="Comma-separated addresses.")
     subject = fields.Char(
@@ -180,7 +213,103 @@ class OdinPnlView(models.Model):
             preset = date_opt.get("filter") or (periods.DEFAULT_PRESET if not date_opt else None)
             view.period_rule = labels.get(preset) or _(
                 "%(start)s to %(end)s", start=date_opt.get("date_from"), end=date_opt.get("date_to"))
-            view.period_is_fixed = preset not in labels
+
+    @api.depends("options")
+    def _compute_period_preset(self):
+        presets = dict(PERIODS)
+        for view in self:
+            date_opt = (view.options or {}).get("date") or {}
+            preset = date_opt.get("filter") or (periods.DEFAULT_PRESET if not date_opt else "custom")
+            view.period_preset = preset if preset in presets else "custom"
+
+    def _inverse_period_preset(self):
+        for view in self:
+            if view.period_preset and view.period_preset != "custom":
+                # A new dict: Json fields are written when they are assigned.
+                options = dict(view.options or {})
+                options["date"] = {"filter": view.period_preset}
+                view.options = options
+
+    @api.depends("period_preset")
+    def _compute_period_is_fixed(self):
+        for view in self:
+            view.period_is_fixed = view.period_preset == "custom"
+
+    @api.depends("options")
+    def _compute_report_summary(self):
+        Report = self.env["odin.pnl.report"]
+        Export = self.env["odin.pnl.export"]
+        for view in self:
+            try:
+                normalized = Report._normalize_options(view.options or {})
+                text = Export._filters_text(normalized)
+                view.report_summary = text[:1].upper() + text[1:] if text else False
+            except (UserError, AccessError):
+                view.report_summary = False
+
+    @api.depends("schedule", "schedule_paused", "last_failed")
+    def _compute_schedule_state(self):
+        for view in self:
+            if view.schedule == "none" or not view.id:
+                view.schedule_state = "none"
+            elif view.schedule_paused:
+                view.schedule_state = "paused"
+            elif view.last_failed:
+                view.schedule_state = "failing"
+            else:
+                view.schedule_state = "active"
+
+    @api.depends("schedule", "period_preset")
+    def _compute_schedule_hint(self):
+        """A period that does not fit the frequency: a closed period longer
+        than the interval goes out again unchanged, a shorter one leaves
+        periods out."""
+        periods_labels = dict(self._fields["period_preset"]._description_selection(self.env))
+        for view in self:
+            hint = False
+            length = CLOSED_PERIODS.get(view.period_preset)
+            interval = SCHEDULE_MONTHS.get(view.schedule)
+            suited = SUITED_PERIOD.get(view.schedule)
+            if length and interval is not None and suited and suited != view.period_preset:
+                if length > interval:
+                    hint = _("%(period)s stays the same for several emails in a row. %(suited)s suits this "
+                             "frequency.", period=periods_labels[view.period_preset], suited=periods_labels[suited])
+                elif length < interval:
+                    hint = _("Sent every %(months)s months, %(period)s leaves months out. %(suited)s covers "
+                             "them all.", months=interval, period=periods_labels[view.period_preset],
+                             suited=periods_labels[suited])
+            view.schedule_hint = hint
+
+    @api.depends("next_send", "user_id.tz", "user_id.lang")
+    def _compute_next_send_label(self):
+        """The next sending time in the schedule's own time zone, the one its
+        hour is set in, rather than in the browser's."""
+        for view in self:
+            if not view.next_send:
+                view.next_send_label = False
+                continue
+            tz = view.user_id.tz or "UTC"
+            view.next_send_label = _("%(when)s, %(tz)s time", when=format_datetime(
+                view.env, view.next_send, tz=tz, dt_format="EEE d MMM yyyy, HH:mm"), tz=tz)
+
+    @api.depends("user_id.tz")
+    def _compute_owner_tz(self):
+        for view in self:
+            view.owner_tz = view.user_id.tz or "UTC"
+
+    @api.depends("user_id", "company_id")
+    def _compute_sender_note(self):
+        for view in self:
+            owner = view.user_id or self.env.user
+            # Names without formataddr's quotes: read by a person, not a mailer.
+            reply_to = (owner.email_formatted or view.company_id.email_formatted or "").replace('"', "")
+            sender = (view._sender(owner) or "").replace('"', "") if view.company_id else False
+            if sender and reply_to:
+                view.sender_note = _("From %(sender)s. Replies go to %(reply_to)s.", sender=sender, reply_to=reply_to)
+            elif sender:
+                view.sender_note = _("From %(sender)s.", sender=sender)
+            else:
+                view.sender_note = False
 
     @api.depends("schedule", "schedule_paused", "send_weekday", "send_day", "send_hour", "user_id.tz", "last_sent")
     def _compute_next_send(self):
@@ -395,19 +524,46 @@ class OdinPnlView(models.Model):
             template = template.replace(token, value or "")
         return template
 
+    def _owner_env(self):
+        """The environment the email is computed in: the owner's, in the
+        view's companies, so it never shows more than the owner may see."""
+        self.ensure_one()
+        owner = self.user_id
+        if not owner.active or not owner.has_group("account.group_account_readonly"):
+            raise UserError(_("%(owner)s can no longer see the P&L.", owner=owner.name))
+        companies = [self.company_id.id] + [cid for cid in self.company_ids.ids if cid != self.company_id.id]
+        return self.with_user(owner).with_context(
+            allowed_company_ids=companies, lang=owner.lang, tz=owner.tz).env
+
+    def get_email_preview(self):
+        """The email as it would go now, for the Schedule dialog's preview:
+        its From, Reply-To, To, subject, attachments and body. Nothing is
+        sent and no file is rendered."""
+        self.ensure_one()
+        self._check_owner()
+        owner = self.user_id
+        Export = self._owner_env()["odin.pnl.export"]
+        payload = Export._payload(self._live_options())
+        name = Export._filename(payload)
+        attached = [f"{name}.pdf"] * bool(self.send_pdf) + [f"{name}.xlsx"] * bool(self.send_xlsx)
+        return {
+            "from": (self._sender(owner) or "").replace('"', ""),
+            "reply_to": (owner.email_formatted or self.company_id.email_formatted or "").replace('"', ""),
+            "to": self._recipient_emails(),
+            "subject": self._subject(payload),
+            "attachments": attached,
+            "html": str(self._email_body(payload, attached=attached)),
+        }
+
     def _send(self, emails=None, test=False):
         """Render as the owner, in the view's company, and send the email:
         ``(state, failure reason)`` of the mail, see ``_deliver``."""
         self.ensure_one()
         owner = self.user_id
-        if not owner.active or not owner.has_group("account.group_account_readonly"):
-            raise UserError(_("%(owner)s can no longer see the P&L.", owner=owner.name))
+        env = self._owner_env()
         emails = emails or self._recipient_emails()
         if not emails:
             raise UserError(_("Add at least one recipient with an email address."))
-        companies = [self.company_id.id] + [cid for cid in self.company_ids.ids if cid != self.company_id.id]
-        env = self.with_user(owner).with_context(
-            allowed_company_ids=companies, lang=owner.lang, tz=owner.tz).env
         options = self._live_options()
         Export = env["odin.pnl.export"]
         payload = Export._payload(options)
@@ -557,7 +713,7 @@ class OdinPnlView(models.Model):
             '<tr><td style="padding:8px 28px 24px">{notes}'
             '<p style="margin:0;color:{muted};font-size:12px">{footer}</p>'
             "</td></tr>"
-            "</table></div>"
+            "</table></div>",
         ).format(
             ink=INK, rule=RULE, muted=MUTED, button=button,
             company=payload["company"],
@@ -583,7 +739,7 @@ class OdinPnlView(models.Model):
             color, background = GOOD if good else BAD
         return Markup(
             '<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;'
-            'font-weight:600;color:{color};background:{background};white-space:nowrap">{text}</span>'
+            'font-weight:600;color:{color};background:{background};white-space:nowrap">{text}</span>',
         ).format(color=color, background=background, text=text)
 
     def _email_kpis(self, kpis, comparison_label):
@@ -607,7 +763,7 @@ class OdinPnlView(models.Model):
                 '<div style="border:1px solid {rule};border-radius:10px;padding:12px 14px">'
                 '<div style="color:{muted};font-size:12px">{name}</div>'
                 '<div style="font-size:18px;font-weight:700;margin-top:2px;white-space:nowrap">{value}</div>'
-                "{change}{margin}</div></td>"
+                "{change}{margin}</div></td>",
             ).format(width=width, rule=RULE, muted=MUTED, name=kpi["name"], value=kpi.get("text") or "-",
                      change=change, margin=margin))
         return Markup(
@@ -648,7 +804,7 @@ class OdinPnlView(models.Model):
         return Markup(
             '<tr><td style="padding:16px 28px 0"><table role="presentation" cellpadding="0" cellspacing="0" '
             'width="100%" style="border-collapse:collapse;font-size:13px"><thead><tr>{header}</tr></thead>'
-            "<tbody>{lines}</tbody></table></td></tr>"
+            "<tbody>{lines}</tbody></table></td></tr>",
         ).format(header=Markup("").join(header), lines=Markup("").join(lines))
 
     # ------------------------------------------------------------------

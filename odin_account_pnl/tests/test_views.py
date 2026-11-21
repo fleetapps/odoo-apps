@@ -335,3 +335,65 @@ class TestViews(PnlCase):
         self.assertFalse(listed["paused"])
         self.assertEqual(listed["status"], "Not sent: nope")
         self.assertTrue(listed["schedule"].startswith("Every day"))
+
+    # ---- the Schedule dialog -------------------------------------------------
+
+    def test_the_report_period_is_chosen_in_the_dialog(self):
+        view = self._schedule()
+        self.assertEqual(view.period_preset, "custom", "the fixture's dates were typed")
+        self.assertTrue(view.period_is_fixed)
+        view.write({"period_preset": "previous_quarter"})
+        self.assertEqual(view.options["date"], {"filter": "previous_quarter"})
+        self.assertFalse(view.period_is_fixed)
+        self.assertEqual(view.period_rule, "Last quarter")
+        # The rest of the view is kept.
+        self.assertFalse(view.options["trend"])
+
+    def test_the_period_is_matched_to_the_frequency(self):
+        view = self._schedule()
+        view.write({"period_preset": "previous_month", "schedule": "weekly"})
+        self.assertIn("stays the same for several emails", view.schedule_hint)
+        view.write({"schedule": "monthly"})
+        self.assertFalse(view.schedule_hint, "last month, monthly: as it should be")
+        view.write({"schedule": "quarterly"})
+        self.assertIn("leaves months out", view.schedule_hint)
+        view.write({"period_preset": "year_to_date", "schedule": "daily"})
+        self.assertFalse(view.schedule_hint, "a period that moves with the calendar suits any frequency")
+
+    def test_the_dialog_says_where_the_schedule_stands(self):
+        self.accountant.tz = "Africa/Nairobi"
+        view = self._schedule()
+        self.assertEqual(view.schedule_state, "active")
+        self.assertTrue(view.next_send_label.endswith("Africa/Nairobi time"))
+        view.with_user(self.accountant).action_toggle_pause()
+        self.assertEqual(view.schedule_state, "paused")
+        self.assertFalse(view.next_send_label)
+        view.sudo().write({"schedule_paused": False, "last_failed": True})
+        self.assertEqual(view.schedule_state, "failing")
+        self.assertEqual(self.env["odin.pnl.view"].new({"schedule": "monthly"}).schedule_state, "none",
+                         "a schedule not saved yet has no state to show")
+
+    def test_the_preview_shows_the_email_without_sending_it(self):
+        view = self._schedule()
+        view.write({"subject": "{period} results", "send_xlsx": True})
+        attachments = self.env["ir.attachment"].search_count([("res_model", "=", "odin.pnl.view")])
+        preview = view.with_user(self.accountant).get_email_preview()
+        self.assertEqual(preview["subject"], "Sep 2026 results")
+        self.assertEqual(preview["to"], ["boss@example.com"])
+        self.assertEqual([name.rsplit(".", 1)[1] for name in preview["attachments"]], ["pdf", "xlsx"])
+        self.assertTrue(preview["attachments"][0].startswith("Profit & Loss"), "the & is kept in file names")
+        self.assertIn("1,000.00", preview["html"])
+        self.assertFalse(self._mails(), "nothing was sent")
+        self.assertEqual(self.env["ir.attachment"].search_count([("res_model", "=", "odin.pnl.view")]), attachments,
+                         "and no file was made")
+        self.assertNotIn('"', preview["from"] + preview["reply_to"])
+        with self.assertRaises(AccessError):
+            view.with_user(self.colleague).get_email_preview()
+
+    def test_the_dialog_says_what_the_report_shows_and_who_it_is_from(self):
+        view = self._schedule()
+        view.write({"options": self.options(comparison={"mode": "previous_period", "periods": 1}, detail="accounts")})
+        self.assertEqual(view.report_summary,
+                         "Compared with the previous period; posted entries; every account")
+        self.assertIn("Replies go to", view.sender_note)
+        self.assertIn("accountant@example.com", view.sender_note)

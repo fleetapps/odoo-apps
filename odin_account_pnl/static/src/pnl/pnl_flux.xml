@@ -11,31 +11,30 @@
                     t-on-click="() => props.onSelect(kpi.key)">
                 <div class="o_odin_pnl_kpi_head">
                     <span class="o_odin_pnl_kpi_name" t-esc="kpi.name"/>
-                    <span t-if="kpi.margin !== null and kpi.margin !== undefined" class="o_odin_pnl_kpi_margin"
-                          data-tooltip="Margin on revenue">
-                        <t t-esc="formatPercent(kpi.margin)"/> margin
-                    </span>
-                    <span t-elif="kpi.total" class="o_odin_pnl_kpi_period" t-esc="kpi.column_label"/>
-                </div>
-                <div class="o_odin_pnl_kpi_value" t-esc="props.fmt(kpi.value)"/>
-                <div class="o_odin_pnl_kpi_meta">
-                    <t t-if="kpi.previous_label">
-                        <span class="o_odin_pnl_pill" t-att-class="tone(kpi)">
-                            <i t-attf-class="fa {{arrow(kpi)}}" aria-hidden="true"/>
-                            <t t-esc="change(kpi) || '0%'"/>
-                        </span>
-                        <span class="o_odin_pnl_kpi_vs">vs <t t-esc="kpi.previous_label"/></span>
-                    </t>
-                    <span t-elif="!kpi.total" class="o_odin_pnl_kpi_vs" t-esc="kpi.column_label"/>
-                    <span t-if="kpi.budget_pct !== null and kpi.budget_pct !== undefined" class="o_odin_pnl_kpi_vs">
+                    <span t-if="kpi.margin !== null and kpi.margin !== undefined" class="o_odin_pnl_kpi_aside"
+                          data-tooltip="Margin on revenue"><t t-esc="formatPercent(kpi.margin)"/> margin</span>
+                    <span t-elif="kpi.budget_pct !== null and kpi.budget_pct !== undefined" class="o_odin_pnl_kpi_aside">
                         <t t-esc="formatPercent(kpi.budget_pct)"/> of budget
                     </span>
+                    <span t-elif="kpi.total" class="o_odin_pnl_kpi_aside" t-esc="kpi.column_label"/>
                 </div>
-                <svg t-if="kpi.trend and kpi.trend.length > 1" class="o_odin_pnl_kpi_spark" viewBox="0 0 120 28"
-                     preserveAspectRatio="none" aria-hidden="true">
-                    <polyline t-att-points="sparkPoints(kpi.trend, 120, 28)" fill="none" stroke="currentColor"
-                              stroke-width="1.5" vector-effect="non-scaling-stroke"/>
-                </svg>
+                <div class="o_odin_pnl_kpi_body">
+                    <span class="o_odin_pnl_kpi_value">
+                        <span t-if="props.currency.position !== 'after'" class="o_odin_pnl_kpi_currency o_odin_pnl_kpi_currency_before" t-esc="props.currency.symbol"/>
+                        <t t-esc="props.fmt(kpi.value)"/>
+                        <span t-if="props.currency.position === 'after'" class="o_odin_pnl_kpi_currency o_odin_pnl_kpi_currency_after" t-esc="props.currency.symbol"/>
+                    </span>
+                    <span t-if="kpi.previous_label" class="o_odin_pnl_kpi_change" t-att-class="toneClass(kpi)"
+                          t-att-data-tooltip="versus(kpi)" t-att-aria-label="versus(kpi)">
+                        <i class="fa fa-arrow-up o_odin_pnl_kpi_arrow" t-att-class="arrowClass(kpi)" aria-hidden="true"/>
+                        <t t-esc="change(kpi) || '0%'"/>
+                    </span>
+                    <svg t-if="kpi.trend and kpi.trend.length > 1" class="o_odin_pnl_kpi_spark" viewBox="0 0 64 20"
+                         preserveAspectRatio="none" aria-hidden="true">
+                        <polyline t-att-points="sparkPoints(kpi.trend, 64, 20)" fill="none" stroke="currentColor"
+                                  stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+                    </svg>
+                </div>
             </button>
         </div>
     </t>

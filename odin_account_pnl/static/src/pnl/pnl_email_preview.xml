@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="odin_account_pnl.EmailPreviewButton">
+        <button type="button" class="btn btn-link p-0 o_odin_pnl_preview_btn" t-att-disabled="state.loading"
+                t-on-click="open">
+            <i class="fa me-1" t-att-class="state.loading ? 'fa-circle-o-notch fa-spin' : 'fa-eye'" aria-hidden="true"/>
+            Preview the email
+        </button>
+    </t>
+
+    <t t-name="odin_account_pnl.EmailPreviewDialog">
+        <Dialog title.translate="Email preview" size="'lg'" contentClass="'o_odin_pnl_preview_dialog'">
+            <dl class="o_odin_pnl_mail_head">
+                <dt>From</dt>
+                <dd t-esc="props.preview.from"/>
+                <dt>Reply to</dt>
+                <dd t-esc="props.preview.reply_to"/>
+                <dt>To</dt>
+                <dd>
+                    <t t-if="props.preview.to.length" t-esc="props.preview.to.join(', ')"/>
+                    <span t-else="" class="text-muted">No recipients yet</span>
+                </dd>
+                <dt>Subject</dt>
+                <dd class="o_odin_pnl_mail_subject" t-esc="props.preview.subject"/>
+                <t t-if="props.preview.attachments.length">
+                    <dt>Attached</dt>
+                    <dd class="d-flex flex-wrap gap-1">
+                        <span t-foreach="props.preview.attachments" t-as="file" t-key="file_index" class="o_odin_pnl_mail_file">
+                            <i class="fa me-1" t-att-class="file.endsWith('.pdf') ? 'fa-file-pdf-o' : 'fa-file-excel-o'" aria-hidden="true"/>
+                            <t t-esc="file"/>
+                        </span>
+                    </dd>
+                </t>
+            </dl>
+            <iframe class="o_odin_pnl_mail_frame" sandbox="" t-att-srcdoc="props.preview.html" title="Email body"/>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-on-click="props.close">Close</button>
+            </t>
+        </Dialog>
+    </t>
+
+</templates>

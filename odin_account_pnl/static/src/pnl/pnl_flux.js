@@ -16,6 +16,8 @@ export class PnlKpis extends Component {
     static props = {
         kpis: Array,
         fmt: Function,
+        // { symbol, position: "before" | "after" }, as res.currency has them.
+        currency: Object,
         focusKey: { optional: true },
         onSelect: Function,
     };
@@ -26,11 +28,24 @@ export class PnlKpis extends Component {
         this.sparkPoints = sparkPoints;
     }
 
-    tone(kpi) {
+    /** Green when the change helps the profit, red when not. */
+    toneClass(kpi) {
         if (kpi.growth_good === null || kpi.growth_good === undefined) {
-            return "o_odin_pnl_pill_neutral";
+            return "o_odin_pnl_kpi_flat";
         }
-        return kpi.growth_good ? "o_odin_pnl_pill_good" : "o_odin_pnl_pill_bad";
+        return kpi.growth_good ? "o_odin_pnl_good" : "o_odin_pnl_bad";
+    }
+
+    /** ↗ up, ↘ down, → no change: the direction, whatever its colour. */
+    arrowClass(kpi) {
+        if (!kpi.variance) {
+            return "o_odin_pnl_kpi_arrow_flat";
+        }
+        return kpi.variance > 0 ? "o_odin_pnl_kpi_arrow_up" : "o_odin_pnl_kpi_arrow_down";
+    }
+
+    versus(kpi) {
+        return _t("Against %s", kpi.previous_label);
     }
 
     /** "+12.5%", or the amount when there was nothing before. */
@@ -45,20 +60,6 @@ export class PnlKpis extends Component {
         return "";
     }
 
-    arrow(kpi) {
-        if (!kpi.variance) {
-            return "fa-minus";
-        }
-        return kpi.variance > 0 ? "fa-caret-up" : "fa-caret-down";
-    }
-
-    budgetClass(kpi) {
-        if (kpi.budget_pct === null || kpi.budget_pct === undefined) {
-            return "";
-        }
-        const good = kpi.growth_good === null ? kpi.budget_pct >= 100 : null;
-        return good === false ? "o_odin_pnl_bad" : "";
-    }
 }
 
 /**

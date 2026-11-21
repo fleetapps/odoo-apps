@@ -250,7 +250,9 @@ class OdinPnlExport(models.AbstractModel):
         return "; ".join(parts)
 
     def _filename(self, payload):
-        safe = "".join(char if char.isalnum() or char in " -_" else "_" for char in
+        # Letters, digits and a few signs every file system keeps: "Profit &
+        # Loss Oct 2026", not "Profit _ Loss"; slashes and the like go.
+        safe = "".join(char if char.isalnum() or char in " -_&()," else "_" for char in
                        f"{payload['title']} {payload['period']}")
         return " ".join(safe.split())[:120]
 

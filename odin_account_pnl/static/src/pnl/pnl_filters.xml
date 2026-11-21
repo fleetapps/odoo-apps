@@ -195,7 +195,7 @@
                                             t-att-data-tooltip="journal.code"
                                             t-on-click="() => this.toggleJournal(journal.id)">
                                         <i t-if="options.journal_ids.includes(journal.id)" class="fa fa-check" aria-hidden="true"/>
-                                        <t t-esc="journal.name"/>
+                                        <t t-esc="journal.label"/>
                                     </button>
                                 </div>
                             </div>

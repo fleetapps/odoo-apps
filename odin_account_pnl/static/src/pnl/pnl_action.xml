@@ -62,14 +62,18 @@
                                 <!-- Year-end checklist: drafts in the period are not in the figures. -->
                                 <div t-if="state.data.draft_count" class="o_odin_pnl_drafts o_odin_pnl_notice o_odin_pnl_notice_warning" role="note">
                                     <i class="fa fa-pencil-square-o" aria-hidden="true"/>
-                                    <span>
-                                        <t t-esc="state.data.draft_count"/> draft journal item(s) in this period are not counted.
+                                    <span class="o_odin_pnl_drafts_text">
+                                        <strong t-esc="draftNotice.title"/>
+                                        <span t-if="draftNotice.impact" class="o_odin_pnl_drafts_impact" t-esc="draftNotice.impact"/>
                                     </span>
-                                    <span class="ms-auto d-flex gap-3">
-                                        <button class="btn btn-link btn-sm p-0" t-on-click="() => this.changeOptions({ include_draft: true })">
-                                            Include drafts
+                                    <span class="ms-auto d-flex gap-3 flex-shrink-0">
+                                        <button class="btn btn-link btn-sm p-0 o_odin_pnl_drafts_review" t-on-click="openDrafts">
+                                            Review and post
                                         </button>
-                                        <button class="btn btn-link btn-sm p-0" t-on-click="openDrafts">Review them</button>
+                                        <button class="btn btn-link btn-sm p-0 o_odin_pnl_drafts_include"
+                                                t-on-click="() => this.changeOptions({ include_draft: true })">
+                                            Include in the figures
+                                        </button>
                                     </span>
                                 </div>
                                 <div t-if="state.data.warnings.length" class="o_odin_pnl_warnings">
@@ -91,7 +95,7 @@
                                     <button class="btn btn-link btn-sm ms-auto p-0" aria-label="Dismiss the tip"
                                             t-on-click="dismissTip"><i class="fa fa-times"/></button>
                                 </div>
-                                <PnlKpis t-if="kpis.length" kpis="kpis" fmt.bind="fmt" focusKey="state.focusKey"
+                                <PnlKpis t-if="kpis.length" kpis="kpis" fmt.bind="fmt" currency="state.data.currency" focusKey="state.focusKey"
                                          onSelect.bind="focusLine"/>
                                 <section class="o_odin_pnl_card">
                                     <t t-call="odin_account_pnl.PnlCardHead"/>
