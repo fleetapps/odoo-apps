@@ -13,7 +13,7 @@ by partner, product, month, journal or analytic account, peek at the source
 document beside the report, compare periods, type a budget straight into the
 report, and save views that are emailed on a schedule. See README.md.
 """,
-    "version": "19.0.1.3.0",
+    "version": "19.0.1.4.0",
     "category": "Accounting/Accounting",
     "author": "Fleet Apps",
     "license": "GPL-3",
