@@ -2,6 +2,8 @@
 
 The store's MOVEMENT LOG and MAIN INVENTORY sheets, inside Odoo 19, on one page
 with a tab per month. Named *Stock Book* so it sits beside Odoo's Inventory app.
+Four views, switched at the top right as Odoo switches its own: Movements, Stock
+sheet, Count and Out for recipes.
 
 ## Movements
 
@@ -217,7 +219,7 @@ Shift to Data-Driven Income and Expense Validation* (2026).
 
 Each opens what it counts, says what those lines are, and offers the next step.
 
-* **Needs something**: the lines missing a detail. A line's status is a button
+* **Missing details**: the lines missing a detail. A line's status is a button
   that goes to what is missing.
 * **Short**: the lines using more than is on hand, and each item short by how
   much, with *Buy* or *Make*, and *Count*.

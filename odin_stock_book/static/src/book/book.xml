@@ -38,6 +38,17 @@
                         </span>
                     </div>
                 </t>
+                <!-- View switch, like the sheet tabs of the workbook: top right,
+                     where Odoo keeps its own view switcher. aria-selected is
+                     spelled out: OWL writes true as an empty attribute. -->
+                <t t-set-slot="control-panel-navigation-additional">
+                    <div t-if="!state.loading and !(state.view === 'log' and state.book and state.book.empty)" class="o_sb_views d-print-none" role="tablist" aria-label="Views">
+                        <button role="tab" t-att-aria-selected="state.view === 'log' ? 'true' : 'false'" t-on-click="() => this.setView('log')"><i class="fa fa-list-ul" aria-hidden="true"/><span>Movements</span></button>
+                        <button role="tab" t-att-aria-selected="state.view === 'sheet' ? 'true' : 'false'" t-on-click="() => this.setView('sheet')"><i class="fa fa-table" aria-hidden="true"/><span>Stock sheet</span></button>
+                        <button role="tab" t-att-aria-selected="state.view === 'count' ? 'true' : 'false'" t-on-click="() => this.setView('count')"><i class="fa fa-check-square-o" aria-hidden="true"/><span>Count</span></button>
+                        <button role="tab" t-att-aria-selected="state.view === 'recipes' ? 'true' : 'false'" t-on-click="() => this.setView('recipes')"><i class="fa fa-flask" aria-hidden="true"/><span>Out for recipes</span></button>
+                    </div>
+                </t>
 
                 <div t-if="state.loading" class="o_sb_loading text-muted"><i class="fa fa-circle-o-notch fa-spin fa-2x"/></div>
                 <div t-elif="state.view === 'log' and state.book and state.book.empty" class="o_sb_empty">
@@ -45,13 +56,6 @@
                     <p class="text-muted">Create a warehouse in Inventory, then the Stock Book opens here.</p>
                 </div>
                 <t t-else="">
-                    <!-- View switch, like the sheet tabs at the top of the workbook -->
-                    <div class="o_sb_views" role="tablist">
-                        <button role="tab" t-att-aria-selected="state.view === 'log'" t-on-click="() => this.setView('log')"><i class="fa fa-list-ul me-1"/>Movements</button>
-                        <button role="tab" t-att-aria-selected="state.view === 'sheet'" t-on-click="() => this.setView('sheet')"><i class="fa fa-table me-1"/>Stock sheet</button>
-                        <button role="tab" t-att-aria-selected="state.view === 'count'" t-on-click="() => this.setView('count')"><i class="fa fa-check-square-o me-1"/>Count</button>
-                        <button role="tab" t-att-aria-selected="state.view === 'recipes'" t-on-click="() => this.setView('recipes')"><i class="fa fa-flask me-1"/>Out for recipes</button>
-                    </div>
                     <t t-if="state.view === 'log' and state.book" t-call="odin_stock_book.Movements"/>
                     <t t-elif="state.view === 'sheet' and state.sheet" t-call="odin_stock_book.Sheet"/>
                     <t t-elif="state.view === 'count' and state.count" t-call="odin_stock_book.Count"/>
@@ -95,9 +99,9 @@
         </section>
 
         <div class="o_sb_toolbar">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Reason">
+            <div class="o_sb_seg" role="group" aria-label="Reason">
                 <t t-foreach="[['', 'All'], ['make', 'Filling &amp; production'], ['sale', 'Sales &amp; returns'], ['in', 'Received'], ['out', 'Spoiled &amp; used'], ['correction', 'Corrections']]" t-as="opt" t-key="opt[0]">
-                    <button class="btn" t-att-class="state.reason === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setReason(opt[0])" t-esc="opt[1]"/>
+                    <button type="button" t-att-aria-pressed="state.reason === opt[0] ? 'true' : 'false'" t-on-click="() => this.setReason(opt[0])" t-esc="opt[1]"/>
                 </t>
             </div>
             <div class="o_sb_search">
@@ -229,7 +233,7 @@
                                         <span t-else="" t-attf-class="o_sb_pill o_sb_pill_{{row.tone}}" t-att-data-tooltip="row.detail or false" t-esc="row.status"/>
                                         <span t-if="row.unbilled" class="o_sb_pill o_sb_pill_warning ms-1" title="Received but not billed: its stock is not in the accounts yet">To bill</span>
                                         <span t-if="row.undone" class="o_sb_pill o_sb_pill_muted ms-1" title="Undone: what this line posted was taken back, and the lines that did it are on the book">Undone</span>
-                                        <span t-if="row.posted_by" class="o_sb_appr" t-esc="row.posted_by"/>
+                                        <span t-if="row.posted_by" class="o_sb_appr" t-att-class="{ o_sb_appr_below: row.unbilled or row.undone }" t-att-title="'Posted by ' + row.posted_by" t-esc="row.posted_by"/>
                                     </td>
                                     <td class="o_sb_c_open">
                                         <button class="o_sb_open_btn" t-on-click="() => this.select(row)" t-att-aria-label="'Open ' + (row.ref or 'line')" title="Details and post">
@@ -496,9 +500,9 @@
     <t t-name="odin_stock_book.Sheet">
         <t t-set="sheet" t-value="state.sheet"/>
         <div class="o_sb_toolbar">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Show">
+            <div class="o_sb_seg" role="group" aria-label="Show">
                 <t t-foreach="[['', 'All'], ['Finished Goods', 'Finished goods'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['moved', 'Moved this month'], ['out', 'Out of stock']]" t-as="opt" t-key="opt[0]">
-                    <button class="btn" t-att-class="state.group === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
+                    <button type="button" t-att-aria-pressed="state.group === opt[0] ? 'true' : 'false'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
                 </t>
             </div>
             <div class="o_sb_search">
@@ -555,22 +559,22 @@
     <!-- ===================================================== Out for recipes -->
     <t t-name="odin_stock_book.Recipes">
         <t t-set="data" t-value="state.recipes"/>
-        <section class="o_sb_focus o_sb_focus_recipes" role="status">
+        <section class="o_sb_focus o_sb_focus_recipes" t-att-class="{ o_sb_focus_ok: !data.items }" role="status">
             <div class="o_sb_focus_main">
                 <strong t-if="data.items"><t t-esc="data.items"/> <t t-esc="data.items === 1 ? 'item is' : 'items are'"/> out of stock, and <t t-esc="data.recipes"/> <t t-esc="data.recipes === 1 ? 'recipe needs' : 'recipes need'"/> <t t-esc="data.items === 1 ? 'it' : 'them'"/></strong>
                 <strong t-else="">Every recipe has what it needs</strong>
                 <span t-if="data.items">Most used first. Buy it, make it if it has a recipe, or count it if it is on the shelf. Tick several to buy them on one purchase.</span>
             </div>
-            <div class="o_sb_focus_actions">
+            <div t-if="data.items" class="o_sb_focus_actions">
                 <button class="btn btn-sm btn-primary" t-att-disabled="!pickedRows.length" t-on-click="buyPicked">
                     <i class="fa fa-truck me-1"/>Add purchase<t t-if="pickedRows.length"> · <t t-esc="pickedRows.length"/> <t t-esc="pickedRows.length === 1 ? 'item' : 'items'"/></t>
                 </button>
             </div>
         </section>
         <div class="o_sb_toolbar">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Show">
+            <div class="o_sb_seg" role="group" aria-label="Show">
                 <t t-foreach="[['', 'All'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['made', 'Made here']]" t-as="opt" t-key="opt[0]">
-                    <button class="btn" t-att-class="state.group === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
+                    <button type="button" t-att-aria-pressed="state.group === opt[0] ? 'true' : 'false'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
                 </t>
             </div>
             <div class="o_sb_search">
@@ -627,9 +631,9 @@
                 <span class="o_sb_kpi_sub">at cost, posted as one adjustment</span></div>
         </section>
         <div class="o_sb_toolbar">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Show">
+            <div class="o_sb_seg" role="group" aria-label="Show">
                 <t t-foreach="[['', 'All'], ['Finished Goods', 'Finished goods'], ['Raw Materials', 'Raw materials'], ['Packaging', 'Packaging'], ['counted', 'Counted']]" t-as="opt" t-key="opt[0]">
-                    <button class="btn" t-att-class="state.group === opt[0] ? 'btn-dark' : 'btn-outline-secondary'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
+                    <button type="button" t-att-aria-pressed="state.group === opt[0] ? 'true' : 'false'" t-on-click="() => this.setGroup(opt[0])" t-esc="opt[1]"/>
                 </t>
             </div>
             <div class="o_sb_search">

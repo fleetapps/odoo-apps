@@ -14,7 +14,7 @@ its receipt, or scrap. Add bill enters a paid bill for what is not stock, with
 its lines on accounts, its VAT and its scan.
 See README.md.
 """,
-    "version": "19.0.1.13.0",
+    "version": "19.0.1.14.0",
     "category": "Inventory/Inventory",
     "author": "Fleet Apps",
     "website": "https://github.com/fleetapps/odoo-apps",
@@ -37,6 +37,9 @@ See README.md.
         ],
         "web.report_assets_common": [
             "odin_stock_book/static/src/report/**/*",
+        ],
+        "web.assets_tests": [
+            "odin_stock_book/static/tests/tours/**/*",
         ],
     },
     "installable": True,
